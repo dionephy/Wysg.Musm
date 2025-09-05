@@ -1,0 +1,23 @@
+﻿<!-- src/Wysg.Musm.Editor/Controls/EditorControl.xaml -->
+<UserControl x:Class="Wysg.Musm.Editor.Controls.EditorControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ed="clr-namespace:Wysg.Musm.Editor.Controls"
+             x:Name="Root" MinWidth="300" MinHeight="200">
+    <UserControl.InputBindings>
+        <!-- Force snippet popup -->
+        <KeyBinding Key="Space" Modifiers="Control"
+                Command="{Binding ElementName=Root, Path=ForceSuggestCommand}" />
+        <!-- Accept ghost text -->
+        <KeyBinding Key="Tab"
+                Command="{Binding ElementName=Root, Path=AcceptGhostCommand}" />
+        <!-- Cancel ghost text -->
+        <KeyBinding Key="Escape"
+                Command="{Binding ElementName=Root, Path=CancelGhostCommand}" />
+    </UserControl.InputBindings>
+
+    <Grid>
+        <ed:MusmEditor x:Name="Editor"
+                   DocumentText="{Binding ElementName=Root, Path=DocumentText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+    </Grid>
+</UserControl>

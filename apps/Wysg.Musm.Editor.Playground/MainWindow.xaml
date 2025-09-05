@@ -1,0 +1,28 @@
+﻿<Window x:Class="Wysg.Musm.Editor.Playground.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ed="clr-namespace:Wysg.Musm.Editor.Controls;assembly=Wysg.Musm.Editor"
+        Title="Wysg.Musm.Editor Playground" Width="1100" Height="700">
+    <DockPanel>
+        <!-- Toolbar -->
+        <ToolBar DockPanel.Dock="Top">
+            <CheckBox Content="AI (ghost)" Margin="0,0,8,0"
+                IsChecked="{Binding AiEnabled}" />
+            <Button Content="Snippets (Ctrl+Space)" Margin="0,0,8,0"
+              Command="{Binding ElementName=EditorCtrl, Path=ForceSuggestCommand}" />
+            <Button Content="Accept Ghost (Tab)" Margin="0,0,8,0"
+              Command="{Binding ElementName=EditorCtrl, Path=AcceptGhostCommand}" />
+            <Button Content="Cancel Ghost (Esc)"
+              Command="{Binding ElementName=EditorCtrl, Path=CancelGhostCommand}" />
+            <Separator/>
+            <TextBlock Text="Tip: Type 'nq' then Ctrl+Space → pick a snippet. For laterality, choose left/right and press Tab." />
+        </ToolBar>
+
+        <!-- Editor -->
+        <ed:EditorControl x:Name="EditorCtrl"
+                      DocumentText="{Binding ReportBody, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      AiEnabled="{Binding AiEnabled}"
+                      CompletionEngine="{Binding CompletionEngine}"
+                      SnippetProvider="{Binding SnippetProvider}" />
+    </DockPanel>
+</Window>
