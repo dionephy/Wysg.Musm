@@ -2,69 +2,90 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
-using ICSharpCode.AvalonEdit.Editing;
-using ICSharpCode.AvalonEdit.Rendering;
+using ICSharpCode.AvalonEdit.Editing;    // TextArea
+using ICSharpCode.AvalonEdit.Rendering;  // IBackgroundRenderer, TextView, KnownLayer
 
-namespace Wysg.Musm.Editor.Ui;
-
-public sealed class GhostTextRenderer : IBackgroundRenderer, IDisposable
+namespace Wysg.Musm.Editor.Ui
 {
-    private readonly TextView _view;
-    private readonly Func<string> _getText;
-    private readonly Typeface _typeface;
-    private bool _disposed;
-
-    public GhostTextRenderer(TextView view, Func<string> getText)
+    /// <summary>
+    /// Draws inline ghost text starting at the caret's right edge.
+    /// A hard clip ensures no ghost pixels render left of the caret.
+    /// </summary>
+    public sealed class GhostTextRenderer : IBackgroundRenderer, IDisposable
     {
-        _view = view ?? throw new ArgumentNullException(nameof(view));
-        _getText = getText ?? throw new ArgumentNullException(nameof(getText));
+        private readonly TextView _view;
+        private readonly TextArea _textArea;
+        private readonly Func<string> _getText;
+        private readonly Func<Typeface> _getTypeface;
+        private readonly Func<double> _getFontSize;
+        private readonly Brush _brush;
 
-        // Pick font from the owning TextArea if available; fall back to Consolas
-        var ta = (TextArea?)_view.Services.GetService(typeof(TextArea));
-        var fontFamily = ta?.FontFamily ?? new FontFamily("Consolas");
-        _typeface = new Typeface(fontFamily, FontStyles.Italic, FontWeights.Normal, FontStretches.Normal);
+        public GhostTextRenderer(
+            TextView view,
+            TextArea textArea,
+            Func<string> getText,
+            Func<Typeface> getTypeface,
+            Func<double> getFontSize,
+            Brush? brush = null)
+        {
+            _view = view;
+            _textArea = textArea;
+            _getText = getText;
+            _getTypeface = getTypeface;
+            _getFontSize = getFontSize;
+            _brush = brush ?? Brushes.Gray;
 
-        _view.BackgroundRenderers.Add(this);
-        _view.VisualLinesChanged += OnVisualLinesChanged;
-    }
+            _view.BackgroundRenderers.Add(this);
+            _view.VisualLinesChanged += OnVisualLinesChanged;
+        }
 
-    private void OnVisualLinesChanged(object? s, EventArgs e) => _view.InvalidateVisual();
+        public KnownLayer Layer => KnownLayer.Selection; // above text, below caret
 
-    public void Draw(TextView textView, DrawingContext drawingContext)
-    {
-        if (!textView.VisualLinesValid) return;
+        public void Draw(TextView textView, DrawingContext dc)
+        {
+            var ghost = _getText();
+            if (string.IsNullOrEmpty(ghost)) return;
+            if (!_view.VisualLinesValid) return;
 
-        var ghost = _getText();
-        if (string.IsNullOrEmpty(ghost)) return;
+            // Caret geometry
+            var caretRect = _textArea.Caret.CalculateCaretRectangle();
+            // Anchor at the true insertion point
+            var origin = new Point(caretRect.Right, caretRect.Top);
 
-        var ta = (TextArea?)textView.Services.GetService(typeof(TextArea));
-        if (ta is null) return;
+            // Hard clip: nothing from the ghost is allowed to render left of the caret.
+            // Height: use the caret rect height (current line). Width: extend to the right edge.
+            // NEW — use ActualWidth; clip only to the right of the caret
+            double clipWidth = Math.Max(0, _view.ActualWidth - caretRect.Right);
+            double clipHeight = Math.Max(0, caretRect.Height);
+            var clip = new Rect(caretRect.Right, caretRect.Top, clipWidth, clipHeight);
 
-        var caretPos = textView.GetVisualPosition(ta.Caret.Position, VisualYPosition.TextTop);
-        var origin = new Point(caretPos.X, caretPos.Y);
 
-        double fontSize = ta.FontSize;
-        double pixelsPerDip = VisualTreeHelper.GetDpi(textView).PixelsPerDip;
+            dc.PushClip(new RectangleGeometry(clip));
 
-        var ft = new FormattedText(
-            ghost,
-            CultureInfo.CurrentUICulture,
-            FlowDirection.LeftToRight,
-            _typeface,
-            fontSize,
-            Brushes.Gray,
-            pixelsPerDip);
+            // Use editor's live typeface + size (ensures identical metrics)
+            var typeface = _getTypeface();
+            var fontSize = _getFontSize();
 
-        drawingContext.DrawText(ft, origin);
-    }
+            var ft = new FormattedText(
+                ghost,
+                CultureInfo.CurrentUICulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                fontSize,
+                _brush,
+                VisualTreeHelper.GetDpi(_view).PixelsPerDip);
 
-    public KnownLayer Layer => KnownLayer.Selection;
+            dc.DrawText(ft, origin);
 
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-        try { _view.BackgroundRenderers.Remove(this); } catch { }
-        try { _view.VisualLinesChanged -= OnVisualLinesChanged; } catch { }
+            dc.Pop(); // remove clip
+        }
+
+        private void OnVisualLinesChanged(object? s, EventArgs e) => _view.InvalidateVisual();
+
+        public void Dispose()
+        {
+            _view.BackgroundRenderers.Remove(this);
+            _view.VisualLinesChanged -= OnVisualLinesChanged;
+        }
     }
 }
