@@ -1,74 +1,83 @@
-﻿using System;
-using System.Collections.Generic;
+﻿// src/Wysg.Musm.Editor/Snippets/PlaceholderCompletionWindow.cs
 using System.Linq;
 using System.Windows;
-using System.Windows.Media;
-using ICSharpCode.AvalonEdit.CodeCompletion;
-using ICSharpCode.AvalonEdit.Document;
+using System.Windows.Controls;
+using System.Windows.Input;
 using ICSharpCode.AvalonEdit.Editing;
 
 namespace Wysg.Musm.Editor.Snippets;
 
-/// <summary>
-/// Minimal option picker for placeholder choices, bound to a TextArea.
-/// For SingleChoice: pick once and close.
-/// For MultiSelect: stays open; each selection invokes the callback (caller appends/merges).
-/// </summary>
-public sealed class PlaceholderCompletionWindow : CompletionWindow
+public sealed class PlaceholderCompletionWindow : Window
 {
-    private readonly bool _multi;
-    private readonly Action<string> _onPick;
+    private readonly ListBox _list;
+    private readonly TextArea _area;
 
-    public PlaceholderCompletionWindow(TextArea textArea,
-        IEnumerable<(string key, string value)> options,
-        bool multiSelect,
-        Action<string> onPick)
-        : base(textArea ?? throw new ArgumentNullException(nameof(textArea)))
+    public record Item(int Digit, string Text);
+
+    public PlaceholderCompletionWindow(TextArea area, System.Collections.Generic.IEnumerable<Item> items)
     {
-        _multi = multiSelect;
-        _onPick = onPick ?? throw new ArgumentNullException(nameof(onPick));
-
-        CloseAutomatically = !_multi;          // keep open for multi-select
-        CompletionList.IsFiltering = true;
-
-        SizeToContent = SizeToContent.Height;
-        MaxHeight = 280; Width = 360;
-
-        var data = CompletionList.CompletionData;
-        foreach (var (k, v) in options)
-            data.Add(new OptionItem(k, v, _onPick, () => { if (!_multi) Close(); }));
-
-        // Optional: use icon from Themes/Generic.xaml if present
-        try
+        _area = area;
+        WindowStyle = WindowStyle.None;
+        AllowsTransparency = true;
+        Background = System.Windows.Media.Brushes.Transparent;
+        ShowInTaskbar = false;
+        Topmost = true;
+        _list = new ListBox
         {
-            if (Application.Current?.TryFindResource("HotkeyIcon") is ImageSource img)
-                CompletionList.ListBox.Resources["ItemIcon"] = img;
-        }
-        catch { }
+            ItemsSource = items.ToList(),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(4),
+            MinWidth = 160
+        };
+        Content = _list;
+        Deactivated += (_, __) => Close();
+        PreviewKeyDown += OnPreviewKeyDown;
     }
 
-    private sealed class OptionItem : ICompletionData
+    protected override void OnContentRendered(System.EventArgs e)
     {
-        private readonly string _key;
-        private readonly string _value;
-        private readonly Action<string> _onPick;
-        private readonly Action _onClose;
+        base.OnContentRendered(e);
+        _list.Focus();
+        if (_list.Items.Count > 0) _list.SelectedIndex = 0;
+    }
 
-        public OptionItem(string key, string value, Action<string> onPick, Action onClose)
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_list.SelectedItem is not Item it) return;
+
+        if (e.Key == Key.Enter)
         {
-            _key = key; _value = value; _onPick = onPick; _onClose = onClose;
+            DialogResult = true;
+            Close();
+            return;
         }
-
-        public ImageSource? Image => null;
-        public string Text => _key;                           // filter by key
-        public object Content => $"{_key} — {_value}";
-        public object Description => _value;
-        public double Priority => 0;
-
-        public void Complete(TextArea textArea, ISegment completionSegment, EventArgs insertionRequestEventArgs)
+        // digit direct-select
+        if (e.Key >= Key.D0 && e.Key <= Key.D9)
         {
-            _onPick(_value);
-            _onClose();
+            var d = (int)(e.Key - Key.D0);
+            var found = _list.Items.Cast<Item>().FirstOrDefault(x => x.Digit == d);
+            if (found is not null)
+            {
+                _list.SelectedItem = found;
+                DialogResult = true;
+                Close();
+            }
+            e.Handled = true;
         }
+        if (e.Key == Key.Escape)
+        {
+            DialogResult = false;
+            Close();
+        }
+    }
+
+    public Item? Selected => _list.SelectedItem as Item;
+
+    public void ShowAtCaret()
+    {
+        var vp = _area.TextView.GetVisualPosition(_area.Caret.Position, ICSharpCode.AvalonEdit.Rendering.VisualYPosition.TextBottom);
+        var p = _area.PointToScreen(new Point(vp.X, vp.Y));
+        Left = p.X; Top = p.Y;
+        Show();
     }
 }

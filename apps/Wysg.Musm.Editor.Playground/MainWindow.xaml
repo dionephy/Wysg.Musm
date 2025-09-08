@@ -5,27 +5,18 @@
         Title="Wysg.Musm.Editor Playground" Width="1100" Height="700">
     <DockPanel>
         <ToolBar DockPanel.Dock="Top">
-            <CheckBox Content="AI (ghost)" Margin="0,0,8,0"
-                IsChecked="{Binding AiEnabled}" />
-            <CheckBox Content="Auto popup (≥2 chars)" Margin="0,0,8,0"
-                IsChecked="{Binding ElementName=EditorCtrl, Path=AutoSuggestOnTyping}" />
-            <TextBlock Text="Min chars:" VerticalAlignment="Center" Margin="8,0,4,0"/>
-            <Slider Width="80" Minimum="1" Maximum="4"
-              Value="{Binding ElementName=EditorCtrl, Path=MinCharsForSuggest}"
-              TickFrequency="1" IsSnapToTickEnabled="True"/>
-            <Separator/>
-            <Button Content="Open popup (Ctrl+Space)"
-              Command="{Binding ElementName=EditorCtrl, Path=ForceSuggestCommand}" />
-            <Button Content="Accept Ghost (Tab)"
-              Command="{Binding ElementName=EditorCtrl, Path=AcceptGhostCommand}" />
-            <Button Content="Cancel Ghost (Esc)"
-              Command="{Binding ElementName=EditorCtrl, Path=CancelGhostCommand}" />
+            <TextBlock Text="Idle→Ghost (2s). Up/Down select. Tab accept. Esc clear."/>
         </ToolBar>
 
         <ed:EditorControl x:Name="EditorCtrl"
                       DocumentText="{Binding ReportBody, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                      AiEnabled="{Binding AiEnabled}"
-                      CompletionEngine="{Binding CompletionEngine}"
-                      SnippetProvider="{Binding SnippetProvider}" />
+                      SnippetProvider="{Binding SnippetProvider}"
+                      MinCharsForSuggest="2"
+                      AutoSuggestOnTyping="True"
+                      GhostClient="{Binding GhostClient}"
+                      PatientSex="{Binding PatientSex}"
+                      PatientAge="{Binding PatientAge}"
+                      StudyHeader="{Binding StudyHeader}"
+                      StudyInfo="{Binding StudyInfo}"/>
     </DockPanel>
 </Window>

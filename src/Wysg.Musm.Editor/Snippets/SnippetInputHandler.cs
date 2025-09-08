@@ -1,118 +1,122 @@
-﻿using System.Linq;
+﻿// src/Wysg.Musm.Editor/Snippets/SnippetInputHandler.cs
+using System.Linq;
 using System.Windows.Input;
 using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Editing;
 
 namespace Wysg.Musm.Editor.Snippets;
 
-public sealed class SnippetInputHandler : TextAreaInputHandler
+public static class SnippetInputHandler
 {
-    private readonly PlaceholderSession _session;
-
-    public SnippetInputHandler(TextArea textArea, System.Collections.Generic.IList<Placeholder> placeholders)
-        : base(textArea)
+    public static void Start(TextArea area, string expandedText, System.Collections.Generic.List<ExpandedPlaceholder> map)
     {
-        _session = new PlaceholderSession(placeholders);
-        _session.Enter();
-    }
+        // Insert expanded text at caret, remember first placeholder
+        var doc = area.Document;
+        int insertOffset = area.Caret.Offset;
+        doc.Insert(insertOffset, expandedText);
 
-    public override void Attach()
-    {
-        base.Attach();
-        TextArea.PreviewKeyDown += OnPreviewKeyDown;
-    }
+        if (map.Count == 0) return;
 
-    public override void Detach()
-    {
-        TextArea.PreviewKeyDown -= OnPreviewKeyDown;
-        base.Detach();
-    }
+        PlaceholderModeManager.Enter();
 
-    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Tab) return;
+        // Focus first placeholder by smallest Index
+        var ph = map.OrderBy(p => p.Index).First();
+        SelectPlaceholder(area, insertOffset, ph);
 
-        _session.FocusAtOffset(TextArea.Caret.Offset);
-        var ph = _session.Current;
-        if (ph == null) return;
-
-        // Normalize laterality if the selection covers the placeholder text
-        var sel = TextArea.Selection;
-        if (!sel.IsEmpty && sel.Length <= 512)
+        area.PreviewKeyDown += OnPreviewKeyDown;
+        void OnPreviewKeyDown(object? s, KeyEventArgs e)
         {
-            var raw = sel.GetText();
-            if (raw.Contains("left") || raw.Contains("right") || raw.Contains("bilateral"))
+            if (!PlaceholderModeManager.IsActive) { area.PreviewKeyDown -= OnPreviewKeyDown; return; }
+
+            // digits choose options if a placeholder is selected
+            if (e.Key >= Key.D0 && e.Key <= Key.D9)
             {
-                var normalized = LateralityCombiner.CombineFromText(raw);
-                if (!string.IsNullOrWhiteSpace(normalized) && normalized != raw)
+                int digit = (int)(e.Key - Key.D0);
+                var current = GetCurrentPlaceholder(area, insertOffset, map);
+                if (current != null)
                 {
-                    using (TextArea.Document.RunUpdate())
+                    var opt = current.Options.FirstOrDefault(o => o.Digit == digit);
+                    if (opt is not null)
                     {
-                        TextArea.Document.Replace(sel.SurroundingSegment, normalized);
+                        // replace selection with chosen option
+                        int oldLen = current.Length;
+                        ReplaceSelection(area, opt.Text);
+                        int newLen = opt.Text.Length;
+
+                        // update current placeholder size
+                        current.Length = newLen;
+
+                        // shift START of all subsequent placeholders by the delta
+                        int delta = newLen - oldLen;
+                        if (delta != 0)
+                        {
+                            foreach (var ph in map.Where(p => p.Index > current.Index))
+                                ph.Start += delta;
+                        }
+
+                        // jump to next placeholder (by Index)
+                        var next = map.Where(p => p.Index > current.Index).OrderBy(p => p.Index).FirstOrDefault();
+                        if (next is null)
+                        {
+                            Exit();
+                        }
+                        else
+                        {
+                            SelectPlaceholder(area, insertOffset, next);
+                        }
+                        e.Handled = true;
                     }
-                    // Let Tab continue to next placeholder
                 }
+
+            }
+            else if (e.Key == Key.Enter)
+            {
+                Exit();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                // cancel: just exit (leave current text as-is)
+                Exit();
+                e.Handled = true;
             }
         }
 
-        // If the placeholder has options, show the picker
-        if (ph.Options != null && ph.Options.Count > 0)
+        void Exit()
         {
-            var multi = ph.Type == PlaceholderType.MultiSelect;
-
-            void Pick(string value)
-            {
-                var seg = ph.Segment as TextSegment;
-                if (seg == null) return;
-
-                string current = TextArea.Selection.IsEmpty
-                    ? TextArea.Document.GetText(seg)
-                    : TextArea.Selection.GetText();
-
-                string next = multi ? AppendUnique(current, value) : value;
-
-                using (TextArea.Document.RunUpdate())
-                {
-                    if (TextArea.Selection.IsEmpty)
-                        TextArea.Document.Replace(seg, next);
-                    else
-                        TextArea.Document.Replace(TextArea.Selection.SurroundingSegment, next);
-                }
-
-                var newLen = next.Length;
-                ph.Segment.StartOffset = seg.StartOffset;
-                ph.Segment.EndOffset = seg.StartOffset + newLen;
-                TextArea.Caret.Offset = ph.Segment.EndOffset;
-            }
-
-            var items = ph.Options.Select(kv => (kv.Key, kv.Value));
-            var window = new PlaceholderCompletionWindow(
-                textArea: TextArea,
-                options: items,
-                multiSelect: multi,
-                onPick: Pick);
-
-            // Show the picker over the placeholder segment
-            if (ph.Segment is TextSegment s)
-            {
-                window.StartOffset = s.StartOffset;
-                window.EndOffset = s.EndOffset;
-            }
-            window.Show();
-
-            if (!multi) e.Handled = true; // single choice: avoid tab jumping past the placeholder
-            return;
+            PlaceholderModeManager.Exit();
+            area.PreviewKeyDown -= OnPreviewKeyDown;
         }
-
-        // No options → allow default Tab navigation across snippet fields.
     }
 
-    private static string AppendUnique(string current, string value)
+    private static ExpandedPlaceholder? GetCurrentPlaceholder(TextArea area, int insertOffset, System.Collections.Generic.List<ExpandedPlaceholder> map)
     {
-        var parts = current.Split(new[] { ',', ' ' }, System.StringSplitOptions.RemoveEmptyEntries).ToList();
-        if (!parts.Contains(value))
-            parts.Add(value);
-        var joined = string.Join(", ", parts);
-        return LateralityCombiner.CombineFromText(joined);
+        var sel = area.Selection.SurroundingSegment;
+        if (sel is null) return null;
+        int start = sel.Offset - insertOffset;
+        return map.FirstOrDefault(p => p.Start == start);
+    }
+
+    private static void SelectPlaceholder(TextArea area, int insertOffset, ExpandedPlaceholder p)
+    {
+        area.Selection = Selection.Create(area, insertOffset + p.Start, insertOffset + p.Start + p.Length);
+        area.Caret.Offset = insertOffset + p.Start + p.Length;
+        ShowPopup(area, p);
+    }
+
+    private static void ReplaceSelection(TextArea area, string text)
+    {
+        var sel = area.Selection.SurroundingSegment;
+        if (sel is null) return;
+        area.Document.Replace(sel.Offset, sel.Length, text);
+        area.Selection = Selection.Create(area, sel.Offset, sel.Offset + text.Length);
+        area.Caret.Offset = sel.Offset + text.Length;
+    }
+
+    private static void ShowPopup(TextArea area, ExpandedPlaceholder p)
+    {
+        if (p.Options.Count == 0) return;
+        var win = new PlaceholderCompletionWindow(area, p.Options.Select(o => new PlaceholderCompletionWindow.Item(o.Digit, o.Text)));
+        win.ShowAtCaret();
     }
 }

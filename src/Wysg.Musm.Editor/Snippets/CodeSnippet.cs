@@ -1,186 +1,149 @@
-﻿using System;
+﻿// src/Wysg.Musm.Editor/Snippets/CodeSnippet.cs
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using ICSharpCode.AvalonEdit.Document;
-using ICSharpCode.AvalonEdit.Editing;
-using ICSharpCode.AvalonEdit.Snippets;
+using ICSharpCode.AvalonEdit.Document;  // for ISegment
+using ICSharpCode.AvalonEdit.Editing;   // for TextArea
 
-namespace Wysg.Musm.Editor.Snippets
+namespace Wysg.Musm.Editor.Snippets;
+
+/// Hotkey: text without placeholders
+/// Snippet: supports ${index^label=1^optA|3^optB} style placeholders
+public sealed class CodeSnippet
 {
-    /// <summary>
-    /// ${...} 플레이스홀더가 들어간 스니펫을 AvalonEdit에 삽입/확장합니다.
-    ///   ${0^Impression}
-    ///   ${1^Lesion=a^lesion|b^mass}
-    ///   ${2^Sites=li^left insula|ri^right insula}
-    ///   ${3^ReplaceWith}
-    /// </summary>
-    public sealed class CodeSnippet
+    public string Shortcut { get; }
+    public string Description { get; }      // for UI list
+    public string Template { get; }         // raw template with ${...}
+
+    public CodeSnippet(string shortcut, string description, string template)
     {
-        // ${header} 또는 ${header=defaults}
-        // Group 1: header (예 "1^Lesion")
-        // Group 3: defaults/options (예 "a^lesion|b^mass")
-        private static readonly Regex PlaceholderPattern =
-            new(@"\$\{([^\}=]+)(=([^\}]*))?\}", RegexOptions.Compiled);
+        Shortcut = shortcut;
+        Description = description;
+        Template = template ?? string.Empty;
+    }
 
-        public string Shortcut { get; }
-        public string Description { get; }
-        public string Text { get; }
+    // Very small parser: find ${...} segments and extract options keyed by digits
+    private static readonly Regex PlaceholderRx =
+        new(@"\$\{(\d+)\^([^\}=]+)=(.*?)\}", RegexOptions.Compiled); // ${1^laterality=1^right|3^left}
 
-        /// <summary>파싱 중 발견된 플레이스홀더 컬렉션 (삽입 시 채워짐)</summary>
-        public List<Placeholder> Placeholders { get; } = new();
+    public bool IsSnippet => PlaceholderRx.IsMatch(Template);
 
-        public CodeSnippet(string shortcut, string description, string text)
+    public IEnumerable<SnippetPlaceholder> EnumeratePlaceholders()
+    {
+        foreach (Match m in PlaceholderRx.Matches(Template))
         {
-            Shortcut = shortcut;
-            Description = description;
-            Text = text ?? string.Empty;
+            var index = int.Parse(m.Groups[1].Value);
+            var label = m.Groups[2].Value;
+            var optionsRaw = m.Groups[3].Value; // "1^right|3^left"
+            var options = new List<SnippetOption>();
+            foreach (var token in optionsRaw.Split('|'))
+            {
+                var parts = token.Split('^');
+                if (parts.Length >= 2 && int.TryParse(parts[0], out var digit))
+                    options.Add(new SnippetOption(digit, parts[1]));
+            }
+            yield return new SnippetPlaceholder(index, label, m.Index, m.Length, options);
+        }
+    }
+
+    /// Returns a display preview (for completion ghost) without mutating document.
+    public string PreviewText()
+    {
+        if (!IsSnippet) return Template;
+        // Replace ${...} with label (first option hint)
+        return PlaceholderRx.Replace(Template, m =>
+        {
+            var label = m.Groups[2].Value;
+            var options = m.Groups[3].Value.Split('|');
+            var first = options.FirstOrDefault()?.Split('^').LastOrDefault() ?? "";
+            return label + " → " + first;
+        });
+    }
+
+    /// Expand into a text with placeholders removed but positions recorded.
+    public (string expanded, List<ExpandedPlaceholder> map) Expand()
+    {
+        if (!IsSnippet) return (Template, new List<ExpandedPlaceholder>());
+        var map = new List<ExpandedPlaceholder>();
+        int cursor = 0;
+        var text = Template;
+        var result = new System.Text.StringBuilder();
+
+        foreach (Match m in PlaceholderRx.Matches(text))
+        {
+            // Copy text before placeholder
+            int plainLen = m.Index - cursor;
+            if (plainLen > 0) result.Append(text.AsSpan(cursor, plainLen));
+
+            var index = int.Parse(m.Groups[1].Value);
+            var label = m.Groups[2].Value;
+            var options = m.Groups[3].Value.Split('|')
+                             .Select(t => t.Split('^')).Where(p => p.Length >= 2)
+                             .Select(p => new SnippetOption(int.Parse(p[0]), p[1])).ToList();
+
+            int start = result.Length;
+            result.Append(label); // insert label initially as visible token
+            int length = label.Length;
+
+            map.Add(new ExpandedPlaceholder(index, label, start, length, options));
+            cursor = m.Index + m.Length;
+        }
+        // Tail
+        if (cursor < text.Length) result.Append(text.AsSpan(cursor));
+        return (result.ToString(), map);
+    }
+
+    // ---- Legacy compatibility shim (for EditorCompletionData.cs etc.) ----
+
+    /// Legacy callers expect the snippet/hotkey body on .Text
+    public string Text => Template;
+
+    /// Legacy callers use snippet.Insert(...) to perform insertion.
+    /// - Hotkey/token: replaces the target segment with Template.
+    /// - Snippet: expands placeholders and enters placeholder mode.
+    public void Insert(TextArea area, ISegment replaceSegment)
+    {
+        if (!IsSnippet)
+        {
+            // Hotkey / token: just replace the word
+            area.Document.Replace(replaceSegment, Template);
+            area.Caret.Offset = replaceSegment.Offset + Template.Length;
+            return;
         }
 
-        /// <summary>
-        /// 현재 캐럿 위치에서 사용자가 타이핑한 프리픽스를 제거하고 스니펫을 삽입합니다.
-        /// </summary>
-        public void Insert(TextArea textArea, ISegment completionSegment)
-        {
-            if (textArea is null) throw new ArgumentNullException(nameof(textArea));
-            if (completionSegment is null) throw new ArgumentNullException(nameof(completionSegment));
+        // Snippet: expand and start placeholder workflow
+        var (expanded, map) = Expand();
 
-            // 완성창을 띄우게 했던 "단어/프리픽스"를 먼저 제거
-            int start = completionSegment.Offset;
-            var doc = textArea.Document;
-            while (start > 0 && char.IsLetterOrDigit(doc.GetCharAt(start - 1)))
-                start--;
+        // Replace the token so the snippet lands at the same spot
+        area.Document.Replace(replaceSegment, string.Empty);
+        area.Caret.Offset = replaceSegment.Offset;
 
-            doc.Remove(start, completionSegment.EndOffset - start);
+        SnippetInputHandler.Start(area, expanded, map);
+    }
 
-            // 스니펫 구성 및 삽입
-            var snippet = CreateSnippetFromText(Text, start, doc);
-            snippet.Insert(textArea);
+    /// Some legacy sites pass an EventArgs; accept and forward.
+    public void Insert(TextArea area, ISegment replaceSegment, EventArgs _)
+        => Insert(area, replaceSegment);
+}
 
-            textArea.DefaultInputHandler.NestedInputHandlers.Add(
-    new SnippetInputHandler(textArea, Placeholders));
+public sealed record SnippetOption(int Digit, string Text);
+public sealed record SnippetPlaceholder(int Index, string Label, int TemplateOffset, int TemplateLength, IReadOnlyList<SnippetOption> Options);
 
+public sealed class ExpandedPlaceholder
+{
+    public int Index { get; init; }
+    public string Label { get; init; }
+    public int Start { get; set; }    // mutable: shifting after replacements
+    public int Length { get; set; }   // mutable: becomes chosen option length
+    public IReadOnlyList<SnippetOption> Options { get; init; }
 
-            // 필요 시 플레이스홀더 네비게이션 핸들러 연결
-            // textArea.DefaultInputHandler.NestedInputHandlers.Add(
-            //     new SnippetInputHandler(textArea, snippet, Placeholders, start));
-        }
-
-        /// <summary>
-        /// Text를 AvalonEdit Snippet으로 파싱하고 Placeholders를 채웁니다.
-        /// </summary>
-        private Snippet CreateSnippetFromText(string snippetText, int startOffset, TextDocument doc)
-        {
-            Placeholders.Clear();
-
-            var snippet = new Snippet();
-            int curDocOffset = startOffset;
-            int last = 0;
-            int elementIndex = 0;
-
-            foreach (Match m in PlaceholderPattern.Matches(snippetText))
-            {
-                // 플레이스홀더 이전의 일반 텍스트
-                if (m.Index > last)
-                {
-                    var before = snippetText.Substring(last, m.Index - last);
-                    snippet.Elements.Add(new SnippetTextElement { Text = before });
-                    curDocOffset += before.Length;
-                    elementIndex++;
-                }
-
-                // 플레이스홀더 파싱
-                var header = m.Groups[1].Value;                         // 예: "1^Lesion"
-                var defaults = m.Groups[3].Success ? m.Groups[3].Value : string.Empty; // 예: "a^lesion|b^mass"
-
-                var (ph, initialText) = ParsePlaceholder(header, defaults);
-
-                var replaceable = new SnippetReplaceableTextElement { Text = initialText };
-                ph.Element = replaceable;
-
-                // TextSegment는 StartOffset/EndOffset으로 설정 (Offset/Length 아님)
-                ph.Segment = new TextSegment
-                {
-                    StartOffset = curDocOffset,
-                    EndOffset = curDocOffset + initialText.Length
-                };
-                ph.SnippetTextElementIndex = elementIndex;
-
-                Placeholders.Add(ph);
-
-                snippet.Elements.Add(replaceable);
-                curDocOffset += ph.Segment.Length;
-                elementIndex++;
-
-                last = m.Index + m.Length;
-            }
-
-            // 마지막 남은 일반 텍스트
-            if (last < snippetText.Length)
-                snippet.Elements.Add(new SnippetTextElement { Text = snippetText[last..] });
-
-            return snippet;
-        }
-
-        /// <summary>
-        /// 헤더/옵션 문자열을 강타입 Placeholder와 초기 텍스트로 변환합니다.
-        /// Header:  {Type}^{Title}[^{Extra...}]
-        /// Options: defaults 쪽(= 뒤)은 "key^value"를 '|'로 구분
-        /// </summary>
-        private static (Placeholder ph, string initialText) ParsePlaceholder(string header, string defaults)
-        {
-            // 헤더 파싱
-            var parts = header.Split('^');
-            string typeToken;
-            string title;
-
-            if (parts.Length > 1 && int.TryParse(parts[0], out _))
-            {
-                // "1^Lesion^extra"
-                typeToken = parts[0];
-                title = parts[1];
-            }
-            else
-            {
-                // "Impression" (명시적 타입 없음 -> FreeText)
-                typeToken = "0";
-                title = parts[0];
-            }
-
-            // 옵션 파싱
-            var options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            if (!string.IsNullOrWhiteSpace(defaults))
-            {
-                foreach (var token in defaults.Split('|', StringSplitOptions.RemoveEmptyEntries))
-                {
-                    var kv = token.Split('^');
-                    if (kv.Length == 2)
-                        options[kv[0]] = kv[1];
-                    else if (kv.Length == 1)
-                        options[kv[0]] = kv[0]; // "value" 단독 형태 허용
-                }
-            }
-
-            // 타이틀 뒤의 여분 메타데이터
-            string? metadata = parts.Length > 2 ? string.Join("^", parts.Skip(2)) : null;
-
-            var ph = new Placeholder
-            {
-                Type = typeToken switch
-                {
-                    "1" => PlaceholderType.SingleChoice,
-                    "2" => PlaceholderType.MultiSelect,
-                    "3" => PlaceholderType.Replacement,
-                    _ => PlaceholderType.FreeText
-                },
-                InitialDescription = title,
-                Options = options,
-                Metadata = metadata
-            };
-
-            // 에디터에 보일 초기 텍스트
-            var initialText = title;
-            return (ph, initialText);
-        }
+    public ExpandedPlaceholder(int index, string label, int start, int length, IReadOnlyList<SnippetOption> options)
+    {
+        Index = index;
+        Label = label;
+        Start = start;
+        Length = length;
+        Options = options;
     }
 }
