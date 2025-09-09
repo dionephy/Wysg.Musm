@@ -1,0 +1,17 @@
+﻿{
+  "reportText": "mild microangiopathy\n\nold infarction in right frontal lobe\n\nno other abnormality",
+  "patientSex": "M",
+  "patientAge": 68,
+  "studyHeaderText": "Clinical information: headache Brain MRI w/wo contrast 2025-09-09",
+  "studyHeader": {
+    "clinical": "headache",
+    "priorStudyDate": "2024-11-01"
+  },
+  "studyInfo": {
+    "studyName": [ "Ax FLAIR", "DWI", "SWI" ],
+    "studyDate": "2025-09-09"
+  },
+  "topK": 3,
+  "maxPerLine": 1,
+  "latencyBudgetMs": 800
+}

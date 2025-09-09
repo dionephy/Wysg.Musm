@@ -1,98 +1,175 @@
-﻿// src/Wysg.Musm.Editor/Ui/MultiLineGhostRenderer.cs
+﻿using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit.Document;
+using ICSharpCode.AvalonEdit.Editing;
+using ICSharpCode.AvalonEdit.Rendering;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Windows;
 using System.Windows.Media;
-using ICSharpCode.AvalonEdit;             // TextViewPosition
-using ICSharpCode.AvalonEdit.Document;    // DocumentLine
-using ICSharpCode.AvalonEdit.Editing;     // TextArea
-using ICSharpCode.AvalonEdit.Rendering;   // IBackgroundRenderer, TextView, KnownLayer
 
-namespace Wysg.Musm.Editor.Ui;
-
-public sealed class MultiLineGhostRenderer : IBackgroundRenderer, IDisposable
+namespace Wysg.Musm.Editor.Ui
 {
-    private readonly TextView _view;
-    private readonly TextArea _area;
-    private readonly Func<IReadOnlyList<(int lineNumber, string text)>> _getItems;
-    private readonly Func<int> _getSelectedIndex;
-    private readonly Typeface _typeface;              // <— ensure this exists
-    private readonly Func<double> _getFontSize;
-
-    public MultiLineGhostRenderer(
-        TextView view,
-        TextArea area,
-        Func<IReadOnlyList<(int lineNumber, string text)>> getItems,
-        Func<int> getSelectedIndex,
-        Typeface typeface,
-        Func<double> getFontSize)
+    /// <summary>
+    /// Draw server ghosts at the end of specified lines (server 0-based -> document 1-based).
+    /// For debugging, we render on KnownLayer.Caret so it’s on top of everything.
+    /// NOTE: This renderer does NOT self-register. Call Attach() from the control.
+    /// </summary>
+    public sealed class MultiLineGhostRenderer : IBackgroundRenderer, IDisposable
     {
-        _view = view;
-        _area = area;
-        _getItems = getItems;
-        _getSelectedIndex = getSelectedIndex;
-        _typeface = typeface;                         // <— set it here
-        _getFontSize = getFontSize;
+        private readonly TextView _view;
+        private readonly TextArea _area;
+        private readonly Func<IReadOnlyList<(int line, string text)>> _getItems;
+        private readonly Func<int> _getSelectedIndex; // -1 if none
+        private readonly Typeface _typeface;
+        private readonly Func<double> _getFontSize;
+        private readonly bool _showAnchors;
 
-        _view.BackgroundRenderers.Add(this);
-        _view.VisualLinesChanged += (_, __) => _view.InvalidateVisual();
-    }
-
-    public KnownLayer Layer => KnownLayer.Selection;
-
-    public void Draw(TextView textView, DrawingContext dc)
-    {
-        // Realize lines first so idle renders without a click
-        textView.EnsureVisualLines();
-        if (!textView.VisualLinesValid) return;
-
-        var items = _getItems() ?? Array.Empty<(int lineNumber, string text)>();
-        if (items.Count == 0) return;
-
-        var selectedIndex = _getSelectedIndex();
-
-        for (int i = 0; i < items.Count; i++)
+        public MultiLineGhostRenderer(
+            TextView view,
+            TextArea area,
+            Func<IReadOnlyList<(int line, string text)>> getItems,
+            Func<int> getSelectedIndex,
+            Typeface typeface,
+            Func<double> getFontSize,
+            bool showAnchors = false)
         {
-            var (ln, ghostText) = items[i];
-            if (_area.Document == null || ln < 1 || ln > _area.Document.LineCount) continue;
-
-            var line = _area.Document.GetLineByNumber(ln);
-
-            var tvp = new TextViewPosition(ln, int.MaxValue);
-            var pos = textView.GetVisualPosition(tvp, VisualYPosition.TextTop);
-            if (double.IsNaN(pos.X) || double.IsNaN(pos.Y)) continue;
-
-            var origin = new Point(pos.X, pos.Y);
-
-            if (i == selectedIndex)
-            {
-                var rect = new Rect(origin.X, origin.Y,
-                                    Math.Max(60, textView.ActualWidth - origin.X),
-                                    textView.DefaultLineHeight);
-                dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(28, 0, 128, 255)), null, rect);
-            }
-
-            var ft = new FormattedText(
-                ghostText ?? string.Empty,
-                CultureInfo.CurrentUICulture,
-                FlowDirection.LeftToRight,
-                _typeface,                                  // <— use the field here
-                _getFontSize(),
-                i == selectedIndex ? Brushes.DeepSkyBlue : Brushes.Gray,
-                VisualTreeHelper.GetDpi(textView).PixelsPerDip);
-
-            double clipWidth = Math.Max(0, textView.ActualWidth - origin.X);
-            var clip = new Rect(origin.X, origin.Y, clipWidth, textView.DefaultLineHeight);
-            dc.PushClip(new RectangleGeometry(clip));
-            dc.DrawText(ft, origin);
-            dc.Pop();
+            _view = view;
+            _area = area;
+            _getItems = getItems;
+            _getSelectedIndex = getSelectedIndex;
+            _typeface = typeface;
+            _getFontSize = getFontSize;
+            _showAnchors = showAnchors;
         }
-    }
 
-    public void Dispose()
-    {
-        _view.BackgroundRenderers.Remove(this);
-        _view.VisualLinesChanged -= (_, __) => _view.InvalidateVisual();
+        public void Attach()
+        {
+            if (!_view.BackgroundRenderers.OfType<MultiLineGhostRenderer>().Any())
+            {
+                _view.BackgroundRenderers.Add(this);
+                //_view.VisualLinesChanged += OnVisualLinesChanged;
+                _view.VisualLinesChanged += (_, __) => _view.InvalidateLayer(KnownLayer.Text);
+
+                //Debug.WriteLine("[GhostRenderer] Attached to TextView.");
+            }
+        }
+
+        public void Detach()
+        {
+            //_view.VisualLinesChanged -= OnVisualLinesChanged;
+            _view.VisualLinesChanged += (_, __) => _view.InvalidateLayer(KnownLayer.Text);
+
+            _view.BackgroundRenderers.Remove(this);
+            //Debug.WriteLine("[GhostRenderer] Detached from TextView.");
+        }
+
+        private void OnVisualLinesChanged(object? s, EventArgs e)
+        {
+            _view.InvalidateLayer(Layer); // match our layer
+            Debug.WriteLine("[GhostRenderer] VisualLinesChanged → invalidate.");
+        }
+
+        // Put the test as high as possible for visibility
+        //public KnownLayer Layer => KnownLayer.Caret;
+        public KnownLayer Layer => KnownLayer.Text;
+
+
+        public void Draw(TextView textView, DrawingContext dc)
+        {
+            var doc = textView.Document;
+            if (doc is null) return;
+
+            textView.EnsureVisualLines();
+
+            var items = _getItems();
+            int count = items?.Count ?? 0;
+            Debug.WriteLine($"[GhostRenderer] Draw start. items={count}, docLines={doc.LineCount}");
+
+            if (items is null || count == 0) return;
+
+            int selectedZeroBased =
+                (_getSelectedIndex() is int idx && idx >= 0 && idx < items.Count)
+                ? items[idx].line
+                : -1;
+
+            foreach (var (zeroBased, rawGhost) in items)
+            {
+                var ghost = rawGhost?.Trim();
+                if (string.IsNullOrEmpty(ghost)) continue;
+
+                int lineNo = zeroBased + 1; // 0-based -> 1-based
+                if (lineNo < 1 || lineNo > doc.LineCount) continue;
+
+                DocumentLine line = doc.GetLineByNumber(lineNo);
+
+                // Only draw when the line is realized (visible)
+                var vline = textView.VisualLines.FirstOrDefault(v =>
+                    v.FirstDocumentLine.LineNumber <= lineNo &&
+                    v.LastDocumentLine.LineNumber >= lineNo);
+                if (vline is null)
+                {
+                    Debug.WriteLine($"[GhostRenderer] line {lineNo} not realized ⇒ skip draw.");
+                    continue;
+                }
+
+                // Anchor at trimmed end-of-line
+                int end = line.EndOffset;
+                while (end > line.Offset)
+                {
+                    char ch = doc.GetCharAt(end - 1);
+                    if (!char.IsWhiteSpace(ch)) break;
+                    end--;
+                }
+                end = Math.Max(line.Offset, Math.Min(end, doc.TextLength));
+
+                var loc = doc.GetLocation(end);
+                var pos = textView.GetVisualPosition(new TextViewPosition(loc), VisualYPosition.TextTop);
+                if (double.IsNaN(pos.X) || double.IsNaN(pos.Y))
+                {
+                    Debug.WriteLine($"[GhostRenderer] NaN pos for line {lineNo} ⇒ skip.");
+                    continue;
+                }
+
+                bool isSelected = (selectedZeroBased == zeroBased);
+
+                if (_showAnchors)
+                {
+                    var anchor = new Rect(pos.X - 2, pos.Y + textView.DefaultLineHeight - 4, 4, 4);
+                    dc.DrawRectangle(Brushes.OrangeRed, null, anchor);
+                }
+
+                // Optional faint highlight for the selected ghost (for debug)
+                if (isSelected)
+                {
+                    var hiRect = new Rect(pos.X, pos.Y,
+                        Math.Max(1, textView.ActualWidth - pos.X),
+                        textView.DefaultLineHeight);
+                    dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(28, 100, 149, 237)), null, hiRect);
+                }
+
+                var ft = new FormattedText(
+                    " " + ghost,
+                    CultureInfo.CurrentUICulture,
+                    FlowDirection.LeftToRight,
+                    _typeface,
+                    _getFontSize(),
+                    Brushes.Gray,
+                    VisualTreeHelper.GetDpi(textView).PixelsPerDip);
+
+                // Clip to line
+                double clipWidth = Math.Max(0, textView.ActualWidth - pos.X);
+                var clip = new Rect(pos.X, pos.Y, clipWidth, textView.DefaultLineHeight);
+                dc.PushClip(new RectangleGeometry(clip));
+                dc.DrawText(ft, new Point(pos.X, pos.Y));
+                dc.Pop();
+
+                Debug.WriteLine($"[GhostRenderer] Drew ghost on line {lineNo} at ({pos.X:0.0},{pos.Y:0.0}).");
+            }
+        }
+
+        public void Dispose() => Detach();
     }
 }

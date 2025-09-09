@@ -1,443 +1,201 @@
 ﻿using ICSharpCode.AvalonEdit.CodeCompletion;
 using ICSharpCode.AvalonEdit.Document;
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Windows;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using Wysg.Musm.Editor.Completion;
 using Wysg.Musm.Editor.Snippets;
-using Wysg.Musm.Editor.Ui;
 
 namespace Wysg.Musm.Editor.Controls
 {
     public partial class EditorControl
     {
-        private ISegment? _completionReplaceSegment;
-        private WordHighlightRenderer _wordHighlightRenderer = null!;
-        private CompletionGhostRenderer _completionGhostRenderer = null!;
-        private string _completionGhostText = string.Empty;
-        private bool _squelchServerIdleWhilePopupSelected; // gate for server-ghost timer
+        // Idle hooks implemented in View partial
+        partial void IdlePause();
+        partial void IdleResume();
 
-        // ===== Popup init/cleanup =====
+        // Called from View ctor
         private void InitPopup()
         {
-            // nothing special; bindings are wired in View ctor
-            // existing init...
-            this.InputBindings.Add(new KeyBinding(
-                new RoutedUICommand("ForcePopup", "ForcePopup", typeof(EditorControl)),
-                new KeyGesture(Key.F2)));
-
-            this.CommandBindings.Add(new CommandBinding(
-                ApplicationCommands.NotACommand,
-                (s, e) => ShowCompletionForCurrentWord(),
-                (s, e) => { e.CanExecute = true; }));
-
-            Editor.TextChanged += OnEditorTextChangedForPopup;
-
-            _wordHighlightRenderer = new WordHighlightRenderer(
-                Editor.TextArea.TextView,
-                () => _completionReplaceSegment);
-
-            _completionGhostRenderer = new CompletionGhostRenderer(
-                Editor.TextArea.TextView,
-                () => (_completionReplaceSegment, _completionGhostText),
-                () => new Typeface(Editor.FontFamily, Editor.FontStyle, Editor.FontWeight, Editor.FontStretch),
-                () => Editor.FontSize);
-
-            // keep the highlight segment fresh while popup is open
-            Editor.TextArea.Caret.PositionChanged += (_, __) => { if (_completionWindow != null) UpdateReplaceSegmentAndInvalidate(); };
-            Editor.TextChanged += (_, __) => { if (_completionWindow != null) UpdateReplaceSegmentAndInvalidate(); };
-
+            // no-op; event hooks are already wired in View ctor
         }
+
         private void CleanupPopup()
         {
-            if (_completionWindow != null)
-                ClosePopupCore();
-            Editor.TextChanged -= OnEditorTextChangedForPopup;
+            CloseCompletionWindow();
         }
 
-        private void OnEditorTextChangedForPopup(object? s, EventArgs e)
+        // Disable TAB inserting \t; we’ll use Tab for accept (ghost/snippet)
+        partial void DisableTabInsertion()
         {
-            // If the popup is open and user shortened the word, this will close it
-            EvaluateAutoPopupVisibility();
-        }
-
-        // ===== Text input hooks =====
-        private void OnTextEntered(object? s, TextCompositionEventArgs e)
-        {
-            bool imeEnabled = InputMethod.GetIsInputMethodEnabled(Editor);
-            bool imeOn = InputMethod.Current?.ImeState == InputMethodState.On;
-            if (imeEnabled && imeOn) return;
-
-            if (e.Text == ";" || e.Text == ":")
+            Editor.TextArea.PreviewKeyDown += (s, e) =>
             {
-                ShowCompletionForCurrentWord();
+                if (e.Key == Key.Tab && !e.Handled)
+                {
+                    // Don’t let TextArea insert \t
+                    e.Handled = true;
+                }
+            };
+        }
+
+        // ===== Completion open/close =====
+        private void ShowCompletionWindowForCurrentWord()
+        {
+            var seg = GetCurrentWordSegment();
+            if (seg == null || seg.Length < MinCharsForSuggest)
+            {
+                CloseCompletionWindow();
                 return;
             }
 
-            if (AutoSuggestOnTyping && e.Text.Length == 1 && char.IsLetterOrDigit(e.Text[0]))
-                TryOpenAutoPopupIfThresholdMet();
+            // fetch items from provider(s)
+            var items = SnippetProvider?.GetCompletions(Editor) ?? Enumerable.Empty<ICompletionData>();
+            if (!items.Any())
+            {
+                CloseCompletionWindow();
+                return;
+            }
+
+            // open window
+            if (_completionWindow == null)
+            {
+                _completionWindow = new CompletionWindow(Editor.TextArea);
+                _completionWindow.Closed += (_, __) =>
+                {
+                    _completionWindow = null;
+                    IdleResume(); // resume idle once popup closes
+                };
+                IdlePause(); // pause idle while popup open
+            }
+
+            var data = _completionWindow.CompletionList.CompletionData;
+            data.Clear();
+            foreach (var it in items) data.Add(it);
+
+            // do NOT auto-select first item; user chooses
+            _completionWindow.CompletionList.SelectedItem = null;
+
+            // where to insert: the segment we computed
+            _completionWindow.StartOffset = seg.Offset;
+            _completionWindow.EndOffset = seg.EndOffset;
+
+            _completionWindow.Show();
+        }
+
+        private void CloseCompletionWindow()
+        {
+            if (_completionWindow != null)
+            {
+                _completionWindow.Closed -= (_, __) => { };
+                _completionWindow.Close();
+                _completionWindow = null;
+                IdleResume();
+            }
+        }
+
+        // ===== Editor events =====
+        private void OnTextEntered(object? s, TextCompositionEventArgs e)
+        {
+            // Ignore during IME composition
+            bool imeEnabled = InputMethod.GetIsInputMethodEnabled(Editor);
+            var ime = InputMethod.Current;
+            if (imeEnabled && ime != null && ime.ImeState == InputMethodState.On)
+                return;
+
+            if (!AutoSuggestOnTyping) return;
+
+            // Only open on letters/digits; else close
+            if (e.Text.Length == 1 && char.IsLetterOrDigit(e.Text[0]))
+                ShowCompletionWindowForCurrentWord();
+            else
+                CloseCompletionWindow();
         }
 
         private void OnTextEntering(object? s, TextCompositionEventArgs e)
         {
+            // If popup open and a non-alnum arrives, insert selected (if any)
             if (_completionWindow != null && e.Text.Length > 0 && !char.IsLetterOrDigit(e.Text[0]))
                 _completionWindow.CompletionList.RequestInsertion(e);
         }
 
-        // ===== Open/close/evaluate =====
-        private void TryOpenAutoPopupIfThresholdMet()
-        {
-            if (_completionWindow != null) return;
-            if (GetCurrentWordPrefixLength() < Math.Max(1, MinCharsForSuggest)) return;
-
-            var items = SnippetProvider.GetCompletions(Editor);
-            if (!items.Any()) return;
-
-            items = SnippetProvider.GetCompletions(Editor);
-            OpenPopupWithNoSelection(items);
-        }
-
-        private void ShowCompletionForCurrentWord()
-        {
-            if (_completionWindow != null)
-            {
-                _completionWindow.PreviewKeyDown -= OnCompletionWindowPreviewKeyDown;
-                _completionWindow.Closed -= OnCompletionClosed;
-                _completionWindow.Close();
-                _completionWindow = null;
-            }
-
-            var items = SnippetProvider.GetCompletions(Editor);
-            if (!items.Any()) return;
-
-            items = SnippetProvider.GetCompletions(Editor);
-            OpenPopupWithNoSelection(items);
-        }
-
-        private void OpenPopupWithNoSelection(IEnumerable<ICompletionData> items)
-        {
-            _completionWindow = MusmCompletionWindow.ShowForCurrentWord(Editor, items);
-
-            // hook selection-changed to drive completion ghost
-            _completionWindow.CompletionList.SelectionChanged += OnCompletionSelectionChanged;
-
-            // No initial selection unless exact match (and not a snippet)
-            ClearPopupSelection();
-            TryAutoSelectExactMatch();
-
-            // we highlight the replacement token whenever popup is open
-            UpdateReplaceSegmentAndInvalidate();
-
-            _completionGhostText = string.Empty;
-            _completionWindow.PreviewKeyDown += OnCompletionWindowPreviewKeyDown;
-            _completionWindow.Closed += OnCompletionClosed;
-
-            // while popup has a selection → pause idle server ghosts
-            _squelchServerIdleWhilePopupSelected = (_completionWindow.CompletionList.SelectedItem != null);
-            if (_squelchServerIdleWhilePopupSelected) _idleTimer.Stop();
-        }
-
-
-        private void OnCompletionClosed(object? sender, EventArgs e)
-        {
-            if (_completionWindow != null)
-            {
-                _completionWindow.CompletionList.SelectionChanged -= OnCompletionSelectionChanged;
-                _completionWindow.PreviewKeyDown -= OnCompletionWindowPreviewKeyDown;
-                _completionWindow.Closed -= OnCompletionClosed;
-                _completionWindow = null;
-            }
-
-            _completionGhostText = string.Empty;
-            _completionReplaceSegment = null;
-            Editor.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
-
-            _squelchServerIdleWhilePopupSelected = false;
-            ResetIdleTimer(); // allow server ghosts countdown to start
-
-        }
-
-        // Controls/EditorControl.Popup.cs
-        private void EvaluateAutoPopupVisibility()
-        {
-            if (_completionWindow == null) return;
-
-            var doc = Editor.Document;
-            int caret = Editor.CaretOffset;
-            var line = doc.GetLineByOffset(caret);
-            string lineText = doc.GetText(line);
-            int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
-
-            bool atWhitespace = local > 0 && char.IsWhiteSpace(lineText[local - 1]);
-            int prefixLen = GetCurrentWordPrefixLength();
-
-            // CLOSE if: caret is at whitespace OR the word got shorter than threshold
-            if (atWhitespace || prefixLen < Math.Max(1, MinCharsForSuggest))
-                ClosePopupCore();
-        }
-
-
-
-        private int GetCurrentWordPrefixLength()
-        {
-            var doc = Editor.Document;
-            int caret = Editor.CaretOffset;
-            var line = doc.GetLineByOffset(caret);
-            string lineText = doc.GetText(line);
-            int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
-            var (startLocal, _) = Completion.WordBoundaryHelper.ComputeWordSpan(lineText, local);
-            return local - startLocal;
-        }
-
-        // ===== Key routing (TextArea authority) =====
+        // Master key handler (ghost nav + popup close/open)
         private void OnTextAreaPreviewKeyDown(object? sender, KeyEventArgs e)
         {
-            EvaluateAutoPopupVisibility();
+            // 1) Ghost navigation keys (when ghosts are showing and no popup/snippet)
+            bool ghostsVisible = ServerGhosts.Items.Count > 0;
+            bool popupOpen = _completionWindow?.IsVisible == true;
+            bool inPlaceholder = PlaceholderModeManager.IsActive;
 
-            if (_completionWindow == null) return;
-
-            // Up/Down navigate list
-            if (e.Key == Key.Up) { MovePopupSelection(-1); e.Handled = true; return; }
-            if (e.Key == Key.Down) { MovePopupSelection(+1); e.Handled = true; return; }
-
-            // Tab: leave for ghosts or your own handler; no default
-            if (e.Key == Key.Enter)
+            if (ghostsVisible && !popupOpen && !inPlaceholder)
             {
-                var item = _completionWindow.CompletionList.SelectedItem as ICompletionData;
-                if (item != null)
+                if (e.Key == Key.Up)
                 {
-                    e.Handled = true;
-                    AcceptSelectedFromPopup(addTrailingSpace: false);
+                    MoveGhostSelection(-1);
+                    e.Handled = true; return;
+                }
+                if (e.Key == Key.Down)
+                {
+                    MoveGhostSelection(+1);
+                    e.Handled = true; return;
+                }
+                if (e.Key == Key.Tab)
+                {
+                    AcceptSelectedGhost();
+                    e.Handled = true; return;
+                }
+                if (e.Key == Key.Escape)
+                {
+                    ClearServerGhosts();
+                    e.Handled = true; return;
                 }
             }
-            if (e.Key == Key.Space)
+
+            // 2) Completion popup close rule: if word length < MinChars → close
+            if (_completionWindow != null)
             {
-                var item = _completionWindow.CompletionList.SelectedItem as ICompletionData;
-                if (item != null)
-                {
-                    e.Handled = true;
-                    AcceptSelectedFromPopup(addTrailingSpace: true);
-                }
-            }
-        }
-
-        private void OnCompletionWindowPreviewKeyDown(object? sender, KeyEventArgs e)
-        {
-            if (_completionWindow == null) return;
-
-            if (e.Key == Key.Home || e.Key == Key.End)
-            {
-                e.Handled = true;
-                bool extend = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
-                bool wholeDoc = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
-                MoveCaretHomeEndOnEditor(e.Key == Key.End, extend, wholeDoc);
-            }
-        }
-
-        private void AcceptSelectedFromPopup(bool addTrailingSpace)
-        {
-            if (_completionWindow == null) return;
-            var list = _completionWindow.CompletionList;
-            var item = list.SelectedItem as ICompletionData;
-            if (item == null) return;
-
-            // prefer our computed segment; fall back to the window’s range
-            // AcceptSelectedFromPopup(...)
-            ISegment seg = _completionReplaceSegment ??
-                           new TextSegment
-                           {
-                               StartOffset = _completionWindow.StartOffset,
-                               Length = Math.Max(0, _completionWindow.EndOffset - _completionWindow.StartOffset)
-                           };
-            item.Complete(Editor.TextArea, seg, EventArgs.Empty);
-
-
-            item.Complete(Editor.TextArea, seg, EventArgs.Empty);
-            if (addTrailingSpace)
-                Editor.Document.Insert(Editor.TextArea.Caret.Offset, " ");
-        }
-
-
-        private void MovePopupSelection(int delta)
-        {
-            if (_completionWindow == null) return;
-            var list = _completionWindow.CompletionList;
-            var data = list.CompletionData;
-            if (data.Count == 0) return;
-
-            int idx = -1;
-            if (list.SelectedItem is ICompletionData sel)
-            {
-                for (int i = 0; i < data.Count; i++)
-                    if (ReferenceEquals(data[i], sel)) { idx = i; break; }
+                var seg = GetCurrentWordSegment();
+                if (seg == null || seg.Length < MinCharsForSuggest)
+                    CloseCompletionWindow();
             }
 
-            idx = idx < 0 ? (delta > 0 ? 0 : data.Count - 1)
-                          : Math.Clamp(idx + delta, 0, data.Count - 1);
-
-            list.SelectedItem = data[idx];
-            try { list.ListBox?.ScrollIntoView(list.SelectedItem); } catch { }
+            // Let Home/End, arrows, etc. fall through to the editor normally.
         }
 
-        partial void DisableTabInsertion()
-        {
-            var toRemove = Editor.TextArea.InputBindings
-                .OfType<KeyBinding>()
-                .Where(k => k.Key == Key.Tab)
-                .ToList();
-            foreach (var kb in toRemove)
-                Editor.TextArea.InputBindings.Remove(kb);
-
-            void Exec(object s, ExecutedRoutedEventArgs e) { e.Handled = true; }
-            void Can(object s, CanExecuteRoutedEventArgs e) { e.CanExecute = true; e.Handled = true; }
-
-            Editor.TextArea.CommandBindings.Add(new CommandBinding(EditingCommands.TabForward, Exec, Can));
-            Editor.TextArea.CommandBindings.Add(new CommandBinding(EditingCommands.TabBackward, Exec, Can));
-        }
-
-        private void MoveCaretHomeEndOnEditor(bool toEnd, bool extend, bool wholeDoc)
-        {
-            var doc = Editor.Document;
-            int caret = Editor.CaretOffset;
-            int target = wholeDoc
-                ? (toEnd ? doc.TextLength : 0)
-                : (toEnd ? doc.GetLineByOffset(caret).EndOffset : doc.GetLineByOffset(caret).Offset);
-            ApplyCaretMoveWithSelection(target, extend);
-        }
-
-        private void ApplyCaretMoveWithSelection(int targetOffset, bool extend)
-        {
-            var ta = Editor.TextArea;
-            int caret = ta.Caret.Offset;
-
-            if (!extend)
-            {
-                Editor.SelectionLength = 0;
-                Editor.CaretOffset = targetOffset;
-                return;
-            }
-
-            var sel = ta.Selection;
-            int anchor;
-            if (sel.IsEmpty) anchor = caret;
-            else
-            {
-                var seg = sel.SurroundingSegment;
-                int segStart = seg.Offset;
-                int segEnd = seg.Offset + seg.Length;
-                anchor = (caret == segEnd) ? segStart : segEnd;
-            }
-
-            int start = Math.Min(anchor, targetOffset);
-            int len = Math.Abs(targetOffset - anchor);
-            Editor.Select(start, len);
-            Editor.CaretOffset = targetOffset;
-        }
-
-        // no-op here; InlineGhost partial overrides
-        private void OnDebounceTick(object? s, EventArgs e) { }
-        private void ClearPopupSelection()
-        {
-            if (_completionWindow == null) return;
-            var list = _completionWindow.CompletionList;
-            list.SelectedItem = null;
-            try { list.ListBox?.UnselectAll(); } catch { }
-        }
-
-        private void ClosePopupCore()
-        {
-            if (_completionWindow == null) return;
-            _completionWindow.PreviewKeyDown -= OnCompletionWindowPreviewKeyDown;
-            _completionWindow.Closed -= OnCompletionClosed;
-            _completionWindow.Close();
-            _completionWindow = null;
-        }
-
-        private void UpdateReplaceSegmentAndInvalidate()
-        {
-            _completionReplaceSegment = GetCurrentWordSegment();
-            Editor.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
-        }
-
+        // ===== Helpers =====
         private ISegment? GetCurrentWordSegment()
         {
             var doc = Editor.Document;
             int caret = Editor.CaretOffset;
-            var line = doc.GetLineByOffset(caret);
-            string lineText = doc.GetText(line);
-            int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
+            if (doc == null || caret < 0 || caret > doc.TextLength) return null;
 
-            var (startLocal, endLocal) = Completion.WordBoundaryHelper.ComputeWordSpan(lineText, local);
-            int start = line.Offset + startLocal;
-            int length = Math.Max(0, endLocal - startLocal);
-            if (length == 0) return null;
-            return new TextSegment { StartOffset = start, Length = length };
-        }
-
-
-        private string GetCurrentWordText()
-        {
-            var seg = GetCurrentWordSegment();
-            return seg == null ? string.Empty : Editor.Document.GetText(seg);
-        }
-
-        private void TryAutoSelectExactMatch()
-        {
-            if (_completionWindow == null) return;
-
-            string word = GetCurrentWordText();
-            if (string.IsNullOrWhiteSpace(word)) return;
-
-            var list = _completionWindow.CompletionList;
-            var data = list.CompletionData;
-            for (int i = 0; i < data.Count; i++)
+            // Scan left to first non-alnum/underscore
+            int start = caret;
+            while (start > 0)
             {
-                var item = data[i];
-                string text = item.Text ?? item.Content?.ToString() ?? string.Empty;
-
-                // TryAutoSelectExactMatch()
-                bool isSnippet = (item is Wysg.Musm.Editor.Snippets.MusmCompletionData mm && mm.IsSnippet);
-                if (isSnippet) continue;
-
-                if (string.Equals(text, word, StringComparison.OrdinalIgnoreCase))
-                {
-                    list.SelectedItem = item; // auto-select
-                    try { list.ListBox?.ScrollIntoView(item); } catch { }
-                    _squelchServerIdleWhilePopupSelected = true;
-                    _idleTimer.Stop();
-                    OnCompletionSelectionChanged(list, EventArgs.Empty); // update ghost preview
-                    return;
-                }
+                char ch = doc.GetCharAt(start - 1);
+                if (!(char.IsLetterOrDigit(ch) || ch == '_')) break;
+                start--;
             }
-        }
-
-        private void OnCompletionSelectionChanged(object? sender, EventArgs e)
-        {
-            if (_completionWindow == null) return;
-
-            var sel = _completionWindow.CompletionList.SelectedItem as ICompletionData;
-            _squelchServerIdleWhilePopupSelected = (sel != null);
-
-            if (sel is MusmCompletionData md)
+            // Scan right
+            int end = caret;
+            while (end < doc.TextLength)
             {
-                _completionGhostText = md.Preview;  // ← shows "diffuse brain atrophy" for "dba"
-                _idleTimer.Stop();
-            }
-            else
-            {
-                _completionGhostText = sel == null ? string.Empty : (sel.Text ?? sel.Content?.ToString() ?? string.Empty);
-                if (sel == null) ResetIdleTimer();
-                else _idleTimer.Stop();
+                char ch = doc.GetCharAt(end);
+                if (!(char.IsLetterOrDigit(ch) || ch == '_')) break;
+                end++;
             }
 
-            Editor.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
+            int len = end - start;
+            if (len <= 0) return null;
+            return new SimpleSegment(start, len);
         }
 
-
-
-
+        private sealed class SimpleSegment : ISegment
+        {
+            public SimpleSegment(int offset, int length) { Offset = offset; Length = length; }
+            public int Offset { get; }
+            public int Length { get; }
+            public int EndOffset => Offset + Length;
+        }
     }
 }

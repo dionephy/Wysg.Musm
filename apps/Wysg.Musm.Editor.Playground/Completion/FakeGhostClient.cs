@@ -22,8 +22,8 @@ public sealed class FakeGhostClient : IGhostSuggestionClient
                     return new GhostSuggestion(idx + 1, "Mild degree of microangiopathy in the bilateral cerebral white matters.");
                 if (t.Contains("old infarction", System.StringComparison.OrdinalIgnoreCase))
                     return new GhostSuggestion(idx + 1, "An old infarction in the right frontal lobe.");
-                if (t.Contains("no other abnormality", System.StringComparison.OrdinalIgnoreCase))
-                    return new GhostSuggestion(idx + 1, "Otherwise, no evidence of hemorrhage, mass, hydrocephalus, or significant atrophy.");
+                //if (t.Contains("no other abnormality", System.StringComparison.OrdinalIgnoreCase))
+                 //   return new GhostSuggestion(idx + 1, "Otherwise, no evidence of hemorrhage, mass, hydrocephalus, or significant atrophy.");
                 // default paraphrase:
                 return new GhostSuggestion(idx + 1, t[..System.Math.Min(40, t.Length)] + " ...");
             })

@@ -1,264 +1,101 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Windows.Input;
-using System.Windows.Threading;
-using Wysg.Musm.Editor.Ghosting;
-using Wysg.Musm.Editor.Ui;
-using ICSharpCode.AvalonEdit.Rendering; // for KnownLayer
-using System.Text.RegularExpressions;
-using Wysg.Musm.Editor.Snippets;
-
-
+using ICSharpCode.AvalonEdit.Document;
 
 namespace Wysg.Musm.Editor.Controls
 {
     public partial class EditorControl
     {
-        private DispatcherTimer _idleTimer;
-        private CancellationTokenSource? _ghostCts;
-        private List<(int lineNumber, string text)> _ghosts = new();
-        private int _selectedGhostIndex = -1;
-        private bool _acceptingGhost;
-        private MultiLineGhostRenderer _multiRenderer = null!;
-        private bool _placeholderActive;
+        // Simple in-control store for server ghosts
+        public sealed class ServerGhostStore
+        {
+            private readonly EditorControl _owner;
+            private List<(int line, string text)> _items = new();
 
+            public ServerGhostStore(EditorControl owner) => _owner = owner;
+
+            public IReadOnlyList<(int line, string text)> Items => _items;
+
+            public void Set(IEnumerable<(int line, string text)> items)
+            {
+                _items = (items ?? Array.Empty<(int, string)>()).ToList();
+                _owner.InvalidateGhosts();
+            }
+
+            public void Clear()
+            {
+                if (_items.Count == 0) return;
+                _items.Clear();
+                _owner.InvalidateGhosts();
+            }
+        }
+
+        // Store instance
+        public ServerGhostStore ServerGhosts { get; private set; } = null!;
+
+        private int _selectedGhost = -1; // index into ServerGhosts.Items (not line number)
 
         private void InitServerGhosts()
         {
-            _idleTimer = new DispatcherTimer(DispatcherPriority.ApplicationIdle, Dispatcher)
-            {
-                Interval = TimeSpan.FromSeconds(2)
-            };
-
-
-
-            _idleTimer.Tick += OnIdleTimerTick;
-            ResetIdleTimer();
-
-            Editor.TextArea.PreviewKeyDown += OnPreviewKeyDownForGhosts;
-            Editor.TextArea.TextEntered += (_, __) => ResetIdleTimer();
-            Editor.TextChanged += (_, __) => { if (!_acceptingGhost) ClearGhosts(); ResetIdleTimer(); };
-
-            _multiRenderer = new MultiLineGhostRenderer(
-                Editor.TextArea.TextView,
-                Editor.TextArea,
-                () => _ghosts,
-                () => _selectedGhostIndex,
-                new System.Windows.Media.Typeface(Editor.FontFamily, Editor.FontStyle, Editor.FontWeight, Editor.FontStretch),
-                () => Editor.FontSize);
-
-            PlaceholderModeManager.PlaceholderModeEntered += (_, __) =>
-            {
-                _placeholderActive = true;
-                _idleTimer.Stop();
-                ClearGhosts();
-            };
-
-            PlaceholderModeManager.PlaceholderModeExited += (_, __) =>
-            {
-                _placeholderActive = false;
-                ResetIdleTimer(); // rule: start 2s countdown after placeholder mode exits
-            };
+            ServerGhosts = new ServerGhostStore(this);
+            _selectedGhost = -1;
         }
-
 
         private void CleanupServerGhosts()
         {
-            _idleTimer.Stop();
-            _idleTimer.Tick -= OnIdleTimerTick;
-            Editor.TextArea.PreviewKeyDown -= OnPreviewKeyDownForGhosts;
-            _multiRenderer?.Dispose();
-            Interlocked.Exchange(ref _ghostCts, null)?.Cancel();
+            _selectedGhost = -1;
+            ServerGhosts.Clear();
         }
 
-        private bool GhostsActive => _ghosts.Count > 0;
+        private int GetSelectedGhostIndex() => _selectedGhost;
 
-        private void ResetIdleTimer()
+        private void ResetGhostSelection()
         {
-            if (GhostsActive) return;           // ← pause while ghosts are showing
-            _idleTimer.Stop();
-            _idleTimer.Start();
+            _selectedGhost = ServerGhosts.Items.Count > 0 ? 0 : -1;
+            InvalidateGhosts();
         }
 
-        private void OnIdleTimerTick(object? s, EventArgs e)
+        private void MoveGhostSelection(int delta)
         {
-            _idleTimer.Stop();
-
-            // RULES: do not show multi-line ghosts when completion has a selection
-            // or while snippet placeholder mode is active
-            if (_placeholderActive) return;
-            if (_squelchServerIdleWhilePopupSelected) return;
-
-            // Close popup if any (your original rule #5)
-            if (_completionWindow != null)
-            {
-                _completionWindow.Close();
-                _completionWindow = null;
-            }
-            _ = RequestGhostsAsync();
+            if (ServerGhosts.Items.Count == 0) return;
+            if (_selectedGhost < 0) _selectedGhost = 0;
+            _selectedGhost = Math.Clamp(_selectedGhost + delta, 0, ServerGhosts.Items.Count - 1);
+            InvalidateGhosts();
         }
-
-
-        private async System.Threading.Tasks.Task RequestGhostsAsync()
-        {
-            if (GhostClient is null) return;
-
-            var cts = new CancellationTokenSource();
-            var old = Interlocked.Exchange(ref _ghostCts, cts);
-            old?.Cancel(); old?.Dispose();
-
-            var req = new GhostRequest(
-                ReportText: Editor.Document.Text,
-                PatientSex: PatientSex ?? "U",
-                PatientAge: PatientAge,
-                StudyHeader: StudyHeader ?? "",
-                StudyInfo: StudyInfo ?? ""
-            );
-
-            GhostResponse resp;
-            try { resp = await GhostClient.SuggestAsync(req, cts.Token); }
-            catch { return; }
-
-
-
-            var doc = Editor.Document;
-            var list = new List<(int lineNumber, string text)>();
-
-            foreach (var s in resp.Suggestions ?? Enumerable.Empty<GhostSuggestion>())
-            {
-                int ln = Math.Max(1, Math.Min(s.LineNumber, doc.LineCount));
-                var line = doc.GetLineByNumber(ln);
-                var original = doc.GetText(line);
-
-                var sug = s.Suggestion ?? string.Empty;
-                if (IsWeakSuggestion(original, sug)) continue;   // ← drop weak ones
-
-                list.Add((ln, NormalizeGhostLine(sug)));
-            }
-
-            _ghosts = list;
-            _selectedGhostIndex = _ghosts.Count > 0 ? 0 : -1;
-
-            // pause timer & repaint (as in section A.2)
-            _idleTimer.Stop();
-            var tv = Editor.TextArea.TextView;
-            tv.Dispatcher.InvokeAsync(() =>
-            {
-                try { tv.EnsureVisualLines(); } catch { }
-                tv.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
-            }, System.Windows.Threading.DispatcherPriority.Background);
-
-
-
-            Editor.TextArea.TextView.InvalidateVisual();
-        }
-
-        private static string NormalizeGhostLine(string s)
-        {
-            if (string.IsNullOrWhiteSpace(s)) return string.Empty;
-            s = s.Replace("\r", " ").Replace("\n", " ").Trim();
-            if (!s.EndsWith(".")) s += ".";
-            return " " + s;
-        }
-
-        private void ClearGhosts()
-        {
-            if (_ghosts.Count == 0 && _selectedGhostIndex < 0) return;
-            _ghosts.Clear();
-            _selectedGhostIndex = -1;
-
-            var tv = Editor.TextArea.TextView;
-            tv.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
-
-            ResetIdleTimer();   // ← resume 2s idle
-        }
-
-
-        // Controls/EditorControl.ServerGhosts.cs
-        private void OnPreviewKeyDownForGhosts(object? sender, KeyEventArgs e)
-        {
-            // If no ghosts → do nothing (let popup handler and text editor work)
-            if (_ghosts.Count == 0) return;
-
-            switch (e.Key)
-            {
-                case Key.Up:
-                    e.Handled = true;
-                    _selectedGhostIndex = Math.Max(0, _selectedGhostIndex - 1);
-                    Editor.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
-                    return;
-
-                case Key.Down:
-                    e.Handled = true;
-                    _selectedGhostIndex = Math.Min(_ghosts.Count - 1, Math.Max(0, _selectedGhostIndex + 1));
-                    Editor.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
-                    return;
-
-                case Key.Escape:
-                    e.Handled = true;
-                    ClearGhosts();
-                    return;
-
-                case Key.Tab:
-                    e.Handled = true;
-                    AcceptSelectedGhost();
-                    return;
-
-                // IMPORTANT: do not set e.Handled for any other key
-                default:
-                    return;
-            }
-        }
-
-
 
         private void AcceptSelectedGhost()
         {
-            if (_selectedGhostIndex < 0 || _selectedGhostIndex >= _ghosts.Count) return;
+            if (_selectedGhost < 0 || _selectedGhost >= ServerGhosts.Items.Count) return;
 
-            var (lineNumber, text) = _ghosts[_selectedGhostIndex];
-            var docLine = Editor.Document.GetLineByNumber(lineNumber);
+            var (lineZero, text) = ServerGhosts.Items[_selectedGhost];
+            var doc = Editor.Document;
+            if (doc is null) return;
 
-            _acceptingGhost = true;
+            int lineNo = lineZero + 1;
+            if (lineNo < 1 || lineNo > doc.LineCount) return;
+
+            DocumentLine line = doc.GetLineByNumber(lineNo);
+
+            int start = line.Offset;
+            int end = line.EndOffset;
+            // trim trailing whitespace at EOL
+            while (end > start && char.IsWhiteSpace(doc.GetCharAt(end - 1))) end--;
+
+            doc.BeginUpdate();
             try
             {
-                Editor.Document.Replace(docLine.Offset, docLine.Length, (text ?? string.Empty).Trim());
+                doc.Replace(start, end - start, text);
             }
-            finally { _acceptingGhost = false; }
+            finally { doc.EndUpdate(); }
 
-            _ghosts.RemoveAt(_selectedGhostIndex);
-            _selectedGhostIndex = _ghosts.Count == 0 ? -1 : Math.Min(_selectedGhostIndex, _ghosts.Count - 1);
+            // remove accepted ghost, reselect next
+            var list = ServerGhosts.Items.ToList();
+            list.RemoveAt(_selectedGhost);
+            ServerGhosts.Set(list);
 
-            var tv = Editor.TextArea.TextView;
-            tv.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
-
-            if (_ghosts.Count == 0) ResetIdleTimer();   // ← resume when empty
+            if (list.Count == 0) _selectedGhost = -1;
+            else _selectedGhost = Math.Min(_selectedGhost, list.Count - 1);
         }
-
-        private static string NormalizeForCompare(string s)
-        {
-            if (string.IsNullOrWhiteSpace(s)) return string.Empty;
-            s = s.ToLowerInvariant().Trim();
-            s = Regex.Replace(s, @"[\s\p{P}]+", " "); // collapse punctuation/whitespace
-            return s;
-        }
-
-        private static bool IsWeakSuggestion(string originalLine, string suggestion)
-        {
-            var a = NormalizeForCompare(originalLine);
-            var b = NormalizeForCompare(suggestion);
-
-            if (string.IsNullOrWhiteSpace(b)) return true;     // empty/whitespace
-            if (b.EndsWith(" ...")) return true;               // fake fallback from playground
-            if (b.Length < 6) return true;                     // too short to be useful
-            if (a == b) return true;                           // identical to original
-            if (b.StartsWith(a) && (b.Length - a.Length) < 4)  // tiny tail append
-                return true;
-
-            return false;
-        }
-
     }
 }

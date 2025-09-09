@@ -1,22 +1,14 @@
-﻿<Window x:Class="Wysg.Musm.Editor.Playground.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:ed="clr-namespace:Wysg.Musm.Editor.Controls;assembly=Wysg.Musm.Editor"
-        Title="Wysg.Musm.Editor Playground" Width="1100" Height="700">
+﻿<Window
+    x:Class="Wysg.Musm.Editor.Playground.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Wysg.Musm.Editor.Controls;assembly=Wysg.Musm.Editor"
+    Title="Editor Playground" Height="800" Width="1200">
     <DockPanel>
-        <ToolBar DockPanel.Dock="Top">
-            <TextBlock Text="Idle→Ghost (2s). Up/Down select. Tab accept. Esc clear."/>
-        </ToolBar>
-
-        <ed:EditorControl x:Name="EditorCtrl"
-                      DocumentText="{Binding ReportBody, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                      SnippetProvider="{Binding SnippetProvider}"
-                      MinCharsForSuggest="2"
-                      AutoSuggestOnTyping="True"
-                      GhostClient="{Binding GhostClient}"
-                      PatientSex="{Binding PatientSex}"
-                      PatientAge="{Binding PatientAge}"
-                      StudyHeader="{Binding StudyHeader}"
-                      StudyInfo="{Binding StudyInfo}"/>
+        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="6">
+            <Button Content="Force Ghost" Click="OnForceGhost" Margin="0,0,8,0"/>
+            <TextBlock Text="{Binding Status}" VerticalAlignment="Center"/>
+        </StackPanel>
+        <controls:EditorControl x:Name="EditorCtl"  />
     </DockPanel>
 </Window>
