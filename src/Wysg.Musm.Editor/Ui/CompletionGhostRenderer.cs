@@ -1,4 +1,5 @@
-﻿using System;
+﻿// src/Wysg.Musm.Editor/Ui/CompletionGhostRenderer.cs
+using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
@@ -24,8 +25,9 @@ public sealed class CompletionGhostRenderer : IBackgroundRenderer, IDisposable
         _get = get;
         _getTypeface = getTypeface;
         _getFontSize = getFontSize;
+
         _view.BackgroundRenderers.Add(this);
-        _view.VisualLinesChanged += (_, __) => _view.InvalidateLayer(KnownLayer.Selection);
+        _view.VisualLinesChanged += OnVisualLinesChanged;
     }
 
     public KnownLayer Layer => KnownLayer.Selection;
@@ -36,11 +38,18 @@ public sealed class CompletionGhostRenderer : IBackgroundRenderer, IDisposable
         if (!textView.VisualLinesValid) return;
 
         var (seg, text) = _get();
-        if (string.IsNullOrWhiteSpace(text) || seg is null) return;
+        if (seg is null || string.IsNullOrWhiteSpace(text)) return;
 
-        // Anchor at end of the highlighted word
-        var end = seg.EndOffset;
-        var loc = textView.Document.GetLocation(end);
+        var doc = textView.Document;
+        if (doc is null) return;
+
+        // --- Clamp the segment to the current document to avoid OOR during edits ---
+        int start = Math.Max(0, Math.Min(seg.Offset, doc.TextLength));
+        int end = Math.Max(start, Math.Min(seg.EndOffset, doc.TextLength));
+        if (end <= start) return;
+
+        // Anchor at end of the (clamped) highlighted word
+        var loc = doc.GetLocation(end);
         var pos = textView.GetVisualPosition(new TextViewPosition(loc.Line, loc.Column), VisualYPosition.TextTop);
         if (double.IsNaN(pos.X) || double.IsNaN(pos.Y)) return;
 
@@ -62,8 +71,12 @@ public sealed class CompletionGhostRenderer : IBackgroundRenderer, IDisposable
         dc.Pop();
     }
 
+    private void OnVisualLinesChanged(object? s, EventArgs e)
+        => _view.InvalidateLayer(KnownLayer.Selection);
+
     public void Dispose()
     {
         _view.BackgroundRenderers.Remove(this);
+        _view.VisualLinesChanged -= OnVisualLinesChanged;
     }
 }

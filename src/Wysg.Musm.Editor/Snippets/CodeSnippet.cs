@@ -3,13 +3,53 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using ICSharpCode.AvalonEdit.Document;  // for ISegment
-using ICSharpCode.AvalonEdit.Editing;   // for TextArea
+using ICSharpCode.AvalonEdit.Document;  // ISegment
+using ICSharpCode.AvalonEdit.Editing;   // TextArea
 
 namespace Wysg.Musm.Editor.Snippets;
 
-/// Hotkey: text without placeholders
-/// Snippet: supports ${index^label=1^optA|3^optB} style placeholders
+public enum PlaceholderKind
+{
+    FreeText,
+    SingleChoice,
+    MultiChoice,
+    MacroNumber,
+    MacroDate
+}
+
+public sealed record SnippetOption(string Key, string Text);
+
+public sealed class ExpandedPlaceholder
+{
+    public int Index { get; init; }
+    public string Label { get; init; }
+    public int Start { get; set; }
+    public int Length { get; set; }
+    public IReadOnlyList<SnippetOption> Options { get; init; }
+    public PlaceholderKind Kind { get; init; }
+    public string? Joiner { get; init; }  // for MultiChoice (e.g., "or")
+
+    public ExpandedPlaceholder(int index, string label, int start, int length,
+                               IReadOnlyList<SnippetOption> options,
+                               PlaceholderKind kind,
+                               string? joiner = null)
+    {
+        Index = index;
+        Label = label;
+        Start = start;
+        Length = length;
+        Options = options;
+        Kind = kind;
+        Joiner = joiner;
+    }
+}
+
+/// Hotkey: plain text without placeholders
+/// Snippet: supports:
+///   - ${label}              -> FreeText
+///   - ${date} / ${number}   -> macros
+///   - ${1^label=a^A|b^B}    -> SingleChoice (letter/number keys)
+///   - ${2^label^or=a^A|b^B} -> MultiChoice with joiner "or"
 public sealed class CodeSnippet
 {
     public string Shortcut { get; }
@@ -23,127 +63,149 @@ public sealed class CodeSnippet
         Template = template ?? string.Empty;
     }
 
-    // Very small parser: find ${...} segments and extract options keyed by digits
-    private static readonly Regex PlaceholderRx =
-        new(@"\$\{(\d+)\^([^\}=]+)=(.*?)\}", RegexOptions.Compiled); // ${1^laterality=1^right|3^left}
+    // Combined placeholder regex:
+    // 1) Choice: ${<idx>^<label>(^<joiner>)?=<opts>}
+    //    where <opts> is key^text | key^text | ...
+    // 2) Free/Macros: ${<free>}
+    private static readonly Regex PlaceholderRx = new(
+        @"\$\{(?:(?<idx>\d+)\^(?<label>[^}=]+?)(?:\^(?<join>[^}=]+))?=(?<opts>[^}]*)|(?<free>[^}]+))\}",
+        RegexOptions.Compiled);
 
     public bool IsSnippet => PlaceholderRx.IsMatch(Template);
 
-    public IEnumerable<SnippetPlaceholder> EnumeratePlaceholders()
-    {
-        foreach (Match m in PlaceholderRx.Matches(Template))
-        {
-            var index = int.Parse(m.Groups[1].Value);
-            var label = m.Groups[2].Value;
-            var optionsRaw = m.Groups[3].Value; // "1^right|3^left"
-            var options = new List<SnippetOption>();
-            foreach (var token in optionsRaw.Split('|'))
-            {
-                var parts = token.Split('^');
-                if (parts.Length >= 2 && int.TryParse(parts[0], out var digit))
-                    options.Add(new SnippetOption(digit, parts[1]));
-            }
-            yield return new SnippetPlaceholder(index, label, m.Index, m.Length, options);
-        }
-    }
-
-    /// Returns a display preview (for completion ghost) without mutating document.
+    /// Display preview for the completion ghost
     public string PreviewText()
     {
         if (!IsSnippet) return Template;
-        // Replace ${...} with label (first option hint)
         return PlaceholderRx.Replace(Template, m =>
         {
-            var label = m.Groups[2].Value;
-            var options = m.Groups[3].Value.Split('|');
-            var first = options.FirstOrDefault()?.Split('^').LastOrDefault() ?? "";
-            return label + " → " + first;
+            if (m.Groups["idx"].Success)
+            {
+                // choice: show label → first option
+                var label = m.Groups["label"].Value;
+                var opts = ParseOptions(m.Groups["opts"].Value);
+                var first = opts.FirstOrDefault()?.Text ?? "";
+                return $"{label} → {first}";
+            }
+            // free / macro
+            var free = m.Groups["free"].Value.Trim();
+            if (free.Equals("date", StringComparison.OrdinalIgnoreCase))
+                return DateTime.Today.ToString("yyyy-MM-dd");
+            if (free.Equals("number", StringComparison.OrdinalIgnoreCase))
+                return "0";
+            return free;
         });
     }
 
-    /// Expand into a text with placeholders removed but positions recorded.
+    /// Expand to text + placeholder map
     public (string expanded, List<ExpandedPlaceholder> map) Expand()
     {
         if (!IsSnippet) return (Template, new List<ExpandedPlaceholder>());
+
         var map = new List<ExpandedPlaceholder>();
+        var sb = new System.Text.StringBuilder();
         int cursor = 0;
-        var text = Template;
-        var result = new System.Text.StringBuilder();
 
-        foreach (Match m in PlaceholderRx.Matches(text))
+        int autoIndex = 1000; // for free/macro when no explicit index is provided
+
+        foreach (Match m in PlaceholderRx.Matches(Template))
         {
-            // Copy text before placeholder
+            // append plain text between placeholders
             int plainLen = m.Index - cursor;
-            if (plainLen > 0) result.Append(text.AsSpan(cursor, plainLen));
+            if (plainLen > 0) sb.Append(Template.AsSpan(cursor, plainLen));
 
-            var index = int.Parse(m.Groups[1].Value);
-            var label = m.Groups[2].Value;
-            var options = m.Groups[3].Value.Split('|')
-                             .Select(t => t.Split('^')).Where(p => p.Length >= 2)
-                             .Select(p => new SnippetOption(int.Parse(p[0]), p[1])).ToList();
+            if (m.Groups["idx"].Success)
+            {
+                // Choice (single or multi)
+                int idx = int.Parse(m.Groups["idx"].Value);
+                string label = m.Groups["label"].Value;
+                string? joiner = m.Groups["join"].Success ? m.Groups["join"].Value : null;
+                var options = ParseOptions(m.Groups["opts"].Value);
 
-            int start = result.Length;
-            result.Append(label); // insert label initially as visible token
-            int length = label.Length;
+                int start = sb.Length;
+                // Insert the label as the initial visible token
+                sb.Append(label);
+                int length = label.Length;
 
-            map.Add(new ExpandedPlaceholder(index, label, start, length, options));
+                var kind = string.IsNullOrEmpty(joiner) ? PlaceholderKind.SingleChoice
+                                                        : PlaceholderKind.MultiChoice;
+                map.Add(new ExpandedPlaceholder(idx, label, start, length, options, kind, joiner));
+            }
+            else
+            {
+                // Free / Macro
+                string label = m.Groups["free"].Value.Trim();
+                int start = sb.Length;
+                string initial;
+                var kind = PlaceholderKind.FreeText;
+
+                if (label.Equals("date", StringComparison.OrdinalIgnoreCase))
+                {
+                    initial = DateTime.Today.ToString("yyyy-MM-dd");
+                    kind = PlaceholderKind.MacroDate;
+                }
+                else if (label.Equals("number", StringComparison.OrdinalIgnoreCase))
+                {
+                    initial = "0";
+                    kind = PlaceholderKind.MacroNumber;
+                }
+                else
+                {
+                    initial = label; // show label as hint; user will type over it
+                    kind = PlaceholderKind.FreeText;
+                }
+
+                sb.Append(initial);
+                int length = initial.Length;
+
+                map.Add(new ExpandedPlaceholder(autoIndex++, label, start, length,
+                                                Array.Empty<SnippetOption>(), kind, null));
+            }
+
             cursor = m.Index + m.Length;
         }
-        // Tail
-        if (cursor < text.Length) result.Append(text.AsSpan(cursor));
-        return (result.ToString(), map);
+        // tail
+        if (cursor < Template.Length) sb.Append(Template.AsSpan(cursor));
+
+        return (sb.ToString(), map);
     }
 
-    // ---- Legacy compatibility shim (for EditorCompletionData.cs etc.) ----
+    private static List<SnippetOption> ParseOptions(string raw)
+    {
+        var list = new List<SnippetOption>();
+        if (string.IsNullOrWhiteSpace(raw)) return list;
 
-    /// Legacy callers expect the snippet/hotkey body on .Text
+        foreach (var tok in raw.Split('|'))
+        {
+            var idx = tok.IndexOf('^');
+            if (idx <= 0 || idx >= tok.Length - 1) continue;
+            string key = tok.Substring(0, idx).Trim();    // can be letter or digit (e.g., "a", "3")
+            string text = tok.Substring(idx + 1).Trim();
+            if (key.Length > 0 && text.Length > 0)
+                list.Add(new SnippetOption(key, text));
+        }
+        return list;
+    }
+
+    // ---- Legacy compatibility shim (keeps existing callers compiling) ----
+
     public string Text => Template;
 
-    /// Legacy callers use snippet.Insert(...) to perform insertion.
-    /// - Hotkey/token: replaces the target segment with Template.
-    /// - Snippet: expands placeholders and enters placeholder mode.
     public void Insert(TextArea area, ISegment replaceSegment)
     {
         if (!IsSnippet)
         {
-            // Hotkey / token: just replace the word
             area.Document.Replace(replaceSegment, Template);
             area.Caret.Offset = replaceSegment.Offset + Template.Length;
             return;
         }
 
-        // Snippet: expand and start placeholder workflow
         var (expanded, map) = Expand();
-
-        // Replace the token so the snippet lands at the same spot
         area.Document.Replace(replaceSegment, string.Empty);
         area.Caret.Offset = replaceSegment.Offset;
-
         SnippetInputHandler.Start(area, expanded, map);
     }
 
-    /// Some legacy sites pass an EventArgs; accept and forward.
     public void Insert(TextArea area, ISegment replaceSegment, EventArgs _)
         => Insert(area, replaceSegment);
-}
-
-public sealed record SnippetOption(int Digit, string Text);
-public sealed record SnippetPlaceholder(int Index, string Label, int TemplateOffset, int TemplateLength, IReadOnlyList<SnippetOption> Options);
-
-public sealed class ExpandedPlaceholder
-{
-    public int Index { get; init; }
-    public string Label { get; init; }
-    public int Start { get; set; }    // mutable: shifting after replacements
-    public int Length { get; set; }   // mutable: becomes chosen option length
-    public IReadOnlyList<SnippetOption> Options { get; init; }
-
-    public ExpandedPlaceholder(int index, string label, int start, int length, IReadOnlyList<SnippetOption> options)
-    {
-        Index = index;
-        Label = label;
-        Start = start;
-        Length = length;
-        Options = options;
-    }
 }

@@ -7,6 +7,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using Wysg.Musm.Editor.Completion;
+using Wysg.Musm.Editor.Snippets;
 using Wysg.Musm.Editor.Ui;
 
 namespace Wysg.Musm.Editor.Controls
@@ -420,28 +421,21 @@ namespace Wysg.Musm.Editor.Controls
             var sel = _completionWindow.CompletionList.SelectedItem as ICompletionData;
             _squelchServerIdleWhilePopupSelected = (sel != null);
 
-            if (sel == null)
+            if (sel is MusmCompletionData md)
             {
-                _completionGhostText = string.Empty;
-                // no selection → allow idle timer to run for server ghosts
-                ResetIdleTimer();
+                _completionGhostText = md.Preview;  // ← shows "diffuse brain atrophy" for "dba"
+                _idleTimer.Stop();
             }
             else
             {
-                // selected → show completion ghost
-                // tokens/hotkeys: preview = item.Text ; snippets: preview = item.Description (detail)
-                // OnCompletionSelectionChanged(...)
-                if (sel is Wysg.Musm.Editor.Snippets.MusmCompletionData md && md.IsSnippet)
-                    _completionGhostText = (md.Description?.ToString() ?? "").ToString();
-                else
-                    _completionGhostText = sel.Text ?? sel.Content?.ToString() ?? string.Empty;
-
-
-                _idleTimer.Stop(); // selected item blocks idle server ghosts
+                _completionGhostText = sel == null ? string.Empty : (sel.Text ?? sel.Content?.ToString() ?? string.Empty);
+                if (sel == null) ResetIdleTimer();
+                else _idleTimer.Stop();
             }
 
             Editor.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
         }
+
 
 
 

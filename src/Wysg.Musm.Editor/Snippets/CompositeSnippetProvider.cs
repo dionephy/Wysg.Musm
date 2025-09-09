@@ -5,7 +5,6 @@ using ICSharpCode.AvalonEdit.CodeCompletion;
 
 namespace Wysg.Musm.Editor.Snippets;
 
-
 public sealed class CompositeSnippetProvider : ISnippetProvider
 {
     private readonly List<string> _tokens = new();
@@ -18,8 +17,13 @@ public sealed class CompositeSnippetProvider : ISnippetProvider
 
     public IEnumerable<ICompletionData> GetCompletions(ICSharpCode.AvalonEdit.TextEditor editor)
     {
-        foreach (var t in _tokens) yield return new MusmCompletionData(t);
-        foreach (var h in _hotkeys) yield return new MusmCompletionData(h.hotkey, h.detail);
-        foreach (var s in _snippets) yield return new MusmCompletionData(s);
+        foreach (var t in _tokens)
+            yield return MusmCompletionData.Token(t);
+
+        foreach (var (hk, detail) in _hotkeys)
+            yield return MusmCompletionData.Hotkey(hk, detail);
+
+        foreach (var s in _snippets)
+            yield return MusmCompletionData.Snippet(s);
     }
 }

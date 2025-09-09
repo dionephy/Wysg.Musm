@@ -1,7 +1,11 @@
 ﻿// src/Wysg.Musm.Editor/Controls/MusmEditor.cs
+using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit.Document;
+using ICSharpCode.AvalonEdit.Editing;
 using System;
 using System.Windows;
-using ICSharpCode.AvalonEdit;
+using System.Windows.Threading;
+using Wysg.Musm.Editor.Internal;
 
 namespace Wysg.Musm.Editor.Controls;
 
@@ -146,14 +150,66 @@ public class MusmEditor : TextEditor
 
     private static void OnSelectedTextBindableChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        // Optional: allow VM to set the selected text by replacing the selection
-        // Comment out if you prefer read-only mirror semantics.
-        var ed = (MusmEditor)d;
-        var newText = e.NewValue as string ?? string.Empty;
-        var sel = ed.TextArea.Selection;
-        if (!sel.IsEmpty && sel.GetText() != newText)
+        if (d is not MusmEditor ed || ed.TextArea?.Document is null) return;
+
+        // 1) If snippet/editor is mutating, skip mirror for now.
+        if (EditorMutationShield.IsActive(ed.TextArea)) return;
+
+        // 2) prevent loops
+        if (ed._updatingFromSelection) return;
+
+        var sel = ed.TextArea.Selection?.SurroundingSegment;
+        if (sel is null) return;
+
+        string newText = e.NewValue as string ?? string.Empty;
+
+        var doc = ed.TextArea.Document;
+        if (sel.Offset < 0 || sel.Offset + sel.Length > doc.TextLength) return;
+
+        ed._updatingFromSelection = true;
+        try
         {
-            ed.Document.Replace(sel.SurroundingSegment, newText);
+            ed.SafeReplace(doc, sel.Offset, sel.Length, newText);
+
+            // mirror selection to new text (deferred in case we had to queue replace)
+            ed.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var ddoc = ed.TextArea.Document;
+                int newEnd = Math.Min(sel.Offset + newText.Length, ddoc.TextLength);
+                using (EditorMutationShield.Begin(ed.TextArea))
+                {
+                    ed.TextArea.Selection = Selection.Create(ed.TextArea, sel.Offset, newEnd);
+                    ed.TextArea.Caret.Offset = newEnd;
+                }
+            }), DispatcherPriority.Background);
+        }
+        finally
+        {
+            ed._updatingFromSelection = false;
         }
     }
+
+    private void SafeReplace(TextDocument doc, int offset, int length, string newText)
+    {
+        try
+        {
+            doc.Replace(offset, length, newText);
+        }
+        catch (InvalidOperationException ex) when (
+            ex.Message.IndexOf("undo/redo", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            ex.Message.IndexOf("another document change", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            // Defer until the current document change or undo/redo completes
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (offset < 0 || offset > doc.TextLength) return;
+                int safeLen = Math.Min(length, Math.Max(0, doc.TextLength - offset));
+                if (safeLen < 0) return;
+                try { doc.Replace(offset, safeLen, newText); } catch { /* still in flux; skip */ }
+            }), DispatcherPriority.Background);
+        }
+    }
+
+    // add a private field:
+    private bool _updatingFromSelection;
 }

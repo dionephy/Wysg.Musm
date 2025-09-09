@@ -17,7 +17,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
 old infarction in right frontal lobe
 
-no other abnormality";
+no other abnormality
+
+Try the sample legacy snippet by typing its shortcut: 'legacy1' and pressing Enter.";
 
 
     public ISnippetProvider SnippetProvider { get; } =
@@ -28,6 +30,13 @@ no other abnormality";
                 "mnsd",
                 "mild nasal septal deviation",
                 "mild nasal septal deviation to the ${1^laterality=1^right|3^left}"
+            ))
+        .AddSnippet(new CodeSnippet(
+                "legacy1",
+                "Legacy placeholder demo",
+                "I have ${1^fruit=a^apple|b^bannana|3^watermelon} and ${2^juices^or=a^cola|b^cider}, " +
+                "and I want to eat with ${friend}, but ${date} is busy and ${number} people are coming, " +
+                "and ${3^family=mm^mom|dd^dad} said no..."
             ));
 
     // (your ghost client bindings unchanged)
