@@ -221,9 +221,10 @@ namespace Wysg.Musm.Editor.Playground
                     var l = (lines[i] ?? string.Empty).Trim();
                     if (string.IsNullOrEmpty(l)) continue;
 
-                    if (l.StartsWith("no acute", StringComparison.OrdinalIgnoreCase))
-                        suggestions.Add(CreateSuggestion(i, "No acute intracranial abnormality.", 0.82, "rule"));
-                    else if (l.Contains("microangiopathy", StringComparison.OrdinalIgnoreCase))
+                    //if (l.StartsWith("no acute", StringComparison.OrdinalIgnoreCase))
+                        //suggestions.Add(CreateSuggestion(i, "No acute intracranial abnormality.", 0.82, "rule"));
+                    //else 
+                    if (l.Contains("microangiopathy", StringComparison.OrdinalIgnoreCase))
                         suggestions.Add(CreateSuggestion(i, "Mild degree of microangiopathy in bilateral cerebral white matter.", 0.78, "rule"));
                     else if (l.Contains("thalamus", StringComparison.OrdinalIgnoreCase))
                         suggestions.Add(CreateSuggestion(i, "Thalamus.", 0.72, "rule"));

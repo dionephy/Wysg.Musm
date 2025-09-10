@@ -19,7 +19,7 @@ namespace Wysg.Musm.Editor.Playground
                 Editor.SnippetProvider = new WordListCompletionProvider(new[]
 {
     "thalamus", "microangiopathy",
-    "no", "no acute intracranial abnormality", "no acute intracranial hemorrhage",
+    "no", //"no acute intracranial abnormality", "no acute intracranial hemorrhage",
     "infarction", "hydrocephalus"
 });
                 Editor.MinCharsForSuggest = 2;
