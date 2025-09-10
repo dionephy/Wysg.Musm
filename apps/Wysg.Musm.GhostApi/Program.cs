@@ -17,3 +17,5 @@ app.UseCors("any");
 app.MapControllers();
 
 app.Run();
+
+//dotnet run --project apps/Wysg.Musm.GhostApi/Wysg.Musm.GhostApi.csproj

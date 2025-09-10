@@ -1,4 +1,4 @@
-﻿using System;
+﻿// src/Wysg.Musm.Editor/Controls/EditorControl.Api.cs
 using System.Collections.Generic;
 using System.Linq;
 using ICSharpCode.AvalonEdit.Rendering;
@@ -7,46 +7,98 @@ namespace Wysg.Musm.Editor.Controls
 {
     public partial class EditorControl
     {
-        /// <summary>Replace all server ghosts and reset the selection to the first ghost (if any).</summary>
-        public void UpdateServerGhosts(IEnumerable<(int line, string text)> items)
+        public bool AcceptSelectedServerGhost()
         {
-            var list = (items ?? Enumerable.Empty<(int line, string text)>()).ToList();
-            ServerGhosts.Set(list);   // triggers invalidate
-            ResetGhostSelection();
+            if (!ServerGhosts.HasItems || ServerGhosts.SelectedIndex < 0) return false;
+
+            var (lineZero, text) = ServerGhosts.Items[ServerGhosts.SelectedIndex];
+            var doc = Editor.Document;
+            int line = lineZero + 1;
+            if (line < 1 || line > doc.LineCount) return false;
+
+            var dl = doc.GetLineByNumber(line);
+
+            // Replace visible line (trim right-side whitespace)
+            int start = dl.Offset;
+            int end = dl.EndOffset;
+            while (end > start && char.IsWhiteSpace(doc.GetCharAt(end - 1))) end--;
+
+            doc.Replace(start, end - start, text);
+
+            // Remove only the accepted ghost, keep others & reselect neighbor
+            int next = ServerGhosts.SelectedIndex;
+            ServerGhosts.Items.RemoveAt(ServerGhosts.SelectedIndex);
+            if (ServerGhosts.Items.Count == 0)
+            {
+                ClearServerGhosts();
+            }
+            else
+            {
+                if (next >= ServerGhosts.Items.Count) next = ServerGhosts.Items.Count - 1;
+                ServerGhosts.SelectIndex(next);   // ✅ reselect via method
+                                                  // no need to call InvalidateGhosts() here; SelectIndex already invalidated
+            }
+
+            return true;
         }
+
+
+
+
+        // Wrappers that forward to the canonical implementations in ServerGhosts.cs
+        public void ApplyServerGhostsAbsolute(IEnumerable<(int line, string text)> items)
+            => UpdateServerGhosts(items);
+
+        public void ApplyServerGhostsNonEmpty(IEnumerable<(int nonEmptyIndex, string text)> items)
+            => UpdateServerGhostsFromNonEmpty(items);
 
         public void ClearServerGhosts()
         {
-            _selectedGhost = -1;
             ServerGhosts.Clear();
+            InvalidateGhosts();
+            ResumeIdleAfterGhosts();
         }
 
+        // EditorControl.Api.cs (or wherever you keep it)
         public void InvalidateGhosts()
         {
             var tv = Editor?.TextArea?.TextView;
-            tv?.InvalidateLayer(KnownLayer.Text); // must match MultiLineGhostRenderer.Layer
-            // tv?.InvalidateVisual(); // optional extra nudge
+            if (tv == null) return;
+            tv.EnsureVisualLines();
+            tv.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
+            tv.InvalidateVisual();
         }
 
-        // Expose selection navigation for host if needed
-        public void SelectNextGhost() => MoveGhostSelection(+1);
-        public void SelectPrevGhost() => MoveGhostSelection(-1);
-        public void AcceptCurrentGhost() => AcceptSelectedGhost();
 
-        // Close the completion popup if it’s open (safe to call anytime)
-        public void DismissCompletionPopup()
+        public void EnableGhostDebugAnchors(bool on)
         {
-            // private method lives in EditorControl.Popup.cs; OK to call from another partial
-            CloseCompletionWindow();
+            _ghostRenderer?.SetShowAnchors(on);
+            InvalidateGhosts();
         }
 
-        // Optional: close popup + clear ghosts together
-        public void DismissPopupAndGhosts()
+        public string GetGhostDebugInfo()
         {
-            CloseCompletionWindow();
-            ClearServerGhosts();
+            var count = ServerGhosts.Items.Count;
+            var lines = string.Join(",", ServerGhosts.Items.Select(i => i.line));
+            return $"Ghosts:{count} lines=[{lines}] attached={(_ghostRenderer != null ? "True" : "False")}";
         }
 
+        public void DebugSeedGhosts()
+            => UpdateServerGhosts(new[] { (0, "Test ghost: renderer path OK") });
 
+        // Leave this public for Playground to close popup safely
+        public void DismissCompletionPopup() => CloseCompletionWindow();
+
+        private void PauseIdleForGhosts()
+        {
+            _idlePausedForGhosts = true;
+            _idleTimer.Stop();
+        }
+
+        private void ResumeIdleAfterGhosts()
+        {
+            _idlePausedForGhosts = false;
+            RestartIdle();
+        }
     }
 }

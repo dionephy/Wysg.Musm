@@ -9,6 +9,6 @@
             <Button Content="Force Ghost" Click="OnForceGhost" Margin="0,0,8,0"/>
             <TextBlock Text="{Binding Status}" VerticalAlignment="Center"/>
         </StackPanel>
-        <controls:EditorControl x:Name="EditorCtl"  />
+        <controls:EditorControl x:Name="Editor"  />
     </DockPanel>
 </Window>

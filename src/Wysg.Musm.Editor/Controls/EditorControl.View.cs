@@ -1,17 +1,11 @@
-﻿using ICSharpCode.AvalonEdit;
-using ICSharpCode.AvalonEdit.CodeCompletion;
-using ICSharpCode.AvalonEdit.Editing;
-using ICSharpCode.AvalonEdit.Rendering;
+﻿using ICSharpCode.AvalonEdit.Rendering;
 using System;
 using System.Linq;
-using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Wysg.Musm.Editor.Completion;
-using Wysg.Musm.Editor.Ghosting;
 using Wysg.Musm.Editor.Snippets;
 using Wysg.Musm.Editor.Ui;
 
@@ -19,7 +13,7 @@ namespace Wysg.Musm.Editor.Controls
 {
     public partial class EditorControl : UserControl
     {
-        // ===== Dependency Properties (view + popup) =====
+        // ===== Dependency Properties =====
         public static readonly DependencyProperty DocumentTextProperty =
             DependencyProperty.Register(nameof(DocumentText), typeof(string), typeof(EditorControl),
                 new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
@@ -27,14 +21,6 @@ namespace Wysg.Musm.Editor.Controls
         public static readonly DependencyProperty AiEnabledProperty =
             DependencyProperty.Register(nameof(AiEnabled), typeof(bool), typeof(EditorControl),
                 new PropertyMetadata(true, OnAiEnabledChanged));
-
-        public static readonly DependencyProperty CompletionEngineProperty =
-            DependencyProperty.Register(nameof(CompletionEngine), typeof(ICompletionEngine), typeof(EditorControl),
-                new PropertyMetadata(NullCompletionEngine.Instance));
-
-        public static readonly DependencyProperty SnippetProviderProperty =
-            DependencyProperty.Register(nameof(SnippetProvider), typeof(ISnippetProvider), typeof(EditorControl),
-                new PropertyMetadata(NullSnippetProvider.Instance));
 
         public static readonly DependencyProperty DebounceMsProperty =
             DependencyProperty.Register(nameof(DebounceMs), typeof(int), typeof(EditorControl),
@@ -48,148 +34,150 @@ namespace Wysg.Musm.Editor.Controls
             DependencyProperty.Register(nameof(MinCharsForSuggest), typeof(int), typeof(EditorControl),
                 new PropertyMetadata(2));
 
-        // ===== Idle timer (server ghost trigger) =====
-        public static readonly DependencyProperty ServerIdleMsProperty =
-            DependencyProperty.Register(nameof(ServerIdleMs), typeof(int), typeof(EditorControl),
-                new PropertyMetadata(2000, OnServerIdleMsChanged));
+        public static readonly DependencyProperty GhostIdleMsProperty =
+    DependencyProperty.Register(nameof(GhostIdleMs), typeof(int), typeof(EditorControl),
+        new PropertyMetadata(2000, OnGhostIdleMsChanged));
 
-        // ===== Dependency Properties (server ghost context) =====
-        public static readonly DependencyProperty GhostClientProperty =
-           DependencyProperty.Register(nameof(GhostClient), typeof(IGhostSuggestionClient), typeof(EditorControl),
-               new PropertyMetadata(null));
+        public int GhostIdleMs
+        {
+            get => (int)GetValue(GhostIdleMsProperty);
+            set => SetValue(GhostIdleMsProperty, value);
+        }
 
+        private static void OnGhostIdleMsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var self = (EditorControl)d;
+            int ms = Math.Max(250, (int)e.NewValue);      // guard against tiny values
+            self._idleTimer.Interval = TimeSpan.FromMilliseconds(ms);
+        }
+
+
+        // Context for server ghosts (used by Playground VM)
         public static readonly DependencyProperty PatientSexProperty =
             DependencyProperty.Register(nameof(PatientSex), typeof(string), typeof(EditorControl), new PropertyMetadata("M"));
-
         public static readonly DependencyProperty PatientAgeProperty =
             DependencyProperty.Register(nameof(PatientAge), typeof(int), typeof(EditorControl), new PropertyMetadata(60));
-
         public static readonly DependencyProperty StudyHeaderProperty =
             DependencyProperty.Register(nameof(StudyHeader), typeof(string), typeof(EditorControl), new PropertyMetadata(""));
-
         public static readonly DependencyProperty StudyInfoProperty =
             DependencyProperty.Register(nameof(StudyInfo), typeof(string), typeof(EditorControl), new PropertyMetadata(""));
 
-        // DP CLR wrappers
+        // Completion/snippets pluggables
+        public static readonly DependencyProperty SnippetProviderProperty =
+            DependencyProperty.Register(nameof(SnippetProvider), typeof(ISnippetProvider), typeof(EditorControl),
+                new PropertyMetadata(null));
+
+        // CLR wrappers
         public string DocumentText { get => (string)GetValue(DocumentTextProperty); set => SetValue(DocumentTextProperty, value); }
         public bool AiEnabled { get => (bool)GetValue(AiEnabledProperty); set => SetValue(AiEnabledProperty, value); }
-        public ICompletionEngine CompletionEngine { get => (ICompletionEngine)GetValue(CompletionEngineProperty); set => SetValue(CompletionEngineProperty, value); }
-        public ISnippetProvider SnippetProvider { get => (ISnippetProvider)GetValue(SnippetProviderProperty); set => SetValue(SnippetProviderProperty, value); }
         public int DebounceMs { get => (int)GetValue(DebounceMsProperty); set => SetValue(DebounceMsProperty, value); }
         public bool AutoSuggestOnTyping { get => (bool)GetValue(AutoSuggestOnTypingProperty); set => SetValue(AutoSuggestOnTypingProperty, value); }
         public int MinCharsForSuggest { get => (int)GetValue(MinCharsForSuggestProperty); set => SetValue(MinCharsForSuggestProperty, value); }
 
-        public int ServerIdleMs { get => (int)GetValue(ServerIdleMsProperty); set => SetValue(ServerIdleMsProperty, value); }
-
-        public IGhostSuggestionClient? GhostClient { get => (IGhostSuggestionClient?)GetValue(GhostClientProperty); set => SetValue(GhostClientProperty, value); }
         public string PatientSex { get => (string)GetValue(PatientSexProperty); set => SetValue(PatientSexProperty, value); }
         public int PatientAge { get => (int)GetValue(PatientAgeProperty); set => SetValue(PatientAgeProperty, value); }
         public string StudyHeader { get => (string)GetValue(StudyHeaderProperty); set => SetValue(StudyHeaderProperty, value); }
         public string StudyInfo { get => (string)GetValue(StudyInfoProperty); set => SetValue(StudyInfoProperty, value); }
+        public ISnippetProvider? SnippetProvider { get => (ISnippetProvider?)GetValue(SnippetProviderProperty); set => SetValue(SnippetProviderProperty, value); }
 
-        // ===== Events the host/VM can subscribe to =====
-        public event EventHandler? IdleElapsed;           // fired after 2s of no activity (when not paused)
-        public event EventHandler? EditorTextChanged;
-        public event EventHandler? EditorCaretMoved;
-
-        // ===== Public surface used by Playground etc. =====
-        public TextEditor InnerEditor => Editor;
-        public bool IsCompletionWindowOpen => _completionWindow?.IsVisible == true;
-        public bool IsInPlaceholderMode => PlaceholderModeManager.IsActive;
-
-        // ===== Shared state & timers =====
-        private readonly DispatcherTimer _debounce;     // short debounce for local UI (not server)
-        private readonly DispatcherTimer _idle;         // 2s idle → let VM call server
-        private readonly DispatcherTimer _scrollQuiet;  // resets _isScrolling after a short delay
+        // ===== Timers / state =====
+        private readonly DispatcherTimer _debounce;          // short debounce (typing/caret)
+        private readonly DispatcherTimer _idleTimer;         // 2s idle → request server ghosts
         private bool _isScrolling;
+        private bool _idlePausedForGhosts;
 
-        // Popup handle (owned by Popup partial)
-        private CompletionWindow? _completionWindow;
 
-        // Multiline ghost renderer handle
-        private MultiLineGhostRenderer? _ghostRenderer;
+
+        // ===== Popup & Renderer handles (implemented elsewhere) =====
+        private MusmCompletionWindow? _completionWindow;     // used by Popup partial
+        private MultiLineGhostRenderer? _ghostRenderer;      // ghost renderer
+
+        // ===== Idle event for VM =====
+        public event EventHandler? IdleElapsed;
 
         public EditorControl()
         {
             InitializeComponent();
 
-            // ---- timers ----
+            ServerGhosts = new GhostStore(InvalidateGhosts);
+
+            // ── 1) Robust scheduling: restart both short debounce (if you still use it)
+            //    and the 2s idle for server ghosts on any text change
+            Editor.TextChanged += (_, __) =>
+            {
+                RestartDebounce();   // your existing short debounce (e.g., inline/UX stuff)
+                RestartIdle();       // 2s idle for server ghosts
+            };
+
+            // Optional: caret moves can also restart idle if you want (kept off by default)
+            Editor.TextArea.Caret.PositionChanged += (_, __) => { /* no-op */ };
+
+            // ── 2) Visual highlighter for the current “word of interest”
+            _wordHi = new Ui.CurrentWordHighlighter(Editor, () =>
+            {
+                if (_completionWindow == null || _lastWordStart < 0) return null;
+                var caret = Editor.CaretOffset;
+                var len = Math.Max(0, caret - _lastWordStart);
+                return new Wysg.Musm.Editor.Internal.InlineSegment(_lastWordStart, len);
+            });
+
+            // ── 3) Core hooks (popup + focus/scroll awareness)
+            Editor.TextArea.TextEntered += OnTextEntered;                 // Popup partial
+            Editor.TextArea.TextEntering += OnTextEntering;               // Popup partial
+            Editor.TextArea.PreviewKeyDown += OnTextAreaPreviewKeyDown;   // Popup partial
+            try { Editor.TextArea.SelectionChanged += OnSelectionChanged; } catch { }
+            Editor.TextArea.TextView.ScrollOffsetChanged += OnScrollOffsetChanged;
+            Editor.GotKeyboardFocus += OnFocusChanged;
+            Editor.LostKeyboardFocus += OnFocusChanged;
+
+            // ── 4) Short debounce (kept if you have other 150–300ms UX)
             _debounce = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
             {
                 Interval = TimeSpan.FromMilliseconds(DebounceMs)
             };
             _debounce.Tick += OnDebounceTick;
 
-            _idle = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
+            // ── 5) Dedicated 2s idle timer ONLY for server ghosts
+            _idleTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
             {
-                Interval = TimeSpan.FromMilliseconds(ServerIdleMs)
+                Interval = TimeSpan.FromSeconds(2)
             };
-            _idle.Tick += OnIdleTick;
+            _idleTimer.Tick += OnIdleTimerTick;
 
-            _scrollQuiet = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
-            {
-                Interval = TimeSpan.FromMilliseconds(120)
-            };
-            _scrollQuiet.Tick += (_, __) => { _scrollQuiet.Stop(); _isScrolling = false; };
-
-            // ---- editor hooks ----
-            Editor.TextArea.TextEntered += OnTextEntered;             // Popup partial
-            Editor.TextArea.TextEntering += OnTextEntering;           // Popup partial
-            Editor.TextArea.PreviewKeyDown += OnTextAreaPreviewKeyDown; // Popup + Ghost nav
-            try { Editor.TextArea.SelectionChanged += OnSelectionChanged; } catch { /* some versions */ }
-            Editor.TextArea.TextView.ScrollOffsetChanged += OnScrollOffsetChanged;
-            Editor.GotKeyboardFocus += OnFocusChanged;
-            Editor.LostKeyboardFocus += OnFocusChanged;
-
-            // Forward out to host if needed
-            Editor.TextChanged += (_, __) => { RaiseEditorTextChanged(); RestartDebounce(); RestartIdle(); };
-            Editor.TextArea.Caret.PositionChanged += (_, __) => { RaiseEditorCaretMoved(); RestartDebounce(); RestartIdle(); };
-            Editor.TextArea.PreviewKeyDown += (_, __) => RestartIdle();
-            Editor.TextArea.TextEntered += (_, __) => RestartIdle();
-            Editor.TextArea.TextEntering += (_, __) => RestartIdle();
-
-            // ---- features (other partials) ----
+            // ── 6) Feature init (other partials)
             InitPopup();        // EditorControl.Popup.cs
             InitServerGhosts(); // EditorControl.ServerGhosts.cs
-            InitInlineGhost();  // if you keep inline ghost; otherwise this is empty
+            InitInlineGhost();  // optional partial
 
-            // Disable tab insertion so Tab can be used for accept (ghost/snippet)
+            // ── 7) Tab is used for accept; prevent raw '\t' insertion
             Loaded += (_, __) => DisableTabInsertion();
 
-            // Cleanup
             Unloaded += OnUnloaded;
 
-            // Attach multiline ghost renderer
+            // ── 8) Bubble a few editor signals (your existing)
+            Editor.TextChanged += (_, __) => RaiseEditorTextChanged();
+            Editor.TextArea.Caret.PositionChanged += (_, __) => RaiseEditorCaretMoved();
+
+            // ── 9) Attach multiline-ghost renderer explicitly
             var view = Editor.TextArea.TextView;
             var area = Editor.TextArea;
 
-            if (_ghostRenderer is null)
-            {
-                var tf = new Typeface(Editor.FontFamily, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
-                _ghostRenderer = new MultiLineGhostRenderer(
-                    view,
-                    area,
-                    () => ServerGhosts.Items,
-                    GetSelectedGhostIndex,   // selection index provider
-                    tf,
-                    () => Editor.FontSize,
-                    showAnchors: false       // set true if you want orange dots for debug
-                );
-                _ghostRenderer.Attach(); // explicit attach + internal logging
-            }
+            _ghostRenderer = new MultiLineGhostRenderer(
+                view,
+                area,
+                () => ServerGhosts.Items,
+                getSelectedIndex: () => ServerGhosts.SelectedIndex,
+                typeface: new Typeface(Editor.FontFamily, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal),
+                getFontSize: () => Editor.FontSize,
+                showAnchors: false);
+            _ghostRenderer.Attach();
         }
 
-        // ===== Property change callbacks =====
+
         private static void OnDebounceMsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var self = (EditorControl)d;
             self._debounce.Interval = TimeSpan.FromMilliseconds(Math.Max(0, (int)e.NewValue));
-        }
-
-        private static void OnServerIdleMsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            var self = (EditorControl)d;
-            self._idle.Interval = TimeSpan.FromMilliseconds(Math.Max(0, (int)e.NewValue));
         }
 
         private static void OnAiEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -198,21 +186,81 @@ namespace Wysg.Musm.Editor.Controls
             if (!(bool)e.NewValue)
             {
                 self._debounce.Stop();
-                self._idle.Stop();
+                self._idleTimer.Stop();
             }
             else
             {
                 self.RestartDebounce();
-                self.RestartIdle();
             }
         }
 
-        // ===== Lifecycle cleanup =====
+        private void OnDebounceTick(object? s, EventArgs e)
+        {
+            _debounce.Stop();
+
+            // Debounce is for lightweight UX (e.g., updating completion-ghost preview),
+            // NEVER for server calls and NEVER for closing the popup.
+            if (!AiEnabled) return;
+
+            // If you had code like CloseCompletionWindow(); or RequestServerGhostsAsync(); here,
+            // delete it. Leave this either empty or only UI-local work.
+        }
+
+        // Minimal “bubblers” — also good places to reset idle countdown
+        private void RaiseEditorTextChanged()
+        {
+            RestartDebounce();
+            RestartIdle();
+        }
+        private void RaiseEditorCaretMoved()
+        {
+            RestartDebounce();
+            RestartIdle();
+        }
+
+        private void RestartDebounce()
+        {
+            if (ShouldPauseSuggestions()) return;
+            _debounce.Stop();
+            _debounce.Start();
+        }
+
+        private void RestartIdle()
+        {
+            if (_idlePausedForGhosts) return;
+            _idleTimer.Stop();
+            _idleTimer.Start();
+        }
+
+        private void OnSelectionChanged(object? s, EventArgs e)
+        {
+            if (ShouldPauseSuggestions()) { _debounce.Stop(); _idleTimer.Stop(); }
+            else { RestartDebounce(); RestartIdle(); }
+        }
+
+        private void OnScrollOffsetChanged(object? s, EventArgs e)
+        {
+            _isScrolling = true;
+            _debounce.Stop();
+            _idleTimer.Stop();
+            // give a short grace period: when scrolling stops, caret move or text change will restart timers
+        }
+
+        private void OnFocusChanged(object? s, RoutedEventArgs e)
+        {
+            if (ShouldPauseSuggestions()) { _debounce.Stop(); _idleTimer.Stop(); }
+            else { RestartDebounce(); RestartIdle(); }
+        }
+
+        // Conservative default; InlineGhost partial can override via another partial method if needed
+        private bool ShouldPauseSuggestions() =>
+            !AiEnabled || !Editor.IsKeyboardFocusWithin || _isScrolling;
+
         private void OnUnloaded(object? sender, RoutedEventArgs e)
         {
-            _debounce.Stop(); _debounce.Tick -= OnDebounceTick;
-            _idle.Stop(); _idle.Tick -= OnIdleTick;
-            _scrollQuiet.Stop();
+            _debounce.Stop();
+            _debounce.Tick -= OnDebounceTick;
+            _idleTimer.Stop();
 
             CleanupPopup();
             CleanupServerGhosts();
@@ -230,102 +278,27 @@ namespace Wysg.Musm.Editor.Controls
             _ghostRenderer = null;
         }
 
-        // ===== Shared helpers used by partials =====
-        private void RestartDebounce()
+        // Fires only after 2s of no input (popup will be closed here)
+        private void OnIdleTimerTick(object? s, EventArgs e)
         {
-            _debounce.Stop();
-            if (!ShouldPauseSuggestions()) _debounce.Start();
+            _idleTimer.Stop();
+            if (!AiEnabled) return;
+            if (_idlePausedForGhosts) return;
+
+            // spec: close popup on idle, then ask server
+            CloseCompletionWindow();
+            _ = RequestServerGhostsAsync();  // this just raises IdleElapsed in your current setup
         }
 
-        private void RestartIdle()
+
+        // Raise the event so the Playground/VM performs the server call.
+        // You can inline the API call here later if you prefer.
+        private async Task RequestServerGhostsAsync()
         {
-            _idle.Stop();
-            if (!ShouldPauseSuggestions()) _idle.Start();
+            IdleElapsed?.Invoke(this, EventArgs.Empty);
+            await Task.CompletedTask;
         }
 
-        private void OnDebounceTick(object? sender, EventArgs e)
-        {
-            // keep for local UI debounced work (if any). For now, just stop.
-            _debounce.Stop();
-        }
 
-        private void OnIdleTick(object? sender, EventArgs e)
-        {
-            _idle.Stop();
-            if (!ShouldPauseSuggestions())
-                IdleElapsed?.Invoke(this, EventArgs.Empty); // VM listens and calls server
-        }
-
-        private void OnSelectionChanged(object? s, EventArgs e)
-        {
-            if (ShouldPauseSuggestions())
-            {
-                _debounce.Stop();
-                _idle.Stop();
-            }
-            else
-            {
-                RestartDebounce();
-                RestartIdle();
-            }
-        }
-
-        private void OnScrollOffsetChanged(object? s, EventArgs e)
-        {
-            _isScrolling = true;
-            _idle.Stop();
-            _scrollQuiet.Stop();
-            _scrollQuiet.Start();
-        }
-
-        private void OnFocusChanged(object? s, RoutedEventArgs e)
-        {
-            if (ShouldPauseSuggestions())
-            {
-                _debounce.Stop();
-                _idle.Stop();
-            }
-            else
-            {
-                RestartDebounce();
-                RestartIdle();
-            }
-        }
-
-        private bool ShouldPauseSuggestions() =>
-            !AiEnabled
-            || !Editor.IsKeyboardFocusWithin
-            || _isScrolling
-            || (ServerGhosts.Items.Count > 0)           // showing ghosts → hold idle
-            || (_completionWindow?.IsVisible == true)   // completion popup open
-            || PlaceholderModeManager.IsActive;         // snippet placeholder mode
-
-        // partial hooks implemented in other files
-        partial void DisableTabInsertion();
-        partial void InitInlineGhost();
-        partial void CleanupInlineGhost();
-
-        // raise outward
-        private void RaiseEditorTextChanged() => EditorTextChanged?.Invoke(this, EventArgs.Empty);
-        private void RaiseEditorCaretMoved() => EditorCaretMoved?.Invoke(this, EventArgs.Empty);
-
-        // Nulls
-        private sealed class NullCompletionEngine : ICompletionEngine
-        {
-            public static readonly NullCompletionEngine Instance = new();
-            public async IAsyncEnumerable<string> StreamAsync(CompletionRequest req, CancellationToken ct)
-            {
-                await System.Threading.Tasks.Task.CompletedTask;
-                yield break;
-            }
-        }
-
-        private sealed class NullSnippetProvider : ISnippetProvider
-        {
-            public static readonly NullSnippetProvider Instance = new();
-            public System.Collections.Generic.IEnumerable<ICSharpCode.AvalonEdit.CodeCompletion.ICompletionData>
-                GetCompletions(ICSharpCode.AvalonEdit.TextEditor editor)
-                => Array.Empty<ICSharpCode.AvalonEdit.CodeCompletion.ICompletionData>();
-        }
     }
 }
