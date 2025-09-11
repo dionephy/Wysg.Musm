@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # embed_phrases.py
 import os, time, psycopg2, numpy as np
 from typing import List, Tuple
@@ -16,7 +17,7 @@ tok = AutoTokenizer.from_pretrained(MODEL_NAME)
 mdl = AutoModel.from_pretrained(MODEL_NAME)
 
 def embed_texts(texts: List[str]) -> np.ndarray:
-    # mean-pooled CLS-style; adjust per your model¡¯s recommended pooling if needed
+    # mean-pooled CLS-style; adjust per your modelÃ­Â»s recommended pooling if needed
     with torch.no_grad():
         T = tok(texts, padding=True, truncation=True, return_tensors="pt")
         X = mdl(**T).last_hidden_state  # [B, L, H]

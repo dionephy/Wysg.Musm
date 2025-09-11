@@ -361,3 +361,58 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+
+
+
+
+
+
+
+
+
+# ----- .NET / Visual Studio -----
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+TestResults/
+*.nupkg
+*.cache
+
+# ----- Rider / VS Code -----
+.idea/
+.vscode/
+
+# ----- Python workers -----
+**/.venv/
+**/venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ipynb_checkpoints/
+*.pyc
+*.pyo
+
+# Hugging Face / model caches (prefer moving outside repo; this is a safety net)
+workers/embeddings/.cache/
+workers/embeddings/models/
+workers/embeddings/checkpoints/
+
+# ----- Node (if any) -----
+node_modules/
+
+# ----- Logs / dumps -----
+*.log
+*.tmp
+*.bak
+*.swp
+*.DS_Store
+*.tgz
+*.tar
+*.zip
+
+# ----- Misc -----
+/packages/           # legacy NuGet
+*.sln.iml
