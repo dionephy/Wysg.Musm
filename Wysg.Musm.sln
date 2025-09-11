@@ -35,6 +35,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wysg.Musm.GhostApi", "apps\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wysg.Musm.RuleEngine", "src\Wysg.Musm.RuleEngine\Wysg.Musm.RuleEngine.csproj", "{96EAB23C-C40D-466B-9C72-CB8F5CF320DE}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workers", "workers", "{EF4FFB67-F962-467E-86C8-B4D096657890}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "embeddings", "embeddings", "{6EAFA525-F419-4F98-B133-1DDFD6191E33}"
+	ProjectSection(SolutionItems) = preProject
+		.env.example = .env.example
+		Dockerfile = Dockerfile
+		embed_phrases.py = embed_phrases.py
+		requirements.txt = requirements.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -193,6 +203,7 @@ Global
 		{393912C8-5E37-4148-8E34-916F386D8313} = {063E8BFE-FDE3-4C44-8E81-A56FB5C5AF14}
 		{E193E5AB-0CC1-472D-B31E-75B60A80226E} = {063E8BFE-FDE3-4C44-8E81-A56FB5C5AF14}
 		{96EAB23C-C40D-466B-9C72-CB8F5CF320DE} = {C8D5274F-AC00-46C7-1F8D-E88E81087A52}
+		{6EAFA525-F419-4F98-B133-1DDFD6191E33} = {EF4FFB67-F962-467E-86C8-B4D096657890}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F5BEFC99-F9A9-477F-ACE1-CE87C95C43EB}

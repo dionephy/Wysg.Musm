@@ -1,0 +1,5 @@
+transformers==4.43.*
+torch            # (CPU ok; for GPU install CUDA build, see below)
+sentencepiece
+psycopg2-binary
+numpy
