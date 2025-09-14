@@ -1,0 +1,19 @@
+<Window x:Class="Wysg.Musm.Radium.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:editor="clr-namespace:Wysg.Musm.Editor.Controls;assembly=Wysg.Musm.Editor"
+        Title="Radium - Medical Editor" 
+        Height="800" Width="1200"
+        WindowStartupLocation="CenterScreen">
+
+    <DockPanel>
+        <!-- Menu/Toolbar area -->
+        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="6">
+            <Button Content="Force Ghost" Click="OnForceGhost" Margin="0,0,8,0"/>
+            <TextBlock Text="Ready" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Main Editor -->
+        <editor:EditorControl x:Name="Editor" />
+    </DockPanel>
+</Window>

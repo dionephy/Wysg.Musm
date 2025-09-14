@@ -1,20 +1,30 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<TargetFramework>net9.0-windows</TargetFramework>
-		<UseWPF>true</UseWPF>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-	</PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="AvalonEdit" Version="6.3.1.120" />
-	</ItemGroup>
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Wysg.Musm.Editor</AssemblyName>
+    <RootNamespace>Wysg.Musm.Editor</RootNamespace>
+  </PropertyGroup>
 
-	<!-- Keep icons as Resource (explicit) -->
-	<ItemGroup>
-		<None Remove="Resources\icoCodeSnippetRed.png" />
-		<None Remove="Resources\icoHotkey.png" />
-		<Resource Include="Resources\icoCodeSnippetRed.png" />
-		<Resource Include="Resources\icoHotkey.png" />
-	</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\icoCodeSnippetRed.png" />
+    <None Remove="Resources\icoHotkey.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\icoCodeSnippetRed.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\icoHotkey.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+  </ItemGroup>
+
 </Project>

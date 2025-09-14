@@ -1,0 +1,88 @@
+<Window x:Class="Wysg.Musm.EditorDataStudio.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Editor Data Studio" Height="700" Width="1100" WindowStartupLocation="CenterScreen">
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="File">
+                <MenuItem Header="Exit" Command="ApplicationCommands.Close" />
+            </MenuItem>
+        </Menu>
+        <Grid Margin="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Tenant selector -->
+            <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
+                <TextBlock Text="Tenant:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <ComboBox Width="240" ItemsSource="{Binding Tenants}" SelectedItem="{Binding SelectedTenant}" DisplayMemberPath="Name"/>
+                <Button Content="Refresh" Margin="6,0,0,0" Command="{Binding RefreshTenantsCommand}"/>
+            </StackPanel>
+
+            <!-- Tabs -->
+            <TabControl Grid.Row="1">
+                <TabItem Header="Phrases">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
+                            <TextBox Width="380" Margin="0,0,6,0" Text="{Binding NewPhraseText, UpdateSourceTrigger=PropertyChanged}"/>
+                            <CheckBox Content="Case sensitive" IsChecked="{Binding NewPhraseCaseSensitive}" Margin="6,0,6,0"/>
+                            <TextBox Width="120" Margin="0,0,6,0" Text="{Binding NewPhraseLang}"/>
+                            <Button Content="Add" Command="{Binding AddPhraseCommand}"/>
+                        </StackPanel>
+
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding Phrases}" AutoGenerateColumns="False" IsReadOnly="True" SelectedItem="{Binding SelectedPhrase}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="SizeToHeader"/>
+                                <DataGridTextColumn Header="Text" Binding="{Binding Text}" Width="*"/>
+                                <DataGridCheckBoxColumn Header="Case" Binding="{Binding CaseSensitive}" Width="60"/>
+                                <DataGridTextColumn Header="Lang" Binding="{Binding Lang}" Width="60"/>
+                                <DataGridCheckBoxColumn Header="Active" Binding="{Binding Active}" Width="60"/>
+                                <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedAt}" Width="150"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                            <TextBlock Text="Selected Phrase:" VerticalAlignment="Center"/>
+                            <TextBlock Text=" " />
+                            <TextBlock Text="{Binding SelectedPhrase.Text}" VerticalAlignment="Center" Width="400" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+                <TabItem Header="SNOMED CT">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
+                            <TextBox Width="220" Margin="0,0,6,0" Text="{Binding SctSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                            <Button Content="Search" Command="{Binding SearchSctCommand}"/>
+                        </StackPanel>
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding SctResults}" AutoGenerateColumns="False" IsReadOnly="True" SelectedItem="{Binding SelectedSct}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="140"/>
+                                <DataGridTextColumn Header="Term" Binding="{Binding Term}" Width="*"/>
+                                <DataGridTextColumn Header="Module" Binding="{Binding ModuleId}" Width="120"/>
+                                <DataGridTextColumn Header="Effective" Binding="{Binding EffectiveTime}" Width="100"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                            <TextBlock Text="Selected Concept:" VerticalAlignment="Center"/>
+                            <TextBlock Text=" " />
+                            <TextBlock Text="{Binding SelectedSct.Term}" VerticalAlignment="Center" Width="400" TextTrimming="CharacterEllipsis"/>
+                            <Button Content="Map selected phrase to concept" Margin="12,0,0,0" Command="{Binding MapToSctCommand}"/>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </DockPanel>
+</Window>

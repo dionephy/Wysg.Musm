@@ -1,0 +1,104 @@
+<Window x:Class="Wysg.Musm.Radium.Views.SplashLoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Radium" 
+        Width="400" Height="300"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
+    <Border Background="#FF2D2D30" CornerRadius="8" BorderBrush="#FF3F3F46" BorderThickness="1">
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,20,0,30">
+                <TextBlock Text="RADIUM" FontSize="24" FontWeight="Bold" 
+                          Foreground="White" HorizontalAlignment="Center"/>
+                <TextBlock Text="Medical Editor" FontSize="12" 
+                          Foreground="#FFCCCCCC" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+            </StackPanel>
+
+            <!-- Loading/Login Content -->
+            <Grid Grid.Row="1">
+                <!-- Loading Screen -->
+                <StackPanel Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ProgressBar IsIndeterminate="True" Width="200" Height="4"/>
+                    <TextBlock Text="{Binding StatusMessage}" 
+                              Foreground="White" HorizontalAlignment="Center" Margin="0,15,0,0"/>
+                </StackPanel>
+
+                <!-- Login Form -->
+                <StackPanel Visibility="{Binding ShowLogin, Converter={StaticResource BoolToVis}}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center">
+
+                    <TextBlock Text="Login" FontSize="16" FontWeight="Bold" 
+                              Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+
+                    <TextBlock Text="Tenant Code" Foreground="#FFAAAAAA" FontSize="10" 
+                              HorizontalAlignment="Left" Margin="8,0,0,2"/>
+                    <TextBox Text="{Binding TenantCode, UpdateSourceTrigger=PropertyChanged}"
+                            Width="250" Height="30" Margin="0,0,0,10"
+                            Background="#FF3C3C3C" Foreground="White" BorderBrush="#FF555555"
+                            Padding="8,5"/>
+
+                    <TextBlock Text="User Name (Optional)" Foreground="#FFAAAAAA" FontSize="10" 
+                              HorizontalAlignment="Left" Margin="8,0,0,2"/>
+                    <TextBox Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
+                            Width="250" Height="30" Margin="0,0,0,15"
+                            Background="#FF3C3C3C" Foreground="White" BorderBrush="#FF555555"
+                            Padding="8,5"/>
+
+                    <Button Content="Login" Command="{Binding LoginCommand}"
+                           Width="120" Height="35" 
+                           Background="#FF007ACC" Foreground="White" 
+                           BorderThickness="0" FontWeight="Bold">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" 
+                                                   CornerRadius="3">
+                                                <ContentPresenter HorizontalAlignment="Center" 
+                                                                VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#FF005A9E"/>
+                                    </Trigger>
+                                    <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                                        <Setter Property="IsEnabled" Value="False"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <TextBlock Text="{Binding ErrorMessage}" 
+                              Foreground="Red" HorizontalAlignment="Center" 
+                              Margin="0,10,0,0" TextWrapping="Wrap" MaxWidth="250"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Status -->
+            <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" 
+                      Foreground="#FFAAAAAA" FontSize="10" 
+                      HorizontalAlignment="Center" Margin="0,20,0,10"/>
+        </Grid>
+    </Border>
+</Window>
