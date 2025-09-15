@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Npgsql;
 
@@ -16,6 +17,7 @@ namespace Wysg.Musm.EditorDataStudio.Services
         Task<IReadOnlyList<SctConceptDto>> SearchSctAsync(string query, int limit = 50);
         Task<long> EnsurePhraseWithSctAsync(long tenantId, string text, bool caseSensitive, string lang, string rootConceptId, string? expressionCg = null, string? edition = null, string? moduleId = null, System.DateTime? effectiveTime = null, string? tagsJson = null);
         Task MapPhraseToSctAsync(long phraseId, string rootConceptId, string? expressionCg = null, string? edition = null, string? moduleId = null, System.DateTime? effectiveTime = null);
+        Task<PhraseSctMappingDto?> GetPhraseSctAsync(long phraseId);
     }
 
     public sealed class TenantLookup : ITenantLookup
@@ -48,22 +50,17 @@ namespace Wysg.Musm.EditorDataStudio.Services
             return result;
         }
 
-        public Task<IReadOnlyList<SctConceptDto>> SearchSctAsync(string query, int limit = 50) => _db.QueryAsync(
-            @"SELECT c.id, COALESCE(td.term, '') AS term, COALESCE(c.moduleid, '') AS module, COALESCE(c.effectivetime, '') AS effective
-               FROM snomedct.concept_latest c
-               LEFT JOIN LATERAL (
-                   SELECT t.term
-                   FROM snomedct.textdefinition_f t
-                   WHERE t.conceptid = c.id
-                   ORDER BY t.effectivetime DESC
-                   LIMIT 1
-               ) td ON true
-               WHERE c.id LIKE @q || '%' OR td.term ILIKE '%' || @q || '%'
-               ORDER BY c.id
-               LIMIT @limit",
-            new { q = query, limit },
-            rd => new SctConceptDto(rd.GetString(0), rd.GetString(1), rd.GetString(2), rd.GetString(3))
-        ).ContinueWith(t => (IReadOnlyList<SctConceptDto>)t.Result);
+        public async Task<IReadOnlyList<SctConceptDto>> SearchSctAsync(string query, int limit = 50)
+        {
+            // Use server-side function that combines trigram and ILIKE, across all languages, then project label
+            const string sql = @"
+SELECT s.conceptid, COALESCE(s.label_ko_en, '') AS term, COALESCE(c.moduleid,'') AS module, COALESCE(c.effectivetime,'') AS effective
+FROM snomedct.search_labels(@q, NULL, @limit) s
+LEFT JOIN snomedct.concept_latest c ON c.id = s.conceptid
+ORDER BY length(s.label_ko_en) ASC, s.score DESC, s.conceptid ASC";
+            var rows = await _db.QueryAsync(sql, new { q = query, limit }, rd => new SctConceptDto(rd.GetString(0), rd.GetString(1), rd.GetString(2), rd.GetString(3)));
+            return rows;
+        }
 
         public async Task<long> EnsurePhraseWithSctAsync(long tenantId, string text, bool caseSensitive, string lang, string rootConceptId, string? expressionCg = null, string? edition = null, string? moduleId = null, System.DateTime? effectiveTime = null, string? tagsJson = null)
         {
@@ -84,6 +81,47 @@ namespace Wysg.Musm.EditorDataStudio.Services
                                         module_id       = EXCLUDED.module_id,
                                         effective_time  = EXCLUDED.effective_time";
             _ = await _db.ExecuteAsync(sql, new { phraseId, rootConceptId, expressionCg, edition, moduleId, effectiveTime }).ConfigureAwait(false);
+        }
+
+        public async Task<PhraseSctMappingDto?> GetPhraseSctAsync(long phraseId)
+        {
+            const string sqlHead = @"
+SELECT ps.root_concept_id,
+       COALESCE(snomedct.label_ko_en(ps.root_concept_id), '') AS root_term,
+       ps.expression_cg,
+       ps.edition,
+       ps.module_id,
+       to_char(ps.effective_time, 'YYYY-MM-DD') AS effective_time
+FROM content.phrase_sct ps
+WHERE ps.phrase_id = @phraseId";
+
+            var head = await _db.QuerySingleAsync(sqlHead, new { phraseId }, rd => new PhraseSctMappingDto(
+                rd.GetString(0), rd.GetString(1),
+                rd.IsDBNull(2) ? null : rd.GetString(2),
+                rd.IsDBNull(3) ? null : rd.GetString(3),
+                rd.IsDBNull(4) ? null : rd.GetString(4),
+                rd.IsDBNull(5) ? null : rd.GetString(5),
+                new List<PhraseSctRoleDto>()
+            ));
+
+            if (head == null) return null;
+
+            const string sqlRoles = @"
+SELECT a.role_group,
+       a.attribute_id,
+       COALESCE(snomedct.label_ko_en(a.attribute_id), '') AS attribute_term,
+       a.value_concept_id,
+       COALESCE(snomedct.label_ko_en(a.value_concept_id), '') AS value_term
+FROM content.phrase_sct_attribute a
+WHERE a.phrase_id = @phraseId
+ORDER BY a.role_group, a.attribute_id, a.value_concept_id";
+
+            var roles = await _db.QueryAsync(sqlRoles, new { phraseId }, rd => new PhraseSctRoleDto(
+                rd.GetInt32(0), rd.GetString(1), rd.GetString(2), rd.GetString(3), rd.GetString(4)
+            ));
+
+            head.Roles.AddRange(roles);
+            return head;
         }
     }
 }

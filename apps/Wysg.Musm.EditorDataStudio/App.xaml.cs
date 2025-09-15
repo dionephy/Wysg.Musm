@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -11,6 +12,7 @@ namespace Wysg.Musm.EditorDataStudio
     public partial class App : Application
     {
         private IHost _host = null!;
+        public IServiceProvider Services => _host.Services;
 
         protected override async void OnStartup(StartupEventArgs e)
         {
@@ -19,6 +21,7 @@ namespace Wysg.Musm.EditorDataStudio
             _host = Host.CreateDefaultBuilder()
                 .ConfigureServices(services =>
                 {
+                    services.AddSingleton<ILocalSettings, LocalSettings>();
                     services.AddSingleton<IDbConfig, DbConfig>();
                     services.AddSingleton<IDb, PgDb>();
                     services.AddSingleton<ITenantLookup, TenantLookup>();

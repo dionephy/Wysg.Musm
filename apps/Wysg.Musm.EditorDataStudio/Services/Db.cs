@@ -4,10 +4,21 @@ using Npgsql;
 
 namespace Wysg.Musm.EditorDataStudio.Services
 {
-    public interface IDbConfig { string ConnectionString { get; } }
+    public interface IDbConfig { string ConnectionString { get; set; } }
     public sealed class DbConfig : IDbConfig
     {
-        public string ConnectionString { get; } = "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas;Timeout=3;Include Error Detail=true";
+        private readonly ILocalSettings _settings;
+        public DbConfig(ILocalSettings settings)
+        {
+            _settings = settings;
+            ConnectionString = settings.ConnectionString ?? "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas;Timeout=3;Include Error Detail=true";
+        }
+        public string ConnectionString
+        {
+            get => _settings.ConnectionString ?? _connStr;
+            set { _connStr = value; _settings.ConnectionString = value; }
+        }
+        private string _connStr = string.Empty;
     }
 
     public interface IDb
@@ -19,13 +30,13 @@ namespace Wysg.Musm.EditorDataStudio.Services
 
     public sealed class PgDb : IDb
     {
-        private readonly string _cs;
-        public PgDb(IDbConfig cfg) { _cs = cfg.ConnectionString; }
+        private readonly IDbConfig _cfg;
+        public PgDb(IDbConfig cfg) { _cfg = cfg; }
 
         public async Task<List<T>> QueryAsync<T>(string sql, object? args = null, System.Func<NpgsqlDataReader, T>? map = null)
         {
             var list = new List<T>();
-            await using var con = new NpgsqlConnection(_cs);
+            await using var con = new NpgsqlConnection(_cfg.ConnectionString);
             await con.OpenAsync().ConfigureAwait(false);
             await using var cmd = new NpgsqlCommand(sql, con);
             AddParams(cmd, args);
@@ -37,7 +48,7 @@ namespace Wysg.Musm.EditorDataStudio.Services
 
         public async Task<T?> QuerySingleAsync<T>(string sql, object? args = null, System.Func<NpgsqlDataReader, T>? map = null)
         {
-            await using var con = new NpgsqlConnection(_cs);
+            await using var con = new NpgsqlConnection(_cfg.ConnectionString);
             await con.OpenAsync().ConfigureAwait(false);
             await using var cmd = new NpgsqlCommand(sql, con);
             AddParams(cmd, args);
@@ -49,7 +60,7 @@ namespace Wysg.Musm.EditorDataStudio.Services
 
         public async Task<int> ExecuteAsync(string sql, object? args = null)
         {
-            await using var con = new NpgsqlConnection(_cs);
+            await using var con = new NpgsqlConnection(_cfg.ConnectionString);
             await con.OpenAsync().ConfigureAwait(false);
             await using var cmd = new NpgsqlCommand(sql, con);
             AddParams(cmd, args);

@@ -1,88 +1,164 @@
 <Window x:Class="Wysg.Musm.EditorDataStudio.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Editor Data Studio" Height="700" Width="1100" WindowStartupLocation="CenterScreen">
+        Title="Editor Data Studio" Height="780" Width="1200" WindowStartupLocation="CenterScreen">
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="File">
                 <MenuItem Header="Exit" Command="ApplicationCommands.Close" />
             </MenuItem>
         </Menu>
-        <Grid Margin="8">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+            <Grid Margin="12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-            <!-- Tenant selector -->
-            <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
-                <TextBlock Text="Tenant:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                <ComboBox Width="240" ItemsSource="{Binding Tenants}" SelectedItem="{Binding SelectedTenant}" DisplayMemberPath="Name"/>
-                <Button Content="Refresh" Margin="6,0,0,0" Command="{Binding RefreshTenantsCommand}"/>
-            </StackPanel>
+                <!-- Settings button -->
+                <Button Grid.Row="0" Grid.Column="0" Content="?" Width="28" Height="28" Margin="0,0,8,12" ToolTip="Settings" Click="OnOpenSettings"/>
 
-            <!-- Tabs -->
-            <TabControl Grid.Row="1">
-                <TabItem Header="Phrases">
-                    <Grid>
+                <!-- Tenant selector -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,12">
+                    <TextBlock Text="Tenant:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox Width="260" ItemsSource="{Binding Tenants}" SelectedItem="{Binding SelectedTenant}" DisplayMemberPath="Name"/>
+                    <Button Content="Refresh" Margin="8,0,0,0" Command="{Binding RefreshTenantsCommand}"/>
+                </StackPanel>
+
+                <!-- Phrase + SNOMED mapping inputs -->
+                <GroupBox Grid.Row="1" Grid.ColumnSpan="2" Header="Add phrase (mapped to SNOMED CT)">
+                    <Grid Margin="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*" MinWidth="460"/>
+                        </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
-                            <TextBox Width="380" Margin="0,0,6,0" Text="{Binding NewPhraseText, UpdateSourceTrigger=PropertyChanged}"/>
-                            <CheckBox Content="Case sensitive" IsChecked="{Binding NewPhraseCaseSensitive}" Margin="6,0,6,0"/>
-                            <TextBox Width="120" Margin="0,0,6,0" Text="{Binding NewPhraseLang}"/>
-                            <Button Content="Add" Command="{Binding AddPhraseCommand}"/>
-                        </StackPanel>
 
-                        <DataGrid Grid.Row="1" ItemsSource="{Binding Phrases}" AutoGenerateColumns="False" IsReadOnly="True" SelectedItem="{Binding SelectedPhrase}">
+                        <!-- Phrase fields -->
+                        <WrapPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,8" ItemHeight="28">
+                            <TextBlock Text="Text:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBox MinWidth="380" Width="Auto" MaxWidth="680" Text="{Binding NewPhraseText, UpdateSourceTrigger=PropertyChanged}"/>
+                            <CheckBox Content="Case" IsChecked="{Binding NewPhraseCaseSensitive}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Lang:" VerticalAlignment="Center" Margin="12,0,6,0"/>
+                            <TextBox Width="60" Text="{Binding NewPhraseLang}"/>
+                        </WrapPanel>
+
+                        <!-- Tag list UI -->
+                        <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,8">
+                            <TextBlock Text="Tag:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBox Width="220" Text="{Binding NewTagText, UpdateSourceTrigger=PropertyChanged}"/>
+                            <Button Content="Add tag" Margin="6,0,0,0" Command="{Binding AddTagCommand}"/>
+                            <Button Content="Remove selected" Margin="6,0,0,0" Command="{Binding RemoveSelectedTagCommand}"/>
+                        </StackPanel>
+                        <ListBox Grid.Row="2" Grid.Column="0" ItemsSource="{Binding NewTags}" SelectedItem="{Binding SelectedTag}" Height="100"/>
+
+                        <!-- SNOMED mapping fields -->
+                        <WrapPanel Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0" ItemHeight="28">
+                            <TextBlock Text="Root Concept Id:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBox Width="160" Text="{Binding RootConceptId, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="ExprCG:" VerticalAlignment="Center" Margin="12,0,6,0"/>
+                            <TextBox MinWidth="200" Width="Auto" MaxWidth="420" Text="{Binding ExpressionCg}"/>
+                            <TextBlock Text="Edition:" VerticalAlignment="Center" Margin="12,0,6,0"/>
+                            <TextBox Width="160" Text="{Binding Edition}"/>
+                            <TextBlock Text="Module:" VerticalAlignment="Center" Margin="12,0,6,0"/>
+                            <TextBox Width="160" Text="{Binding ModuleId}"/>
+                            <TextBlock Text="Effective:" VerticalAlignment="Center" Margin="12,0,6,0"/>
+                            <DatePicker Width="180" SelectedDate="{Binding EffectiveTime}"/>
+                        </WrapPanel>
+
+                        <!-- Divider -->
+                        <Separator Grid.RowSpan="4" Grid.Column="1" Margin="12,0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Width="1"/>
+
+                        <!-- SNOMED search on right -->
+                        <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBox Width="320" Margin="0,0,6,0" Text="{Binding SctSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                            <Button Content="Search SNOMED" Command="{Binding SearchSctCommand}"/>
+                        </StackPanel>
+                        <DataGrid Grid.Row="1" Grid.Column="2" Grid.RowSpan="3" ItemsSource="{Binding SctResults}" AutoGenerateColumns="False" IsReadOnly="True" SelectedItem="{Binding SelectedSct}" Height="260" ColumnWidth="Auto">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="SizeToHeader"/>
-                                <DataGridTextColumn Header="Text" Binding="{Binding Text}" Width="*"/>
-                                <DataGridCheckBoxColumn Header="Case" Binding="{Binding CaseSensitive}" Width="60"/>
-                                <DataGridTextColumn Header="Lang" Binding="{Binding Lang}" Width="60"/>
-                                <DataGridCheckBoxColumn Header="Active" Binding="{Binding Active}" Width="60"/>
-                                <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedAt}" Width="150"/>
+                                <DataGridTextColumn Header="Id" Binding="{Binding Id}" />
+                                <DataGridTextColumn Header="Term" Binding="{Binding Term}" />
+                                <DataGridTextColumn Header="Module" Binding="{Binding ModuleId}" />
+                                <DataGridTextColumn Header="Effective" Binding="{Binding EffectiveTime}" />
                             </DataGrid.Columns>
                         </DataGrid>
-
-                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
-                            <TextBlock Text="Selected Phrase:" VerticalAlignment="Center"/>
-                            <TextBlock Text=" " />
-                            <TextBlock Text="{Binding SelectedPhrase.Text}" VerticalAlignment="Center" Width="400" TextTrimming="CharacterEllipsis"/>
-                        </StackPanel>
                     </Grid>
-                </TabItem>
-                <TabItem Header="SNOMED CT">
-                    <Grid>
+                </GroupBox>
+
+                <!-- Phrases grid -->
+                <GroupBox Grid.Row="2" Grid.ColumnSpan="2" Header="Phrases" Margin="0,8,0,0">
+                    <DataGrid ItemsSource="{Binding Phrases}" AutoGenerateColumns="False" IsReadOnly="True" SelectedItem="{Binding SelectedPhrase}" Margin="8" MinHeight="220" ColumnWidth="Auto">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="Auto" />
+                            <DataGridTextColumn Header="Text" Binding="{Binding Text}"/>
+                            <DataGridCheckBoxColumn Header="Case" Binding="{Binding CaseSensitive}" />
+                            <DataGridTextColumn Header="Lang" Binding="{Binding Lang}" />
+                            <DataGridCheckBoxColumn Header="Active" Binding="{Binding Active}" />
+                            <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedAt}" Width="Auto"  />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </GroupBox>
+
+                <!-- SNOMED structure for selected phrase -->
+                <GroupBox Grid.Row="3" Grid.ColumnSpan="2" Header="SNOMED mapping for selected phrase" Margin="0,12,0,0">
+                    <Grid Margin="8">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
-                            <TextBox Width="220" Margin="0,0,6,0" Text="{Binding SctSearchText, UpdateSourceTrigger=PropertyChanged}"/>
-                            <Button Content="Search" Command="{Binding SearchSctCommand}"/>
-                        </StackPanel>
-                        <DataGrid Grid.Row="1" ItemsSource="{Binding SctResults}" AutoGenerateColumns="False" IsReadOnly="True" SelectedItem="{Binding SelectedSct}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Root:" FontWeight="Bold" Margin="0,0,6,0"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedPhraseSct.RootConceptId}"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Label:" FontWeight="Bold" Margin="0,6,6,0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedPhraseSct.RootTerm}" Margin="0,6,0,0"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="ExprCG:" FontWeight="Bold" Margin="0,6,6,0"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedPhraseSct.ExpressionCg}" Margin="0,6,0,0"/>
+
+                        <DataGrid Grid.Row="3" Grid.ColumnSpan="2" ItemsSource="{Binding SelectedPhraseSct.Roles}" AutoGenerateColumns="False" IsReadOnly="True" Margin="0,8,0,0" MinHeight="120" ColumnWidth="Auto">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="140"/>
-                                <DataGridTextColumn Header="Term" Binding="{Binding Term}" Width="*"/>
-                                <DataGridTextColumn Header="Module" Binding="{Binding ModuleId}" Width="120"/>
-                                <DataGridTextColumn Header="Effective" Binding="{Binding EffectiveTime}" Width="100"/>
+                                <DataGridTextColumn Header="Group" Binding="{Binding RoleGroup}" />
+                                <DataGridTextColumn Header="Attribute (Id)" Binding="{Binding AttributeId}" />
+                                <DataGridTextColumn Header="Attribute" Binding="{Binding AttributeTerm}" />
+                                <DataGridTextColumn Header="Value (Id)" Binding="{Binding ValueConceptId}" />
+                                <DataGridTextColumn Header="Value" Binding="{Binding ValueTerm}" />
                             </DataGrid.Columns>
                         </DataGrid>
-                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
-                            <TextBlock Text="Selected Concept:" VerticalAlignment="Center"/>
-                            <TextBlock Text=" " />
-                            <TextBlock Text="{Binding SelectedSct.Term}" VerticalAlignment="Center" Width="400" TextTrimming="CharacterEllipsis"/>
-                            <Button Content="Map selected phrase to concept" Margin="12,0,0,0" Command="{Binding MapToSctCommand}"/>
-                        </StackPanel>
                     </Grid>
-                </TabItem>
-            </TabControl>
-        </Grid>
+                </GroupBox>
+
+                <!-- Map selected phrase -->
+                <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,12,0,0">
+                    <TextBlock Text="Selected Phrase:" VerticalAlignment="Center"/>
+                    <TextBlock Text=" " />
+                    <TextBlock Text="{Binding SelectedPhrase.Text}" VerticalAlignment="Center" Width="500" TextTrimming="CharacterEllipsis"/>
+                    <Button Content="Map selected phrase to selected concept" Margin="12,0,0,0" Command="{Binding MapToSctCommand}"/>
+                </StackPanel>
+
+                <!-- Spacer -->
+                <Border Grid.Row="5" Grid.ColumnSpan="2" Height="8"/>
+            </Grid>
+        </ScrollViewer>
     </DockPanel>
 </Window>
