@@ -13,11 +13,12 @@ namespace Wysg.Musm.EditorDataStudio.Views
 
         private void OnOpenSettings(object sender, RoutedEventArgs e)
         {
-            // Resolve IDbConfig from DI to bind into settings window
+            // Resolve config and local settings from DI to bind into settings window
             if (Application.Current is App app)
             {
                 var cfg = app.Services.GetRequiredService<IDbConfig>();
-                var win = new SettingsWindow(cfg) { Owner = this };
+                var local = app.Services.GetRequiredService<ILocalSettings>();
+                var win = new SettingsWindow(cfg, local) { Owner = this };
                 _ = win.ShowDialog();
             }
         }

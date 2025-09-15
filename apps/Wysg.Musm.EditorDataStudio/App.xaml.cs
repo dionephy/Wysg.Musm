@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -34,9 +35,31 @@ namespace Wysg.Musm.EditorDataStudio
 
             await _host.StartAsync();
 
+            var settings = _host.Services.GetRequiredService<ILocalSettings>();
+            ApplyTheme(settings.UseDarkTheme);
+
             var vm = _host.Services.GetRequiredService<MainViewModel>();
             var win = new MainWindow { DataContext = vm };
             win.Show();
+        }
+
+        public void ApplyTheme(bool useDark)
+        {
+            // remove any previously applied theme dictionary from our Themes folder
+            for (int i = Resources.MergedDictionaries.Count - 1; i >= 0; i--)
+            {
+                var md = Resources.MergedDictionaries[i];
+                var src = md.Source?.OriginalString ?? string.Empty;
+                if (src.Contains("/Themes/") && (src.EndsWith("Light.xaml") || src.EndsWith("Dark.xaml")))
+                    Resources.MergedDictionaries.RemoveAt(i);
+            }
+
+            var themeName = useDark ? "Dark" : "Light";
+            var dict = new ResourceDictionary
+            {
+                Source = new Uri($"pack://application:,,,/Wysg.Musm.EditorDataStudio;component/Themes/{themeName}.xaml", UriKind.Absolute)
+            };
+            Resources.MergedDictionaries.Add(dict);
         }
 
         protected override async void OnExit(ExitEventArgs e)

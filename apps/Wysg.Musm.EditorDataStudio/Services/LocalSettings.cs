@@ -8,6 +8,7 @@ namespace Wysg.Musm.EditorDataStudio.Services
     {
         string? LastEdition { get; set; }
         string? ConnectionString { get; set; }
+        bool UseDarkTheme { get; set; }
     }
 
     internal sealed class LocalSettings : ILocalSettings
@@ -19,6 +20,7 @@ namespace Wysg.Musm.EditorDataStudio.Services
         {
             public string? LastEdition { get; set; }
             public string? ConnectionString { get; set; }
+            public bool UseDarkTheme { get; set; }
         }
 
         public LocalSettings()
@@ -39,6 +41,12 @@ namespace Wysg.Musm.EditorDataStudio.Services
         {
             get => _data.ConnectionString;
             set { _data.ConnectionString = value; Save(); }
+        }
+
+        public bool UseDarkTheme
+        {
+            get => _data.UseDarkTheme;
+            set { _data.UseDarkTheme = value; Save(); }
         }
 
         private SettingsData Load()
