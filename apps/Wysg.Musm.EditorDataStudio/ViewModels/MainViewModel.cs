@@ -80,10 +80,17 @@ namespace Wysg.Musm.EditorDataStudio.ViewModels
 
         private async Task LoadTenantsAsync()
         {
-            var list = await _tenants.GetAllAsync();
-            Tenants = new ObservableCollection<TenantDto>(list);
-            if (SelectedTenant == null && Tenants.Count > 0) SelectedTenant = Tenants[0];
-            await LoadPhrasesAsync();
+            try
+            {
+                var list = await _tenants.GetAllAsync();
+                Tenants = new ObservableCollection<TenantDto>(list);
+                if (SelectedTenant == null && Tenants.Count > 0) SelectedTenant = Tenants[0];
+                await LoadPhrasesAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Failed to load tenants.\n{ex.Message}", "Database Connection Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
         }
 
         private async Task LoadPhrasesAsync()
@@ -131,10 +138,8 @@ namespace Wysg.Musm.EditorDataStudio.ViewModels
 
         partial void OnSelectedSctChanged(SctConceptDto? value)
         {
-            if (value != null)
-            {
-                RootConceptId = value.Id;
-            }
+            // Do not auto-set RootConceptId on selection changes.
+            // RootConceptId should be set only via explicit right-click in the results grid.
             MapToSctCommand.NotifyCanExecuteChanged();
             AddPhraseCommand.NotifyCanExecuteChanged();
         }

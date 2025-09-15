@@ -64,14 +64,19 @@
                             <Button Content="Add tag" Margin="6,0,0,0" Command="{Binding AddTagCommand}"/>
                             <Button Content="Remove selected" Margin="6,0,0,0" Command="{Binding RemoveSelectedTagCommand}"/>
                         </StackPanel>
-                        <ListBox Grid.Row="2" Grid.Column="0" ItemsSource="{Binding NewTags}" SelectedItem="{Binding SelectedTag}" Height="100"/>
+                        <!-- Move tag listbox to the right of the Remove button -->
+                        <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding NewTags}" SelectedItem="{Binding SelectedTag}" Height="100" Width="260" Margin="8,0,0,0"/>
 
-                        <!-- SNOMED mapping fields -->
+                        <!-- ExpCG moved to where tag ListBox used to be, bigger area -->
+                        <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Vertical" Margin="0,0,12,8">
+                            <TextBlock Text="ExprCG:" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding ExpressionCg}" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Height="100" MinWidth="380" Width="Auto" MaxWidth="680"/>
+                        </StackPanel>
+
+                        <!-- SNOMED mapping fields (without ExprCG here now) -->
                         <WrapPanel Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0" ItemHeight="28">
                             <TextBlock Text="Root Concept Id:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <TextBox Width="160" Text="{Binding RootConceptId, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock Text="ExprCG:" VerticalAlignment="Center" Margin="12,0,6,0"/>
-                            <TextBox MinWidth="200" Width="Auto" MaxWidth="420" Text="{Binding ExpressionCg}"/>
                             <TextBlock Text="Edition:" VerticalAlignment="Center" Margin="12,0,6,0"/>
                             <TextBox Width="160" Text="{Binding Edition}"/>
                             <TextBlock Text="Module:" VerticalAlignment="Center" Margin="12,0,6,0"/>
@@ -85,10 +90,11 @@
 
                         <!-- SNOMED search on right -->
                         <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="0,0,0,8">
-                            <TextBox Width="320" Margin="0,0,6,0" Text="{Binding SctSearchText, UpdateSourceTrigger=PropertyChanged}"/>
-                            <Button Content="Search SNOMED" Command="{Binding SearchSctCommand}"/>
+                            <TextBox x:Name="SctSearchTextBox" Width="320" Margin="0,0,6,0" Text="{Binding SctSearchText, UpdateSourceTrigger=PropertyChanged}" KeyDown="SctSearchTextBox_KeyDown"/>
+                            <Button x:Name="SearchSctButton" Content="Search SNOMED" Command="{Binding SearchSctCommand}"/>
                         </StackPanel>
-                        <DataGrid Grid.Row="1" Grid.Column="2" Grid.RowSpan="3" ItemsSource="{Binding SctResults}" AutoGenerateColumns="False" IsReadOnly="True" SelectedItem="{Binding SelectedSct}" Height="260" ColumnWidth="Auto">
+                        <DataGrid Grid.Row="1" Grid.Column="2" Grid.RowSpan="3" ItemsSource="{Binding SctResults}" AutoGenerateColumns="False" IsReadOnly="True" SelectedItem="{Binding SelectedSct}" Height="260" ColumnWidth="Auto"
+                                  MouseDoubleClick="OnSctResultsMouseDoubleClick" MouseRightButtonUp="OnSctResultsMouseRightButtonUp">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Id" Binding="{Binding Id}" />
                                 <DataGridTextColumn Header="Term" Binding="{Binding Term}" />

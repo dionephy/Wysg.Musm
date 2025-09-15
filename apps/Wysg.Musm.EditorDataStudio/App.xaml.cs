@@ -38,7 +38,17 @@ namespace Wysg.Musm.EditorDataStudio
             var settings = _host.Services.GetRequiredService<ILocalSettings>();
             ApplyTheme(settings.UseDarkTheme);
 
-            var vm = _host.Services.GetRequiredService<MainViewModel>();
+            MainViewModel vm;
+            try
+            {
+                vm = _host.Services.GetRequiredService<MainViewModel>();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to initialize MainViewModel.\n{ex.Message}", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown();
+                return;
+            }
             var win = new MainWindow { DataContext = vm };
             win.Show();
         }

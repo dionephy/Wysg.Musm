@@ -24,10 +24,15 @@ namespace Wysg.Musm.EditorDataStudio.Services
     {
         private readonly IDb _db;
         public TenantLookup(IDb db) { _db = db; }
-        public Task<IReadOnlyList<TenantDto>> GetAllAsync() => _db.QueryAsync(
-            @"SELECT id, code, name FROM app.tenant ORDER BY name",
-            map: rd => new TenantDto(rd.GetInt64(0), rd.GetString(1), rd.GetString(2))
-        ).ContinueWith(t => (IReadOnlyList<TenantDto>)t.Result);
+
+        public async Task<IReadOnlyList<TenantDto>> GetAllAsync()
+        {
+            var result = await _db.QueryAsync(
+                @"SELECT id, code, name FROM app.tenant ORDER BY name",
+                map: rd => new TenantDto(rd.GetInt64(0), rd.GetString(1), rd.GetString(2))
+            );
+            return result;
+        }
     }
 
     public sealed class PhraseWriter : IPhraseWriter
