@@ -23,5 +23,11 @@ namespace Wysg.Musm.Radium.Views
         {
             // Optional: invoke a command on VM that triggers ghost fetch
         }
+
+        private void OnOpenSettings(object sender, RoutedEventArgs e)
+        {
+            var win = new SettingsWindow { Owner = this };
+            win.ShowDialog();
+        }
     }
 }

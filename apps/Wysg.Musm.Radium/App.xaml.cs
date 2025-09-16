@@ -30,6 +30,10 @@ namespace Wysg.Musm.Radium
         protected override async void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            // Ensure app does not auto-shutdown if a dialog (e.g., Settings) is opened/closed during startup
+            Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
             await _host.StartAsync();
 
             // resolve dev tenant once (robust against varying ids)
@@ -57,15 +61,15 @@ namespace Wysg.Musm.Radium
             services.AddSingleton<IPhraseService, PhraseService>();
             services.AddSingleton<ITenantContext, TenantContext>();
             services.AddSingleton<IPhraseCache, PhraseCache>();
+            services.AddSingleton<IRadiumLocalSettings, RadiumLocalSettings>();
+            services.AddSingleton<MfcPacsService>();
             services.AddTransient<SplashLoginViewModel>();
             services.AddTransient<MainViewModel>();
         }
 
         private async Task ShowSplashLoginAsync()
         {
-            var oldMode = Current.ShutdownMode;
-            Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-
+            // At this point ShutdownMode is OnExplicitShutdown from OnStartup; keep it until MainWindow is shown
             var tenantService = _host.Services.GetRequiredService<ITenantService>();
             var splashLoginVM = new SplashLoginViewModel(tenantService);
             var splashLoginWindow = new SplashLoginWindow { DataContext = splashLoginVM };
@@ -85,7 +89,9 @@ namespace Wysg.Musm.Radium
                 var mainWindow = new MainWindow { DataContext = mainVM };
                 Current.MainWindow = mainWindow;
                 mainWindow.Show();
-                Current.ShutdownMode = oldMode;
+
+                // Restore to normal shutdown behavior now that MainWindow is available
+                Current.ShutdownMode = ShutdownMode.OnLastWindowClose;
             }
             else
             {

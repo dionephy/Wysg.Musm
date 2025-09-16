@@ -416,3 +416,4 @@ node_modules/
 # ----- Misc -----
 /packages/           # legacy NuGet
 *.sln.iml
+legacy/

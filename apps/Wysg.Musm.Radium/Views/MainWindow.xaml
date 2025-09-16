@@ -10,6 +10,7 @@
         <!-- Menu/Toolbar area -->
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="6">
             <Button Content="Force Ghost" Click="OnForceGhost" Margin="0,0,8,0"/>
+            <Button Content="Settings" Click="OnOpenSettings" Margin="0,0,8,0"/>
             <TextBlock Text="Ready" VerticalAlignment="Center"/>
         </StackPanel>
 

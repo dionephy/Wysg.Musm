@@ -16,6 +16,7 @@ namespace Wysg.Musm.Editor.Controls;
 public class MusmEditor : TextEditor
 {
     private bool _suppressTextSync;
+    private bool _suppressSelectedTextMirror; // prevent feedback when mirroring selection → DP
 
     public MusmEditor()
     {
@@ -49,9 +50,18 @@ public class MusmEditor : TextEditor
         var offset = sel.SurroundingSegment?.Offset ?? base.SelectionStart;
         var length = sel.SurroundingSegment?.Length ?? base.SelectionLength;
 
-        SetCurrentValue(SelectionStartBindableProperty, offset);
-        SetCurrentValue(SelectionLengthBindableProperty, length);
-        SetCurrentValue(SelectedTextBindableProperty, sel.IsEmpty ? string.Empty : sel.GetText());
+        // Suppress SelectedTextBindable change handler while we mirror current selection
+        _suppressSelectedTextMirror = true;
+        try
+        {
+            SetCurrentValue(SelectionStartBindableProperty, offset);
+            SetCurrentValue(SelectionLengthBindableProperty, length);
+            SetCurrentValue(SelectedTextBindableProperty, sel.IsEmpty ? string.Empty : sel.GetText());
+        }
+        finally
+        {
+            _suppressSelectedTextMirror = false;
+        }
     }
 
     // ========== DocumentText (bindable) ==========
@@ -152,6 +162,9 @@ public class MusmEditor : TextEditor
     {
         if (d is not MusmEditor ed || ed.TextArea?.Document is null) return;
 
+        // Skip when change is coming from view → DP mirror update
+        if (ed._suppressSelectedTextMirror) return;
+
         // 1) If snippet/editor is mutating, skip mirror for now.
         if (EditorMutationShield.IsActive(ed.TextArea)) return;
 
@@ -178,7 +191,8 @@ public class MusmEditor : TextEditor
                 int newEnd = Math.Min(sel.Offset + newText.Length, ddoc.TextLength);
                 using (EditorMutationShield.Begin(ed.TextArea))
                 {
-                    ed.TextArea.Selection = Selection.Create(ed.TextArea, sel.Offset, newEnd);
+                    // Collapse selection after replacement so next key doesn't delete the text
+                    ed.TextArea.Selection = Selection.Create(ed.TextArea, newEnd, newEnd);
                     ed.TextArea.Caret.Offset = newEnd;
                 }
             }), DispatcherPriority.Background);

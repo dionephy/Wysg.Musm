@@ -59,6 +59,7 @@ namespace Wysg.Musm.Editor.Controls
             DependencyProperty.Register(nameof(PatientAge), typeof(int), typeof(EditorControl), new PropertyMetadata(60));
         public static readonly DependencyProperty StudyHeaderProperty =
             DependencyProperty.Register(nameof(StudyHeader), typeof(string), typeof(EditorControl), new PropertyMetadata(""));
+
         public static readonly DependencyProperty StudyInfoProperty =
             DependencyProperty.Register(nameof(StudyInfo), typeof(string), typeof(EditorControl), new PropertyMetadata(""));
 
@@ -124,7 +125,8 @@ namespace Wysg.Musm.Editor.Controls
             // ── 3) Core hooks (popup + focus/scroll awareness)
             Editor.TextArea.TextEntered += OnTextEntered;                 // Popup partial
             Editor.TextArea.TextEntering += OnTextEntering;               // Popup partial
-            Editor.TextArea.PreviewKeyDown += OnTextAreaPreviewKeyDown;   // Popup partial
+            // Use AddHandler to receive PreviewKeyDown even if already handled by other listeners
+            Editor.TextArea.AddHandler(UIElement.PreviewKeyDownEvent, new System.Windows.Input.KeyEventHandler(OnTextAreaPreviewKeyDown), true);
             try { Editor.TextArea.SelectionChanged += OnSelectionChanged; } catch { }
             Editor.TextArea.TextView.ScrollOffsetChanged += OnScrollOffsetChanged;
             Editor.GotKeyboardFocus += OnFocusChanged;
@@ -268,7 +270,8 @@ namespace Wysg.Musm.Editor.Controls
 
             Editor.TextArea.TextEntered -= OnTextEntered;
             Editor.TextArea.TextEntering -= OnTextEntering;
-            Editor.TextArea.PreviewKeyDown -= OnTextAreaPreviewKeyDown;
+            // remove handler added with AddHandler
+            Editor.TextArea.RemoveHandler(UIElement.PreviewKeyDownEvent, new System.Windows.Input.KeyEventHandler(OnTextAreaPreviewKeyDown));
             try { Editor.TextArea.SelectionChanged -= OnSelectionChanged; } catch { }
             Editor.TextArea.TextView.ScrollOffsetChanged -= OnScrollOffsetChanged;
             Editor.GotKeyboardFocus -= OnFocusChanged;

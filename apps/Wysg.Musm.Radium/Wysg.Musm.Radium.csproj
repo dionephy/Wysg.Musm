@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Wysg.Musm.Infrastructure\Wysg.Musm.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Wysg.Musm.Editor\Wysg.Musm.Editor.csproj" />
+    <ProjectReference Include="..\..\src\Wysg.Musm.MFCUIA\Wysg.Musm.MFCUIA.csproj" />
   </ItemGroup>
 
 </Project>
