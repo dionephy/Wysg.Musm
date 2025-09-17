@@ -18,6 +18,8 @@
 
     <Grid>
         <ed:MusmEditor x:Name="Editor"
-                   DocumentText="{Binding ElementName=Root, Path=DocumentText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                   DocumentText="{Binding ElementName=Root, Path=DocumentText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                   HorizontalScrollBarVisibility="{Binding ElementName=Root, Path=HorizontalScrollBarVisibility}"
+                   VerticalScrollBarVisibility="{Binding ElementName=Root, Path=VerticalScrollBarVisibility}" />
     </Grid>
 </UserControl>

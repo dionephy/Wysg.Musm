@@ -121,9 +121,9 @@
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="4"/>
                 <editor:EditorControl x:Name="EditorHeader" Grid.Row="2" MinHeight="70"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorFindings" Grid.Row="4" />
+                <editor:EditorControl x:Name="EditorFindings" Grid.Row="4" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"/>
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorConclusion" Grid.Row="6" />
+                <editor:EditorControl x:Name="EditorConclusion" Grid.Row="6" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"/>
             </Grid>
 
             <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Width="4" Background="#2D2D30"/>
@@ -145,11 +145,11 @@
                     <Button Content="+" Width="28" Margin="8,0,0,0"/>
                 </DockPanel>
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70"/>
+                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorSuggestion" Grid.Row="4" />
+                <editor:EditorControl x:Name="EditorSuggestion" Grid.Row="4" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"/>
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="6" />
+                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="6" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"/>
             </Grid>
         </Grid>
 

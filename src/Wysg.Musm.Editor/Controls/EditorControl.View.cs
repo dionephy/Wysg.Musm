@@ -38,10 +38,35 @@ namespace Wysg.Musm.Editor.Controls
     DependencyProperty.Register(nameof(GhostIdleMs), typeof(int), typeof(EditorControl),
         new PropertyMetadata(2000, OnGhostIdleMsChanged));
 
+        public static readonly DependencyProperty HorizontalScrollBarVisibilityProperty =
+            DependencyProperty.Register(
+                nameof(HorizontalScrollBarVisibility),
+                typeof(System.Windows.Controls.ScrollBarVisibility),
+                typeof(EditorControl),
+                new PropertyMetadata(System.Windows.Controls.ScrollBarVisibility.Disabled));
+
+        public static readonly DependencyProperty VerticalScrollBarVisibilityProperty =
+            DependencyProperty.Register(
+                nameof(VerticalScrollBarVisibility),
+                typeof(System.Windows.Controls.ScrollBarVisibility),
+                typeof(EditorControl),
+                new PropertyMetadata(System.Windows.Controls.ScrollBarVisibility.Auto));
+
         public int GhostIdleMs
         {
             get => (int)GetValue(GhostIdleMsProperty);
             set => SetValue(GhostIdleMsProperty, value);
+        }
+
+        public System.Windows.Controls.ScrollBarVisibility HorizontalScrollBarVisibility
+        {
+            get => (System.Windows.Controls.ScrollBarVisibility)GetValue(HorizontalScrollBarVisibilityProperty);
+            set => SetValue(HorizontalScrollBarVisibilityProperty, value);
+        }
+        public System.Windows.Controls.ScrollBarVisibility VerticalScrollBarVisibility
+        {
+            get => (System.Windows.Controls.ScrollBarVisibility)GetValue(VerticalScrollBarVisibilityProperty);
+            set => SetValue(VerticalScrollBarVisibilityProperty, value);
         }
 
         private static void OnGhostIdleMsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
