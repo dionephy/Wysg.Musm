@@ -1,7 +1,24 @@
 using Wysg.Musm.MFCUIA.Abstractions;
-using Wysg.Musm.MFCUIA.Core.Win32;
+using System;
 
 namespace Wysg.Musm.MFCUIA.Core.Commands;
+
+// Minimal Win32 interop required (previous reference to missing Core.Win32 namespace)
+internal static class User32
+{
+    public const int GA_ROOT = 2;
+    public const int WM_COMMAND = 0x0111;
+    public const int BM_CLICK = 0x00F5;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr GetAncestor(IntPtr hwnd, int flags);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    public static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+}
 
 public sealed class CommandInvoker : ICommandInvoker
 {

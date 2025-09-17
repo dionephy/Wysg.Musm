@@ -1,17 +1,30 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using Wysg.Musm.MFCUIA.Abstractions;
-using Wysg.Musm.MFCUIA.Core.Win32;
 
 namespace Wysg.Musm.MFCUIA.Core.Discovery;
+
+internal static class User32Discovery
+{
+    [DllImport("user32.dll", SetLastError = true)] public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+    internal delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+    [DllImport("user32.dll", SetLastError = true)] public static extern bool EnumChildWindows(IntPtr hWndParent, EnumWindowsProc lpEnumFunc, IntPtr lParam);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+    [DllImport("user32.dll", SetLastError = true)] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+}
 
 public sealed class HwndLocator
 {
     public IntPtr[] EnumTopLevelWindows()
     {
         var list = new List<IntPtr>();
-        EnumWindows((h, p) => { list.Add(h); return true; }, IntPtr.Zero);
+        User32Discovery.EnumWindows((h, p) => { list.Add(h); return true; }, IntPtr.Zero);
         return list.ToArray();
     }
 
@@ -28,7 +41,7 @@ public sealed class HwndLocator
     public IntPtr FindChild(IntPtr parent, ISelector sel)
     {
         IntPtr match = IntPtr.Zero;
-        EnumChildWindows(parent, (h, p) =>
+        User32Discovery.EnumChildWindows(parent, (h, p) =>
         {
             if (sel.Matches(h, Snapshot(h))) { match = h; return false; }
             return true;
@@ -39,7 +52,7 @@ public sealed class HwndLocator
     public IntPtr FindAnyDescendant(IntPtr parent, ISelector sel)
     {
         IntPtr match = IntPtr.Zero;
-        EnumChildWindows(parent, (h, p) =>
+        User32Discovery.EnumChildWindows(parent, (h, p) =>
         {
             if (sel.Matches(h, Snapshot(h))) { match = h; return false; }
             // recurse
@@ -53,19 +66,12 @@ public sealed class HwndLocator
     public static WindowSnapshot Snapshot(IntPtr hwnd)
     {
         var cls = new StringBuilder(256);
-        _ = User32.GetClassName(hwnd, cls, cls.Capacity);
+        _ = User32Discovery.GetClassName(hwnd, cls, cls.Capacity);
         var title = new StringBuilder(512);
-        _ = User32.GetWindowText(hwnd, title, title.Capacity);
-        _ = User32.GetWindowRect(hwnd, out var r);
+        _ = User32Discovery.GetWindowText(hwnd, title, title.Capacity);
+        _ = User32Discovery.GetWindowRect(hwnd, out var r);
         return new WindowSnapshot(cls.ToString(), title.ToString(), new System.Drawing.Rectangle(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top));
     }
-
-    [DllImport("user32.dll")]
-    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-    internal delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-    [DllImport("user32.dll")]
-    private static extern bool EnumChildWindows(IntPtr hWndParent, EnumWindowsProc lpEnumFunc, IntPtr lParam);
 }
 
 public sealed class WindowQuery
@@ -74,15 +80,15 @@ public sealed class WindowQuery
 
     public WindowQuery TitleContains(string part)
     {
-        _preds.Add((h,s) => !string.IsNullOrEmpty(s.Title) && s.Title!.Contains(part, StringComparison.OrdinalIgnoreCase));
+        _preds.Add((h, s) => !string.IsNullOrEmpty(s.Title) && s.Title!.Contains(part, StringComparison.OrdinalIgnoreCase));
         return this;
     }
     public WindowQuery Class(string cls)
     {
-        _preds.Add((h,s) => string.Equals(s.ClassName, cls, StringComparison.OrdinalIgnoreCase));
+        _preds.Add((h, s) => string.Equals(s.ClassName, cls, StringComparison.OrdinalIgnoreCase));
         return this;
     }
-    public WindowQuery Any() { _preds.Add((h,s) => true); return this; }
+    public WindowQuery Any() { _preds.Add((h, s) => true); return this; }
 
-    internal bool Matches(IntPtr hwnd, WindowSnapshot s) => _preds.All(p => p(hwnd, s));
+    internal bool Matches(IntPtr hwnd, WindowSnapshot s) => _preds.TrueForAll(p => p(hwnd, s));
 }

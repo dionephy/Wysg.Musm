@@ -1,20 +1,161 @@
 <Window x:Class="Wysg.Musm.Radium.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:editor="clr-namespace:Wysg.Musm.Editor.Controls;assembly=Wysg.Musm.Editor"
-        Title="Radium - Medical Editor" 
-        Height="800" Width="1200"
-        WindowStartupLocation="CenterScreen">
+        mc:Ignorable="d"
+        Title="Radium - Medical Editor"
+        Height="850" Width="1400"
+        WindowStartupLocation="CenterScreen"
+        Background="#111"
+        FontFamily="Consolas"
+        Foreground="#d0d0d0">
 
-    <DockPanel>
-        <!-- Menu/Toolbar area -->
-        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="6">
-            <Button Content="Force Ghost" Click="OnForceGhost" Margin="0,0,8,0"/>
-            <Button Content="Settings" Click="OnOpenSettings" Margin="0,0,8,0"/>
-            <TextBlock Text="Ready" VerticalAlignment="Center"/>
+    <Window.Resources>
+        <!-- Accent brushes -->
+        <Color x:Key="AccentColor">#3D7BFD</Color>
+        <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#1E1E1E"/>
+        <SolidColorBrush x:Key="PanelAltBrush" Color="#252526"/>
+        <SolidColorBrush x:Key="BorderBrushDark" Color="#2D2D30"/>
+        <SolidColorBrush x:Key="GlyphBrush" Color="#808080"/>
+
+        <!-- Base style for embedded AvalonEdit via MusmEditor inside EditorControl -->
+        <Style TargetType="editor:MusmEditor">
+            <Setter Property="Background" Value="#1E1E1E"/>
+            <Setter Property="Foreground" Value="#DCDCDC"/>
+            <Setter Property="BorderBrush" Value="#2D2D30"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="ShowLineNumbers" Value="True"/>
+            <Setter Property="Padding" Value="4"/>
+        </Style>
+
+        <!-- Style for our wrapper EditorControl -->
+        <Style TargetType="editor:EditorControl">
+            <Setter Property="MinHeight" Value="120"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Background" Value="#1E1E1E"/>
+        </Style>
+
+        <Style TargetType="GridSplitter">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="ShowsPreview" Value="False"/>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#C8C8C8"/>
+            <Setter Property="Margin" Value="4,2,8,2"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#C8C8C8"/>
+            <Setter Property="BorderBrush" Value="#3D3D40"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Margin" Value="4,2,0,2"/>
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#808080"/>
+        </Style>
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="#1E1E1E"/>
+            <Setter Property="BorderBrush" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#D0D0D0"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="colFirst" Width="Auto" />
+            <ColumnDefinition x:Name="colSecond" Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Top bar -->
+        <DockPanel Grid.Row="0" Grid.ColumnSpan="2" LastChildFill="False" Background="#1E1E1E" Margin="0,0,0,2">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" Margin="6,4,6,4">
+                <Button Content="Force Ghost" Click="OnForceGhost"/>
+                <Button Content="Settings" Click="OnOpenSettings"/>
+            </StackPanel>
+            <TextBlock Text="Ready" VerticalAlignment="Center" Margin="4"/>
+        </DockPanel>
+
+        <!-- Lateral panel -->
+        <StackPanel x:Name="gridLateral" Grid.Row="1" Grid.Column="0" Background="#1E1E1E" Orientation="Vertical" Margin="0,0,6,0" Width="170">
+            <TextBox Text="Clinical information: &#x0a;Comparison: &#x0a;&#x0a;&lt;Findings&gt;&#x0a;"
+                     Margin="6" Height="220" AcceptsReturn="True"
+                     Background="#181818" Foreground="#A0A0A0" BorderBrush="#2D2D30"/>
+            <CheckBox x:Name="chkLayout" Content="Align Right" IsChecked="True" Margin="6,4,6,0"/>
+            <CheckBox Content="Patient Locked" Margin="6,4,6,0"/>
+            <CheckBox Content="Reportified" Margin="6,4,6,0"/>
         </StackPanel>
 
-        <!-- Main Editor -->
-        <editor:EditorControl x:Name="Editor" />
-    </DockPanel>
+        <!-- Central editing area -->
+        <Grid Grid.Row="1" Grid.Column="1" Name="gridCenter" Background="#181818" Margin="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Current report -->
+            <Grid Grid.Column="0" Margin="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" MinHeight="22"/>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="Auto" MinHeight="24"/>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="*" MinHeight="160"/>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="*" MinHeight="160"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Padding="2,0,0,0" Text="Current Report" Foreground="#5A9FD6"/>
+                <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="4"/>
+                <editor:EditorControl x:Name="EditorHeader" Grid.Row="2" MinHeight="70"/>
+                <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="4"/>
+                <editor:EditorControl x:Name="EditorFindings" Grid.Row="4" />
+                <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="4"/>
+                <editor:EditorControl x:Name="EditorConclusion" Grid.Row="6" />
+            </Grid>
+
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Width="4" Background="#2D2D30"/>
+
+            <!-- Right: Previous + suggestion -->
+            <Grid Grid.Column="2" Margin="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" MinHeight="22"/>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="Auto" MinHeight="24"/>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="*" MinHeight="160"/>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="*" MinHeight="160"/>
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,2,0,2">
+                    <TextBlock Text="Study Filter (reserved)" Foreground="#5A9FD6"/>
+                    <Button Content="+" Width="28" Margin="8,0,0,0"/>
+                </DockPanel>
+                <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="4"/>
+                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70"/>
+                <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="4"/>
+                <editor:EditorControl x:Name="EditorSuggestion" Grid.Row="4" />
+                <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="4"/>
+                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="6" />
+            </Grid>
+        </Grid>
+
+        <!-- Bottom list -->
+        <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Background="#1A1A1A" Orientation="Vertical" Margin="0,4,0,0">
+            <ListBox x:Name="lstCurrentPatientStudies" MaxHeight="160" Margin="6"/>
+        </StackPanel>
+    </Grid>
 </Window>

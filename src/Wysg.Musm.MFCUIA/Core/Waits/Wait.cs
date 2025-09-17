@@ -1,6 +1,6 @@
+using System;
 using System.Threading;
 using Wysg.Musm.MFCUIA.Core.Discovery;
-using Wysg.Musm.MFCUIA.Core.Win32;
 
 namespace Wysg.Musm.MFCUIA.Core.Waits;
 
@@ -14,7 +14,8 @@ public sealed class Wait
         using var ev = new ManualResetEventSlim(false);
         void Handler(IntPtr hwnd, uint evId, int obj, int child, uint tid)
         {
-            if (evId == 0x8002 /* EVENT_OBJECT_SHOW */ && WindowQueryMatch(hwnd, q(new WindowQuery())))
+            const uint EVENT_OBJECT_SHOW = 0x8002;
+            if (evId == EVENT_OBJECT_SHOW && WindowQueryMatch(hwnd, q(new WindowQuery())))
                 ev.Set();
         }
         _hub.OnEvent += Handler;
