@@ -136,17 +136,6 @@
             <ColumnDefinition x:Name="colSecond" Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- Top bar -->
-        <DockPanel Grid.Row="0" Grid.ColumnSpan="2" LastChildFill="False" Background="#1E1E1E" Margin="0,0,0,2">
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" Margin="6,4,6,4">
-                <Button Content="Force Ghost" Click="OnForceGhost"/>
-                <Button Content="Settings" Click="OnOpenSettings"/>
-                <ToggleButton x:Name="tglAlignRight" Content="Align Right" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnAlignRightToggled" Unchecked="OnAlignRightToggled"/>
-                <ToggleButton x:Name="chkReverseReports" Content="Reverse Reports" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnReverseReportsChecked" Unchecked="OnReverseReportsChecked"/>
-            </StackPanel>
-            <TextBlock Text="Ready" VerticalAlignment="Center" Margin="4"/>
-        </DockPanel>
-
         <!-- Central editing area -->
         <Grid Grid.Row="1" Grid.Column="1" Name="gridCenter" Background="#181818" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center">
             <Grid.ColumnDefinitions>
@@ -210,7 +199,15 @@
             </Grid>
         </Grid>
 
-        
-        
+        <!-- Status bar (moved DockPanel from top to bottom) -->
+        <DockPanel Grid.Row="2" Grid.ColumnSpan="2" LastChildFill="False" Background="#1E1E1E" Margin="0,2,0,0">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" Margin="6,4,6,4">
+                <Button Content="Force Ghost" Click="OnForceGhost"/>
+                <Button Content="Settings" Click="OnOpenSettings"/>
+                <ToggleButton x:Name="tglAlignRight" Content="Align Right" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnAlignRightToggled" Unchecked="OnAlignRightToggled"/>
+                <ToggleButton x:Name="chkReverseReports" Content="Reverse Reports" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnReverseReportsChecked" Unchecked="OnReverseReportsChecked"/>
+            </StackPanel>
+            <TextBlock Text="Ready" VerticalAlignment="Center" Margin="4"/>
+        </DockPanel>
     </Grid>
 </Window>
