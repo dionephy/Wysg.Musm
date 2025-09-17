@@ -56,6 +56,29 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8,4"/>
             <Setter Property="Margin" Value="4,2,0,2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#232326"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#3D7BFD"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#808080"/>
+                                <Setter TargetName="border" Property="Background" Value="#222"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="#808080"/>
@@ -64,6 +87,41 @@
             <Setter Property="Background" Value="#1E1E1E"/>
             <Setter Property="BorderBrush" Value="#2D2D30"/>
             <Setter Property="Foreground" Value="#D0D0D0"/>
+        </Style>
+
+        <Style x:Key="DarkToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#C8C8C8"/>
+            <Setter Property="BorderBrush" Value="#3D3D40"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#3D3D40"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#5A9FD6"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#3D7BFD"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#808080"/>
+                                <Setter TargetName="border" Property="Background" Value="#222"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
@@ -83,22 +141,14 @@
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" Margin="6,4,6,4">
                 <Button Content="Force Ghost" Click="OnForceGhost"/>
                 <Button Content="Settings" Click="OnOpenSettings"/>
+                <ToggleButton x:Name="tglAlignRight" Content="Align Right" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnAlignRightToggled" Unchecked="OnAlignRightToggled"/>
+                <ToggleButton x:Name="chkReverseReports" Content="Reverse Reports" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnReverseReportsChecked" Unchecked="OnReverseReportsChecked"/>
             </StackPanel>
             <TextBlock Text="Ready" VerticalAlignment="Center" Margin="4"/>
         </DockPanel>
 
-        <!-- Lateral panel -->
-        <StackPanel x:Name="gridLateral" Grid.Row="1" Grid.Column="0" Background="#1E1E1E" Orientation="Vertical" Margin="0,0,6,0" Width="170">
-            <TextBox Text="Clinical information: &#x0a;Comparison: &#x0a;&#x0a;&lt;Findings&gt;&#x0a;"
-                     Margin="6" Height="220" AcceptsReturn="True"
-                     Background="#181818" Foreground="#A0A0A0" BorderBrush="#2D2D30"/>
-            <CheckBox x:Name="chkLayout" Content="Align Right" IsChecked="True" Margin="6,4,6,0"/>
-            <CheckBox Content="Patient Locked" Margin="6,4,6,0"/>
-            <CheckBox Content="Reportified" Margin="6,4,6,0"/>
-        </StackPanel>
-
         <!-- Central editing area -->
-        <Grid Grid.Row="1" Grid.Column="1" Name="gridCenter" Background="#181818" Margin="0">
+        <Grid Grid.Row="1" Grid.Column="1" Name="gridCenter" Background="#181818" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="4"/>
@@ -117,7 +167,14 @@
                     <RowDefinition Height="*" MinHeight="160"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Padding="2,0,0,0" Text="Current Report" Foreground="#5A9FD6"/>
+                <DockPanel Grid.Row="0" LastChildFill="False">
+                    <TextBlock Padding="2,0,0,0" Text="Current Report" Foreground="#5A9FD6"/>
+                    <ToggleButton x:Name="btnStudyLocked"
+                                  Content="Study locked"
+                                  Margin="8,0,0,0"
+                                  VerticalAlignment="Center"
+                                  Style="{StaticResource DarkToggleButtonStyle}"/>
+                </DockPanel>
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="4"/>
                 <editor:EditorControl x:Name="EditorHeader" Grid.Row="2" MinHeight="70"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="4"/>
@@ -147,15 +204,13 @@
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="4"/>
                 <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorSuggestion" Grid.Row="4" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"/>
+                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="4" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"/>
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="6" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"/>
+                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="6" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"/>
             </Grid>
         </Grid>
 
-        <!-- Bottom list -->
-        <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Background="#1A1A1A" Orientation="Vertical" Margin="0,4,0,0">
-            <ListBox x:Name="lstCurrentPatientStudies" MaxHeight="160" Margin="6"/>
-        </StackPanel>
+        
+        
     </Grid>
 </Window>

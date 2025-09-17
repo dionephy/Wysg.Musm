@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Wysg.Musm.Editor.Completion;
@@ -328,5 +329,16 @@ namespace Wysg.Musm.Editor.Controls
         }
 
 
+        // ===== Dummy ICommand properties for XAML bindings =====
+        public ICommand ForceSuggestCommand { get; } = new DummyCommand();
+        public ICommand AcceptGhostCommand { get; } = new DummyCommand();
+        public ICommand CancelGhostCommand { get; } = new DummyCommand();
+
+        private class DummyCommand : ICommand
+        {
+            public event System.EventHandler? CanExecuteChanged { add { } remove { } }
+            public bool CanExecute(object? parameter) => true;
+            public void Execute(object? parameter) { /* no-op */ }
+        }
     }
 }

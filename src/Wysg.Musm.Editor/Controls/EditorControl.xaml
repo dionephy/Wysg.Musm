@@ -6,14 +6,8 @@
              x:Name="Root" MinWidth="300" MinHeight="200">
     <UserControl.InputBindings>
         <!-- Force snippet popup -->
-        <KeyBinding Key="Space" Modifiers="Control"
-                Command="{Binding ElementName=Root, Path=ForceSuggestCommand}" />
         <!-- Accept ghost text -->
-        <KeyBinding Key="Tab"
-                Command="{Binding ElementName=Root, Path=AcceptGhostCommand}" />
         <!-- Cancel ghost text -->
-        <KeyBinding Key="Escape"
-                Command="{Binding ElementName=Root, Path=CancelGhostCommand}" />
     </UserControl.InputBindings>
 
     <Grid>
