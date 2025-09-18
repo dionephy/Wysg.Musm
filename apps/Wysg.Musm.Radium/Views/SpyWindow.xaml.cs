@@ -7,7 +7,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
+using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Patterns;
+using FlaUI.UIA3;
 using Wysg.Musm.Radium.Services;
 using SWA = System.Windows.Automation;
 
@@ -23,6 +27,7 @@ namespace Wysg.Musm.Radium.Views
         private readonly HighlightOverlay _overlay = new HighlightOverlay();
 
         private UiBookmarks.Bookmark? _editing;
+        private AutomationElement? _lastResolved;
 
         private System.Windows.Controls.ComboBox CmbMethod => (System.Windows.Controls.ComboBox)FindName("cmbMethod");
         private System.Windows.Controls.TextBox TxtDirectId => (System.Windows.Controls.TextBox)FindName("txtDirectId");
@@ -74,15 +79,26 @@ namespace Wysg.Musm.Radium.Views
                 CrawlFromRoot = b.CrawlFromRoot,
                 Chain = b.Chain.Select(n => new UiBookmarks.Node
                 {
+                    Name = n.Name,
                     ClassName = n.ClassName,
                     ControlTypeId = n.ControlTypeId,
                     AutomationId = n.AutomationId,
-                    IndexAmongMatches = n.IndexAmongMatches
+                    IndexAmongMatches = n.IndexAmongMatches,
+                    Include = n.Include,
+                    UseName = n.UseName,
+                    UseClassName = n.UseClassName,
+                    UseControlTypeId = n.UseControlTypeId,
+                    UseAutomationId = n.UseAutomationId,
+                    UseIndex = n.UseIndex,
+                    Scope = n.Scope,
+                    Order = n.Order
                 }).ToList()
             };
             GridChain.ItemsSource = _editing.Chain;
             TxtDirectId.Text = _editing.DirectAutomationId ?? string.Empty;
             CmbMethod.SelectedIndex = _editing.Method == UiBookmarks.MapMethod.Chain ? 0 : 1;
+            // reflect process name
+            txtProcess.Text = _editing.ProcessName ?? string.Empty;
         }
 
         private void SaveEditorInto(UiBookmarks.Bookmark b)
@@ -91,6 +107,7 @@ namespace Wysg.Musm.Radium.Views
             b.Method = CmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly;
             b.DirectAutomationId = string.IsNullOrWhiteSpace(TxtDirectId.Text) ? null : TxtDirectId.Text.Trim();
             b.Chain = GridChain.Items.OfType<UiBookmarks.Node>().ToList();
+            if (!string.IsNullOrWhiteSpace(txtProcess.Text)) b.ProcessName = txtProcess.Text.Trim();
         }
 
         private class TreeNode
@@ -129,14 +146,14 @@ namespace Wysg.Musm.Radium.Views
             await Task.Delay(delay);
             var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: false);
             txtStatus.Text = msg;
+            if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName; // reflect detected process
             if (b == null) return;
             this.Tag = b;
+            // also update bookmark's process name
+            b.ProcessName = string.IsNullOrWhiteSpace(procName) ? b.ProcessName : procName;
             ShowBookmarkDetails(b, "Captured chain");
             HighlightBookmark(b);
         }
-
-        private static string? Safe(Func<string> f) { try { return f(); } catch { return null; } }
-        private static int? SafeInt(Func<int> f) { try { return f(); } catch { return null; } }
 
         private (UiBookmarks.Bookmark? bookmark, string? procName, string message) CaptureUnderMouse(bool preferAutomationId)
         {
@@ -156,17 +173,17 @@ namespace Wysg.Musm.Radium.Views
                 while (win != null) { last = win; win = walker.GetParent(win); }
                 var top = last ?? el;
 
-                var chain = new List<SWA.AutomationElement>();
-                var cur = el;
-                while (cur != null && cur != top)
+                // collect chain using parent relationships only (fast)
+                var chain = new System.Collections.Generic.List<SWA.AutomationElement>();
+                var curEl = el;
+                while (curEl != null && curEl != top)
                 {
-                    chain.Add(cur);
-                    cur = walker.GetParent(cur);
+                    chain.Add(curEl);
+                    curEl = walker.GetParent(curEl);
                 }
                 chain.Reverse();
 
                 var b = new UiBookmarks.Bookmark { Name = string.Empty, ProcessName = string.IsNullOrWhiteSpace(procName) ? "Unknown" : procName };
-                SWA.AutomationElement scope = top;
                 foreach (var nodeEl in chain)
                 {
                     string? name = null, className = null, autoId = null; int? ctId = null;
@@ -175,22 +192,27 @@ namespace Wysg.Musm.Radium.Views
                     try { autoId = nodeEl.Current.AutomationId; } catch { }
                     try { ctId = nodeEl.Current.ControlType?.Id; } catch { }
 
-                    var conds = new List<SWA.Condition>();
-                    if (preferAutomationId && !string.IsNullOrEmpty(autoId)) conds.Add(new SWA.PropertyCondition(SWA.AutomationElement.AutomationIdProperty, autoId));
-                    if (!string.IsNullOrEmpty(className)) conds.Add(new SWA.PropertyCondition(SWA.AutomationElement.ClassNameProperty, className));
-                    if (ctId.HasValue) conds.Add(new SWA.PropertyCondition(SWA.AutomationElement.ControlTypeProperty, nodeEl.Current.ControlType));
-                    if (!string.IsNullOrEmpty(name)) conds.Add(new SWA.PropertyCondition(SWA.AutomationElement.NameProperty, name));
-
-                    SWA.Condition q = conds.Count switch { 0 => SWA.Condition.TrueCondition, 1 => conds[0], _ => new SWA.AndCondition(conds.ToArray()) };
-                    var matches = scope.FindAll(SWA.TreeScope.Subtree, q);
+                    // determine index among siblings quickly (children only)
                     int index = 0;
-                    for (int i = 0; i < matches.Count; i++) if (SWA.Automation.Compare(matches[i], nodeEl)) { index = i; break; }
+                    try
+                    {
+                        var parent = walker.GetParent(nodeEl);
+                        if (parent != null)
+                        {
+                            var siblings = parent.FindAll(SWA.TreeScope.Children, SWA.Condition.TrueCondition);
+                            for (int i = 0; i < siblings.Count; i++)
+                            {
+                                if (SWA.Automation.Compare(siblings[i], nodeEl)) { index = i; break; }
+                            }
+                        }
+                    }
+                    catch { }
 
                     b.Chain.Add(new UiBookmarks.Node
                     {
                         Name = name,
                         ClassName = className,
-                        AutomationId = preferAutomationId ? autoId : null,
+                        AutomationId = autoId,
                         ControlTypeId = ctId,
                         IndexAmongMatches = index,
                         Include = true,
@@ -198,10 +220,9 @@ namespace Wysg.Musm.Radium.Views
                         UseClassName = !string.IsNullOrEmpty(className),
                         UseControlTypeId = ctId.HasValue,
                         UseAutomationId = preferAutomationId && !string.IsNullOrEmpty(autoId),
-                        UseIndex = true
+                        UseIndex = true,
+                        Scope = UiBookmarks.SearchScope.Children
                     });
-
-                    scope = matches.Count > 0 ? matches[index] : nodeEl;
                 }
 
                 var cls = classNameSafe(el) ?? "?";
@@ -234,6 +255,7 @@ namespace Wysg.Musm.Radium.Views
             // Capture current element
             var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: true);
             txtStatus.Text = msg;
+            if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName;
             if (b == null) return;
 
             // Apply UI mapping method choices
@@ -277,23 +299,120 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnValidateChain(object sender, RoutedEventArgs e)
         {
-            if (_editing == null) { txtStatus.Text = "No chain to validate"; return; }
-            var copy = new UiBookmarks.Bookmark
+            if (!BuildBookmarkFromUi(out var copy)) return;
+            var sw = Stopwatch.StartNew();
+            var (hwnd, el, trace) = UiBookmarks.TryResolveWithTrace(copy);
+            sw.Stop();
+            _lastResolved = el;
+            if (el == null)
+            {
+                txtStatus.Text = $"Validate: not found ({sw.ElapsedMilliseconds} ms)\r\n" + trace;
+                return;
+            }
+            var r = el.BoundingRectangle;
+            var rect = new System.Drawing.Rectangle((int)r.Left, (int)r.Top, (int)r.Width, (int)r.Height);
+            _overlay.ShowForRect(rect);
+            txtStatus.Text = $"Validate: found and highlighted ({sw.ElapsedMilliseconds} ms)\r\n" + trace;
+        }
+
+        private void OnInvoke(object sender, RoutedEventArgs e)
+        {
+            if (_lastResolved == null)
+            {
+                if (!BuildBookmarkFromUi(out var copy)) return;
+                var (_, el, _) = UiBookmarks.TryResolveWithTrace(copy);
+                _lastResolved = el;
+                if (el == null) { txtStatus.Text = "Invoke: not found"; return; }
+            }
+            try
+            {
+                using var automation = new UIA3Automation();
+                var inv = _lastResolved.Patterns.Invoke.PatternOrDefault;
+                if (inv != null)
+                {
+                    inv.Invoke();
+                    txtStatus.Text = "Invoke: done";
+                    return;
+                }
+                var toggle = _lastResolved.Patterns.Toggle.PatternOrDefault;
+                if (toggle != null)
+                {
+                    toggle.Toggle();
+                    txtStatus.Text = "Toggle: done";
+                    return;
+                }
+                txtStatus.Text = "Invoke: pattern not supported";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = "Invoke error: " + ex.Message;
+            }
+        }
+
+        private void OnGetText(object sender, RoutedEventArgs e)
+        {
+            if (_lastResolved == null)
+            {
+                if (!BuildBookmarkFromUi(out var copy)) return;
+                var (_, el, _) = UiBookmarks.TryResolveWithTrace(copy);
+                _lastResolved = el;
+                if (el == null) { txtStatus.Text = "Get Text: not found"; return; }
+            }
+            try
+            {
+                var name = _lastResolved.Name;
+                var value = _lastResolved.Patterns.Value.PatternOrDefault?.Value ?? string.Empty;
+                var legacy = _lastResolved.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty;
+                var txt = !string.IsNullOrEmpty(value) ? value : (!string.IsNullOrEmpty(name) ? name : legacy);
+                txtStatus.Text = string.IsNullOrEmpty(txt) ? "Get Text: empty" : $"Get Text: {txt}";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = "Get Text error: " + ex.Message;
+            }
+        }
+
+        private bool BuildBookmarkFromUi(out UiBookmarks.Bookmark copy)
+        {
+            copy = new UiBookmarks.Bookmark();
+            if (_editing == null) { txtStatus.Text = "No chain to validate"; return false; }
+
+            try
+            {
+                GridChain.CommitEdit(DataGridEditingUnit.Cell, true);
+                GridChain.CommitEdit(DataGridEditingUnit.Row, true);
+                FocusManager.SetFocusedElement(this, this);
+                GridChain.UpdateLayout();
+                CollectionViewSource.GetDefaultView(GridChain.ItemsSource)?.Refresh();
+            }
+            catch { }
+
+            copy = new UiBookmarks.Bookmark
             {
                 Name = _editing.Name,
                 ProcessName = _editing.ProcessName,
                 Method = CmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly,
                 DirectAutomationId = string.IsNullOrWhiteSpace(TxtDirectId.Text) ? null : TxtDirectId.Text.Trim(),
-                Chain = GridChain.Items.OfType<UiBookmarks.Node>().ToList()
+                Chain = (_editing.Chain ?? new List<UiBookmarks.Node>()).Select(n => new UiBookmarks.Node
+                {
+                    Name = n.Name,
+                    ClassName = n.ClassName,
+                    ControlTypeId = n.ControlTypeId,
+                    AutomationId = n.AutomationId,
+                    IndexAmongMatches = n.IndexAmongMatches,
+                    Include = n.Include,
+                    UseName = n.UseName,
+                    UseClassName = n.UseClassName,
+                    UseControlTypeId = n.UseControlTypeId,
+                    UseAutomationId = n.UseAutomationId,
+                    UseIndex = n.UseIndex,
+                    Scope = n.Scope,
+                    Order = n.Order
+                }).ToList()
             };
-            var sw = Stopwatch.StartNew();
-            var (hwnd, el) = UiBookmarks.TryResolveBookmark(copy);
-            sw.Stop();
-            if (el == null) { txtStatus.Text = $"Validate: not found ({sw.ElapsedMilliseconds} ms)"; return; }
-            var r = el.BoundingRectangle;
-            var rect = new System.Drawing.Rectangle((int)r.Left, (int)r.Top, (int)r.Width, (int)r.Height);
-            _overlay.ShowForRect(rect);
-            txtStatus.Text = $"Validate: found and highlighted ({sw.ElapsedMilliseconds} ms)";
+            if (!string.IsNullOrWhiteSpace(txtProcess.Text)) copy.ProcessName = txtProcess.Text.Trim();
+            _lastResolved = null; // invalidate cache on new build
+            return true;
         }
 
         private void OnSaveEdited(object sender, RoutedEventArgs e)
@@ -320,6 +439,7 @@ namespace Wysg.Musm.Radium.Views
             { txtStatus.Text = "Select a known control"; return; }
             var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: true);
             txtStatus.Text = msg;
+            if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName;
             if (b == null) return;
             if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key))
             { txtStatus.Text = "Invalid known control"; return; }

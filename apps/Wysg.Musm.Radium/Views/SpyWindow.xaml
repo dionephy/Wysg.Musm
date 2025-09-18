@@ -57,6 +57,13 @@
             <GroupBox Header="Captured Ancestry (root -> target)" Margin="0,0,6,0">
                 <DockPanel>
                     <TreeView x:Name="tvAncestry" SelectedItemChanged="OnAncestrySelected">
+                <DockPanel LastChildFill="True">
+                    <GroupBox DockPanel.Dock="Bottom" Header="Selected node properties" Margin="0,6,0,0">
+                        <TextBox x:Name="txtNodeProps" IsReadOnly="True" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#2D2D30" BorderThickness="1" TextWrapping="Wrap" AcceptsReturn="True" Height="120" VerticalScrollBarVisibility="Auto"/>
+                    </GroupBox>
+                    <TreeView x:Name="tvAncestry" SelectedItemChanged="OnAncestrySelected"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <TreeView.ItemTemplate>
                             <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                 <StackPanel Orientation="Horizontal">
@@ -89,6 +96,8 @@
                         <TextBlock Text="Direct AutomationId:" VerticalAlignment="Center"/>
                         <TextBox x:Name="txtDirectId" Width="200" Margin="6,0,12,0"/>
                         <Button Content="Validate" Click="OnValidateChain"/>
+                        <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke"/>
+                        <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText"/>
                         <Button Content="Save" Margin="6,0,0,0" Click="OnSaveEdited"/>
                         <Separator Margin="12,0" Width="10"/>
                         <Button Content="Move Up" Click="OnMoveUp"/>
@@ -99,13 +108,48 @@
 
                     <DataGrid x:Name="gridChain" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="True" CanUserDeleteRows="True" IsReadOnly="False" Background="#1E1E1E" Foreground="#D0D0D0">
                         <DataGrid.Columns>
-                            <DataGridCheckBoxColumn Header="Include" Binding="{Binding Include}" Width="70"/>
+                            <DataGridTemplateColumn Header="Scope" Width="150">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ComboBox SelectedIndex="{Binding LocateIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="130">
+                                            <ComboBoxItem Content="Exclude"/>
+                                            <ComboBoxItem Content="Children"/>
+                                            <ComboBoxItem Content="Descendants"/>
+                                        </ComboBox>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Order" Binding="{Binding Order, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="80"/>
                             <DataGridTemplateColumn Header="Name" Width="220">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseName}" VerticalAlignment="Center"/>
-                                            <TextBox Text="{Binding Name}" Width="160" Margin="6,0,0,0"/>
+                                            <CheckBox IsChecked="{Binding UseName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center">
+                                                <CheckBox.Style>
+                                                    <Style TargetType="CheckBox">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
+                                                                <Setter Property="IsChecked" Value="False"/>
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </CheckBox.Style>
+                                            </CheckBox>
+                                            <TextBox Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="160" Margin="6,0,0,0">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
+                                                                <Setter Property="Text" Value=""/>
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -114,8 +158,32 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseClassName}" VerticalAlignment="Center"/>
-                                            <TextBox Text="{Binding ClassName}" Width="180" Margin="6,0,0,0"/>
+                                            <CheckBox IsChecked="{Binding UseClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center">
+                                                <CheckBox.Style>
+                                                    <Style TargetType="CheckBox">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
+                                                                <Setter Property="IsChecked" Value="False"/>
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </CheckBox.Style>
+                                            </CheckBox>
+                                            <TextBox Text="{Binding ClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="180" Margin="6,0,0,0">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
+                                                                <Setter Property="Text" Value=""/>
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -124,8 +192,32 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseControlTypeId}" VerticalAlignment="Center"/>
-                                            <TextBox Text="{Binding ControlTypeId}" Width="100" Margin="6,0,0,0"/>
+                                            <CheckBox IsChecked="{Binding UseControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center">
+                                                <CheckBox.Style>
+                                                    <Style TargetType="CheckBox">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
+                                                                <Setter Property="IsChecked" Value="False"/>
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </CheckBox.Style>
+                                            </CheckBox>
+                                            <TextBox Text="{Binding ControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="6,0,0,0">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
+                                                                <Setter Property="Text" Value=""/>
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -134,8 +226,32 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseAutomationId}" VerticalAlignment="Center"/>
-                                            <TextBox Text="{Binding AutomationId}" Width="160" Margin="6,0,0,0"/>
+                                            <CheckBox IsChecked="{Binding UseAutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center">
+                                                <CheckBox.Style>
+                                                    <Style TargetType="CheckBox">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
+                                                                <Setter Property="IsChecked" Value="False"/>
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </CheckBox.Style>
+                                            </CheckBox>
+                                            <TextBox Text="{Binding AutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="160" Margin="6,0,0,0">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
+                                                                <Setter Property="Text" Value=""/>
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -144,8 +260,32 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseIndex}" VerticalAlignment="Center"/>
-                                            <TextBox Text="{Binding IndexAmongMatches}" Width="80" Margin="6,0,0,0"/>
+                                            <CheckBox IsChecked="{Binding UseIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center">
+                                                <CheckBox.Style>
+                                                    <Style TargetType="CheckBox">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
+                                                                <Setter Property="IsChecked" Value="False"/>
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </CheckBox.Style>
+                                            </CheckBox>
+                                            <TextBox Text="{Binding IndexAmongMatches, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="80" Margin="6,0,0,0">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
+                                                                <Setter Property="Text" Value="0"/>
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
