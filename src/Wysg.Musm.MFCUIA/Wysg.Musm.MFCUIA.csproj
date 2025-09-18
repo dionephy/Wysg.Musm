@@ -1,12 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0-windows</TargetFramework>
+	  <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
-    <EnableComHosting>true</EnableComHosting>
+
+	  <EnableComHosting>true</EnableComHosting>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	  <DefineConstants>$(DefineConstants);WINDOWS_OCR</DefineConstants>
   </PropertyGroup>
+
+	<!-- If you want DEBUG/TRACE too, add per-config as needed -->
+	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
+		<DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)'=='Release'">
+		<DefineConstants>$(DefineConstants);TRACE</DefineConstants>
+	</PropertyGroup>
 
 </Project>

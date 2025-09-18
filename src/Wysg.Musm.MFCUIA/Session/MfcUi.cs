@@ -25,6 +25,21 @@ public sealed class MfcUi : IDisposable
         return new MfcUi(proc);
     }
 
+    // New: attach by discovering a top-level window matching a predicate (title/class)
+    public static MfcUi AttachByTopLevel(Func<WindowSnapshot, bool> match)
+    {
+        var loc = new HwndLocator();
+        foreach (var h in loc.EnumTopLevelWindows())
+        {
+            var snap = HwndLocator.Snapshot(h);
+            if (!match(snap)) continue;
+            Win32Helpers.GetWindowThreadProcessId(h, out int pid);
+            var proc = Process.GetProcessById(pid);
+            return new MfcUi(proc);
+        }
+        throw new InvalidOperationException("No matching window found for discovery attach.");
+    }
+
     public IntPtr Window(Func<WindowQuery, WindowQuery> q)
         => _locator.FindTopLevel(q(new WindowQuery()));
 
@@ -33,6 +48,19 @@ public sealed class MfcUi : IDisposable
         var top = Window(w => w.Any());
         var hwnd = top == IntPtr.Zero ? IntPtr.Zero : _locator.FindAnyDescendant(top, selector);
         return new ElementHandle(this, hwnd);
+    }
+
+    // New: search across any top-level window of the process
+    public ElementHandle FindInAnyTop(ISelector selector)
+    {
+        foreach (var h in _locator.EnumTopLevelWindows())
+        {
+            Win32Helpers.GetWindowThreadProcessId(h, out int pid);
+            if (pid != Process.Id) continue;
+            var match = _locator.FindAnyDescendant(h, selector);
+            if (match != IntPtr.Zero) return new ElementHandle(this, match);
+        }
+        return new ElementHandle(this, IntPtr.Zero);
     }
 
     public CommandHandle Command(int id) => new(this, id);

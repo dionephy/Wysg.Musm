@@ -199,15 +199,46 @@
             </Grid>
         </Grid>
 
-        <!-- Status bar (moved DockPanel from top to bottom) -->
-        <DockPanel Grid.Row="2" Grid.ColumnSpan="2" LastChildFill="False" Background="#1E1E1E" Margin="0,2,0,0">
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" Margin="6,4,6,4">
-                <Button Content="Force Ghost" Click="OnForceGhost"/>
-                <Button Content="Settings" Click="OnOpenSettings"/>
-                <ToggleButton x:Name="tglAlignRight" Content="Align Right" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnAlignRightToggled" Unchecked="OnAlignRightToggled"/>
-                <ToggleButton x:Name="chkReverseReports" Content="Reverse Reports" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnReverseReportsChecked" Unchecked="OnReverseReportsChecked"/>
-            </StackPanel>
-            <TextBlock Text="Ready" VerticalAlignment="Center" Margin="4"/>
-        </DockPanel>
+        <!-- Status bar (bottom) with two lines -->
+        <Grid Grid.Row="2" Grid.ColumnSpan="2" Background="#1E1E1E" Margin="0,2,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Line 1: all buttons/toggles/inputs -->
+            <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Horizontal" Margin="6,4,6,4">
+                    <Button Content="Force Ghost" Click="OnForceGhost"/>
+                    <Button Content="Settings" Click="OnOpenSettings"/>
+                    <ToggleButton x:Name="tglAlignRight" Content="Align Right" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnAlignRightToggled" Unchecked="OnAlignRightToggled"/>
+                    <ToggleButton x:Name="chkReverseReports" Content="Reverse Reports" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnReverseReportsChecked" Unchecked="OnReverseReportsChecked"/>
+
+                    <TextBlock Text="HWND:" VerticalAlignment="Center" Margin="16,0,4,0"/>
+                    <TextBox x:Name="txtPaneHwnd" Width="140" Height="22" Margin="0,0,6,0"/>
+                    <Button Content="Read Banner (HWND)" Click="OnReadBannerByHwnd"/>
+                    <Button Content="Read Banner (First Viewer)" Click="OnReadBannerFirstViewer" Margin="6,0,0,0"/>
+                    <Button Content="Dump Strings (HWND)" Click="OnDumpStrings" Margin="6,0,0,0"/>
+                    <ToggleButton x:Name="tglWatch" Content="Watch" Checked="OnWatchToggled" Unchecked="OnWatchToggled" Margin="6,0,0,0"/>
+                    <Button Content="Read Banner (OCR)" Click="OnReadBannerOcr" Margin="6,0,0,0"/>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Line 2: copyable status text only -->
+            <TextBox x:Name="txtStatus"
+                     Grid.Row="1"
+                     Margin="6,0,6,6"
+                     IsReadOnly="True"
+                     Background="#1E1E1E"
+                     Foreground="#d0d0d0"
+                     BorderBrush="#2D2D30"
+                     BorderThickness="1"
+                     TextWrapping="Wrap"
+                     AcceptsReturn="True"
+                     Height="60"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Disabled"
+                     Text="Ready"/>
+        </Grid>
     </Grid>
 </Window>

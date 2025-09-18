@@ -1,4 +1,5 @@
-﻿using System.Configuration;
+﻿using System;
+using System.Configuration;
 using System.Data;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,7 @@ namespace Wysg.Musm.Radium
     public partial class App : Application
     {
         private readonly IHost _host;
+        public IServiceProvider Services => _host.Services;
 
         public App()
         {
