@@ -211,16 +211,34 @@
                 <StackPanel Orientation="Horizontal" Margin="6,4,6,4">
                     <Button Content="Force Ghost" Click="OnForceGhost"/>
                     <Button Content="Settings" Click="OnOpenSettings"/>
+                    <Button Content="Spy" Click="OnOpenSpy"/>
                     <ToggleButton x:Name="tglAlignRight" Content="Align Right" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnAlignRightToggled" Unchecked="OnAlignRightToggled"/>
                     <ToggleButton x:Name="chkReverseReports" Content="Reverse Reports" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnReverseReportsChecked" Unchecked="OnReverseReportsChecked"/>
 
                     <TextBlock Text="HWND:" VerticalAlignment="Center" Margin="16,0,4,0"/>
-                    <TextBox x:Name="txtPaneHwnd" Width="140" Height="22" Margin="0,0,6,0"/>
-                    <Button Content="Read Banner (HWND)" Click="OnReadBannerByHwnd"/>
+                    <TextBox x:Name="txtPaneHwnd" Width="120" Height="22" Margin="0,0,6,0"/>
+                    <Button Content="Auto Locate" Click="OnAutoLocate"/>
+                    <Button Content="Read Banner (HWND)" Click="OnReadBannerByHwnd" Margin="6,0,0,0"/>
                     <Button Content="Read Banner (First Viewer)" Click="OnReadBannerFirstViewer" Margin="6,0,0,0"/>
                     <Button Content="Dump Strings (HWND)" Click="OnDumpStrings" Margin="6,0,0,0"/>
                     <ToggleButton x:Name="tglWatch" Content="Watch" Checked="OnWatchToggled" Unchecked="OnWatchToggled" Margin="6,0,0,0"/>
                     <Button Content="Read Banner (OCR)" Click="OnReadBannerOcr" Margin="6,0,0,0"/>
+
+                    <Separator Width="10"/>
+                    <TextBlock Text="Bookmark:" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                    <TextBox x:Name="txtBookmarkName" Width="140" Height="22" Margin="0,0,6,0"/>
+                    <Button Content="Save HWND" Click="OnBookmarkSave"/>
+                    <Button Content="Resolve" Click="OnBookmarkResolve" Margin="6,0,0,0"/>
+
+                    <TextBlock Text="L:" VerticalAlignment="Center" Margin="12,0,2,0"/>
+                    <TextBox x:Name="txtCropL" Width="50" Height="22"/>
+                    <TextBlock Text="T:" VerticalAlignment="Center" Margin="6,0,2,0"/>
+                    <TextBox x:Name="txtCropT" Width="50" Height="22"/>
+                    <TextBlock Text="W:" VerticalAlignment="Center" Margin="6,0,2,0"/>
+                    <TextBox x:Name="txtCropW" Width="60" Height="22"/>
+                    <TextBlock Text="H:" VerticalAlignment="Center" Margin="6,0,2,0"/>
+                    <TextBox x:Name="txtCropH" Width="60" Height="22"/>
+                    <Button Content="OCR (Fast)" Click="OnReadBannerOcrFast" Margin="6,0,0,0"/>
                 </StackPanel>
             </ScrollViewer>
 

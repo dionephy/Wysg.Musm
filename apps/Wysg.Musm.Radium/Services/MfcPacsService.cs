@@ -1,10 +1,17 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Windows.Automation;
+using FlaUI.Core;
+using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Conditions;
+using FlaUI.UIA3;
 using Wysg.Musm.MFCUIA;
 using Wysg.Musm.MFCUIA.Core.Controls;
 using Wysg.Musm.MFCUIA.Selectors;
 using Wysg.Musm.MFCUIA.Session;
+using System.Drawing;
+using System.Runtime.InteropServices;
 
 namespace Wysg.Musm.Radium.Services
 {
@@ -13,13 +20,18 @@ namespace Wysg.Musm.Radium.Services
     {
         private readonly string _proc;
         private IDisposable? _watcher;
+        private IntPtr _cachedBannerHwnd = IntPtr.Zero;
+        private DateTime _cachedAt;
+
+        [DllImport("user32.dll", SetLastError = true)] private static extern bool IsWindow(IntPtr hWnd);
+
         public MfcPacsService(string processName = "INFINITT") => _proc = processName;
 
         public async Task OpenWorklistAsync()
         {
             using var mfc = MfcUi.Attach(_proc);
             _ = mfc.Command(1106).Invoke();
-            await Task.Delay(200); // short yield; replace with event-based wait later
+            await Task.Delay(200);
             await Task.Delay(200);
         }
 
@@ -34,7 +46,6 @@ namespace Wysg.Musm.Radium.Services
         public async Task<bool> IsViewerWindowAsync(IntPtr hwnd)
         {
             using var mfc = MfcUi.Attach(_proc);
-            return mfc.Process != null; // Expand with GetWindowThreadProcessId if needed
             return mfc.Process != null;
         }
 
@@ -64,11 +75,115 @@ namespace Wysg.Musm.Radium.Services
             }
         }
 
+        // FlaUI-based robust discovery with caching
+        public (IntPtr hwnd, string? text) TryAutoLocateBanner()
+        {
+            // 0) If we have a cached hwnd, verify it is still valid and belongs to the process
+            if (_cachedBannerHwnd != IntPtr.Zero && IsWindow(_cachedBannerHwnd))
+            {
+                var txt = TryReadViewerBannerFromPane(_cachedBannerHwnd);
+                if (!string.IsNullOrWhiteSpace(txt)) return (_cachedBannerHwnd, txt);
+            }
+
+            try
+            {
+                using var app = Application.Attach(_proc);
+                using var automation = new UIA3Automation();
+                var main = app.GetMainWindow(automation, TimeSpan.FromMilliseconds(500));
+                if (main == null) return (IntPtr.Zero, null);
+
+                // Search for a Pane with class AfxFrameOrView140u within top 140 px and wide enough
+                var panes = main.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Pane)
+                                                          .And(cf.ByClassName("AfxFrameOrView140u")));
+                foreach (var p in panes)
+                {
+                    var r = p.BoundingRectangle;
+                    if (r.Height <= 0 || r.Width < 400) continue;
+                    if (r.Top - main.BoundingRectangle.Top > 200) continue;
+                    var hwnd = new IntPtr(p.Properties.NativeWindowHandle.Value);
+                    var txt = TryReadViewerBannerFromPane(hwnd);
+                    if (!string.IsNullOrWhiteSpace(txt))
+                    {
+                        _cachedBannerHwnd = hwnd; _cachedAt = DateTime.UtcNow;
+                        return (hwnd, txt);
+                    }
+                }
+
+                // fallback: any Pane with AfxWnd140u
+                var panes2 = main.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Pane)
+                                                           .And(cf.ByClassName("AfxWnd140u")));
+                foreach (var p in panes2)
+                {
+                    var r = p.BoundingRectangle;
+                    if (r.Height <= 0 || r.Width < 400) continue;
+                    if (r.Top - main.BoundingRectangle.Top > 200) continue;
+                    var hwnd = new IntPtr(p.Properties.NativeWindowHandle.Value);
+                    var txt = TryReadViewerBannerFromPane(hwnd);
+                    if (!string.IsNullOrWhiteSpace(txt))
+                    {
+                        _cachedBannerHwnd = hwnd; _cachedAt = DateTime.UtcNow;
+                        return (hwnd, txt);
+                    }
+                }
+            }
+            catch { }
+
+            // MFC fallback
+            try
+            {
+                using var mfc = MfcUi.AttachByTopLevel(s => (!string.IsNullOrEmpty(s.Title) && s.Title.Contains("INFINITT", StringComparison.OrdinalIgnoreCase)) || (!string.IsNullOrEmpty(s.ClassName) && s.ClassName.Contains("Afx", StringComparison.OrdinalIgnoreCase)));
+                var el = mfc.FindInAnyTop(By.ClassNth("AfxFrameOrView140u", 0));
+                if (el.Hwnd == IntPtr.Zero) el = mfc.FindInAnyTop(By.ClassNth("AfxWnd140u", 0));
+                if (el.Hwnd != IntPtr.Zero)
+                {
+                    var text = TryReadViewerBannerFromPane(el.Hwnd);
+                    if (!string.IsNullOrWhiteSpace(text)) { _cachedBannerHwnd = el.Hwnd; _cachedAt = DateTime.UtcNow; }
+                    return (el.Hwnd, text);
+                }
+            }
+            catch { }
+
+            return (IntPtr.Zero, null);
+        }
+
+        private static bool IsHwndAlive(IntPtr hwnd)
+        {
+            try
+            {
+                return hwnd != IntPtr.Zero && IsWindow(hwnd);
+            }
+            catch { return false; }
+        }
+
+        // Presets for OCR region (relative to window top-left)
+        public enum OcrRegionPreset { TopThin, TopMedium, TopWideCenter }
+        public (int L, int T, int W, int H) GetOcrRegionPreset(IntPtr hwnd, OcrRegionPreset preset)
+        {
+            if (!OcrReader.TryGetWindowRect(hwnd, out var wr)) return (0,0,100,50);
+            return preset switch
+            {
+                OcrRegionPreset.TopThin => (20, 8, Math.Max(200, wr.Width - 40), 50),
+                OcrRegionPreset.TopMedium => (20, 12, Math.Max(200, wr.Width - 40), 90),
+                OcrRegionPreset.TopWideCenter => (wr.Width/8, 10, wr.Width*3/4, 80),
+                _ => (20, 10, Math.Max(200, wr.Width - 40), 70)
+            };
+        }
+
+        // Quality/speed knobs
+        public async Task<(bool engineAvailable, string? text)> OcrReadWithPresetAsync(IntPtr hwnd, OcrRegionPreset preset)
+        {
+            var (l,t,w,h) = GetOcrRegionPreset(hwnd, preset);
+            return await OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new Rectangle(l,t,w,h));
+        }
+
         public Task<string?> OcrReadTopStripAsync(IntPtr paneHwnd, int topStripPx = 50)
             => OcrReader.OcrTopStripAsync(paneHwnd, topStripPx);
 
         public Task<(bool engineAvailable, string? text)> OcrReadTopStripDetailedAsync(IntPtr paneHwnd, int topStripPx = 50)
             => OcrReader.OcrTryReadTopStripDetailedAsync(paneHwnd, topStripPx);
+
+        public Task<(bool engineAvailable, string? text)> OcrReadRegionAsync(IntPtr paneHwnd, Rectangle crop)
+            => OcrReader.OcrTryReadRegionDetailedAsync(paneHwnd, crop);
 
         public string[] DumpAllStrings(IntPtr paneHwnd) => MsaaStringReader.GetAllStringsFromPane(paneHwnd);
         public void StartWatchingPane(IntPtr paneHwnd, Action<string[]> onChange) { StopWatchingPane(); _watcher = MsaaTextWatcher.Start(paneHwnd, onChange); }

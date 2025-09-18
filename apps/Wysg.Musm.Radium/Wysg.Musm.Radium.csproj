@@ -15,12 +15,19 @@
     <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0" />
     <PackageReference Include="Npgsql" Version="9.0.3" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="FlaUI.Core" Version="4.0.0" />
+    <PackageReference Include="FlaUI.UIA3" Version="4.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Wysg.Musm.Infrastructure\Wysg.Musm.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Wysg.Musm.Editor\Wysg.Musm.Editor.csproj" />
     <ProjectReference Include="..\..\src\Wysg.Musm.MFCUIA\Wysg.Musm.MFCUIA.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="UIAutomationClient" />
+    <Reference Include="UIAutomationTypes" />
   </ItemGroup>
 
 </Project>

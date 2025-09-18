@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using Wysg.Musm.Radium.ViewModels;
 using Wysg.Musm.Editor.Controls;
 using Wysg.Musm.Radium.Services;
+using Wysg.Musm.Radium.Views;
 
 namespace Wysg.Musm.Radium.Views
 {
@@ -199,6 +200,131 @@ namespace Wysg.Musm.Radium.Views
             {
                 txtStatus.Text = $"OCR error: {ex.Message}";
             }
+        }
+
+        private async void OnReadBannerOcrFast(object sender, RoutedEventArgs e)
+        {
+            if (_pacs == null) { txtStatus.Text = "PACS service not available"; return; }
+            if (!long.TryParse(txtPaneHwnd.Text?.Trim(), out long val)) { txtStatus.Text = "Invalid HWND"; return; }
+            var hwnd = new IntPtr(val);
+
+            // Defaults: top strip center area
+            int L = TryParse(txtCropL.Text, 40);
+            int T = TryParse(txtCropT.Text, 10);
+            int W = TryParse(txtCropW.Text, 1200);
+            int H = TryParse(txtCropH.Text, 80);
+
+            // Clamp negative values to zero
+            if (L < 0) L = 0; if (T < 0) T = 0; if (W < 10) W = 10; if (H < 10) H = 10;
+
+            txtStatus.Text = "OCR(Fast) reading¡¦";
+            try
+            {
+                var (engineAvailable, text) = await Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(L, T, W, H));
+                if (!engineAvailable)
+                {
+                    txtStatus.Text = "OCR not running (enable Windows OCR)";
+                    return;
+                }
+                txtStatus.Text = string.IsNullOrWhiteSpace(text) ? "OCR(Fast): empty" : $"OCR(Fast): {text}";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"OCR(Fast) error: {ex.Message}";
+            }
+        }
+
+        private static int TryParse(string s, int fallback)
+        {
+            return int.TryParse(s?.Trim(), out int v) ? v : fallback;
+        }
+
+        private void OnAutoLocate(object sender, RoutedEventArgs e)
+        {
+            if (_pacs == null) { txtStatus.Text = "PACS service not available"; return; }
+            var (hwnd, text) = _pacs.TryAutoLocateBanner();
+            if (hwnd == IntPtr.Zero)
+            {
+                txtStatus.Text = "Auto locate failed";
+                return;
+            }
+            txtPaneHwnd.Text = hwnd.ToInt64().ToString();
+            txtStatus.Text = string.IsNullOrWhiteSpace(text) ? $"Auto locate: hwnd={hwnd}" : $"Auto locate: {text} (hwnd={hwnd})";
+        }
+
+        private void OnBookmarkSave(object sender, RoutedEventArgs e)
+        {
+            var name = (txtBookmarkName.Text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(name)) { txtStatus.Text = "Bookmark: enter a name"; return; }
+            if (!long.TryParse(txtPaneHwnd.Text?.Trim(), out long val)) { txtStatus.Text = "Bookmark: invalid HWND"; return; }
+            var hwnd = new System.IntPtr(val);
+
+            // For now, just save a flat bookmark with process name and a single node containing class and index from FlaUI
+            try
+            {
+                using var app = FlaUI.Core.Application.Attach("INFINITT");
+                using var automation = new FlaUI.UIA3.UIA3Automation();
+                var main = app.GetMainWindow(automation, System.TimeSpan.FromMilliseconds(800));
+                if (main == null) { txtStatus.Text = "Bookmark: cannot attach app"; return; }
+                var el = automation.FromHandle(hwnd);
+                if (el == null) { txtStatus.Text = "Bookmark: cannot wrap hwnd"; return; }
+
+                // Build simple chain: climb to main via parent steps, then record class/controltype for the element itself.
+                var store = UiBookmarks.Load();
+                var b = new UiBookmarks.Bookmark { Name = name, ProcessName = "INFINITT" };
+                b.Chain.Add(new UiBookmarks.Node
+                {
+                    ClassName = el.ClassName,
+                    ControlTypeId = (int)el.ControlType,
+                    AutomationId = el.AutomationId,
+                    IndexAmongMatches = 0
+                });
+                store.Bookmarks.RemoveAll(x => x.Name.Equals(name, System.StringComparison.OrdinalIgnoreCase));
+                store.Bookmarks.Add(b);
+                UiBookmarks.Save(store);
+                txtStatus.Text = $"Bookmark saved: {name} -> hwnd={hwnd}";
+            }
+            catch (System.Exception ex)
+            {
+                txtStatus.Text = $"Bookmark save error: {ex.Message}";
+            }
+        }
+
+        private void OnBookmarkResolve(object sender, RoutedEventArgs e)
+        {
+            var name = (txtBookmarkName.Text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(name)) { txtStatus.Text = "Bookmark: enter a name"; return; }
+            var (hwnd, el) = UiBookmarks.Resolve(name);
+            if (hwnd == System.IntPtr.Zero)
+            {
+                txtStatus.Text = "Bookmark: not found or stale";
+                return;
+            }
+            txtPaneHwnd.Text = hwnd.ToInt64().ToString();
+            txtStatus.Text = $"Bookmark resolved: {name} -> hwnd={hwnd}";
+        }
+
+        protected override void OnInitialized(EventArgs e)
+        {
+            base.OnInitialized(e);
+            // Shortcut: Ctrl+Alt+S opens the Spy
+            this.PreviewKeyDown += (s, ev) =>
+            {
+                if ((Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl)) &&
+                    (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt)) &&
+                    ev.Key == Key.S)
+                {
+                    ev.Handled = true;
+                    var win = new SpyWindow { Owner = this };
+                    win.Show();
+                }
+            };
+        }
+
+        private void OnOpenSpy(object sender, RoutedEventArgs e)
+        {
+            var win = new SpyWindow { Owner = this };
+            win.Show();
         }
     }
 }
