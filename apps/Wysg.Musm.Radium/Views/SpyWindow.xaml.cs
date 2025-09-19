@@ -14,11 +14,27 @@ using FlaUI.Core.Patterns;
 using FlaUI.UIA3;
 using Wysg.Musm.Radium.Services;
 using SWA = System.Windows.Automation;
+using Wysg.Musm.MFCUIA.Session;
 
 namespace Wysg.Musm.Radium.Views
 {
     public partial class SpyWindow : System.Windows.Window
     {
+        // Preferred order for output
+        private static readonly string[] PreferredHeaderOrder = new[]
+        {
+            "Status","ID","Name","Sex","Birth Date","Body Part","Age","Accession No.",
+            "Study Desc","Modality","Image","Study Date","Requesting Doctor","Location",
+            "Report creator","Study Comments","Report approval dttm","Institution"
+        };
+
+        // UIA ControlType Ids
+        private const int UIA_ListItem = 50007;
+        private const int UIA_Header = 50034;
+        private const int UIA_HeaderItem = 50035;
+        private const int UIA_Text = 50020;
+        private const int UIA_DataItem = 50029;
+
         // P/Invoke and overlay fields
         [DllImport("user32.dll")] private static extern bool GetCursorPos(out POINT lpPoint);
         [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(POINT Point);
@@ -32,6 +48,50 @@ namespace Wysg.Musm.Radium.Views
         private System.Windows.Controls.ComboBox CmbMethod => (System.Windows.Controls.ComboBox)FindName("cmbMethod");
         private System.Windows.Controls.TextBox TxtDirectId => (System.Windows.Controls.TextBox)FindName("txtDirectId");
         private System.Windows.Controls.DataGrid GridChain => (System.Windows.Controls.DataGrid)FindName("gridChain");
+
+        // Helper methods moved up for availability
+        private void EnsureResolved()
+        {
+            if (_lastResolved != null) return;
+            if (!BuildBookmarkFromUi(out var copy)) return;
+            var (_, el, _) = UiBookmarks.TryResolveWithTrace(copy);
+            _lastResolved = el;
+        }
+
+        private static string GetElementName(AutomationElement el)
+        {
+            try { if (el.Properties.Name.TryGetValue(out var n)) return n ?? string.Empty; } catch { }
+            try { return el.Name; } catch { }
+            return string.Empty;
+        }
+
+        private static string NormalizeHeader(string h)
+        {
+            h = (h ?? string.Empty).Trim();
+            if (string.Equals(h, "Accession", StringComparison.OrdinalIgnoreCase)) return "Accession No.";
+            if (string.Equals(h, "Study Description", StringComparison.OrdinalIgnoreCase)) return "Study Desc";
+            if (string.Equals(h, "Institution Name", StringComparison.OrdinalIgnoreCase)) return "Institution";
+            if (string.Equals(h, "BirthDate", StringComparison.OrdinalIgnoreCase)) return "Birth Date";
+            if (string.Equals(h, "BodyPart", StringComparison.OrdinalIgnoreCase)) return "Body Part";
+            return h;
+        }
+
+        private static string ReadCellText(AutomationElement cell)
+        {
+            try
+            {
+                var vp = cell.Patterns.Value.PatternOrDefault;
+                if (vp != null)
+                {
+                    if (vp.Value.TryGetValue(out var pv) && !string.IsNullOrWhiteSpace(pv))
+                        return pv;
+                }
+            }
+            catch { }
+            var name = GetElementName(cell); if (!string.IsNullOrWhiteSpace(name)) return name;
+            try { var l = cell.Patterns.LegacyIAccessible.PatternOrDefault?.Name; if (!string.IsNullOrWhiteSpace(l)) return l; } catch { }
+            return string.Empty;
+        }
 
         public SpyWindow()
         {
@@ -219,8 +279,9 @@ namespace Wysg.Musm.Radium.Views
                         UseName = !string.IsNullOrEmpty(name),
                         UseClassName = !string.IsNullOrEmpty(className),
                         UseControlTypeId = ctId.HasValue,
-                        UseAutomationId = preferAutomationId && !string.IsNullOrEmpty(autoId),
-                        UseIndex = true,
+                        // Default behavior requested: check AutomationId when present; do not check Index by default
+                        UseAutomationId = !string.IsNullOrEmpty(autoId),
+                        UseIndex = false,
                         Scope = UiBookmarks.SearchScope.Children
                     });
                 }
@@ -417,18 +478,52 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnSaveEdited(object sender, RoutedEventArgs e)
         {
-            if (cmbKnown.SelectedItem is not System.Windows.Controls.ComboBoxItem item || item.Tag is not string keyStr)
-            { txtStatus.Text = "Select a known control"; return; }
-            if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key))
-            { txtStatus.Text = "Invalid known control"; return; }
-            var mapping = UiBookmarks.GetMapping(key);
-            if (mapping == null)
+            UiBookmarks.Bookmark toSave;
+            if (_editing == null) { txtStatus.Text = "Nothing to save"; return; }
+
+            try
             {
-                mapping = new UiBookmarks.Bookmark { Name = key.ToString(), ProcessName = _editing?.ProcessName ?? string.Empty };
+                GridChain.CommitEdit(DataGridEditingUnit.Cell, true);
+                GridChain.CommitEdit(DataGridEditingUnit.Row, true);
             }
-            SaveEditorInto(mapping);
-            UiBookmarks.SaveMapping(key, mapping);
-            txtStatus.Text = $"Saved mapping for {key}";
+            catch { }
+
+            SaveEditorInto(_editing);
+
+            UiBookmarks.KnownControl key;
+            var knownItem = cmbKnown?.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            var tagStr = knownItem?.Tag as string;
+            if (!string.IsNullOrWhiteSpace(tagStr) && Enum.TryParse<UiBookmarks.KnownControl>(tagStr, out key))
+            {
+                toSave = new UiBookmarks.Bookmark
+                {
+                    Name = key.ToString(),
+                    ProcessName = _editing.ProcessName,
+                    Method = _editing.Method,
+                    DirectAutomationId = _editing.DirectAutomationId,
+                    CrawlFromRoot = _editing.CrawlFromRoot,
+                    Chain = _editing.Chain.ToList()
+                };
+                UiBookmarks.SaveMapping(key, toSave);
+                txtStatus.Text = $"Saved mapping for {key}";
+                return;
+            }
+
+            var store = UiBookmarks.Load();
+            var name = string.IsNullOrWhiteSpace(_editing.Name) ? "Bookmark" : _editing.Name;
+            var existing = store.Bookmarks.FirstOrDefault(b => string.Equals(b.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (existing == null)
+            {
+                existing = new UiBookmarks.Bookmark { Name = name };
+                store.Bookmarks.Add(existing);
+            }
+            existing.ProcessName = _editing.ProcessName;
+            existing.Method = _editing.Method;
+            existing.DirectAutomationId = _editing.DirectAutomationId;
+            existing.CrawlFromRoot = _editing.CrawlFromRoot;
+            existing.Chain = _editing.Chain.ToList();
+            UiBookmarks.Save(store);
+            txtStatus.Text = $"Saved bookmark '{name}'";
         }
 
         private void OnPreviewMouseDownForQuickMap(object sender, MouseButtonEventArgs e)
@@ -513,6 +608,255 @@ namespace Wysg.Musm.Radium.Views
             sb.AppendLine($"ControlTypeId: {n.ControlTypeId}");
             sb.AppendLine($"AutomationId: {n.AutomationId}");
             txtNodeProps.Text = sb.ToString();
+        }
+
+        private void OnGetSelectedRow(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                EnsureResolved();
+                if (_lastResolved == null) { txtStatus.Text = "Row Data: not found"; return; }
+
+                var list = _lastResolved;
+                // Get selected item(s) using Selection or fallback
+                var selection = list.Patterns.Selection.PatternOrDefault;
+                var selected = selection?.Selection?.Value ?? Array.Empty<AutomationElement>();
+                if (selected.Length == 0)
+                {
+                    selected = list.FindAllDescendants()
+                        .Where(a =>
+                        {
+                            try { return a.Patterns.SelectionItem.IsSupported && a.Patterns.SelectionItem.PatternOrDefault?.IsSelected == true; }
+                            catch { return false; }
+                        })
+                        .ToArray();
+                }
+                if (selected.Length == 0) { txtStatus.Text = "Row Data: no selection"; return; }
+                var row = selected[0];
+
+                // Read headers and cell values
+                var headers = GetHeaderTexts(list);
+                var cellValues = GetRowCellValues(row);
+
+                if (headers.Count == 0 && cellValues.Count == 0)
+                {
+                    txtStatus.Text = "Row Data: empty";
+                    return;
+                }
+
+                // Make sure we can display as pairs. If headers missing or fewer than values, synthesize names.
+                if (headers.Count < cellValues.Count)
+                {
+                    for (int i = headers.Count; i < cellValues.Count; i++) headers.Add($"Col{i + 1}");
+                }
+                else if (headers.Count > cellValues.Count)
+                {
+                    for (int i = cellValues.Count; i < headers.Count; i++) cellValues.Add(string.Empty);
+                }
+
+                var pairs = new List<(string Header, string Value)>();
+                int count = Math.Max(headers.Count, cellValues.Count);
+                for (int i = 0; i < count; i++)
+                {
+                    var h = NormalizeHeader(i < headers.Count ? headers[i] : $"Col{i + 1}");
+                    var v = i < cellValues.Count ? cellValues[i] : string.Empty;
+                    pairs.Add((h, v));
+                }
+
+                // One-line pairs output: Header: Value | Header: Value ...
+                var line = string.Join(" | ", pairs
+                    .Where(p => !string.IsNullOrWhiteSpace(p.Header) || !string.IsNullOrWhiteSpace(p.Value))
+                    .Select(p => string.IsNullOrWhiteSpace(p.Header) ? p.Value : ($"{p.Header}: {p.Value}"))
+                );
+                txtStatus.Text = string.IsNullOrWhiteSpace(line) ? "Row Data: empty" : line;
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = "Row Data error: " + ex.Message;
+            }
+        }
+
+        private static List<string> GetHeaderTexts(AutomationElement list)
+        {
+            var result = new List<string>();
+            try
+            {
+                // 1) Heuristic: header is the first child of the list control
+                var kids = list.FindAllChildren();
+                if (kids.Length > 0)
+                {
+                    var headerRow = kids[0];
+                    var headerCells = headerRow.FindAllChildren();
+                    if (headerCells.Length > 0)
+                    {
+                        foreach (var hc in headerCells)
+                        {
+                            try
+                            {
+                                var t = ReadCellText(hc);
+                                if (string.IsNullOrWhiteSpace(t))
+                                {
+                                    foreach (var g in hc.FindAllChildren())
+                                    {
+                                        t = ReadCellText(g);
+                                        if (!string.IsNullOrWhiteSpace(t)) break;
+                                    }
+                                }
+                                if (!string.IsNullOrWhiteSpace(t)) result.Add(t.Trim());
+                            }
+                            catch { }
+                        }
+                        if (result.Count > 0) return result;
+                    }
+                }
+
+                // 2) Fallback: search explicit Header control nearby
+                var header = kids.FirstOrDefault(c =>
+                {
+                    try { return (int)c.ControlType == UIA_Header; } catch { return false; }
+                });
+
+                if (header == null)
+                {
+                    foreach (var ch in kids)
+                    {
+                        try
+                        {
+                            var h = ch.FindAllChildren().FirstOrDefault(cc => (int)cc.ControlType == UIA_Header);
+                            if (h != null) { header = h; break; }
+                        }
+                        catch { }
+                    }
+                }
+
+                if (header != null)
+                {
+                    foreach (var hi in header.FindAllChildren())
+                    {
+                        try
+                        {
+                            string txt = string.Empty;
+                            if ((int)hi.ControlType == UIA_HeaderItem || (int)hi.ControlType == UIA_Text)
+                            {
+                                txt = ReadCellText(hi);
+                            }
+                            if (string.IsNullOrWhiteSpace(txt))
+                            {
+                                foreach (var g in hi.FindAllChildren())
+                                {
+                                    txt = ReadCellText(g);
+                                    if (!string.IsNullOrWhiteSpace(txt)) break;
+                                }
+                            }
+                            if (!string.IsNullOrWhiteSpace(txt)) result.Add(txt.Trim());
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+            return result;
+        }
+
+        private static List<string> GetRowCellValues(AutomationElement row)
+        {
+            var values = new List<string>();
+            try
+            {
+                var children = row.FindAllChildren();
+                if (children.Length > 0)
+                {
+                    foreach (var c in children)
+                    {
+                        try
+                        {
+                            var txt = ReadCellText(c).Trim();
+                            if (!string.IsNullOrEmpty(txt)) values.Add(txt);
+                            else
+                            {
+                                foreach (var gc in c.FindAllChildren())
+                                {
+                                    var t = ReadCellText(gc).Trim();
+                                    if (!string.IsNullOrEmpty(t)) { values.Add(t); break; }
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                else
+                {
+                    foreach (var d in row.FindAllDescendants())
+                    {
+                        try
+                        {
+                            if ((int)d.ControlType == UIA_Text || (int)d.ControlType == UIA_DataItem)
+                            {
+                                var t = ReadCellText(d).Trim();
+                                if (!string.IsNullOrEmpty(t)) values.Add(t);
+                                if (values.Count >= 20) break;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+            return values;
+        }
+
+        private static int TryGetSelectedRowIndex(AutomationElement list, AutomationElement[] selected)
+        {
+            var children = list.FindAllChildren();
+            var listItems = new List<AutomationElement>();
+            foreach (var ch in children)
+            {
+                try { if ((int)ch.ControlType == UIA_ListItem) listItems.Add(ch); } catch { }
+            }
+
+            int rowIndex = -1;
+            for (int i = 0; i < listItems.Count; i++)
+            {
+                try { if (listItems[i].Patterns.SelectionItem.IsSupported && listItems[i].Patterns.SelectionItem.PatternOrDefault?.IsSelected == true) { rowIndex = i; break; } } catch { }
+            }
+            if (rowIndex < 0 && selected.Length > 0)
+            {
+                var rowEl = selected[0];
+                for (int i = 0; i < listItems.Count; i++) { if (listItems[i].Equals(rowEl)) { rowIndex = i; break; } }
+            }
+            if (rowIndex < 0 && selected.Length > 0)
+            {
+                try { var gi = selected[0].Patterns.GridItem.PatternOrDefault; if (gi != null) rowIndex = gi.Row; } catch { }
+            }
+            return rowIndex;
+        }
+
+        private static Dictionary<int, string> TryGetHeaders(FlaUI.Core.Patterns.ITablePattern? table)
+        {
+            var headers = new Dictionary<int, string>();
+            try
+            {
+                var columnHeaders = table?.ColumnHeaders?.Value;
+                if (columnHeaders != null)
+                {
+                    for (int i = 0; i < columnHeaders.Length; i++) headers[i] = columnHeaders[i]?.Name ?? string.Empty;
+                }
+            }
+            catch { }
+            return headers;
+        }
+
+        private static string FormatPairs(List<(string Header, string Value)> pairs)
+        {
+            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in pairs)
+            {
+                if (!string.IsNullOrWhiteSpace(p.Header) && !dict.ContainsKey(p.Header)) dict[p.Header] = p.Value;
+            }
+            var sb = new StringBuilder();
+            foreach (var h in PreferredHeaderOrder) if (dict.TryGetValue(h, out var v)) sb.AppendLine($"{h}: {v}");
+            foreach (var p in pairs) if (!string.IsNullOrWhiteSpace(p.Header) && !PreferredHeaderOrder.Contains(p.Header, StringComparer.OrdinalIgnoreCase)) sb.AppendLine($"{p.Header}: {p.Value}");
+            return sb.ToString().TrimEnd();
         }
     }
 }

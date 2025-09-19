@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -174,30 +175,100 @@ public sealed class UiBookmarks
             var cf = automation.ConditionFactory;
 
             AutomationElement[] roots = Array.Empty<AutomationElement>();
+            Application? app = null;
+            int appPid = -1;
+            var attachSw = Stopwatch.StartNew();
             try
             {
-                using var app = Application.Attach(b.ProcessName);
+                app = Application.Attach(b.ProcessName);
                 roots = app.GetAllTopLevelWindows(automation);
-                sb.AppendLine($"Attach to '{b.ProcessName}': {roots.Length} top-level windows");
+                appPid = app.ProcessId;
+                attachSw.Stop();
+                sb.AppendLine($"Attach to '{b.ProcessName}': {roots.Length} top-level windows ({attachSw.ElapsedMilliseconds} ms)");
             }
             catch
             {
-                sb.AppendLine($"Attach to '{b.ProcessName}' failed.");
+                attachSw.Stop();
+                sb.AppendLine($"Attach to '{b.ProcessName}' failed. ({attachSw.ElapsedMilliseconds} ms)");
             }
 
-            if (roots.Length == 0)
+            var discoverSw = Stopwatch.StartNew();
+            try
             {
-                try
+                var desktop = automation.GetDesktop();
+                var typeCond = cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window)
+                                  .Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Pane));
+
+                if (roots.Length == 0 && appPid > 0)
                 {
-                    var desktop = automation.GetDesktop();
-                    roots = desktop.FindAllChildren(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
-                    sb.AppendLine($"Desktop fallback windows: {roots.Length}");
+                    roots = desktop.FindAllChildren(cf.ByProcessId(appPid).And(typeCond));
+                    sb.AppendLine($"Desktop fallback (by PID + Window/Pane): {roots.Length}");
                 }
-                catch (Exception ex)
+
+                if (roots.Length == 0)
                 {
-                    sb.AppendLine($"Desktop fallback failed: {ex.Message}");
+                    var pids = new List<int>();
+                    try { pids.AddRange(Process.GetProcessesByName(b.ProcessName).Select(p => p.Id)); } catch { }
+                    if (pids.Count > 0)
+                    {
+                        FlaUI.Core.Conditions.ConditionBase pidCond = cf.ByProcessId(pids[0]);
+                        for (int i = 1; i < pids.Count; i++) pidCond = pidCond.Or(cf.ByProcessId(pids[i]));
+                        roots = desktop.FindAllChildren(pidCond.And(typeCond));
+                        sb.AppendLine($"Desktop fallback (by name + Window/Pane): {roots.Length}");
+                    }
+                }
+
+                if (roots.Length == 0)
+                {
+                    roots = desktop.FindAllChildren(typeCond);
+                    sb.AppendLine($"Desktop fallback (any Window/Pane): {roots.Length}");
+                }
+
+                // If user wants to crawl from root (first node), prefer roots that match first node
+                var nodesOrderedTemp = b.Chain
+                    .Select((n, i) => new { Node = n, Index = i })
+                    .OrderBy(x => x.Node.Order ?? x.Index)
+                    .Select(x => x.Node)
+                    .ToList();
+                var firstIncluded = nodesOrderedTemp.FirstOrDefault(n => n.Include && n.LocateIndex > 0);
+                if (firstIncluded != null && b.CrawlFromRoot)
+                {
+                    var firstCond = BuildAndCondition(firstIncluded, cf);
+                    if (firstCond != null)
+                    {
+                        var cond = firstCond.And(typeCond);
+                        if (appPid > 0) cond = cf.ByProcessId(appPid).And(cond);
+                        var byFirst = automation.GetDesktop().FindAllChildren(cond);
+                        if (byFirst.Length == 0 && firstIncluded.UseControlTypeId)
+                        {
+                            // Relax ControlType for root discovery too
+                            var relaxed = CloneWithoutControlType(firstIncluded);
+                            var relaxedCond = BuildAndCondition(relaxed, cf);
+                            if (relaxedCond != null)
+                            {
+                                var cond2 = relaxedCond.And(typeCond);
+                                if (appPid > 0) cond2 = cf.ByProcessId(appPid).And(cond2);
+                                byFirst = automation.GetDesktop().FindAllChildren(cond2);
+                            }
+                        }
+                        if (byFirst.Length > 0)
+                        {
+                            roots = byFirst;
+                            sb.AppendLine($"Root by first node match: {roots.Length}");
+                        }
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                sb.AppendLine($"Desktop fallback failed: {ex.Message}");
+            }
+            finally
+            {
+                discoverSw.Stop();
+                sb.AppendLine($"Root discovery elapsed: {discoverSw.ElapsedMilliseconds} ms");
+            }
+
             if (roots.Length == 0) return (IntPtr.Zero, null, sb.ToString());
 
             var nodesOrdered = b.Chain
@@ -213,32 +284,34 @@ public sealed class UiBookmarks
 
                 if (b.Method == MapMethod.AutomationIdOnly && !string.IsNullOrEmpty(b.DirectAutomationId))
                 {
+                    var directSw = Stopwatch.StartNew();
                     AutomationElement? el = null;
                     try { el = root.FindFirstDescendant(cf.ByAutomationId(b.DirectAutomationId)); }
                     catch (Exception ex) { sb.AppendLine($"Direct AutomationId search failed: {ex.Message}"); }
-                    if (el != null) return (new IntPtr(SafeHandle(el)), el, sb.AppendLine("Direct AutomationId hit").ToString());
-                    sb.AppendLine("Direct AutomationId not found under this root");
+                    directSw.Stop();
+                    if (el != null) return (new IntPtr(SafeHandle(el)), el, sb.AppendLine($"Direct AutomationId hit ({directSw.ElapsedMilliseconds} ms)").ToString());
+                    sb.AppendLine($"Direct AutomationId not found under this root ({directSw.ElapsedMilliseconds} ms)");
                     continue;
                 }
 
                 bool failed = false;
                 for (int i = 0; i < nodesOrdered.Count; i++)
                 {
+                    var stepSw = Stopwatch.StartNew();
                     var node = nodesOrdered[i];
-                    // Log effective flags and values for this node
                     sb.AppendLine($"Step {i}: Include={node.Include}, Scope={node.Scope}, UseName={node.UseName}('{node.Name}'), UseClassName={node.UseClassName}('{node.ClassName}'), UseAutomationId={node.UseAutomationId}('{node.AutomationId}'), UseControlTypeId={node.UseControlTypeId}({node.ControlTypeId}), UseIndex={node.UseIndex}({node.IndexAmongMatches})");
 
-                    if (!node.Include || node.LocateIndex == 0) { sb.AppendLine($"Step {i}: Skipped (excluded)"); continue; }
+                    if (!node.Include || node.LocateIndex == 0) { stepSw.Stop(); sb.AppendLine($"Step {i}: Skipped (excluded) [{stepSw.ElapsedMilliseconds} ms]"); continue; }
 
-                    // Self-match acceptance for first step
                     if (i == 0 && ElementMatchesNode(current, node))
                     {
-                        sb.AppendLine($"Step {i}: Current root matches by AND props -> select self");
+                        stepSw.Stop();
+                        sb.AppendLine($"Step {i}: Current root matches by AND props -> select self [{stepSw.ElapsedMilliseconds} ms]");
                         continue;
                     }
 
                     var cond = BuildAndCondition(node, cf);
-                    if (cond == null) { sb.AppendLine($"Step {i}: No constraints -> noop"); continue; }
+                    if (cond == null) { stepSw.Stop(); sb.AppendLine($"Step {i}: No constraints -> noop [{stepSw.ElapsedMilliseconds} ms]"); continue; }
 
                     if (i == 0)
                     {
@@ -248,7 +321,8 @@ public sealed class UiBookmarks
                             if (rootHit != null)
                             {
                                 current = rootHit;
-                                sb.AppendLine($"Step {i}: Matched root window by AND props");
+                                stepSw.Stop();
+                                sb.AppendLine($"Step {i}: Matched root by AND props [{stepSw.ElapsedMilliseconds} ms]");
                                 continue;
                             }
                         }
@@ -259,38 +333,102 @@ public sealed class UiBookmarks
                     }
 
                     AutomationElement[] matches = Array.Empty<AutomationElement>();
+                    bool usedRelaxed = false;
                     try
                     {
-                        matches = node.Scope == SearchScope.Children
-                            ? current.FindAllChildren(cond)
-                            : current.FindAllDescendants(cond);
+                        if (node.Scope == SearchScope.Children)
+                        {
+                            matches = current.FindAllChildren(cond);
+                        }
+                        else
+                        {
+                            // Fast path: first descendant only when index is not explicitly used
+                            if (!node.UseIndex || node.IndexAmongMatches <= 0)
+                            {
+                                var hit = current.FindFirstDescendant(cond);
+                                matches = hit != null ? new[] { hit } : Array.Empty<AutomationElement>();
+                              }
+                            else
+                            {
+                                matches = current.FindAllDescendants(cond);
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
                         sb.AppendLine($"Step {i}: FindAll failed: {ex.Message}");
+                    }
+
+                    if (matches.Length == 0)
+                    {
+                        // Try manual walk first (Raw then Control)
                         matches = ManualFindMatches(current, node, node.Scope, automation, preferRaw: true);
-                        sb.AppendLine($"Step {i}: Manual walk (RawView) matches={matches.Length}");
                         if (matches.Length == 0)
                         {
                             var ctrlMatches = ManualFindMatches(current, node, node.Scope, automation, preferRaw: false);
-                            sb.AppendLine($"Step {i}: Manual walk (ControlView) matches={ctrlMatches.Length}");
                             if (ctrlMatches.Length > 0) matches = ctrlMatches;
+                        }
 
-                            // Log diagnostic child counts
+                        // If still none and ControlType filter is on, try a relaxed search without ControlType
+                        if (matches.Length == 0 && node.UseControlTypeId)
+                        {
+                            var relaxed = CloneWithoutControlType(node);
+                            var relaxedCond = BuildAndCondition(relaxed, cf);
+                            try
+                            {
+                                if (relaxedCond != null)
+                                {
+                                    if (node.Scope == SearchScope.Children)
+                                        matches = current.FindAllChildren(relaxedCond);
+                                    else
+                                    {
+                                        if (!node.UseIndex || node.IndexAmongMatches <= 0)
+                                        {
+                                            var hit = current.FindFirstDescendant(relaxedCond);
+                                            matches = hit != null ? new[] { hit } : Array.Empty<AutomationElement>();
+                                        }
+                                        else
+                                        {
+                                            matches = current.FindAllDescendants(relaxedCond);
+                                        }
+                                    }
+                                }
+                            }
+                            catch { matches = Array.Empty<AutomationElement>(); }
+
+                            if (matches.Length == 0)
+                            {
+                                matches = ManualFindMatches(current, relaxed, node.Scope, automation, preferRaw: true);
+                                if (matches.Length == 0)
+                                {
+                                    var ctrlRelax = ManualFindMatches(current, relaxed, node.Scope, automation, preferRaw: false);
+                                    if (ctrlRelax.Length > 0) matches = ctrlRelax;
+                                }
+                            }
+                            if (matches.Length > 0) { usedRelaxed = true; sb.AppendLine($"Step {i}: Relaxed ControlType filter -> {matches.Length} matches"); }
+                            else
+                            {
+                                var diag = ManualFindMatches(current, relaxed, node.Scope, automation, preferRaw: true);
+                                if (diag.Length == 0) diag = ManualFindMatches(current, relaxed, node.Scope, automation, preferRaw: false);
+                                if (diag.Length > 0)
+                                {
+                                    sb.AppendLine($"Step {i}: Candidates ignoring ControlType: {Math.Min(5, diag.Length)}");
+                                    for (int d = 0; d < Math.Min(5, diag.Length); d++)
+                                    {
+                                        var e = diag[d];
+                                        int ctVal = -1; string ctName = "?";
+                                        try { ctVal = (int)e.Properties.ControlType.Value; ctName = e.Properties.ControlType.Value.ToString(); } catch { }
+                                        sb.AppendLine($"    -> Ct={ctVal}({ctName}), Name='{SafeName(e)}', Class='{SafeClass(e)}', AutoId='{SafeAutoId(e)}'");
+                                    }
+                                }
+                            }
+                        }
+
+                        if (matches.Length == 0)
+                        {
                             int rawChildren = CountChildren(current, automation, useRaw: true);
                             int ctrlChildren = CountChildren(current, automation, useRaw: false);
                             sb.AppendLine($"Step {i}: ChildCounts Raw={rawChildren}, Control={ctrlChildren}");
-                        }
-                    }
-
-                    // First step fallback: if no children matches, try descendants
-                    if (i == 0 && node.Scope == SearchScope.Children && matches.Length == 0)
-                    {
-                        var alt = ManualFindMatches(current, node, SearchScope.Descendants, automation, preferRaw: true);
-                        if (alt.Length > 0)
-                        {
-                            matches = alt;
-                            sb.AppendLine($"Step {i}: Children->Descendants fallback yielded {matches.Length}");
                         }
                     }
 
@@ -301,9 +439,9 @@ public sealed class UiBookmarks
                         sb.AppendLine($"  - [{k}] Name='{SafeName(m)}', Class='{SafeClass(m)}', AutoId='{SafeAutoId(m)}'");
                     }
 
-                    if (matches.Length == 0) { failed = true; sb.AppendLine("  -> No matches, abort root"); break; }
+                    if (matches.Length == 0) { failed = true; stepSw.Stop(); sb.AppendLine($"Step {i}: Failed [{stepSw.ElapsedMilliseconds} ms]"); break; }
 
-                    if (node.Scope == SearchScope.Descendants && matches.Length > 1)
+                    if (!usedRelaxed && node.Scope == SearchScope.Descendants && matches.Length > 1)
                     {
                         try
                         {
@@ -326,6 +464,7 @@ public sealed class UiBookmarks
                                 {
                                     current = leading;
                                     sb.AppendLine("  -> Selected by look-ahead");
+                                    stepSw.Stop();
                                     continue;
                                 }
                             }
@@ -339,7 +478,8 @@ public sealed class UiBookmarks
                     int idx = (node.Scope == SearchScope.Descendants) ? 0 : (node.UseIndex ? node.IndexAmongMatches : 0);
                     idx = Math.Max(0, Math.Min(idx, matches.Length - 1));
                     current = matches[idx];
-                    sb.AppendLine($"  -> Selected index {idx}");
+                    stepSw.Stop();
+                    sb.AppendLine($"  -> Selected index {idx} [{stepSw.ElapsedMilliseconds} ms]");
                 }
                 if (!failed)
                 {
@@ -378,25 +518,102 @@ public sealed class UiBookmarks
         }
     }
 
+    private static Node CloneWithoutControlType(Node n) => new()
+    {
+        Name = n.Name,
+        ClassName = n.ClassName,
+        ControlTypeId = n.ControlTypeId,
+        AutomationId = n.AutomationId,
+        IndexAmongMatches = n.IndexAmongMatches,
+        Include = n.Include,
+        UseName = n.UseName,
+        UseClassName = n.UseClassName,
+        UseControlTypeId = false, // relaxed
+        UseAutomationId = n.UseAutomationId,
+        UseIndex = n.UseIndex,
+        Scope = n.Scope,
+        Order = n.Order
+    };
+
     private static (IntPtr hwnd, AutomationElement? element) ResolveBookmark(Bookmark b)
     {
         try
         {
-            using var app = Application.Attach(b.ProcessName);
             using var automation = new UIA3Automation();
-            AutomationElement[] roots = app.GetAllTopLevelWindows(automation);
-            if (roots == null || roots.Length == 0)
-            {
-                var mw = app.GetMainWindow(automation, TimeSpan.FromMilliseconds(800));
-                roots = mw != null ? new AutomationElement[] { mw } : Array.Empty<AutomationElement>();
-            }
-            if (roots.Length == 0) return (IntPtr.Zero, null);
-
             var cf = automation.ConditionFactory;
+            AutomationElement[] roots = Array.Empty<AutomationElement>();
+
+            try
+            {
+                using var app = Application.Attach(b.ProcessName);
+                roots = app.GetAllTopLevelWindows(automation);
+                if (roots == null || roots.Length == 0)
+                {
+                    var mw = app.GetMainWindow(automation, TimeSpan.FromMilliseconds(800));
+                    roots = mw != null ? new AutomationElement[] { mw } : Array.Empty<AutomationElement>();
+                }
+                if (roots == null) roots = Array.Empty<AutomationElement>();
+
+                if (roots.Length == 0)
+                {
+                    var desktop = automation.GetDesktop();
+                    var typeCond = cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window)
+                                      .Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Pane));
+                    roots = desktop.FindAllChildren(cf.ByProcessId(app.ProcessId).And(typeCond));
+                }
+            }
+            catch
+            {
+                var desktop = automation.GetDesktop();
+                var typeCond = cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window)
+                                  .Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Pane));
+                var pids = new List<int>();
+                try { pids.AddRange(Process.GetProcessesByName(b.ProcessName).Select(p => p.Id)); } catch { }
+                if (pids.Count > 0)
+                {
+                    FlaUI.Core.Conditions.ConditionBase pidCond = cf.ByProcessId(pids[0]);
+                    for (int i = 1; i < pids.Count; i++) pidCond = pidCond.Or(cf.ByProcessId(pids[i]));
+                    roots = desktop.FindAllChildren(pidCond.And(typeCond));
+                }
+                if (roots.Length == 0)
+                {
+                    roots = desktop.FindAllChildren(typeCond);
+                }
+            }
+
+            // Prefer roots that match first node if requested
+            var nodesOrdered = b.Chain
+                .Select((n, i) => new { Node = n, Index = i })
+                .OrderBy(x => x.Node.Order ?? x.Index)
+                .Select(x => x.Node)
+                .ToList();
+            var firstIncluded = nodesOrdered.FirstOrDefault(n => n.Include && n.LocateIndex > 0);
+            if (firstIncluded != null && b.CrawlFromRoot)
+            {
+                var firstCond = BuildAndCondition(firstIncluded, cf);
+                if (firstCond != null)
+                {
+                    var typeCond = cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window)
+                                      .Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Pane));
+                    var cond = firstCond.And(typeCond);
+                    var desktop = automation.GetDesktop();
+                    var byFirst = desktop.FindAllChildren(cond);
+                    if (byFirst.Length == 0 && firstIncluded.UseControlTypeId)
+                    {
+                        var relaxed = CloneWithoutControlType(firstIncluded);
+                        var relaxedCond = BuildAndCondition(relaxed, cf);
+                        if (relaxedCond != null) byFirst = desktop.FindAllChildren(relaxedCond.And(typeCond));
+                    }
+                    if (byFirst.Length > 0) roots = byFirst;
+                }
+            }
+
+            if (roots.Length == 0) return (IntPtr.Zero, null);
 
             foreach (var root in roots)
             {
                 AutomationElement current = root;
+
                 if (b.Method == MapMethod.AutomationIdOnly && !string.IsNullOrEmpty(b.DirectAutomationId))
                 {
                     var el = root.FindFirstDescendant(cf.ByAutomationId(b.DirectAutomationId));
@@ -405,18 +622,12 @@ public sealed class UiBookmarks
                 }
 
                 bool failed = false;
-                var nodesOrdered = b.Chain
-                    .Select((n, i) => new { Node = n, Index = i })
-                    .OrderBy(x => x.Node.Order ?? x.Index)
-                    .Select(x => x.Node)
-                    .ToList();
 
                 for (int i = 0; i < nodesOrdered.Count; i++)
                 {
                     var node = nodesOrdered[i];
                     if (!node.Include || node.LocateIndex == 0) continue; // excluded
 
-                    // Self-match acceptance for first step
                     if (i == 0 && ElementMatchesNode(current, node))
                     {
                         continue;
@@ -436,13 +647,32 @@ public sealed class UiBookmarks
                     }
 
                     AutomationElement[] matches = Array.Empty<AutomationElement>();
+                    bool usedRelaxed = false;
                     try
                     {
-                        matches = node.Scope == SearchScope.Children
-                            ? current.FindAllChildren(cond)
-                            : current.FindAllDescendants(cond);
+                        if (node.Scope == SearchScope.Children)
+                        {
+                            matches = current.FindAllChildren(cond);
+                        }
+                        else
+                        {
+                            if (!node.UseIndex || node.IndexAmongMatches <= 0)
+                            {
+                                var hit = current.FindFirstDescendant(cond);
+                                matches = hit != null ? new[] { hit } : Array.Empty<AutomationElement>();
+                            }
+                            else
+                            {
+                                matches = current.FindAllDescendants(cond);
+                            }
+                        }
                     }
                     catch
+                    {
+                        // ignore
+                    }
+
+                    if (matches.Length == 0)
                     {
                         matches = ManualFindMatches(current, node, node.Scope, automation, preferRaw: true);
                         if (matches.Length == 0)
@@ -450,18 +680,43 @@ public sealed class UiBookmarks
                             var ctrl = ManualFindMatches(current, node, node.Scope, automation, preferRaw: false);
                             if (ctrl.Length > 0) matches = ctrl;
                         }
-                    }
-
-                    // First step fallback: if no children matches, try descendants
-                    if (i == 0 && node.Scope == SearchScope.Children && matches.Length == 0)
-                    {
-                        var alt = ManualFindMatches(current, node, SearchScope.Descendants, automation, preferRaw: true);
-                        if (alt.Length > 0) matches = alt;
+                        if (matches.Length == 0 && node.UseControlTypeId)
+                        {
+                            var relaxed = CloneWithoutControlType(node);
+                            var relaxedCond = BuildAndCondition(relaxed, cf);
+                            try
+                            {
+                                if (relaxedCond != null)
+                                {
+                                    if (node.Scope == SearchScope.Children)
+                                        matches = current.FindAllChildren(relaxedCond);
+                                    else
+                                    {
+                                        if (!node.UseIndex || node.IndexAmongMatches <= 0)
+                                        {
+                                            var hit = current.FindFirstDescendant(relaxedCond);
+                                            matches = hit != null ? new[] { hit } : Array.Empty<AutomationElement>();
+                                        }
+                                        else
+                                        {
+                                            matches = current.FindAllDescendants(relaxedCond);
+                                        }
+                                    }
+                                }
+                            }
+                            catch { matches = Array.Empty<AutomationElement>(); }
+                            if (matches.Length == 0)
+                            {
+                                var ctrl2 = ManualFindMatches(current, relaxed, node.Scope, automation, preferRaw: false);
+                                if (ctrl2.Length > 0) matches = ctrl2;
+                            }
+                            if (matches.Length > 0) usedRelaxed = true;
+                        }
                     }
 
                     if (matches.Length == 0) { failed = true; break; }
 
-                    if (node.Scope == SearchScope.Descendants && matches.Length > 1)
+                    if (!usedRelaxed && node.Scope == SearchScope.Descendants && matches.Length > 1)
                     {
                         FlaUI.Core.Conditions.ConditionBase? nextCond = null;
                         for (int j = i + 1; j < nodesOrdered.Count; j++)
@@ -508,13 +763,13 @@ public sealed class UiBookmarks
         var conds = new System.Collections.Generic.List<FlaUI.Core.Conditions.ConditionBase>();
         if (node.UseAutomationId && !string.IsNullOrEmpty(node.AutomationId)) conds.Add(cf.ByAutomationId(node.AutomationId));
         if (node.UseClassName && !string.IsNullOrEmpty(node.ClassName)) conds.Add(cf.ByClassName(node.ClassName));
-        if (node.UseControlTypeId && node.ControlTypeId.HasValue) conds.Add(cf.ByControlType((FlaUI.Core.Definitions.ControlType)node.ControlTypeId.Value));
+        if (node.UseControlTypeId && node.ControlTypeId.HasValue)
+        {
+            conds.Add(cf.ByControlType((FlaUI.Core.Definitions.ControlType)node.ControlTypeId.Value));
+        }
         if (node.UseName && !string.IsNullOrEmpty(node.Name)) conds.Add(cf.ByName(node.Name));
 
-        if (conds.Count == 0)
-        {
-            return null;
-        }
+        if (conds.Count == 0) return null;
 
         var result = conds[0];
         for (int i = 1; i < conds.Count; i++) result = result.And(conds[i]);
@@ -530,9 +785,9 @@ public sealed class UiBookmarks
             if (node.UseAutomationId && !string.Equals(SafeAutoId(e), node.AutomationId, StringComparison.Ordinal)) return false;
             if (node.UseControlTypeId)
             {
-                int actualCtId;
-                try { actualCtId = (int)e.Properties.ControlType.Value; } catch { return false; }
-                if (!node.ControlTypeId.HasValue || actualCtId != node.ControlTypeId.Value) return false;
+                int ctId;
+                try { ctId = (int)e.Properties.ControlType.Value; } catch { return false; }
+                if (!node.ControlTypeId.HasValue || ctId != node.ControlTypeId.Value) return false;
             }
             return true;
         }
