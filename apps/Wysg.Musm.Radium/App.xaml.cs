@@ -7,7 +7,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using Serilog.Extensions.Hosting;
-using Wysg.Musm.Infrastructure.ViewModels;
 using Wysg.Musm.Radium.Services;
 using Wysg.Musm.Radium.ViewModels;
 using Wysg.Musm.Radium.Views;
@@ -32,22 +31,8 @@ namespace Wysg.Musm.Radium
         protected override async void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
-
-            // Ensure app does not auto-shutdown if a dialog (e.g., Settings) is opened/closed during startup
             Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-
             await _host.StartAsync();
-
-            // resolve dev tenant once (robust against varying ids)
-            var tenantService = _host.Services.GetRequiredService<ITenantService>();
-            var ctx = _host.Services.GetRequiredService<ITenantContext>();
-            var dev = await tenantService.GetTenantByCodeAsync("dev");
-            if (dev != null)
-            {
-                ctx.TenantId = dev.Id;
-                ctx.TenantCode = dev.Code;
-            }
-
             await ShowSplashLoginAsync();
         }
 
@@ -59,21 +44,25 @@ namespace Wysg.Musm.Radium
 
         private void ConfigureServices(HostBuilderContext context, IServiceCollection services)
         {
-            services.AddSingleton<ITenantService, TenantService>();
-            services.AddSingleton<IPhraseService, PhraseService>();
             services.AddSingleton<ITenantContext, TenantContext>();
             services.AddSingleton<IPhraseCache, PhraseCache>();
             services.AddSingleton<IRadiumLocalSettings, RadiumLocalSettings>();
             services.AddSingleton<MfcPacsService>();
+            services.AddSingleton<IAuthService, GoogleOAuthAuthService>();
+            services.AddSingleton<ISupabaseService, SupabaseService>();
+            services.AddSingleton<IAuthStorage, DpapiAuthStorage>();
+
+            // keep existing editor services
+            services.AddSingleton<IPhraseService, PhraseService>();
+
             services.AddTransient<SplashLoginViewModel>();
+            services.AddTransient<SignUpViewModel>();
             services.AddTransient<MainViewModel>();
         }
 
-        private async Task ShowSplashLoginAsync()
+        public async Task ShowSplashLoginAsync()
         {
-            // At this point ShutdownMode is OnExplicitShutdown from OnStartup; keep it until MainWindow is shown
-            var tenantService = _host.Services.GetRequiredService<ITenantService>();
-            var splashLoginVM = new SplashLoginViewModel(tenantService);
+            var splashLoginVM = _host.Services.GetRequiredService<SplashLoginViewModel>();
             var splashLoginWindow = new SplashLoginWindow { DataContext = splashLoginVM };
 
             bool loginSuccess = false;
@@ -91,8 +80,6 @@ namespace Wysg.Musm.Radium
                 var mainWindow = new MainWindow { DataContext = mainVM };
                 Current.MainWindow = mainWindow;
                 mainWindow.Show();
-
-                // Restore to normal shutdown behavior now that MainWindow is available
                 Current.ShutdownMode = ShutdownMode.OnLastWindowClose;
             }
             else

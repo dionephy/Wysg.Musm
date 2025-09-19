@@ -239,6 +239,8 @@
                     <TextBlock Text="H:" VerticalAlignment="Center" Margin="6,0,2,0"/>
                     <TextBox x:Name="txtCropH" Width="60" Height="22"/>
                     <Button Content="OCR (Fast)" Click="OnReadBannerOcrFast" Margin="6,0,0,0"/>
+                    <Button Content="Log out" Click="OnLogout" Margin="12,0,6,0"/>
+                    <TextBlock x:Name="txtUserEmail" VerticalAlignment="Center" Foreground="#C8C8C8"/>
                 </StackPanel>
             </ScrollViewer>
 

@@ -12,38 +12,50 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly IRadiumLocalSettings _local;
 
         [ObservableProperty]
-        private string? connectionString;
+        private string? localConnectionString;
+
+        // Back-compat binding
+        public string? ConnectionString
+        {
+            get => LocalConnectionString;
+            set => LocalConnectionString = value;
+        }
 
         public IRelayCommand SaveCommand { get; }
-        public IRelayCommand TestCommand { get; }
+        public IRelayCommand TestLocalCommand { get; }
 
         public SettingsViewModel() : this(new RadiumLocalSettings()) { }
 
         public SettingsViewModel(IRadiumLocalSettings local)
         {
             _local = local;
-            ConnectionString = _local.ConnectionString ?? "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas";
+            LocalConnectionString = _local.LocalConnectionString ?? "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas";
             SaveCommand = new RelayCommand(Save);
-            TestCommand = new AsyncRelayCommand(TestAsync);
+            TestLocalCommand = new AsyncRelayCommand(TestLocalAsync);
         }
 
         private void Save()
         {
-            _local.ConnectionString = ConnectionString ?? string.Empty;
+            _local.LocalConnectionString = LocalConnectionString ?? string.Empty;
             MessageBox.Show("Saved.", "Settings", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private async Task TestAsync()
+        private async Task TestLocalAsync()
+        {
+            await TestAsync(LocalConnectionString, "Local");
+        }
+
+        private static async Task TestAsync(string? cs, string label)
         {
             try
             {
-                await using var con = new NpgsqlConnection(ConnectionString);
+                await using var con = new NpgsqlConnection(cs);
                 await con.OpenAsync();
-                MessageBox.Show("Connection OK.", "Test", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"{label} connection OK.", "Test", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (System.Exception ex)
             {
-                MessageBox.Show($"Failed: {ex.Message}", "Test", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"{label} failed: {ex.Message}", "Test", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

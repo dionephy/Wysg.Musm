@@ -13,11 +13,11 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <TextBlock Grid.Row="0" Grid.Column="0" Text="Connection String:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ConnectionString, UpdateSourceTrigger=PropertyChanged}" MinWidth="520"/>
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="Local/Intranet Connection String:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding LocalConnectionString, UpdateSourceTrigger=PropertyChanged}" MinWidth="520"/>
 
         <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="Test" Width="90" Margin="0,0,8,0" Command="{Binding TestCommand}"/>
+            <Button Content="Test" Width="90" Margin="0,0,8,0" Command="{Binding TestLocalCommand}"/>
             <Button Content="Save" Width="90" Margin="0,0,8,0" Command="{Binding SaveCommand}"/>
             <Button Content="Close" Width="90" IsCancel="True"/>
         </StackPanel>

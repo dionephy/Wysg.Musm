@@ -8,6 +8,7 @@ using Wysg.Musm.Radium.ViewModels;
 using Wysg.Musm.Editor.Controls;
 using Wysg.Musm.Radium.Services;
 using Wysg.Musm.Radium.Views;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Wysg.Musm.Radium.Views
 {
@@ -32,6 +33,14 @@ namespace Wysg.Musm.Radium.Views
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             _pacs ??= new MfcPacsService();
+
+            // Show current user email
+            try
+            {
+                var storage = ((App)Application.Current).Services.GetRequiredService<IAuthStorage>();
+                txtUserEmail.Text = string.IsNullOrWhiteSpace(storage.Email) ? "(unknown)" : storage.Email;
+            }
+            catch { txtUserEmail.Text = string.Empty; }
 
             if (DataContext is not MainViewModel vm) return;
             InitEditor(vm, EditorHeader);
@@ -325,6 +334,30 @@ namespace Wysg.Musm.Radium.Views
         {
             var win = new SpyWindow { Owner = this };
             win.Show();
+        }
+
+        private async void OnLogout(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var app = (App)Application.Current;
+                var storage = app.Services.GetRequiredService<IAuthStorage>();
+                var auth = app.Services.GetRequiredService<IAuthService>();
+
+                storage.RefreshToken = null;
+                storage.Email = null;
+                storage.DisplayName = null;
+                storage.RememberMe = false;
+
+                txtUserEmail.Text = string.Empty;
+
+                await auth.SignOutAsync();
+            }
+            catch { }
+
+            var appRef = (App)Application.Current;
+            this.Close();
+            await appRef.ShowSplashLoginAsync();
         }
     }
 }
