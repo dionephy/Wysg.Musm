@@ -30,8 +30,10 @@
 
 ## Studyname ¡ê LOINC Parts Mapping
 - [x] Window (XAML + VM) scaffold; grouped parts with selection; mapping preview.
-- [x] Repository (Npgsql) to load loinc.part and persist mappings (with part_sequence_order).
-- [ ] Command entry points from New Study / Add Study (with preselect).
+- [x] Repository loads studynames/parts; supports med.rad_studyname_loinc_part or legacy med.rad_studyname_loinc.
+- [x] UI shows DB contents; saving persists to mapping table with part_sequence_order.
+- [ ] Add search/filter and validation.
+- [ ] Hook from New/Add Study with preselect.
 
 ## Theming
 - [x] Dark title bar (DWM) on supported Windows.

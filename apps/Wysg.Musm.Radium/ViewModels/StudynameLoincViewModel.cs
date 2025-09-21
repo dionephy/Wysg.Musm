@@ -48,8 +48,13 @@ namespace Wysg.Musm.Radium.ViewModels
         public async Task LoadAsync()
         {
             Studynames.Clear();
-            foreach (var row in await _repo.GetStudynamesAsync())
+            var rows = await _repo.GetStudynamesAsync();
+            foreach (var row in rows)
                 Studynames.Add(new StudynameItem { Id = row.Id, Studyname = row.Studyname });
+
+            // Auto-select the first studyname so parts are visible immediately
+            if (SelectedStudyname == null && Studynames.Count > 0)
+                SelectedStudyname = Studynames[0];
         }
 
         public void Preselect(string studyname)
@@ -84,11 +89,10 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private async Task ReloadPartsAsync()
         {
-            if (SelectedStudyname == null)
-                return;
-
             PartsBySubcategory.Clear();
             SelectedParts.Clear();
+            if (SelectedStudyname == null)
+                return;
 
             var parts = await _repo.GetPartsAsync();
             var mappings = (await _repo.GetMappingsAsync(SelectedStudyname.Id)).ToDictionary(m => m.PartNumber, m => m.PartSequenceOrder);

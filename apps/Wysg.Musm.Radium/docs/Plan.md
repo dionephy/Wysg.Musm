@@ -47,6 +47,8 @@
 - [x] Add Manage studyname button.
 
 ## Phase 6 ? Studyname ¡ê LOINC Parts Mapping
-- [x] Window (XAML + VM) scaffold; grouped parts with selection; mapping preview.
-- [ ] Simple repository to load loinc.part and persist mappings (with part_sequence_order).
+- [x] Create dark-themed window (XAML + VM) scaffold with groups and selections.
+- [x] Repository to load/store med.rad_studyname, loinc.part, and mappings (supports med.rad_studyname_loinc_part or legacy med.rad_studyname_loinc).
+- [x] Window now shows live DB contents and persists mappings (with part_sequence_order).
+- [ ] Optional: search/filter parts; more sequence tokens; validation.
 - [ ] Command entry points from New Study / Add Study (with preselect).

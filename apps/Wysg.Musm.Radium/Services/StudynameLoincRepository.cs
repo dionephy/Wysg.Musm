@@ -8,9 +8,26 @@ namespace Wysg.Musm.Radium.Services
     public sealed class StudynameLoincRepository : IStudynameLoincRepository
     {
         private readonly IRadiumLocalSettings _settings;
+        private string? _mapTableName; // cache resolved table name
         public StudynameLoincRepository(IRadiumLocalSettings settings) => _settings = settings;
 
         private NpgsqlConnection Open() => new NpgsqlConnection(_settings.LocalConnectionString ?? _settings.CentralConnectionString ?? throw new InvalidOperationException("No connection string configured"));
+
+        private static async Task<string?> ResolveExistingMapTableAsync(NpgsqlConnection cn)
+        {
+            await using var cmd = new NpgsqlCommand("select coalesce(to_regclass('med.rad_studyname_loinc_part')::text, to_regclass('med.rad_studyname_loinc')::text)", cn);
+            var o = await cmd.ExecuteScalarAsync();
+            var s = o as string;
+            return string.IsNullOrWhiteSpace(s) ? null : s;
+        }
+
+        private async Task<string> GetMapTableAsync(NpgsqlConnection cn)
+        {
+            if (!string.IsNullOrEmpty(_mapTableName)) return _mapTableName!;
+            var tbl = await ResolveExistingMapTableAsync(cn) ?? throw new InvalidOperationException("Mapping table not found. Ensure med.rad_studyname_loinc_part or med.rad_studyname_loinc exists.");
+            _mapTableName = tbl;
+            return tbl;
+        }
 
         public async Task<IReadOnlyList<StudynameRow>> GetStudynamesAsync()
         {
@@ -52,7 +69,8 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
             var list = new List<MappingRow>();
             await using var cn = Open();
             await cn.OpenAsync();
-            await using var cmd = new NpgsqlCommand("SELECT part_number, part_sequence_order FROM med.rad_studyname_loinc_part WHERE studyname_id=@id ORDER BY part_number", cn);
+            var tbl = await GetMapTableAsync(cn);
+            await using var cmd = new NpgsqlCommand($"SELECT part_number, part_sequence_order FROM {tbl} WHERE studyname_id=@id ORDER BY part_number", cn);
             cmd.Parameters.AddWithValue("@id", studynameId);
             await using var rd = await cmd.ExecuteReaderAsync();
             while (await rd.ReadAsync())
@@ -64,13 +82,14 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
         {
             await using var cn = Open();
             await cn.OpenAsync();
+            var tbl = await GetMapTableAsync(cn);
             await using var tx = await cn.BeginTransactionAsync();
-            await using (var del = new NpgsqlCommand("DELETE FROM med.rad_studyname_loinc_part WHERE studyname_id=@id", cn, (NpgsqlTransaction)tx))
+            await using (var del = new NpgsqlCommand($"DELETE FROM {tbl} WHERE studyname_id=@id", cn, (NpgsqlTransaction)tx))
             {
                 del.Parameters.AddWithValue("@id", studynameId);
                 await del.ExecuteNonQueryAsync();
             }
-            await using (var ins = new NpgsqlCommand("INSERT INTO med.rad_studyname_loinc_part(studyname_id, part_number, part_sequence_order) VALUES (@id, @p, @o)", cn, (NpgsqlTransaction)tx))
+            await using (var ins = new NpgsqlCommand($"INSERT INTO {tbl}(studyname_id, part_number, part_sequence_order) VALUES (@id, @p, @o)", cn, (NpgsqlTransaction)tx))
             {
                 var pId = ins.Parameters.Add("@id", NpgsqlTypes.NpgsqlDbType.Bigint);
                 var pNum = ins.Parameters.Add("@p", NpgsqlTypes.NpgsqlDbType.Text);
