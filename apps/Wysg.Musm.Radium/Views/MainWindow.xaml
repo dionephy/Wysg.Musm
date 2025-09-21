@@ -148,7 +148,8 @@
             <!-- Left: Current report -->
             <Grid Grid.Column="0" Margin="0">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" MinHeight="22"/>
+                    <!-- Fixed total height for two-row header area: 54px (32 + 22) -->
+                    <RowDefinition Height="54"/>
                     <RowDefinition Height="4"/>
                     <RowDefinition Height="Auto" MinHeight="24"/>
                     <RowDefinition Height="4"/>
@@ -157,15 +158,30 @@
                     <RowDefinition Height="*" MinHeight="160"/>
                 </Grid.RowDefinitions>
 
-                <DockPanel Grid.Row="0" LastChildFill="False">
-                    <TextBlock Padding="2,0,0,0" Text="Current Report" Foreground="#5A9FD6"/>
-                    <ToggleButton x:Name="btnStudyLocked"
-                                  Content="Study locked"
-                                  Margin="8,0,0,0"
-                                  VerticalAlignment="Center"
-                                  IsChecked="{Binding PatientLocked, Mode=TwoWay}"
-                                  Style="{StaticResource DarkToggleButtonStyle}"/>
-                </DockPanel>
+                <!-- Two-line header area: top buttons/toggles; bottom label -->
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="32"/>
+                        <RowDefinition Height="22"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Upper row: controls (no scrollbar) -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="2,0,2,0" VerticalAlignment="Center">
+                        <ToggleButton x:Name="btnStudyLocked"
+                                      Content="Study locked"
+                                      Margin="0,0,0,0"
+                                      VerticalAlignment="Center"
+                                      IsChecked="{Binding PatientLocked, Mode=TwoWay}"
+                                      Style="{StaticResource DarkToggleButtonStyle}"/>
+                        <Button Content="New Study" Command="{Binding NewStudyCommand}"/>
+                        <Button Content="Send Report Preview" Command="{Binding SendReportPreviewCommand}"/>
+                        <Button Content="Send Report" Command="{Binding SendReportCommand}"/>
+                    </StackPanel>
+
+                    <!-- Lower row: placeholder label for current study/patient detail -->
+                    <TextBlock Grid.Row="1" Padding="2,2,0,0" Text="Current Study" Foreground="#5A9FD6"/>
+                </Grid>
+
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="4"/>
                 <editor:EditorControl x:Name="EditorHeader" Grid.Row="2" MinHeight="70"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="4"/>
@@ -179,7 +195,9 @@
             <!-- Right: Previous + suggestion -->
             <Grid Grid.Column="2" Margin="0">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" MinHeight="22"/>
+                    <!-- Fixed heights to match the left header two rows -->
+                    <RowDefinition Height="32"/>
+                    <RowDefinition Height="22"/>
                     <RowDefinition Height="4"/>
                     <RowDefinition Height="Auto" MinHeight="24"/>
                     <RowDefinition Height="4"/>
@@ -188,20 +206,30 @@
                     <RowDefinition Height="*" MinHeight="160"/>
                 </Grid.RowDefinitions>
 
-                <!-- Row 0: tabs + Add button at right, with overflow dropdown -->
+                <!-- Row 0: tabs + Add button at right, with overflow dropdown (no scrollbar) -->
                 <rad:PreviousStudiesStrip Grid.Row="0"
+                                          VerticalAlignment="Center"
                                           ItemsSource="{Binding PreviousStudies}"
                                           SelectCommand="{Binding SelectPreviousStudyCommand}"
                                           AddCommand="{Binding AddStudyCommand}"/>
 
-                <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                <!-- Row 1: selected previous study details (no scrollbar) -->
+                <Border Grid.Row="1" Background="#1E1E1E" BorderBrush="#2D2D30" BorderThickness="1" Padding="6,2,6,2" Margin="0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Previous study:" Foreground="#5A9FD6"/>
+                        <TextBlock Text="{Binding SelectedPreviousStudy.Title}" Margin="8,0,0,0"/>
+                        <TextBlock Text="{Binding SelectedPreviousStudy.StudyDateTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Margin="8,0,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <GridSplitter Grid.Row="2" HorizontalAlignment="Stretch" Height="4"/>
+                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="3" MinHeight="70" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                                       DocumentText="{Binding SelectedPreviousStudy.Header, Mode=TwoWay}"/>
-                <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="4" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                <GridSplitter Grid.Row="4" HorizontalAlignment="Stretch" Height="4"/>
+                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="5" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                                       DocumentText="{Binding SelectedPreviousStudy.Findings, Mode=TwoWay}"/>
-                <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="6" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                <GridSplitter Grid.Row="6" HorizontalAlignment="Stretch" Height="4"/>
+                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="7" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                                       DocumentText="{Binding SelectedPreviousStudy.Conclusion, Mode=TwoWay}"/>
             </Grid>
         </Grid>
@@ -213,12 +241,10 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Line 1: all buttons/toggles/inputs -->
+            <!-- Line 1: all buttons/toggles/inputs (trimmed after moving core actions above) -->
             <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Horizontal" Margin="6,4,6,4">
-                    <Button Content="New Study" Command="{Binding NewStudyCommand}"/>
-                    <Button Content="Send Report Preview" Command="{Binding SendReportPreviewCommand}"/>
-                    <Button Content="Send Report" Command="{Binding SendReportCommand}"/>
+                    <!-- Moved to header: New Study / Send Report Preview / Send Report -->
                     <Button Content="Manage studyname" Command="{Binding OpenStudynameMapCommand}"/>
 
                     <Separator Width="10"/>

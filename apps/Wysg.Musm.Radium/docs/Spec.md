@@ -8,18 +8,22 @@
 
 ## UI Layout
 - Left pane: Current report editors (Header, Findings, Conclusion).
+  - Header area has two rows with fixed total height (54px):
+    - Upper row (32px): action controls ? `Study locked` toggle, `New Study`, `Send Report Preview`, `Send Report` buttons. No scrollbars.
+    - Lower row (22px): placeholder label `Current Study` (reserved for patient/study summary in future).
 - Right pane:
-  - Top row: PreviousStudies tab strip and Add Study (+) button in the same row; + button pinned to the right.
-  - Overflow: when tabs exceed available width (DockPanel width - 2x Add width), show a "¡å" overflow button to the immediate left of +; exceeding tabs appear as dropdown items.
+  - First row (32px): PreviousStudies tab strip and Add Study (+) button in the same row; + button pinned to the right. No scrollbars.
+  - Second row (22px): Read-only info bar showing basic details of `SelectedPreviousStudy` (Title, StudyDateTime). No scrollbars.
+  - Overflow: when tabs exceed available width, show a "¡å" overflow button; exceeding tabs appear as dropdown items.
   - Tabs are ordered by StudyDateTime desc (newest on the left); overflow dropdown items keep this order.
   - Tabs behave like a TabControl: only one can be selected at a time; selection drives right editors. Visible toggles reflect the selected item, overflow menu item shows a check when selected is hidden.
   - Editors show SelectedPreviousStudy.Header/Findings/Conclusion and update two-way.
-- Status bar (bottom): New Study, Send Report Preview, Send Report, Manage studyname buttons, plus tooling.
+- Status bar (bottom): Diagnostic and utility controls; core actions were moved to the Current Report header.
 
 ## Functional Requirements
 
 ### 1) New Study
-- Trigger: status bar button "New Study".
+- Trigger: header button "New Study".
 - Behavior:
   - [ ] Fetch patient/study info from PACS via PacsService.
   - [x] Set PatientLocked = true.
@@ -43,14 +47,14 @@
   - [x] For testing: clicking + adds multiple dummy previous studies with varied StudyDateTime.
 
 ### 3) Send Report Preview
-- Trigger: status bar button "Send Report Preview"; requires PatientLocked.
+- Trigger: header button "Send Report Preview"; requires PatientLocked.
 - Behavior:
   - [ ] Open worklist.
   - [ ] Save current header/findings/conclusion to var2.
   - [ ] Refine and align (manual initially; later models).
 
 ### 4) Send Report
-- Trigger: status bar button "Send Report"; requires PatientLocked and non-empty var2.
+- Trigger: header button "Send Report"; requires PatientLocked and non-empty var2.
 - Behavior:
   - [ ] Verify current PACS study matches locked study via PacsService + OCR.
   - [ ] Save current header/findings/conclusion to var3.

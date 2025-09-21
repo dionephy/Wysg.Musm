@@ -9,6 +9,10 @@
 - [x] PreviousStudiesStrip control: tabs + Add on same row, overflow dropdown ("¡å") when width exceeded; + pinned right. Tabs sorted by StudyDateTime desc.
 - [x] Tabs behave single-select; overflow item shows check when selected.
 - [x] AddStudy test logic adds multiple dummy studies with varied datetimes and JSON payload.
+- [x] Two-row headers with fixed height and no scrollbars:
+  - [x] Left: Upper row (32px) with Study locked + New/Preview/Send; lower row (22px) placeholder label.
+  - [x] Right: Row 0 (32px) tab strip; Row 1 (22px) details bar for SelectedPreviousStudy.
+- [x] Status bar trimmed (moved core actions to top header).
 
 ## Phase 2 ? PACS Automation Wiring
 - [ ] New Study button:
@@ -43,6 +47,6 @@
 - [x] Add Manage studyname button.
 
 ## Phase 6 ? Studyname ¡ê LOINC Parts Mapping
-- [x] Create dark-themed window (XAML + VM) scaffold with groups and selections.
-- [ ] Simple repository to load/store med.rad_studyname, loinc.part groups, and med.studyname_loinc_part mappings (with part_sequence_order).
-- [ ] Add command entry points from New Study / Add Study (with preselect).
+- [x] Window (XAML + VM) scaffold; grouped parts with selection; mapping preview.
+- [ ] Simple repository to load loinc.part and persist mappings (with part_sequence_order).
+- [ ] Command entry points from New Study / Add Study (with preselect).
