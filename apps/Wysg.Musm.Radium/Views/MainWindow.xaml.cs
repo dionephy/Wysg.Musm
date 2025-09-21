@@ -9,13 +9,15 @@ using Wysg.Musm.Editor.Controls;
 using Wysg.Musm.Radium.Services;
 using Wysg.Musm.Radium.Views;
 using Microsoft.Extensions.DependencyInjection;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 
 namespace Wysg.Musm.Radium.Views
 {
     public partial class MainWindow : Window
     {
         private bool _reportsReversed = false;
-        private MfcPacsService? _pacs;
+        private PacsService? _pacs;
 
         public MainWindow()
         {
@@ -32,7 +34,9 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            _pacs ??= new MfcPacsService();
+            TryEnableDarkTitleBar();
+
+            _pacs ??= new PacsService();
 
             // Show current user email
             try
@@ -359,5 +363,31 @@ namespace Wysg.Musm.Radium.Views
             this.Close();
             await appRef.ShowSplashLoginAsync();
         }
+
+        // Try to enable dark title bar on supported Windows versions
+        private void TryEnableDarkTitleBar()
+        {
+            try
+            {
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero) return;
+
+                int useImmersiveDarkMode = 1;
+                // Windows 10 1809 (17763) uses 19, 1903+ uses 20
+                const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
+                const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+                // Try 20 first
+                if (DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int)) != 0)
+                {
+                    // Fallback to 19
+                    DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref useImmersiveDarkMode, sizeof(int));
+                }
+            }
+            catch { }
+        }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
     }
 }

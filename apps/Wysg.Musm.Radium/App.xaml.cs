@@ -47,7 +47,7 @@ namespace Wysg.Musm.Radium
             services.AddSingleton<ITenantContext, TenantContext>();
             services.AddSingleton<IPhraseCache, PhraseCache>();
             services.AddSingleton<IRadiumLocalSettings, RadiumLocalSettings>();
-            services.AddSingleton<MfcPacsService>();
+            services.AddSingleton<PacsService>();
             services.AddSingleton<IAuthService, GoogleOAuthAuthService>();
             services.AddSingleton<ISupabaseService, SupabaseService>();
             services.AddSingleton<IAuthStorage, DpapiAuthStorage>();
@@ -55,9 +55,13 @@ namespace Wysg.Musm.Radium
             // keep existing editor services
             services.AddSingleton<IPhraseService, PhraseService>();
 
+            // Repositories
+            services.AddSingleton<IStudynameLoincRepository, StudynameLoincRepository>();
+
             services.AddTransient<SplashLoginViewModel>();
             services.AddTransient<SignUpViewModel>();
             services.AddTransient<MainViewModel>();
+            services.AddTransient<StudynameLoincViewModel>();
         }
 
         public async Task ShowSplashLoginAsync()

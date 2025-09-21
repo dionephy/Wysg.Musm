@@ -12,6 +12,47 @@
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- Small dark mode top bar button style -->
+        <Style x:Key="TopBtn" TargetType="Button">
+            <Setter Property="Foreground" Value="#E6E6E6"/>
+            <Setter Property="Background" Value="#2E2E30"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,2"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#35353A"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#5A5A66"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#2A2A2E"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#6A6A77"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#808080"/>
+                                <Setter TargetName="border" Property="Background" Value="#26262A"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#303038"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Border Background="#FF2D2D30" CornerRadius="8" BorderBrush="#FF3F3F46" BorderThickness="1">
@@ -24,9 +65,9 @@
 
             <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,8,0,10">
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                    <Button Content="Test Central" Command="{Binding TestCentralCommand}" Padding="10,4" Margin="0,0,6,0"/>
-                    <Button Content="Settings" Click="OnOpenSettings" Padding="10,4" Margin="0,0,6,0"/>
-                    <Button Content="Close" Click="OnCloseApp" Padding="10,4"/>
+                    <Button Content="Test DB" Command="{Binding TestCentralCommand}" Style="{StaticResource TopBtn}"/>
+                    <Button Content="Settings" Click="OnOpenSettings" Style="{StaticResource TopBtn}"/>
+                    <Button Content="Close" Click="OnCloseApp" Style="{StaticResource TopBtn}"/>
                 </StackPanel>
             </DockPanel>
 
@@ -59,7 +100,7 @@
                     <CheckBox Content="Keep logged in" IsChecked="{Binding RememberMe}" Foreground="#FFCCCCCC" Margin="0,0,0,8"/>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
-                        <Button Content="Log in" CommandParameter="{Binding ElementName=pwd}" Command="{Binding LoginCommand}"
+                        <Button Content="Log in" Command="{Binding LoginCommand}" CommandParameter="{Binding ElementName=pwd}"
                                 Width="120" Height="35" Background="#FF007ACC" Foreground="White" BorderThickness="0" FontWeight="Bold" Margin="0,0,8,0"/>
                         <Button Content="Sign up" Command="{Binding SignUpCommand}"
                                 Width="90" Height="35" Background="#FF3F3F46" Foreground="White" BorderThickness="0"/>

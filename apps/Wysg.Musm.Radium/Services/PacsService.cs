@@ -15,8 +15,8 @@ using System.Runtime.InteropServices;
 
 namespace Wysg.Musm.Radium.Services
 {
-    // Slim PACS automation using the new MFCUIA library
-    public sealed class MfcPacsService
+    // Slim PACS automation using the new MFCUIA library + FlaUI helpers
+    public sealed class PacsService
     {
         private readonly string _proc;
         private IDisposable? _watcher;
@@ -25,7 +25,7 @@ namespace Wysg.Musm.Radium.Services
 
         [DllImport("user32.dll", SetLastError = true)] private static extern bool IsWindow(IntPtr hWnd);
 
-        public MfcPacsService(string processName = "INFINITT") => _proc = processName;
+        public PacsService(string processName = "INFINITT") => _proc = processName;
 
         public async Task OpenWorklistAsync()
         {
