@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Threading.Tasks;
 using Wysg.Musm.Editor.Completion;
 using Wysg.Musm.Editor.Snippets;
 using Wysg.Musm.Editor.Ui;

@@ -1,13 +1,10 @@
 # Radium Task Checklist
 
 ## SpyWindow ? UI Tree
-- [x] PP1: Focused chain for levels 1..4; fully expand under level 5. Desktop Window/Pane fallback when unresolved.
-- [ ] Optional: user-configurable focus/max depth; lazy-load deep branches.
+- [x] PP1: Added detailed Debug.WriteLine, traversal caps, and light fallback.
 
 ## SpyWindow ? Procedures Grid
-- [x] PP2: Operation dropdowns responsive in DataGrid; avoid ItemsSource resets; maintain dropdown state after selection.
-- [x] Use ElementName=Root bindings and enable virtualization.
+- [x] PP2: Operation ComboBox stabilized (StaysOpenOnEdit, preview handlers, guarded SelectionChanged, reopen dropdown post-change).
 
-## General
-- [x] Dark theme/title bar
-- [x] Chain editor maintained
+## Debugging
+- [x] Output (Debug) traces in PP1/PP2 for faster triage.

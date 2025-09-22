@@ -516,7 +516,8 @@
                                               Width="140"
                                               IsEditable="False"
                                               StaysOpenOnEdit="True"
-                                              IsDropDownOpen="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource Self}}"
+                                              PreviewMouseLeftButtonDown="OnOpComboPreviewMouseDown"
+                                              PreviewKeyDown="OnOpComboPreviewKeyDown"
                                               SelectionChanged="OnProcOpChanged">
                                         <ComboBoxItem Content="GetText"/>
                                         <ComboBoxItem Content="Split"/>
@@ -532,7 +533,7 @@
                         <DataGridTemplateColumn Header="Arg1 Type" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox Width="80" SelectedValue="{Binding Arg1.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg1Enabled}">
+                                    <ComboBox Width="80" SelectedValue="{ Binding Arg1.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg1Enabled}">
                                         <ComboBoxItem Content="Element"/>
                                         <ComboBoxItem Content="String"/>
                                         <ComboBoxItem Content="Number"/>

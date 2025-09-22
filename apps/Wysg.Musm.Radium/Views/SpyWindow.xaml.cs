@@ -12,6 +12,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using System.Windows.Media;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Patterns;
 using FlaUI.UIA3;
@@ -172,53 +173,53 @@ namespace Wysg.Musm.Radium.Views
             }
         }
 
+        private bool _handlingProcOpChange;
         // Operation selection -> preset arg types and enable/disable
         private void OnProcOpChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_handlingProcOpChange) return; // guard reentrancy (PP2)
             if (sender is System.Windows.Controls.ComboBox cb && cb.DataContext is ProcOpRow row)
             {
-                var grid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
-                try { grid?.CommitEdit(DataGridEditingUnit.Cell, true); grid?.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
-
-                switch (row.Op)
+                try
                 {
-                    case "GetText":
-                        row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
-                        row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
-                        break;
-                    case "Invoke":
-                        row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
-                        row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
-                        break;
-                    case "Split":
-                        row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                        row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true;
-                        break;
-                    case "TakeLast":
-                        row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                        row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
-                        break;
-                    case "Trim":
-                        row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                        row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
-                        break;
-                }
+                    _handlingProcOpChange = true;
+                    Debug.WriteLine($"[PP2] Op changed to: {row.Op}, FocusWithin={cb.IsKeyboardFocusWithin}, IsDropDownOpen={cb.IsDropDownOpen}");
 
-                // Refresh only visuals; do not reset ItemsSource
-                grid?.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    try { grid.CommitEdit(DataGridEditingUnit.Cell, true); grid.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
-                    try { grid.Items.Refresh(); } catch { }
-                }), DispatcherPriority.Background);
+                    var grid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
+                    try { grid?.CommitEdit(DataGridEditingUnit.Cell, true); grid?.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
 
-                // Keep dropdown responsive: reopen after selection change if it had focus
-                if (cb.IsKeyboardFocusWithin)
-                {
-                    cb.Dispatcher.BeginInvoke(new Action(() =>
+                    switch (row.Op)
                     {
-                        try { cb.IsDropDownOpen = true; } catch { }
-                    }), DispatcherPriority.Background);
+                        case "GetText":
+                            row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                            break;
+                        case "Invoke":
+                            row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                            break;
+                        case "Split":
+                            row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true;
+                            break;
+                        case "TakeLast":
+                            row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                            break;
+                        case "Trim":
+                            row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                            break;
+                    }
+
+                    // Keep dropdown open once user is editing; rely on StaysOpenOnEdit
+                    if (!cb.IsDropDownOpen)
+                    {
+                        cb.IsDropDownOpen = true;
+                        Debug.WriteLine("[PP2] Re-opened OpCombo after change to keep it interactive.");
+                    }
                 }
+                finally { _handlingProcOpChange = false; }
             }
         }
 
@@ -318,8 +319,11 @@ namespace Wysg.Musm.Radium.Views
             {
                 node.Children.Clear();
                 var kids = element.FindAllChildren();
-                foreach (var k in kids)
+                var limit = Math.Min(kids.Length, 100);
+                Debug.WriteLine($"[PP1] Populating children for {Safe(element, e=>e.ClassName)}::{Safe(element, e=>e.Name)} count={kids.Length} cap={limit} depth={maxDepth}");
+                for (int i = 0; i < limit; i++)
                 {
+                    var k = kids[i];
                     var childNode = new TreeNode
                     {
                         Name = Safe(k, e => e.Name),
@@ -328,11 +332,30 @@ namespace Wysg.Musm.Radium.Views
                         AutomationId = Safe(k, e => e.AutomationId)
                     };
                     node.Children.Add(childNode);
-                    // Recurse to next depth
                     PopulateChildrenTree(childNode, k, maxDepth - 1);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[PP1] PopulateChildrenTree error: " + ex.Message);
+            }
+
+            static T? Safe<T>(AutomationElement e, Func<AutomationElement, T?> f)
+            { try { return f(e); } catch { return default; } }
+        }
+
+        // Helper to create a TreeNode from an AutomationElement and populate its children up to a depth
+        private static TreeNode BuildTreeFromElement(AutomationElement element, int maxDepth)
+        {
+            var node = new TreeNode
+            {
+                Name = Safe(element, e => e.Name),
+                ClassName = Safe(element, e => e.ClassName),
+                ControlTypeId = Safe(element, e => (int?)e.Properties.ControlType.Value),
+                AutomationId = Safe(element, e => e.AutomationId)
+            };
+            PopulateChildrenTree(node, element, maxDepth);
+            return node;
 
             static T? Safe<T>(AutomationElement e, Func<AutomationElement, T?> f)
             { try { return f(e); } catch { return default; } }
@@ -508,7 +531,8 @@ namespace Wysg.Musm.Radium.Views
             if (type != ArgKind.Element) return null;
             var tag = arg.Value ?? string.Empty;
             if (!Enum.TryParse<UiBookmarks.KnownControl>(tag, out var key)) return null;
-            var (_, el) = UiBookmarks.Resolve(key);
+            var tuple = UiBookmarks.Resolve(key);
+            var el = tuple.element;
             return el;
         }
         private static string? ResolveString(ProcArg arg, Dictionary<string, string?> vars)
@@ -1051,7 +1075,11 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnAncestrySelected(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            if e.NewValue is not TreeNode n) { txtNodeProps.Text = string.Empty; return; }
+            if (e.NewValue is not TreeNode n)
+            {
+                txtNodeProps.Text = string.Empty;
+                return;
+            }
             var sb = new StringBuilder();
             sb.AppendLine($"Name: {n.Name}");
             sb.AppendLine($"ClassName: {n.ClassName}");
@@ -1318,7 +1346,6 @@ namespace Wysg.Musm.Radium.Views
                 var (_, targetEl, _) = UiBookmarks.TryResolveWithTrace(b);
                 if (targetEl != null)
                 {
-                    // Build ancestor chain from top-level to target
                     using var automation = new UIA3Automation();
                     var walker = automation.TreeWalkerFactory.GetControlViewWalker();
                     var ancestors = new List<AutomationElement>();
@@ -1329,13 +1356,11 @@ namespace Wysg.Musm.Radium.Views
                         var p = walker.GetParent(cur);
                         cur = p;
                     }
-                    ancestors.Reverse(); // now top -> ... -> target
+                    ancestors.Reverse();
 
-                    // Determine focus depth (levels 1..4 are single nodes). Beyond level 4, expand fully.
-                    const int focusDepth = 4; // 1-based levels
-                    var focusIndex = Math.Min(Math.Max(focusDepth - 1, 0), ancestors.Count - 1); // 0-based index
+                    const int chainDepth = 4; // 1-based
+                    var focusIndex = Math.Min(Math.Max(chainDepth - 1, 0), ancestors.Count - 1);
 
-                    // Root node
                     var rootEl = ancestors[0];
                     var rootNode = new TreeNode
                     {
@@ -1345,7 +1370,6 @@ namespace Wysg.Musm.Radium.Views
                         AutomationId = Safe(rootEl, e => e.AutomationId)
                     };
 
-                    // Build focused chain down to focusIndex
                     var chainNode = rootNode;
                     for (int i = 1; i <= focusIndex; i++)
                     {
@@ -1362,15 +1386,18 @@ namespace Wysg.Musm.Radium.Views
                         chainNode = next;
                     }
 
-                    // At focus node, expand full subtree
+                    // Expand from level-4 element
                     var focusEl = ancestors[focusIndex];
+                    Debug.WriteLine($"[PP1] ancestors={ancestors.Count}, focusIndex={focusIndex}, focusClass={focusEl.ClassName}, focusName={focusEl.Name}");
+                    try { var sel = focusEl.Patterns.Selection.PatternOrDefault; Debug.WriteLine($"[PP1] focus supports Selection? {sel!=null}"); } catch { }
+                    try { var table = focusEl.Patterns.Table.PatternOrDefault; Debug.WriteLine($"[PP1] focus supports Table? {table!=null}"); } catch { }
+                    try { var grid = focusEl.Patterns.Grid.PatternOrDefault; Debug.WriteLine($"[PP1] focus supports Grid? {grid!=null}"); } catch { }
                     PopulateChildrenTree(chainNode, focusEl, maxDepth: 8);
 
                     tvAncestry.ItemsSource = new[] { rootNode };
                     return;
                 }
 
-                // Fallback to desktop windows if not resolved
                 using (var automation2 = new UIA3Automation())
                 {
                     var desktop = automation2.GetDesktop();
@@ -1395,16 +1422,76 @@ namespace Wysg.Musm.Radium.Views
                             else roots = desktop.FindAllChildren(typeCond);
                         }
                         else roots = desktop.FindAllChildren(typeCond);
-                        foreach (var r in roots.Take(10)) items.Add(BuildTreeFromElement(r, maxDepth: 3));
+                        foreach (var r in roots.Take(5)) items.Add(BuildTreeFromElement(r, maxDepth: 2)); // lighter fallback (PP1)
+                        txtStatus.Text = $"Ancestry fallback: roots={items.Count} for process='{proc}'";
                     }
                     catch { }
                     tvAncestry.ItemsSource = items;
                 }
             }
-            catch { tvAncestry.ItemsSource = null; }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[PP1] Rebuild error: " + ex);
+                tvAncestry.ItemsSource = null;
+            }
 
             static T? Safe<T>(AutomationElement e, Func<AutomationElement, T?> f)
             { try { return f(e); } catch { return default; } }
+        }
+
+        // PP2: Force dropdown to open for Operation ComboBox inside DataGrid
+        private void OnOpComboPreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            try
+            {
+                if (sender is System.Windows.Controls.ComboBox cb)
+                {
+                    Debug.WriteLine("[PP2] OpCombo MouseDown: IsDropDownOpen=" + cb.IsDropDownOpen);
+                    if (!cb.IsDropDownOpen)
+                    {
+                        e.Handled = true;
+                        var cell = FindParent<DataGridCell>(cb);
+                        var grid = FindParent<DataGrid>(cell) ?? (DataGrid?)FindName("gridProcSteps");
+                        try { grid?.BeginEdit(); } catch { }
+                        cb.Focus();
+                        cb.IsDropDownOpen = true;
+                        Debug.WriteLine("[PP2] OpCombo opened via mouse.");
+                    }
+                }
+            }
+            catch (Exception ex) { Debug.WriteLine("[PP2] OpCombo MouseDown error: " + ex); }
+        }
+
+        private void OnOpComboPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                if (sender is System.Windows.Controls.ComboBox cb)
+                {
+                    if ((e.Key == Key.F4) || (e.Key == Key.Down && (Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt) || e.Key == Key.Space)
+                    {
+                        var cell = FindParent<DataGridCell>(cb);
+                        var grid = FindParent<DataGrid>(cell) ?? (DataGrid?)FindName("gridProcSteps");
+                        try { grid?.BeginEdit(); } catch { }
+                        cb.Focus();
+                        cb.IsDropDownOpen = !cb.IsDropDownOpen;
+                        e.Handled = true;
+                        Debug.WriteLine("[PP2] OpCombo toggled via keyboard. Now open? " + cb.IsDropDownOpen);
+                    }
+                }
+            }
+            catch (Exception ex) { Debug.WriteLine("[PP2] OpCombo KeyDown error: " + ex); }
+        }
+
+        private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
+        {
+            while (child != null)
+            {
+                var parent = VisualTreeHelper.GetParent(child);
+                if (parent is T t) return t;
+                child = parent;
+            }
+            return null;
         }
     }
 }
