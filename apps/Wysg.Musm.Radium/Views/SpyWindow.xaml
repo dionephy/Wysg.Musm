@@ -1,7 +1,8 @@
 <Window x:Class="Wysg.Musm.Radium.Views.SpyWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="UI Spy" Height="720" Width="1040"
+        x:Name="Root"
+        Title="UI Spy" Height="900" Width="1200"
         Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
     <Window.Resources>
         <!-- Dark palette -->
@@ -48,12 +49,12 @@
         </Style>
         <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}"/>
 
-        <!-- Transparent overlay ToggleButton template to remove default blue hover/press visuals -->
+        <!-- Toggle overlay template -->
         <ControlTemplate x:Key="OverlayToggleTemplate" TargetType="ToggleButton">
             <Border Background="Transparent"/>
         </ControlTemplate>
 
-        <!-- ComboBox template (arrow pinned, ultra-light hover; no opaque overlay) -->
+        <!-- ComboBox template -->
         <Style TargetType="ComboBox">
             <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
             <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
@@ -63,7 +64,6 @@
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
                             <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="2"/>
-                            <!-- Subtle hover overlay placed beneath text, default transparent -->
                             <Border x:Name="HoverOverlay" Background="Transparent" CornerRadius="2"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -108,7 +108,7 @@
             <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
         </Style>
 
-        <!-- CheckBox: brighter disabled check -->
+        <!-- CheckBox -->
         <Style x:Key="DarkCheckBox" TargetType="CheckBox">
             <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
             <Setter Property="Template">
@@ -144,7 +144,7 @@
             <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
         </Style>
 
-        <!-- TreeView dark styles -->
+        <!-- TreeView styles -->
         <Style TargetType="TreeView">
             <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
             <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
@@ -164,7 +164,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- DataGrid and headers/cells -->
+        <!-- DataGrid -->
         <Style TargetType="DataGrid">
             <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
             <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
@@ -197,6 +197,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="2*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -219,6 +220,7 @@
                 <ComboBoxItem Tag="WorklistViewButton">Worklist view button</ComboBoxItem>
                 <ComboBoxItem Tag="WorklistPane">Worklist pane</ComboBoxItem>
                 <ComboBoxItem Tag="WorklistListsPane">Worklist lists pane</ComboBoxItem>
+                <ComboBoxItem Tag="SearchResultsList">Search results list</ComboBoxItem>
                 <ComboBoxItem Tag="ReportPane">Report pane</ComboBoxItem>
                 <ComboBoxItem Tag="StudyList">Study list</ComboBoxItem>
                 <ComboBoxItem Tag="ReportText">Report text</ComboBoxItem>
@@ -244,8 +246,8 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Left: Ancestry tree with properties at bottom -->
-            <GroupBox Grid.Column="0" Header="Captured Ancestry (root -> target)" Margin="0,0,6,0">
+            <!-- Left: UI tree -->
+            <GroupBox Grid.Column="0" Header="UI Tree (root -> descendants)" Margin="0,0,6,0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
@@ -260,7 +262,7 @@
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="Class="/>
                                     <TextBlock Text="{Binding ClassName}" Margin="2,0"/>
-                                    <TextBlock Text=", Ct="/>
+                                    <TextBlock Text=", Ct "/>
                                     <TextBlock Text="{Binding ControlTypeId}" Margin="2,0"/>
                                     <TextBlock Text=", AutoId="/>
                                     <TextBlock Text="{Binding AutomationId}" Margin="2,0"/>
@@ -287,8 +289,6 @@
                             <ComboBoxItem Tag="Chain">Chain</ComboBoxItem>
                             <ComboBoxItem Tag="AutomationIdOnly">AutomationIdOnly</ComboBoxItem>
                         </ComboBox>
-                        <TextBlock Text="Direct AutomationId:" VerticalAlignment="Center"/>
-                        <TextBox x:Name="txtDirectId" Width="200" Margin="6,0,12,0"/>
                         <Button Content="Validate" Click="OnValidateChain"/>
                         <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke"/>
                         <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText"/>
@@ -314,7 +314,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Order" Binding="{Binding Order, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="80"/>
+                            <!-- Name, ClassName, ControlTypeId, AutomationId, Index columns (as above) -->
                             <DataGridTemplateColumn Header="Name" Width="220">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -491,8 +491,207 @@
             </GroupBox>
         </Grid>
 
+        <!-- Custom Procedures -->
+        <GroupBox Grid.Row="2" Header="Custom Procedures" Margin="0,8,0,8">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <TextBlock Text="PACS Method:" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="cmbProcMethod" Width="220" Margin="6,0,12,0" SelectedValuePath="Tag">
+                        <ComboBoxItem Tag="TryGetReportConclusion">TryGetReportConclusion</ComboBoxItem>
+                        <ComboBoxItem Tag="GetReportConclusion">GetReportConclusion</ComboBoxItem>
+                    </ComboBox>
+                    <Button Content="Add" Click="OnAddProcRow"/>
+                    <Button Content="Save" Margin="6,0,0,0" Click="OnSaveProcedure"/>
+                    <Button Content="Run" Margin="6,0,0,0" Click="OnRunProcedure"/>
+                </StackPanel>
+                <DataGrid x:Name="gridProcSteps" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                          VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+                    <DataGrid.Columns>
+                        <!-- Operation selector -->
+                        <DataGridTemplateColumn Header="Operation" Width="150">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox SelectedValuePath="Content"
+                                              SelectedValue="{Binding Op, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              Width="140"
+                                              IsEditable="False"
+                                              StaysOpenOnEdit="True"
+                                              IsDropDownOpen="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource Self}}"
+                                              SelectionChanged="OnProcOpChanged">
+                                        <ComboBoxItem Content="GetText"/>
+                                        <ComboBoxItem Content="Split"/>
+                                        <ComboBoxItem Content="TakeLast"/>
+                                        <ComboBoxItem Content="Trim"/>
+                                        <ComboBoxItem Content="Invoke"/>
+                                    </ComboBox>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Arg1 Type -->
+                        <DataGridTemplateColumn Header="Arg1 Type" Width="90">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox Width="80" SelectedValue="{Binding Arg1.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg1Enabled}">
+                                        <ComboBoxItem Content="Element"/>
+                                        <ComboBoxItem Content="String"/>
+                                        <ComboBoxItem Content="Number"/>
+                                        <ComboBoxItem Content="Var"/>
+                                    </ComboBox>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Arg1 Value dynamic -->
+                        <DataGridTemplateColumn Header="Arg1" Width="*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.Resources>
+                                            <Style TargetType="FrameworkElement" x:Key="HiddenByDefault">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </Style>
+                                        </Grid.Resources>
+                                        <!-- Element chooser -->
+                                        <ComboBox Width="180" ItemsSource="{Binding DataContext.KnownControlTags, ElementName=Root}"
+                                                  SelectedValue="{Binding Arg1.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenByDefault}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Arg1.Type}" Value="Element">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ComboBox.Style>
+                                        </ComboBox>
+                                        <!-- Var chooser -->
+                                        <ComboBox Width="180" ItemsSource="{Binding DataContext.ProcedureVars, ElementName=Root}"
+                                                  SelectedValue="{Binding Arg1.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenByDefault}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Arg1.Type}" Value="Var">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ComboBox.Style>
+                                        </ComboBox>
+                                        <!-- String/Number textbox -->
+                                        <TextBox Width="220" Text="{Binding Arg1.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Arg1.Type}" Value="Element">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Arg1.Type}" Value="Var">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Arg2 Type -->
+                        <DataGridTemplateColumn Header="Arg2 Type" Width="90">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox Width="80" SelectedValue="{Binding Arg2.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg2Enabled}">
+                                        <ComboBoxItem Content="Element"/>
+                                        <ComboBoxItem Content="String"/>
+                                        <ComboBoxItem Content="Number"/>
+                                        <ComboBoxItem Content="Var"/>
+                                    </ComboBox>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Arg2 Value dynamic -->
+                        <DataGridTemplateColumn Header="Arg2" Width="*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.Resources>
+                                            <Style TargetType="FrameworkElement" x:Key="HiddenByDefault2">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </Style>
+                                        </Grid.Resources>
+                                        <ComboBox Width="180" ItemsSource="{Binding DataContext.KnownControlTags, ElementName=Root}"
+                                                  SelectedValue="{Binding Arg2.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenByDefault2}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Arg2.Type}" Value="Element">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Setter Property="IsEnabled" Value="{Binding Arg2Enabled}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ComboBox.Style>
+                                        </ComboBox>
+                                        <ComboBox Width="180" ItemsSource="{Binding DataContext.ProcedureVars, ElementName=Root}"
+                                                  SelectedValue="{Binding Arg2.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenByDefault2}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Arg2.Type}" Value="Var">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Setter Property="IsEnabled" Value="{Binding Arg2Enabled}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ComboBox.Style>
+                                        </ComboBox>
+                                        <TextBox Width="220" Text="{Binding Arg2.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Setter Property="IsEnabled" Value="{Binding Arg2Enabled}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Arg2.Type}" Value="Element">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Arg2.Type}" Value="Var">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Output var and preview -->
+                        <DataGridTextColumn Header="OutputVar" Binding="{Binding OutputVar}" IsReadOnly="True" Width="100"/>
+                        <DataGridTextColumn Header="Output" Binding="{Binding OutputPreview}" IsReadOnly="True" Width="2*"/>
+
+                        <!-- Row actions -->
+                        <DataGridTemplateColumn Header="Actions" Width="120">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <Button Content="Set" Margin="0,0,6,0" Padding="8,2" Click="OnSetProcRow" Tag="{Binding}"/>
+                                        <Button Content="x" Padding="8,2" Click="OnRemoveProcRow" Tag="{Binding}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </GroupBox>
+
         <!-- Bottom status -->
-        <TextBox Grid.Row="2" x:Name="txtStatus" IsReadOnly="True"
+        <TextBox Grid.Row="3" x:Name="txtStatus" IsReadOnly="True"
                  Background="{StaticResource Dark.Panel}" Foreground="{StaticResource Dark.Foreground}" BorderBrush="{StaticResource Dark.Border}" BorderThickness="1"
                  TextWrapping="Wrap" AcceptsReturn="True" Height="120" VerticalScrollBarVisibility="Auto"/>
     </Grid>

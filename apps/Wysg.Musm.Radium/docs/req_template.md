@@ -1,4 +1,6 @@
-﻿My previously problems (PP):
+﻿In raidum, first, read the "plan.md", "spec.md", "tasks.md" in the "doc" folder.
+
+My previously problems (PP):
 1. Visible tabs exclusive -> solved
 2. Mapping table updated with sequence/order -> solved, but needs upgrade
 

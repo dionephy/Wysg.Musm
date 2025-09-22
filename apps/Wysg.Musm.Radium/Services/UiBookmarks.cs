@@ -25,6 +25,7 @@ public sealed class UiBookmarks
         WorklistViewButton,
         WorklistPane,
         WorklistListsPane,
+        SearchResultsList,
         ReportPane,
         StudyList,
         RelatedStudyList,
@@ -812,7 +813,7 @@ public sealed class UiBookmarks
                 {
                     if (node.UseName && !string.Equals(el.Name, node.Name, StringComparison.Ordinal)) return false;
                     if (node.UseClassName && !string.Equals(el.ClassName, node.ClassName, StringComparison.Ordinal)) return false;
-                    if (node.UseAutomationId && !string.Equals(el.AutomationId, node.AutomationId, StringComparison.Ordinal)) return false;
+                    if (node.UseAutomationId && !string.IsNullOrEmpty(node.AutomationId) && !string.Equals(el.AutomationId, node.AutomationId, StringComparison.Ordinal)) return false;
                     if (node.UseControlTypeId)
                     {
                         int ct; try { ct = (int)el.Properties.ControlType.Value; } catch { return false; }

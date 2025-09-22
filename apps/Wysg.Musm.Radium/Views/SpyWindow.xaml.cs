@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -9,6 +10,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Threading;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Patterns;
 using FlaUI.UIA3;
@@ -41,15 +44,38 @@ namespace Wysg.Musm.Radium.Views
         [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
         [StructLayout(LayoutKind.Sequential)] private struct POINT { public int X; public int Y; }
         private readonly HighlightOverlay _overlay = new HighlightOverlay();
-
         private UiBookmarks.Bookmark? _editing;
         private AutomationElement? _lastResolved;
 
         private System.Windows.Controls.ComboBox CmbMethod => (System.Windows.Controls.ComboBox)FindName("cmbMethod");
-        private System.Windows.Controls.TextBox TxtDirectId => (System.Windows.Controls.TextBox)FindName("txtDirectId");
         private System.Windows.Controls.DataGrid GridChain => (System.Windows.Controls.DataGrid)FindName("gridChain");
 
-        // Helper methods moved up for availability
+        // Dark title bar (DWM)
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            TryEnableDarkTitleBar();
+        }
+        private void TryEnableDarkTitleBar()
+        {
+            try
+            {
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero) return;
+                int useImmersiveDarkMode = 1;
+                const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
+                const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+                if (DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int)) != 0)
+                {
+                    DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref useImmersiveDarkMode, sizeof(int));
+                }
+            }
+            catch { }
+        }
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        // EnsureResolved helper (used by Row Data etc.)
         private void EnsureResolved()
         {
             if (_lastResolved != null) return;
@@ -58,6 +84,454 @@ namespace Wysg.Musm.Radium.Views
             _lastResolved = el;
         }
 
+        // ======== Custom Procedures model/persistence/executor ========
+        private enum ArgKind { Element, String, Number, Var }
+        private sealed class ProcArg { public string Type { get; set; } = nameof(ArgKind.String); public string? Value { get; set; } }
+        private sealed class ProcOpRow
+        {
+            public string Op { get; set; } = string.Empty;
+            public ProcArg Arg1 { get; set; } = new ProcArg();
+            public ProcArg Arg2 { get; set; } = new ProcArg();
+            public bool Arg1Enabled { get; set; } = true;
+            public bool Arg2Enabled { get; set; } = true;
+            public string? OutputVar { get; set; }
+            public string? OutputPreview { get; set; }
+        }
+        private sealed class ProcStore { public Dictionary<string, List<ProcOpRow>> Methods { get; set; } = new(); }
+
+        // Expose known controls and currently available vars to XAML
+        public List<string> KnownControlTags { get; } = Enum.GetNames(typeof(UiBookmarks.KnownControl)).ToList();
+        public ObservableCollection<string> ProcedureVars { get; } = new();
+
+        public SpyWindow()
+        {
+            InitializeComponent();
+            DataContext = this;
+            LoadBookmarks();
+            this.PreviewMouseDown += OnPreviewMouseDownForQuickMap;
+
+            // Custom procedures grid
+            var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
+            if (procGrid != null) procGrid.ItemsSource = new List<ProcOpRow>();
+
+            var cmbMethodProc = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
+            if (cmbMethodProc != null) cmbMethodProc.SelectionChanged += OnProcMethodChanged;
+        }
+
+        // Add a row
+        private void OnAddProcRow(object sender, RoutedEventArgs e)
+        {
+            var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
+            if (procGrid == null) return;
+            var list = procGrid.Items.OfType<ProcOpRow>().ToList();
+            list.Add(new ProcOpRow());
+            procGrid.ItemsSource = null; procGrid.ItemsSource = list;
+            UpdateProcedureVarsFrom(list);
+        }
+
+        // Remove row
+        private void OnRemoveProcRow(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button b && b.Tag is ProcOpRow row)
+            {
+                var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
+                if (procGrid == null) return;
+                var list = procGrid.Items.OfType<ProcOpRow>().ToList();
+                list.Remove(row);
+                procGrid.ItemsSource = null; procGrid.ItemsSource = list;
+                UpdateProcedureVarsFrom(list);
+            }
+        }
+
+        // Set row: execute only this row with current state and produce var#
+        private void OnSetProcRow(object sender, RoutedEventArgs e)
+        {
+            var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
+            if (procGrid == null) return;
+            try { procGrid.CommitEdit(DataGridEditingUnit.Cell, true); procGrid.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
+
+            var list = procGrid.Items.OfType<ProcOpRow>().ToList();
+            if (sender is System.Windows.Controls.Button b && b.Tag is ProcOpRow row)
+            {
+                var index = list.IndexOf(row);
+                if (index < 0) return;
+
+                // Build vars from previous rows if already set
+                var vars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < index; i++) vars[$"var{i + 1}"] = list[i].OutputVar != null ? list[i].OutputPreview : null;
+
+                // Execute this row
+                var varName = $"var{index + 1}";
+                var (preview, value) = ExecuteSingle(row, vars);
+                row.OutputVar = varName;
+                row.OutputPreview = preview;
+
+                // Update ProcedureVars list (makes the new var selectable in drop-downs)
+                if (!ProcedureVars.Contains(varName)) ProcedureVars.Add(varName);
+                procGrid.ItemsSource = null; procGrid.ItemsSource = list; // refresh
+            }
+        }
+
+        // Operation selection -> preset arg types and enable/disable
+        private void OnProcOpChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.ComboBox cb && cb.DataContext is ProcOpRow row)
+            {
+                var grid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
+                try { grid?.CommitEdit(DataGridEditingUnit.Cell, true); grid?.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
+
+                switch (row.Op)
+                {
+                    case "GetText":
+                        row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
+                        row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                        break;
+                    case "Invoke":
+                        row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
+                        row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                        break;
+                    case "Split":
+                        row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
+                        row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true;
+                        break;
+                    case "TakeLast":
+                        row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
+                        row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                        break;
+                    case "Trim":
+                        row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
+                        row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                        break;
+                }
+
+                // Refresh only visuals; do not reset ItemsSource
+                grid?.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try { grid.CommitEdit(DataGridEditingUnit.Cell, true); grid.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
+                    try { grid.Items.Refresh(); } catch { }
+                }), DispatcherPriority.Background);
+
+                // Keep dropdown responsive: reopen after selection change if it had focus
+                if (cb.IsKeyboardFocusWithin)
+                {
+                    cb.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try { cb.IsDropDownOpen = true; } catch { }
+                    }), DispatcherPriority.Background);
+                }
+            }
+        }
+
+        private (string preview, string? value) ExecuteSingle(ProcOpRow row, Dictionary<string, string?> vars)
+        {
+            string? valueToStore = null;
+            string preview;
+            switch (row.Op)
+            {
+                case "GetText":
+                {
+                    var el = ResolveElement(row.Arg1);
+                    if (el == null) { valueToStore = null; preview = "(no element)"; break; }
+                    try
+                    {
+                        var name = el.Name;
+                        var val = el.Patterns.Value.PatternOrDefault?.Value ?? string.Empty;
+                        var legacy = el.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty;
+                        valueToStore = !string.IsNullOrEmpty(val) ? val : (!string.IsNullOrEmpty(name) ? name : legacy);
+                        preview = valueToStore ?? "(null)";
+                    }
+                    catch { valueToStore = null; preview = "(error)"; }
+                    break;
+                }
+                case "Invoke":
+                {
+                    var el = ResolveElement(row.Arg1);
+                    if (el == null) { valueToStore = null; preview = "(no element)"; break; }
+                    try
+                    {
+                        var inv = el.Patterns.Invoke.PatternOrDefault;
+                        if (inv != null) inv.Invoke(); else el.Patterns.Toggle.PatternOrDefault?.Toggle();
+                        preview = "(invoked)"; valueToStore = null;
+                    }
+                    catch { preview = "(error)"; valueToStore = null; }
+                    break;
+                }
+                case "Split":
+                {
+                    var input = ResolveString(row.Arg1, vars);
+                    var sep = ResolveString(row.Arg2, vars) ?? string.Empty;
+                    if (input == null) { preview = "(null)"; valueToStore = null; break; }
+                    var parts = input.Split(new[] { sep }, StringSplitOptions.None);
+                    valueToStore = string.Join("\u001F", parts);
+                    preview = $"{parts.Length} parts";
+                    break;
+                }
+                case "TakeLast":
+                {
+                    var combined = ResolveString(row.Arg1, vars) ?? string.Empty;
+                    var arr = combined.Split('\u001F');
+                    valueToStore = arr.Length > 0 ? arr[^1] : string.Empty;
+                    preview = valueToStore ?? "(null)";
+                    break;
+                }
+                case "Trim":
+                {
+                    var s = ResolveString(row.Arg1, vars);
+                    valueToStore = s?.Trim();
+                    preview = valueToStore ?? "(null)";
+                    break;
+                }
+                default:
+                    preview = "(unsupported)"; valueToStore = null; break;
+            }
+            return (preview, valueToStore);
+        }
+
+        // Update ProcedureVars after full run or edits
+        private void UpdateProcedureVarsFrom(List<ProcOpRow> rows)
+        {
+            ProcedureVars.Clear();
+            for (int i = 0; i < rows.Count; i++) ProcedureVars.Add($"var{i + 1}");
+        }
+
+        // ========= Ancestry data model =========
+        private class TreeNode
+        {
+            public string? Name { get; set; }
+            public string? ClassName { get; set; }
+            public int? ControlTypeId { get; set; }
+            public string? AutomationId { get; set; }
+            public List<TreeNode> Children { get; } = new();
+        }
+        private TreeNode? _ancestryRoot;
+
+        // Rebuild and show a FlaUInspect-like subtree from the resolved root
+        private void ShowAncestryTree(UiBookmarks.Bookmark b)
+        {
+            RebuildAncestryFromRoot(b);
+        }
+
+        private static void PopulateChildrenTree(TreeNode node, AutomationElement element, int maxDepth)
+        {
+            if (maxDepth <= 0) return;
+            try
+            {
+                node.Children.Clear();
+                var kids = element.FindAllChildren();
+                foreach (var k in kids)
+                {
+                    var childNode = new TreeNode
+                    {
+                        Name = Safe(k, e => e.Name),
+                        ClassName = Safe(k, e => e.ClassName),
+                        ControlTypeId = Safe(k, e => (int?)e.Properties.ControlType.Value),
+                        AutomationId = Safe(k, e => e.AutomationId)
+                    };
+                    node.Children.Add(childNode);
+                    // Recurse to next depth
+                    PopulateChildrenTree(childNode, k, maxDepth - 1);
+                }
+            }
+            catch { }
+
+            static T? Safe<T>(AutomationElement e, Func<AutomationElement, T?> f)
+            { try { return f(e); } catch { return default; } }
+        }
+
+        // ======== Persistence for procedures =========
+        private static string GetProcPath()
+        {
+            var dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Wysg.Musm", "Radium");
+            System.IO.Directory.CreateDirectory(dir);
+            return System.IO.Path.Combine(dir, "ui-procedures.json");
+        }
+        private static ProcStore LoadProcStore()
+        {
+            try
+            {
+                var p = GetProcPath();
+                if (!System.IO.File.Exists(p)) return new ProcStore();
+                return System.Text.Json.JsonSerializer.Deserialize<ProcStore>(System.IO.File.ReadAllText(p), new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web) { WriteIndented = true }) ?? new ProcStore();
+            }
+            catch { return new ProcStore(); }
+        }
+        private static void SaveProcStore(ProcStore s)
+        {
+            try
+            {
+                var p = GetProcPath();
+                System.IO.File.WriteAllText(p, System.Text.Json.JsonSerializer.Serialize(s, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web) { WriteIndented = true }));
+            }
+            catch { }
+        }
+        private static void SaveProcedureForMethod(string methodTag, List<ProcOpRow> steps)
+        {
+            var s = LoadProcStore();
+            s.Methods[methodTag] = steps;
+            SaveProcStore(s);
+        }
+        private static List<ProcOpRow> LoadProcedureForMethod(string methodTag)
+        {
+            var s = LoadProcStore();
+            return s.Methods.TryGetValue(methodTag, out var steps) ? steps : new List<ProcOpRow>();
+        }
+
+        private void OnProcMethodChanged(object? sender, SelectionChangedEventArgs e)
+        {
+            var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
+            var tag = (cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
+            var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
+            if (string.IsNullOrWhiteSpace(tag) || procGrid == null) return;
+            var steps = LoadProcedureForMethod(tag).ToList();
+            procGrid.ItemsSource = steps;
+            UpdateProcedureVarsFrom(steps);
+        }
+
+        private void OnSaveProcedure(object sender, RoutedEventArgs e)
+        {
+            var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
+            var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
+            var tag = (cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
+            if (string.IsNullOrWhiteSpace(tag)) { txtStatus.Text = "Select PACS method"; return; }
+            if (procGrid == null) { txtStatus.Text = "No steps"; return; }
+
+            try { procGrid.CommitEdit(DataGridEditingUnit.Cell, true); procGrid.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
+
+            var steps = procGrid.Items.OfType<ProcOpRow>().Where(s => !string.IsNullOrWhiteSpace(s.Op)).ToList();
+            SaveProcedureForMethod(tag, steps);
+            txtStatus.Text = $"Saved procedure for {tag}";
+        }
+
+        private void OnRunProcedure(object sender, RoutedEventArgs e)
+        {
+            var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
+            var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
+            var tag = (cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
+            if (string.IsNullOrWhiteSpace(tag)) { txtStatus.Text = "Select PACS method"; return; }
+            if (procGrid == null) { txtStatus.Text = "No steps"; return; }
+
+            try { procGrid.CommitEdit(DataGridEditingUnit.Cell, true); procGrid.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
+            var steps = procGrid.Items.OfType<ProcOpRow>().Where(s => !string.IsNullOrWhiteSpace(s.Op)).ToList();
+
+            var (result, annotated) = RunProcedure(steps);
+            procGrid.ItemsSource = null; procGrid.ItemsSource = annotated;
+            UpdateProcedureVarsFrom(annotated);
+            txtStatus.Text = result ?? "(null)";
+        }
+
+        private (string? result, List<ProcOpRow> annotated) RunProcedure(List<ProcOpRow> steps)
+        {
+            var vars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            string? last = null;
+            var annotated = new List<ProcOpRow>();
+
+            for (int i = 0; i < steps.Count; i++)
+            {
+                var row = steps[i];
+                string varName = $"var{i + 1}";
+                row.OutputVar = varName;
+                string? preview = null;
+                string? valueToStore = null;
+
+                switch (row.Op)
+                {
+                    case "GetText":
+                    {
+                        var el = ResolveElement(row.Arg1);
+                        if (el == null) { valueToStore = null; preview = "(no element)"; break; }
+                        try
+                        {
+                            var name = el.Name;
+                            var value = el.Patterns.Value.PatternOrDefault?.Value ?? string.Empty;
+                            var legacy = el.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty;
+                            valueToStore = !string.IsNullOrEmpty(value) ? value : (!string.IsNullOrEmpty(name) ? name : legacy);
+                            preview = valueToStore ?? "(null)";
+                        }
+                        catch { valueToStore = null; preview = "(error)"; }
+                        break;
+                    }
+                    case "Invoke":
+                    {
+                        var el = ResolveElement(row.Arg1);
+                        if (el == null) { valueToStore = null; preview = "(no element)"; break; }
+                        try
+                        {
+                            var inv = el.Patterns.Invoke.PatternOrDefault;
+                            if (inv != null) inv.Invoke();
+                            else { var t = el.Patterns.Toggle.PatternOrDefault; if (t != null) t.Toggle(); }
+                            valueToStore = null; preview = "(invoked)";
+                        }
+                        catch { valueToStore = null; preview = "(error)"; }
+                        break;
+                    }
+                    case "Split":
+                    {
+                        var input = ResolveString(row.Arg1, vars);
+                        var sep = ResolveString(row.Arg2, vars) ?? string.Empty;
+                        if (input == null) { valueToStore = null; preview = "(null)"; break; }
+                        var parts = input.Split(new[] { sep }, StringSplitOptions.None);
+                        valueToStore = string.Join("\u001F", parts);
+                        preview = $"{parts.Length} parts";
+                        break;
+                    }
+                    case "TakeLast":
+                    {
+                        var combined = ResolveString(row.Arg1, vars) ?? string.Empty;
+                        var arr = combined.Split('\u001F');
+                        valueToStore = arr.Length > 0 ? arr[^1] : string.Empty;
+                        preview = valueToStore ?? "(null)";
+                        break;
+                    }
+                    case "Trim":
+                    {
+                        var s = ResolveString(row.Arg1, vars);
+                        valueToStore = s?.Trim();
+                        preview = valueToStore ?? "(null)";
+                        break;
+                    }
+                    default:
+                        valueToStore = null; preview = "(unsupported)"; break;
+                }
+
+                vars[varName] = valueToStore;
+                last = valueToStore ?? last;
+                row.OutputPreview = preview;
+                annotated.Add(row);
+            }
+
+            return (last, annotated);
+        }
+
+        private AutomationElement? ResolveElement(ProcArg arg)
+        {
+            var type = ParseArgKind(arg.Type);
+            if (type != ArgKind.Element) return null;
+            var tag = arg.Value ?? string.Empty;
+            if (!Enum.TryParse<UiBookmarks.KnownControl>(tag, out var key)) return null;
+            var (_, el) = UiBookmarks.Resolve(key);
+            return el;
+        }
+        private static string? ResolveString(ProcArg arg, Dictionary<string, string?> vars)
+        {
+            var type = ParseArgKind(arg.Type);
+            return type switch
+            {
+                ArgKind.Var => (arg.Value != null && vars.TryGetValue(arg.Value, out var v)) ? v : null,
+                ArgKind.String => arg.Value,
+                ArgKind.Number => arg.Value,
+                ArgKind.Element => null,
+                _ => null
+            };
+        }
+        private static ArgKind ParseArgKind(string? s)
+        {
+            if (Enum.TryParse<ArgKind>(s, true, out var k)) return k;
+            return s?.Equals("Var", StringComparison.OrdinalIgnoreCase) == true ? ArgKind.Var :
+                   s?.Equals("Element", StringComparison.OrdinalIgnoreCase) == true ? ArgKind.Element :
+                   s?.Equals("Number", StringComparison.OrdinalIgnoreCase) == true ? ArgKind.Number : ArgKind.String;
+        }
+
+        // ========= Mapping editor (existing) =========
         private static string GetElementName(AutomationElement el)
         {
             try { if (el.Properties.Name.TryGetValue(out var n)) return n ?? string.Empty; } catch { }
@@ -93,13 +567,6 @@ namespace Wysg.Musm.Radium.Views
             return string.Empty;
         }
 
-        public SpyWindow()
-        {
-            InitializeComponent();
-            LoadBookmarks();
-            this.PreviewMouseDown += OnPreviewMouseDownForQuickMap;
-        }
-
         private void LoadBookmarks()
         {
             var store = UiBookmarks.Load();
@@ -121,8 +588,10 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnKnownSelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            if (((System.Windows.Controls.ComboBox)FindName("cmbKnown")).SelectedItem is not System.Windows.Controls.ComboBoxItem item || item.Tag is not string keyStr)
-                return;
+            var combo = (System.Windows.Controls.ComboBox)FindName("cmbKnown");
+            var item = combo?.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            var keyStr = item?.Tag as string;
+            if (string.IsNullOrWhiteSpace(keyStr)) return;
             if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key)) return;
             var mapping = UiBookmarks.GetMapping(key);
             if (mapping != null) LoadEditor(mapping);
@@ -155,9 +624,7 @@ namespace Wysg.Musm.Radium.Views
                 }).ToList()
             };
             GridChain.ItemsSource = _editing.Chain;
-            TxtDirectId.Text = _editing.DirectAutomationId ?? string.Empty;
             CmbMethod.SelectedIndex = _editing.Method == UiBookmarks.MapMethod.Chain ? 0 : 1;
-            // reflect process name
             txtProcess.Text = _editing.ProcessName ?? string.Empty;
         }
 
@@ -165,37 +632,24 @@ namespace Wysg.Musm.Radium.Views
         {
             if (_editing == null) return;
             b.Method = CmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly;
-            b.DirectAutomationId = string.IsNullOrWhiteSpace(TxtDirectId.Text) ? null : TxtDirectId.Text.Trim();
+            if (b.Method == UiBookmarks.MapMethod.AutomationIdOnly)
+            {
+                b.DirectAutomationId = _editing.Chain.LastOrDefault()?.AutomationId;
+                if (string.IsNullOrWhiteSpace(b.DirectAutomationId)) b.DirectAutomationId = null;
+            }
+            else
+            {
+                b.DirectAutomationId = null;
+            }
             b.Chain = GridChain.Items.OfType<UiBookmarks.Node>().ToList();
             if (!string.IsNullOrWhiteSpace(txtProcess.Text)) b.ProcessName = txtProcess.Text.Trim();
-        }
-
-        private class TreeNode
-        {
-            public string? Name { get; set; }
-            public string? ClassName { get; set; }
-            public int? ControlTypeId { get; set; }
-            public string? AutomationId { get; set; }
-            public System.Collections.Generic.List<TreeNode> Children { get; } = new();
-        }
-
-        private void ShowAncestryTree(UiBookmarks.Bookmark b)
-        {
-            var root = new TreeNode { Name = "WindowRoot", ClassName = null, ControlTypeId = null, AutomationId = null };
-            var cur = root;
-            foreach (var n in b.Chain)
-            {
-                var child = new TreeNode { Name = n.Name, ClassName = n.ClassName, ControlTypeId = n.ControlTypeId, AutomationId = n.AutomationId };
-                cur.Children.Add(child);
-                cur = child;
-            }
-            tvAncestry.ItemsSource = new[] { root };
         }
 
         private void ShowBookmarkDetails(UiBookmarks.Bookmark b, string header)
         {
             LoadEditor(b);
-            ShowAncestryTree(b);
+            // Build FlaUInspect-like subtree rather than only chain
+            RebuildAncestryFromRoot(b);
             txtStatus.Text = header;
         }
 
@@ -206,10 +660,9 @@ namespace Wysg.Musm.Radium.Views
             await Task.Delay(delay);
             var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: false);
             txtStatus.Text = msg;
-            if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName; // reflect detected process
+            if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName;
             if (b == null) return;
             this.Tag = b;
-            // also update bookmark's process name
             b.ProcessName = string.IsNullOrWhiteSpace(procName) ? b.ProcessName : procName;
             ShowBookmarkDetails(b, "Captured chain");
             HighlightBookmark(b);
@@ -233,7 +686,6 @@ namespace Wysg.Musm.Radium.Views
                 while (win != null) { last = win; win = walker.GetParent(win); }
                 var top = last ?? el;
 
-                // collect chain using parent relationships only (fast)
                 var chain = new System.Collections.Generic.List<SWA.AutomationElement>();
                 var curEl = el;
                 while (curEl != null && curEl != top)
@@ -252,7 +704,6 @@ namespace Wysg.Musm.Radium.Views
                     try { autoId = nodeEl.Current.AutomationId; } catch { }
                     try { ctId = nodeEl.Current.ControlType?.Id; } catch { }
 
-                    // determine index among siblings quickly (children only)
                     int index = 0;
                     try
                     {
@@ -279,7 +730,6 @@ namespace Wysg.Musm.Radium.Views
                         UseName = !string.IsNullOrEmpty(name),
                         UseClassName = !string.IsNullOrEmpty(className),
                         UseControlTypeId = ctId.HasValue,
-                        // Default behavior requested: check AutomationId when present; do not check Index by default
                         UseAutomationId = !string.IsNullOrEmpty(autoId),
                         UseIndex = false,
                         Scope = UiBookmarks.SearchScope.Children
@@ -310,26 +760,20 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnMapSelected(object sender, RoutedEventArgs e)
         {
-            if (cmbKnown.SelectedItem is not System.Windows.Controls.ComboBoxItem item || item.Tag is not string keyStr)
-            { txtStatus.Text = "Select a known control"; return; }
+            var item = cmbKnown.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            var keyStr = item?.Tag as string;
+            if (string.IsNullOrWhiteSpace(keyStr)) { txtStatus.Text = "Select a known control"; return; }
 
-            // Capture current element
             var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: true);
             txtStatus.Text = msg;
             if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName;
             if (b == null) return;
 
-            // Apply UI mapping method choices
             var method = CmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly;
             b.Method = method;
             if (method == UiBookmarks.MapMethod.AutomationIdOnly)
             {
-                var directId = TxtDirectId.Text?.Trim();
-                if (string.IsNullOrWhiteSpace(directId))
-                {
-                    // Try to take from last node
-                    directId = b.Chain.LastOrDefault()?.AutomationId;
-                }
+                var directId = b.Chain.LastOrDefault()?.AutomationId;
                 b.DirectAutomationId = string.IsNullOrWhiteSpace(directId) ? null : directId;
             }
 
@@ -343,13 +787,15 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnResolveSelected(object sender, RoutedEventArgs e)
         {
-            if (cmbKnown.SelectedItem is not System.Windows.Controls.ComboBoxItem item || item.Tag is not string keyStr)
-            { txtStatus.Text = "Select a known control"; return; }
+            var item = cmbKnown.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            var keyStr = item?.Tag as string;
+            if (string.IsNullOrWhiteSpace(keyStr)) { txtStatus.Text = "Select a known control"; return; }
             if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key))
             { txtStatus.Text = "Invalid known control"; return; }
             var mapping = UiBookmarks.GetMapping(key);
             if (mapping == null) { txtStatus.Text = "No mapping saved"; return; }
-            ShowBookmarkDetails(mapping, $"Current mapping for {key}");
+            // Show tree from root for better inspection
+            RebuildAncestryFromRoot(mapping);
             var (hwnd, el) = UiBookmarks.Resolve(key);
             if (el == null) { txtStatus.Text += " | Resolve failed"; return; }
             var r = el.BoundingRectangle;
@@ -453,7 +899,7 @@ namespace Wysg.Musm.Radium.Views
                 Name = _editing.Name,
                 ProcessName = _editing.ProcessName,
                 Method = CmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly,
-                DirectAutomationId = string.IsNullOrWhiteSpace(TxtDirectId.Text) ? null : TxtDirectId.Text.Trim(),
+                DirectAutomationId = null,
                 Chain = (_editing.Chain ?? new List<UiBookmarks.Node>()).Select(n => new UiBookmarks.Node
                 {
                     Name = n.Name,
@@ -471,8 +917,13 @@ namespace Wysg.Musm.Radium.Views
                     Order = n.Order
                 }).ToList()
             };
+            if (copy.Method == UiBookmarks.MapMethod.AutomationIdOnly)
+            {
+                copy.DirectAutomationId = copy.Chain.LastOrDefault()?.AutomationId;
+                if (string.IsNullOrWhiteSpace(copy.DirectAutomationId)) copy.DirectAutomationId = null;
+            }
             if (!string.IsNullOrWhiteSpace(txtProcess.Text)) copy.ProcessName = txtProcess.Text.Trim();
-            _lastResolved = null; // invalidate cache on new build
+            _lastResolved = null;
             return true;
         }
 
@@ -530,8 +981,9 @@ namespace Wysg.Musm.Radium.Views
         {
             if (!Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl)) return;
             if (!Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift)) return;
-            if (cmbKnown.SelectedItem is not System.Windows.Controls.ComboBoxItem item || item.Tag is not string keyStr)
-            { txtStatus.Text = "Select a known control"; return; }
+            var item = cmbKnown.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            var keyStr = item?.Tag as string;
+            if (string.IsNullOrWhiteSpace(keyStr)) { txtStatus.Text = "Select a known control"; return; }
             var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: true);
             txtStatus.Text = msg;
             if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName;
@@ -539,13 +991,11 @@ namespace Wysg.Musm.Radium.Views
             if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key))
             { txtStatus.Text = "Invalid known control"; return; }
 
-            // Respect UI method choices on quick map
             var method = CmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly;
             b.Method = method;
             if (method == UiBookmarks.MapMethod.AutomationIdOnly)
             {
-                var directId = TxtDirectId.Text?.Trim();
-                if (string.IsNullOrWhiteSpace(directId)) directId = b.Chain.LastOrDefault()?.AutomationId;
+                var directId = b.Chain.LastOrDefault()?.AutomationId;
                 b.DirectAutomationId = string.IsNullOrWhiteSpace(directId) ? null : directId;
             }
 
@@ -601,7 +1051,7 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnAncestrySelected(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            if (e.NewValue is not TreeNode n) { txtNodeProps.Text = string.Empty; return; }
+            if e.NewValue is not TreeNode n) { txtNodeProps.Text = string.Empty; return; }
             var sb = new StringBuilder();
             sb.AppendLine($"Name: {n.Name}");
             sb.AppendLine($"ClassName: {n.ClassName}");
@@ -618,7 +1068,6 @@ namespace Wysg.Musm.Radium.Views
                 if (_lastResolved == null) { txtStatus.Text = "Row Data: not found"; return; }
 
                 var list = _lastResolved;
-                // Get selected item(s) using Selection or fallback
                 var selection = list.Patterns.Selection.PatternOrDefault;
                 var selected = selection?.Selection?.Value ?? Array.Empty<AutomationElement>();
                 if (selected.Length == 0)
@@ -634,7 +1083,6 @@ namespace Wysg.Musm.Radium.Views
                 if (selected.Length == 0) { txtStatus.Text = "Row Data: no selection"; return; }
                 var row = selected[0];
 
-                // Read headers and cell values
                 var headers = GetHeaderTexts(list);
                 var cellValues = GetRowCellValues(row);
 
@@ -644,7 +1092,6 @@ namespace Wysg.Musm.Radium.Views
                     return;
                 }
 
-                // Make sure we can display as pairs. If headers missing or fewer than values, synthesize names.
                 if (headers.Count < cellValues.Count)
                 {
                     for (int i = headers.Count; i < cellValues.Count; i++) headers.Add($"Col{i + 1}");
@@ -663,7 +1110,6 @@ namespace Wysg.Musm.Radium.Views
                     pairs.Add((h, v));
                 }
 
-                // One-line pairs output: Header: Value | Header: Value ...
                 var line = string.Join(" | ", pairs
                     .Where(p => !string.IsNullOrWhiteSpace(p.Header) || !string.IsNullOrWhiteSpace(p.Value))
                     .Select(p => string.IsNullOrWhiteSpace(p.Header) ? p.Value : ($"{p.Header}: {p.Value}"))
@@ -681,7 +1127,6 @@ namespace Wysg.Musm.Radium.Views
             var result = new List<string>();
             try
             {
-                // 1) Heuristic: header is the first child of the list control
                 var kids = list.FindAllChildren();
                 if (kids.Length > 0)
                 {
@@ -710,7 +1155,6 @@ namespace Wysg.Musm.Radium.Views
                     }
                 }
 
-                // 2) Fallback: search explicit Header control nearby
                 var header = kids.FirstOrDefault(c =>
                 {
                     try { return (int)c.ControlType == UIA_Header; } catch { return false; }
@@ -822,7 +1266,14 @@ namespace Wysg.Musm.Radium.Views
             if (rowIndex < 0 && selected.Length > 0)
             {
                 var rowEl = selected[0];
-                for (int i = 0; i < listItems.Count; i++) { if (listItems[i].Equals(rowEl)) { rowIndex = i; break; } }
+                for (int i = 0; i < listItems.Count; i++)
+                {
+                    try
+                    {
+                        if (listItems[i].Equals(rowEl)) { rowIndex = i; break; }
+                    }
+                    catch { }
+                }
             }
             if (rowIndex < 0 && selected.Length > 0)
             {
@@ -857,6 +1308,103 @@ namespace Wysg.Musm.Radium.Views
             foreach (var h in PreferredHeaderOrder) if (dict.TryGetValue(h, out var v)) sb.AppendLine($"{h}: {v}");
             foreach (var p in pairs) if (!string.IsNullOrWhiteSpace(p.Header) && !PreferredHeaderOrder.Contains(p.Header, StringComparer.OrdinalIgnoreCase)) sb.AppendLine($"{p.Header}: {p.Value}");
             return sb.ToString().TrimEnd();
+        }
+
+        // FlaUInspect-like tree: rebuild using resolved element as root; fallback to desktop windows if resolve fails
+        private void RebuildAncestryFromRoot(UiBookmarks.Bookmark b)
+        {
+            try
+            {
+                var (_, targetEl, _) = UiBookmarks.TryResolveWithTrace(b);
+                if (targetEl != null)
+                {
+                    // Build ancestor chain from top-level to target
+                    using var automation = new UIA3Automation();
+                    var walker = automation.TreeWalkerFactory.GetControlViewWalker();
+                    var ancestors = new List<AutomationElement>();
+                    var cur = targetEl;
+                    while (cur != null)
+                    {
+                        ancestors.Add(cur);
+                        var p = walker.GetParent(cur);
+                        cur = p;
+                    }
+                    ancestors.Reverse(); // now top -> ... -> target
+
+                    // Determine focus depth (levels 1..4 are single nodes). Beyond level 4, expand fully.
+                    const int focusDepth = 4; // 1-based levels
+                    var focusIndex = Math.Min(Math.Max(focusDepth - 1, 0), ancestors.Count - 1); // 0-based index
+
+                    // Root node
+                    var rootEl = ancestors[0];
+                    var rootNode = new TreeNode
+                    {
+                        Name = Safe(rootEl, e => e.Name),
+                        ClassName = Safe(rootEl, e => e.ClassName),
+                        ControlTypeId = Safe(rootEl, e => (int?)e.Properties.ControlType.Value),
+                        AutomationId = Safe(rootEl, e => e.AutomationId)
+                    };
+
+                    // Build focused chain down to focusIndex
+                    var chainNode = rootNode;
+                    for (int i = 1; i <= focusIndex; i++)
+                    {
+                        var ae = ancestors[i];
+                        var next = new TreeNode
+                        {
+                            Name = Safe(ae, e => e.Name),
+                            ClassName = Safe(ae, e => e.ClassName),
+                            ControlTypeId = Safe(ae, e => (int?)e.Properties.ControlType.Value),
+                            AutomationId = Safe(ae, e => e.AutomationId)
+                        };
+                        chainNode.Children.Clear();
+                        chainNode.Children.Add(next);
+                        chainNode = next;
+                    }
+
+                    // At focus node, expand full subtree
+                    var focusEl = ancestors[focusIndex];
+                    PopulateChildrenTree(chainNode, focusEl, maxDepth: 8);
+
+                    tvAncestry.ItemsSource = new[] { rootNode };
+                    return;
+                }
+
+                // Fallback to desktop windows if not resolved
+                using (var automation2 = new UIA3Automation())
+                {
+                    var desktop = automation2.GetDesktop();
+                    var items = new List<TreeNode>();
+                    try
+                    {
+                        var cf = automation2.ConditionFactory;
+                        var typeCond = cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window)
+                                         .Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Pane));
+                        var proc = b.ProcessName;
+                        FlaUI.Core.AutomationElements.AutomationElement[] roots;
+                        if (!string.IsNullOrWhiteSpace(proc))
+                        {
+                            var pids = new List<int>();
+                            try { pids.AddRange(Process.GetProcessesByName(proc).Select(p => p.Id)); } catch { }
+                            if (pids.Count > 0)
+                            {
+                                FlaUI.Core.Conditions.ConditionBase pidCond = cf.ByProcessId(pids[0]);
+                                for (int i = 1; i < pids.Count; i++) pidCond = pidCond.Or(cf.ByProcessId(pids[i]));
+                                roots = desktop.FindAllChildren(pidCond.And(typeCond));
+                            }
+                            else roots = desktop.FindAllChildren(typeCond);
+                        }
+                        else roots = desktop.FindAllChildren(typeCond);
+                        foreach (var r in roots.Take(10)) items.Add(BuildTreeFromElement(r, maxDepth: 3));
+                    }
+                    catch { }
+                    tvAncestry.ItemsSource = items;
+                }
+            }
+            catch { tvAncestry.ItemsSource = null; }
+
+            static T? Safe<T>(AutomationElement e, Func<AutomationElement, T?> f)
+            { try { return f(e); } catch { return default; } }
         }
     }
 }

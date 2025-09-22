@@ -1,54 +1,56 @@
 # Radium Implementation Plan
 
+## Recent ? SpyWindow enhancements (this iteration)
+- [x] Ancestry depth > 3: materialize full children under depth-3 and below (no single target node per depth).
+- [x] Custom Procedures bound to PacsService methods (no free-form names).
+- [x] Custom Procedures grid UX:
+  - [x] Add button to append a new operation row.
+  - [x] Per-row Set (execute row, create var#) and Remove (x) actions.
+  - [x] Output var1/var2/¡¦ displayed and usable in later rows.
+  - [x] Argument editors switch by type (Element/String/Number/Var) with presets on operation selection.
+  - [x] For GetText/Invoke, Arg2 disabled; for Split, Arg1=Var, Arg2=String, etc.
+- [x] PacsService execution to call stored procedures by tag (next).
+
 ## Phase 1 ? UI Shell and Service Naming (Done)
-- [x] Rename MfcPacsService -> PacsService (keep MFC + FlaUI + OCR helpers).
-- [x] DI registration updated; build verified.
-- [x] Dark title bar using DwmSetWindowAttribute.
-- [x] PatientLocked binding; PreviousStudies tabs and selection.
-- [x] Commands: New Study, Add Study, Send Report Preview, Send Report, Manage studyname.
-- [x] PreviousStudiesStrip control: tabs + Add on same row, overflow dropdown ("¡å") when width exceeded; + pinned right. Tabs sorted by StudyDateTime desc.
-- [x] Tabs behave single-select; overflow item shows check when selected.
-- [x] AddStudy test logic adds multiple dummy studies with varied datetimes and JSON payload.
-- [x] Two-row headers with fixed height and no scrollbars:
-  - [x] Left: Upper row (32px) with Study locked + New/Preview/Send; lower row (22px) placeholder label.
-  - [x] Right: Row 0 (32px) tab strip; Row 1 (22px) details bar for SelectedPreviousStudy.
-- [x] Status bar trimmed (moved core actions to top header).
+- [x] Rename MfcPacsService -> PacsService, DI registration, dark title bar, top header actions.
 
 ## Phase 2 ? PACS Automation Wiring
-- [ ] New Study button:
-  - [ ] Wire to PacsService.OpenWorklistAsync(), list selection, viewer open.
-  - [ ] Populate window title and current header (techniques, comparison).
-  - [ ] Close worklist and (optional) alignment.
-- [ ] Add Study (+) button:
-  - [ ] Read related study row; validate same patient.
-  - [ ] Snapshot var1 (raw JSON) and create refined JSON placeholder.
-  - [ ] Push PreviousStudyTab; bind editors to selection.
-- [ ] Send Report Preview:
-  - [ ] Snapshot var2, run simple refine/align.
-- [ ] Send Report:
-  - [ ] Snapshot var3, capitalize, send via PacsService, confirm/approve, get datetime.
+- [ ] New Study: wire to PacsService.OpenWorklistAsync() etc.
+- [ ] Add Study: related row capture.
+- [ ] Send Report Preview / Send Report.
 
 ## Phase 3 ? Database Integration
-- [ ] Postgres connection and repositories for med.* objects.
-- [ ] Upsert patient by patient_number.
-- [ ] Upsert studyname with case-sensitive uniqueness.
-- [ ] Insert rad_study with composite unique (on conflict do nothing; return id).
-- [ ] Insert rad_report with proper JSONB payloads and flags.
-- [x] Create med.studyname_loinc_part mapping table SQL (id, studyname_id, part_number, part_sequence_order, created_at).
+- [x] Postgres repo scaffold for studyname ¡ê loinc.part mapping.
+- [ ] rad_* tables and persistence wiring.
 
 ## Phase 4 ? NLP Pipeline Abstractions
-- [ ] ISplitter, IDecapitalizer, IRefiner, IAligner, ICapitalizer interfaces.
-- [ ] Manual implementations; later LLM-backed implementations.
-- [ ] Plug pipeline into Add Study, Preview, Send paths.
+- [ ] Interfaces + manual implementations.
 
 ## Phase 5 ? UX/Polish
-- [x] Show selected PreviousStudyTab content in right editors.
-- [ ] Tab close buttons (optional) and keyboard navigation.
-- [x] Add Manage studyname button.
+- [x] PreviousStudies editing and selection.
 
-## Phase 6 ? Studyname ¡ê LOINC Parts Mapping
-- [x] Create dark-themed window (XAML + VM) scaffold with groups and selections.
-- [x] Repository to load/store med.rad_studyname, loinc.part, and mappings (supports med.rad_studyname_loinc_part or legacy med.rad_studyname_loinc).
-- [x] Window now shows live DB contents and persists mappings (with part_sequence_order).
-- [ ] Optional: search/filter parts; more sequence tokens; validation.
-- [ ] Command entry points from New Study / Add Study (with preselect).
+## This iteration
+- [x] SpyWindow: Ancestry depth > 3 shows full UIA children under depth-3 element.
+- [x] SpyWindow: Custom Procedures Operation combobox binds and updates Op; presets apply.
+- [x] SpyWindow: Add row button; per-row Set to compute OutputVar/Preview; per-row Remove.
+- [x] Update procedure vars list dynamically for Var dropdowns.
+- [x] PP1: UI tree shows reliably (FlaUInspect-like) after resolve; no more single-node-per-depth.
+- [x] PP2: Operation ComboBox no longer causes row disappearance or freezes; bindings hardened.
+
+## Recent requests
+- [x] PP1: Focused UI tree (single nodes for levels 1..4; expand all under level 5). Provide desktop fallback if unresolved.
+- [x] PP2: Grid operation dropdowns open reliably; no ItemsSource resets; visuals refreshed only.
+
+## Next
+- [ ] Optional: user-configurable focus depth and max subtree depth.
+- [ ] Add expand-on-demand for very large trees.
+- [ ] More operations (RegexSplit, Replace, Substring, NormalizeWhitespace).
+
+## Previously completed
+- [x] UI shell, dark title bar.
+- [x] Mapping editor improvements.
+- [x] Postgres scaffold for studyname ¡ê loinc.part mapping (infra).
+- [x] Dark theme/title bar and chain editor improvements.
+- [x] Custom Procedures: Add/Set/Remove row, OutputVar/preview, dynamic arg editors, persistence.
+- [x] Dark theme, title bar.
+- [x] Chain editor and mapping UX.
