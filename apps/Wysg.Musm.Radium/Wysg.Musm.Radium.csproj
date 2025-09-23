@@ -30,10 +30,4 @@
     <Reference Include="UIAutomationTypes" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="docs\req_template.md">
-      <Generator>MSBuild:Compile</Generator>
-    </None>
-  </ItemGroup>
-
 </Project>
