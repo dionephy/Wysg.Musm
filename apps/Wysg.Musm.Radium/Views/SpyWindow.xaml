@@ -276,7 +276,7 @@
                                         <TextBlock Text="{Binding ControlTypeId}" Margin="2,0"/>
                                         <TextBlock Text=", AutoId="/>
                                         <TextBlock Text="{Binding AutomationId}" Margin="2,0"/>
-                                        <TextBlock Text=", Name="/>
+                                        <TextBlock Text=", Name "/>
                                         <TextBlock Text="{Binding Name}" Margin="2,0"/>
                                     </StackPanel>
                                 </Border>
@@ -510,6 +510,7 @@
                     <ComboBox x:Name="cmbProcMethod" Width="220" Margin="6,0,12,0" SelectedValuePath="Tag">
                         <ComboBoxItem Tag="TryGetReportConclusion">TryGetReportConclusion</ComboBoxItem>
                         <ComboBoxItem Tag="GetReportConclusion">GetReportConclusion</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedIdFromSearchResults">Get selected ID from search results list</ComboBoxItem>
                     </ComboBox>
                     <Button Content="Add" Click="OnAddProcRow"/>
                     <Button Content="Save" Margin="6,0,0,0" Click="OnSaveProcedure"/>

@@ -12,6 +12,9 @@ using Wysg.Musm.MFCUIA.Selectors;
 using Wysg.Musm.MFCUIA.Session;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Linq;
+using System.Collections.Generic;
+using UIAElement = FlaUI.Core.AutomationElements.AutomationElement;
 
 namespace Wysg.Musm.Radium.Services
 {
@@ -41,6 +44,190 @@ namespace Wysg.Musm.Radium.Services
             var list = mfc.Find(By.ClassNth("SysListView32", 0)).AsListView();
             var items = list.GetSelectedRow(3, 4, 7, 2, 9, 12, 15, 17, 13, 16);
             return items;
+        }
+
+        /// <summary>
+        /// Locate the mapped SearchResultsList and return the "ID" value of the currently selected row.
+        /// If header "ID" is not found, tries a header containing "ID" or "Accession".
+        /// Returns null when list/selection not found or value empty.
+        /// </summary>
+        public Task<string?> GetSelectedIdFromSearchResultsAsync()
+        {
+            return Task.Run(() =>
+            {
+                try
+                {
+                    var (_, list) = UiBookmarks.Resolve(UiBookmarks.KnownControl.SearchResultsList);
+                    if (list == null) return (string?)null;
+
+                    // Find selected row
+                    var selection = list.Patterns.Selection.PatternOrDefault;
+                    var selected = selection?.Selection?.Value ?? Array.Empty<UIAElement>();
+                    if (selected.Length == 0)
+                    {
+                        selected = list.FindAllDescendants()
+                            .Where(a =>
+                            {
+                                try { return a.Patterns.SelectionItem.IsSupported && a.Patterns.SelectionItem.PatternOrDefault?.IsSelected == true; }
+                                catch { return false; }
+                            })
+                            .ToArray();
+                    }
+                    if (selected.Length == 0) return (string?)null;
+                    var row = selected[0];
+
+                    var headers = GetHeaderTexts(list);
+                    var cells = GetRowCellValues(row);
+
+                    if (headers.Count == 0 && cells.Count == 0) return (string?)null;
+
+                    // Normalize header lengths
+                    if (headers.Count < cells.Count)
+                        for (int i = headers.Count; i < cells.Count; i++) headers.Add($"Col{i + 1}");
+                    else if (headers.Count > cells.Count)
+                        for (int i = cells.Count; i < headers.Count; i++) cells.Add(string.Empty);
+
+                    // Try to locate ID column
+                    int idx = -1;
+                    for (int i = 0; i < headers.Count; i++)
+                    {
+                        var h = (headers[i] ?? string.Empty).Trim();
+                        if (string.Equals(h, "ID", StringComparison.OrdinalIgnoreCase)) { idx = i; break; }
+                    }
+                    if (idx < 0)
+                    {
+                        for (int i = 0; i < headers.Count; i++)
+                        {
+                            var h = (headers[i] ?? string.Empty).Trim();
+                            if (h.IndexOf("ID", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                h.IndexOf("Accession", StringComparison.OrdinalIgnoreCase) >= 0)
+                            { idx = i; break; }
+                        }
+                    }
+
+                    if (idx >= 0 && idx < cells.Count)
+                    {
+                        var val = cells[idx]?.Trim();
+                        return string.IsNullOrWhiteSpace(val) ? null : val;
+                    }
+
+                    return (string?)null;
+                }
+                catch { return (string?)null; }
+            });
+        }
+
+        private static string ReadCellText(UIAElement cell)
+        {
+            try
+            {
+                var vp = cell.Patterns.Value.PatternOrDefault;
+                if (vp != null)
+                {
+                    if (vp.Value.TryGetValue(out var pv) && !string.IsNullOrWhiteSpace(pv))
+                        return pv;
+                }
+            }
+            catch { }
+            try { var n = cell.Name; if (!string.IsNullOrWhiteSpace(n)) return n; } catch { }
+            try { var l = cell.Patterns.LegacyIAccessible.PatternOrDefault?.Name; if (!string.IsNullOrWhiteSpace(l)) return l; } catch { }
+            return string.Empty;
+        }
+
+        private static List<string> GetHeaderTexts(UIAElement list)
+        {
+            var result = new List<string>();
+            try
+            {
+                var kids = list.FindAllChildren();
+                if (kids.Length > 0)
+                {
+                    var headerRow = kids[0];
+                    var headerCells = headerRow.FindAllChildren();
+                    if (headerCells.Length > 0)
+                    {
+                        foreach (var hc in headerCells)
+                        {
+                            try
+                            {
+                                var t = ReadCellText(hc);
+                                if (string.IsNullOrWhiteSpace(t))
+                                {
+                                    foreach (var g in hc.FindAllChildren())
+                                    {
+                                        t = ReadCellText(g);
+                                        if (!string.IsNullOrWhiteSpace(t)) break;
+                                    }
+                                }
+                                if (!string.IsNullOrWhiteSpace(t)) result.Add(t.Trim());
+                            }
+                            catch { }
+                        }
+                        if (result.Count > 0) return result;
+                    }
+                }
+
+                // Fallback: look for any child that appears to be header-like
+                foreach (var ch in list.FindAllDescendants())
+                {
+                    try
+                    {
+                        var name = ReadCellText(ch);
+                        if (!string.IsNullOrWhiteSpace(name) && name.Length < 40)
+                        {
+                            // Weak heuristic: a row of short texts could be a header row
+                            // We do not accumulate here aggressively to avoid noise
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+            return result;
+        }
+
+        private static List<string> GetRowCellValues(UIAElement row)
+        {
+            var values = new List<string>();
+            try
+            {
+                var children = row.FindAllChildren();
+                if (children.Length > 0)
+                {
+                    foreach (var c in children)
+                    {
+                        try
+                        {
+                            var txt = ReadCellText(c).Trim();
+                            if (!string.IsNullOrEmpty(txt)) values.Add(txt);
+                            else
+                            {
+                                foreach (var gc in c.FindAllChildren())
+                                {
+                                    var t = ReadCellText(gc).Trim();
+                                    if (!string.IsNullOrEmpty(t)) { values.Add(t); break; }
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                else
+                {
+                    foreach (var d in row.FindAllDescendants())
+                    {
+                        try
+                        {
+                            var t = ReadCellText(d).Trim();
+                            if (!string.IsNullOrEmpty(t)) values.Add(t);
+                            if (values.Count >= 20) break;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+            return values;
         }
 
         public async Task<bool> IsViewerWindowAsync(IntPtr hwnd)

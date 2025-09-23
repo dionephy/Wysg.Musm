@@ -1,13 +1,33 @@
-# Radium Task Checklist
+# Radium Task Checklist (Cumulative)
 
 ## SpyWindow ? UI Tree
-- [x] Parity with crawl editor via `ResolvePath` (exact chosen path).
-- [x] Chain to level 4, expand from that node (bounded depth and cap 100 children).
-- [x] Fallbacks: process roots ¡æ desktop-wide first-node ¡æ heuristic.
+- [x] Parity with crawl editor via `ResolvePath` (exact chosen path)
+- [x] Chain to level 4, expand from that node (bounded depth and cap 100 children)
+- [x] Fallbacks: process roots ¡æ desktop-wide first-node ¡æ heuristic
 
 ## SpyWindow ? Procedures Grid
-- [x] Stable presets; no loop; instant editor switching; dark ComboBoxes.
+- [x] Stable presets; no loop; instant editor switching; dark ComboBoxes
+
+## PACS Methods ? Custom Procedures
+- [x] Add "Get selected ID from search results list" to PACS Method list in SpyWindow (tag: GetSelectedIdFromSearchResults)
+- [x] Implement PacsService.GetSelectedIdFromSearchResultsAsync (resolve list, read selected row, detect ID column, return value)
+- [ ] Optional: Hook procedure runner to call service methods by tag and display result
+
+## Studyname ¡ê LOINC Parts window
+- [x] Repo: prefer LocalConnectionString (then fallback local) before Central; add diagnostics
+- [x] VM: Categories with filters; MappingPreviewItem; SequenceOrderInput; CommonGroup; part_name-only
+- [x] VM: Explicit properties bound into a 4x5 Grid
+- [x] XAML: Equal-height rows; vertical-only scroll; wrap text; code-behind double-click add+delete; preview editable order; add studyname input under list
+- [x] Studynames filter via ICollectionView
+- [x] Playbook suggestions grouped by loinc_number; details pane shows part names + sequence order
+- [x] Single MainWindow on run (removed StartupUri; splash controls flow)
+- [x] Playbook threshold lowered to 2 (converter + VM)
+- [x] Build passes
+- [ ] Add remove/reorder controls for preview
+- [ ] Virtualization and header count badges
+- [ ] Repo tests with test DB
+
 
 ## Follow-ups
-- [ ] Settings UI for depths.
-- [ ] Rank multiple first-node fallbacks by proximity to final mapping.
+- [ ] Settings UI for depths
+- [ ] Rank multiple first-node fallbacks by proximity to final mapping

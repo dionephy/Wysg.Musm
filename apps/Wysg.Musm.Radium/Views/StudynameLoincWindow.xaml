@@ -3,12 +3,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:Wysg.Musm.Radium.ViewModels"
+        xmlns:conv="clr-namespace:Wysg.Musm.Radium.Converters"
         mc:Ignorable="d"
         Title="Studyname &#8596; LOINC Parts"
-        Height="600" Width="900"
+        Height="880" Width="1420"
         Background="#111" Foreground="#d0d0d0" FontFamily="Consolas"
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
+        <!-- styles and template unchanged -->
         <Style TargetType="Button">
             <Setter Property="Background" Value="#2D2D30"/>
             <Setter Property="Foreground" Value="#C8C8C8"/>
@@ -20,27 +23,47 @@
         <Style TargetType="ListBox">
             <Setter Property="Background" Value="#1E1E1E"/>
             <Setter Property="BorderBrush" Value="#2D2D30"/>
-            <Setter Property="Foreground" Value="#D0D0D0"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
         </Style>
         <Style TargetType="TextBox">
             <Setter Property="Background" Value="#1E1E1E"/>
-            <Setter Property="Foreground" Value="#D0D0D0"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="BorderBrush" Value="#2D2D30"/>
         </Style>
-        <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="#1E1E1E"/>
-            <Setter Property="Foreground" Value="#D0D0D0"/>
-            <Setter Property="BorderBrush" Value="#2D2D30"/>
-        </Style>
+
+        <DataTemplate DataType="{x:Type vm:StudynameLoincViewModel+CategoryGroup}">
+            <GroupBox Header="{Binding Name}" Margin="4" Background="#151515" VerticalAlignment="Stretch">
+                <DockPanel LastChildFill="True">
+                    <TextBox DockPanel.Dock="Top" Margin="0,0,0,6" Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}"/>
+                    <ListBox ItemsSource="{Binding View}"
+                             MinHeight="100"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             VerticalAlignment="Stretch">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding PartDisplay}" TextWrapping="Wrap"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <EventSetter Event="MouseDoubleClick" Handler="OnPartItemDoubleClick"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
+                </DockPanel>
+            </GroupBox>
+        </DataTemplate>
+        <conv:CountToVisibilityConverter x:Key="CountToVisibilityConverter" Minimum="2"/>
     </Window.Resources>
 
     <Grid Margin="8">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="2*"/>
             <ColumnDefinition Width="6"/>
-            <ColumnDefinition Width="3*"/>
+            <ColumnDefinition Width="6*"/>
             <ColumnDefinition Width="6"/>
-            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="3*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -48,61 +71,123 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Studyname list + add -->
-        <StackPanel Grid.Column="0" Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="Studynames" Margin="0,0,8,0"/>
-            <Button Content="Add" Command="{Binding AddStudynameCommand}"/>
-        </StackPanel>
-        <TextBox Grid.Column="0" Grid.Row="1" Margin="0,4,0,4" Text="{Binding StudynameFilter, UpdateSourceTrigger=PropertyChanged}"/>
-        <ListBox Grid.Column="0" Grid.Row="1" Margin="0,32,0,0"
-                 ItemsSource="{Binding Studynames}"
-                 SelectedItem="{Binding SelectedStudyname, Mode=TwoWay}">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding Studyname}"/>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+        <!-- Left: Studynames header -->
+        <DockPanel Grid.Column="0" Grid.Row="0" LastChildFill="False">
+            <TextBlock Text="Studynames" Margin="0,0,8,0" VerticalAlignment="Center"/>
+        </DockPanel>
 
-        <GridSplitter Grid.Column="1" Grid.RowSpan="2" Width="6" Background="#2D2D30"/>
-
-        <!-- LOINC parts by subcategory -->
-        <Grid Grid.Column="2" Grid.RowSpan="2">
+        <!-- Left: filter, list, and add new studyname -->
+        <Grid Grid.Column="0" Grid.Row="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <TextBlock Text="LOINC Parts (grouped by rad.[subcategory])"/>
-            <TreeView Grid.Row="1" ItemsSource="{Binding PartsBySubcategory}">
-                <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate ItemsSource="{Binding Parts}">
-                        <TextBlock Text="{Binding Subcategory}"/>
-                        <HierarchicalDataTemplate.ItemTemplate>
-                            <DataTemplate>
-                                <DockPanel>
-                                    <CheckBox Content="{Binding PartDisplay}" IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
-                                    <ComboBox DockPanel.Dock="Right" Width="60" Margin="6,0,0,0"
-                                              SelectedItem="{Binding PartSequenceOrder, Mode=TwoWay}">
-                                        <ComboBoxItem>A</ComboBoxItem>
-                                        <ComboBoxItem>B</ComboBoxItem>
-                                        <ComboBoxItem>C</ComboBoxItem>
-                                        <ComboBoxItem>D</ComboBoxItem>
-                                    </ComboBox>
-                                </DockPanel>
-                            </DataTemplate>
-                        </HierarchicalDataTemplate.ItemTemplate>
-                    </HierarchicalDataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
+            <!-- Bind to StudynamesView for filtering -->
+            <TextBox Grid.Row="0" Margin="0,4,0,4" Text="{Binding StudynameFilter, UpdateSourceTrigger=PropertyChanged}"/>
+            <ListBox Grid.Row="1" Margin="0,4,0,4"
+                     ItemsSource="{Binding StudynamesView}"
+                     SelectedItem="{Binding SelectedStudyname, Mode=TwoWay}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Studyname}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBox Width="180" Margin="0,0,8,0" Text="{Binding NewStudynameInput, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Content="Add" Command="{Binding AddStudynameCommand}"/>
+            </StackPanel>
+        </Grid>
+
+        <GridSplitter Grid.Column="1" Grid.RowSpan="2" Width="6" Background="#2D2D30"/>
+
+        <!-- Middle grid unchanged (categories + Common) -->
+        <Grid Grid.Column="2" Grid.RowSpan="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <ContentPresenter Grid.Row="0" Grid.Column="0" Content="{Binding Cat_ImagingFocus}"/>
+            <ContentPresenter Grid.Row="0" Grid.Column="1" Content="{Binding Cat_RegionImaged}"/>
+            <ContentPresenter Grid.Row="0" Grid.Column="2" Content="{Binding Cat_LateralityPresence}"/>
+            <ContentPresenter Grid.Row="0" Grid.Column="3" Content="{Binding Cat_Laterality}"/>
+            <ContentPresenter Grid.Row="1" Grid.Column="0" Content="{Binding Cat_ModalityType}"/>
+            <ContentPresenter Grid.Row="1" Grid.Column="1" Content="{Binding Cat_ModalitySubtype}"/>
+            <ContentPresenter Grid.Row="1" Grid.Column="2" Content="{Binding Cat_ReasonForExam}"/>
+            <ContentPresenter Grid.Row="2" Grid.Column="0" Content="{Binding Cat_Timing}"/>
+            <ContentPresenter Grid.Row="2" Grid.Column="1" Content="{Binding Cat_Pharm_SubstanceGiven}"/>
+            <ContentPresenter Grid.Row="2" Grid.Column="2" Content="{Binding Cat_Pharm_Route}"/>
+            <ContentPresenter Grid.Row="3" Grid.Column="0" Content="{Binding Cat_View_Aggregation}"/>
+            <ContentPresenter Grid.Row="3" Grid.Column="1" Content="{Binding Cat_View_ViewType}"/>
+            <ContentPresenter Grid.Row="3" Grid.Column="2" Content="{Binding Cat_Maneuver_Type}"/>
+            <ContentPresenter Grid.Row="3" Grid.Column="3" Content="{Binding Cat_Subject}"/>
+            <ContentPresenter Grid.Row="4" Grid.Column="0" Content="{Binding Cat_Guidance_Presence}"/>
+            <ContentPresenter Grid.Row="4" Grid.Column="1" Content="{Binding Cat_Guidance_Action}"/>
+            <ContentPresenter Grid.Row="4" Grid.Column="2" Content="{Binding Cat_Guidance_Approach}"/>
+            <ContentPresenter Grid.Row="4" Grid.Column="3" Content="{Binding Cat_Guidance_Object}"/>
+            <ContentPresenter Grid.Row="1" Grid.Column="3" Grid.RowSpan="2" Content="{Binding CommonGroup}"/>
         </Grid>
 
         <GridSplitter Grid.Column="3" Grid.RowSpan="2" Width="6" Background="#2D2D30"/>
 
-        <!-- Mapping preview -->
-        <StackPanel Grid.Column="4" Grid.RowSpan="2">
-            <TextBlock Text="Mapping Preview"/>
-            <ListBox ItemsSource="{Binding SelectedParts}" DisplayMemberPath="PartDisplay"/>
-        </StackPanel>
+        <!-- Right: Preview with playbook suggestions under it -->
+        <DockPanel Grid.Column="4" Grid.RowSpan="2">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Stretch" Margin="0,0,0,6">
+                <TextBlock Text="Preview" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="12,0,0,0">
+                    <TextBlock Text="Sequence Order:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBox Width="100" Text="{Binding SequenceOrderInput, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+            </StackPanel>
+            <StackPanel>
+                <ListBox ItemsSource="{Binding SelectedParts}">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <EventSetter Event="MouseDoubleClick" Handler="OnPreviewItemDoubleClick"/>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel>
+                                <TextBox Width="60" Margin="0,0,6,0" Text="{Binding PartSequenceOrder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Text="{Binding PartDisplay}"/>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Suggestions: two listboxes side-by-side -->
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <ListBox Grid.Column="0" ItemsSource="{Binding PlaybookMatches}" DisplayMemberPath="LongCommonName"
+                             Visibility="{Binding SelectedParts.Count, Converter={StaticResource CountToVisibilityConverter}}"
+                             SelectedItem="{Binding SelectedPlaybook, Mode=TwoWay}"/>
+                    <ListBox Grid.Column="1" ItemsSource="{Binding PlaybookParts}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding PartSequenceOrder}" FontWeight="Bold" Margin="0,0,6,0"/>
+                                    <TextBlock Text="{Binding PartName}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </StackPanel>
+        </DockPanel>
 
         <StackPanel Grid.Row="2" Grid.ColumnSpan="5" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Save" Command="{Binding SaveCommand}"/>

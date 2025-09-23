@@ -1,8 +1,8 @@
 ﻿<Application x:Class="Wysg.Musm.Radium.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:Wysg.Musm.Radium">
+             xmlns:conv="clr-namespace:Wysg.Musm.Radium.Converters">
     <Application.Resources>
-         
+        <conv:CountToVisibilityConverter x:Key="CountToVisibilityConverter" Minimum="2"/>
     </Application.Resources>
 </Application>
