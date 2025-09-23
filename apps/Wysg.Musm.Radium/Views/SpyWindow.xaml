@@ -17,6 +17,13 @@
         <SolidColorBrush x:Key="Dark.HoverOverlay" Color="#203A3A3D"/>
         <SolidColorBrush x:Key="Dark.Pressed" Color="#454549"/>
 
+        <!-- Path highlight brushes -->
+        <SolidColorBrush x:Key="Path.Level1" Color="#332B6CB0"/>
+        <SolidColorBrush x:Key="Path.Level2" Color="#334CAF50"/>
+        <SolidColorBrush x:Key="Path.Level3" Color="#33FF9800"/>
+        <SolidColorBrush x:Key="Path.Level4" Color="#33E91E63"/>
+        <SolidColorBrush x:Key="Path.Deep"   Color="#333A3D41"/>
+
         <!-- Buttons -->
         <Style TargetType="Button">
             <Setter Property="Background" Value="{StaticResource Dark.Accent}"/>
@@ -259,16 +266,20 @@
                               ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <TreeView.ItemTemplate>
                             <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Class="/>
-                                    <TextBlock Text="{Binding ClassName}" Margin="2,0"/>
-                                    <TextBlock Text=", Ct "/>
-                                    <TextBlock Text="{Binding ControlTypeId}" Margin="2,0"/>
-                                    <TextBlock Text=", AutoId="/>
-                                    <TextBlock Text="{Binding AutomationId}" Margin="2,0"/>
-                                    <TextBlock Text=", Name="/>
-                                    <TextBlock Text="{Binding Name}" Margin="2,0"/>
-                                </StackPanel>
+                                <Border Background="{Binding Highlight}" Padding="2" CornerRadius="2">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="L="/>
+                                        <TextBlock Text="{Binding Level}" Margin="2,0"/>
+                                        <TextBlock Text=", Class="/>
+                                        <TextBlock Text="{Binding ClassName}" Margin="2,0"/>
+                                        <TextBlock Text=", Ct "/>
+                                        <TextBlock Text="{Binding ControlTypeId}" Margin="2,0"/>
+                                        <TextBlock Text=", AutoId="/>
+                                        <TextBlock Text="{Binding AutomationId}" Margin="2,0"/>
+                                        <TextBlock Text=", Name="/>
+                                        <TextBlock Text="{Binding Name}" Margin="2,0"/>
+                                    </StackPanel>
+                                </Border>
                             </HierarchicalDataTemplate>
                         </TreeView.ItemTemplate>
                     </TreeView>
@@ -533,7 +544,10 @@
                         <DataGridTemplateColumn Header="Arg1 Type" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox Width="80" SelectedValue="{ Binding Arg1.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg1Enabled}">
+                                    <ComboBox Width="80"
+                                              SelectedValuePath="Content"
+                                              SelectedValue="{ Binding Arg1.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              IsEnabled="{Binding Arg1Enabled}">
                                         <ComboBoxItem Content="Element"/>
                                         <ComboBoxItem Content="String"/>
                                         <ComboBoxItem Content="Number"/>
@@ -549,15 +563,19 @@
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.Resources>
-                                            <Style TargetType="FrameworkElement" x:Key="HiddenByDefault">
+                                            <!-- Hidden by default, still inherit the default dark ComboBox style -->
+                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.BasedOn>
+                                                    <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}" />
+                                                </Style.BasedOn>
                                             </Style>
                                         </Grid.Resources>
                                         <!-- Element chooser -->
                                         <ComboBox Width="180" ItemsSource="{Binding DataContext.KnownControlTags, ElementName=Root}"
                                                   SelectedValue="{Binding Arg1.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <ComboBox.Style>
-                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenByDefault}">
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenDarkCombo}">
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Arg1.Type}" Value="Element">
                                                             <Setter Property="Visibility" Value="Visible"/>
@@ -570,7 +588,7 @@
                                         <ComboBox Width="180" ItemsSource="{Binding DataContext.ProcedureVars, ElementName=Root}"
                                                   SelectedValue="{Binding Arg1.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <ComboBox.Style>
-                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenByDefault}">
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenDarkCombo}">
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Arg1.Type}" Value="Var">
                                                             <Setter Property="Visibility" Value="Visible"/>
@@ -604,7 +622,10 @@
                         <DataGridTemplateColumn Header="Arg2 Type" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox Width="80" SelectedValue="{Binding Arg2.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg2Enabled}">
+                                    <ComboBox Width="80"
+                                              SelectedValuePath="Content"
+                                              SelectedValue="{Binding Arg2.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              IsEnabled="{Binding Arg2Enabled}">
                                         <ComboBoxItem Content="Element"/>
                                         <ComboBoxItem Content="String"/>
                                         <ComboBoxItem Content="Number"/>
@@ -620,14 +641,17 @@
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.Resources>
-                                            <Style TargetType="FrameworkElement" x:Key="HiddenByDefault2">
+                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo2">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.BasedOn>
+                                                    <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}" />
+                                                </Style.BasedOn>
                                             </Style>
                                         </Grid.Resources>
                                         <ComboBox Width="180" ItemsSource="{Binding DataContext.KnownControlTags, ElementName=Root}"
                                                   SelectedValue="{Binding Arg2.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <ComboBox.Style>
-                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenByDefault2}">
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenDarkCombo2}">
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Arg2.Type}" Value="Element">
                                                             <Setter Property="Visibility" Value="Visible"/>
@@ -640,7 +664,7 @@
                                         <ComboBox Width="180" ItemsSource="{Binding DataContext.ProcedureVars, ElementName=Root}"
                                                   SelectedValue="{Binding Arg2.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <ComboBox.Style>
-                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenByDefault2}">
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenDarkCombo2}">
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Arg2.Type}" Value="Var">
                                                             <Setter Property="Visibility" Value="Visible"/>

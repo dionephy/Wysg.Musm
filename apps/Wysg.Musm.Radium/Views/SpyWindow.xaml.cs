@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -38,6 +40,10 @@ namespace Wysg.Musm.Radium.Views
         private const int UIA_HeaderItem = 50035;
         private const int UIA_Text = 50020;
         private const int UIA_DataItem = 50029;
+
+        // Spy tree configuration (user-requested configurable constants)
+        private const int FocusChainDepth = 4;          // show single node per depth up to this level (1-based)
+        private const int FocusSubtreeMaxDepth = 8;     // expand subtree starting from FocusChainDepth+1 down to this depth
 
         // P/Invoke and overlay fields
         [DllImport("user32.dll")] private static extern bool GetCursorPos(out POINT lpPoint);
@@ -87,16 +93,52 @@ namespace Wysg.Musm.Radium.Views
 
         // ======== Custom Procedures model/persistence/executor ========
         private enum ArgKind { Element, String, Number, Var }
-        private sealed class ProcArg { public string Type { get; set; } = nameof(ArgKind.String); public string? Value { get; set; } }
-        private sealed class ProcOpRow
+
+        private sealed class ProcArg : INotifyPropertyChanged
         {
-            public string Op { get; set; } = string.Empty;
-            public ProcArg Arg1 { get; set; } = new ProcArg();
-            public ProcArg Arg2 { get; set; } = new ProcArg();
-            public bool Arg1Enabled { get; set; } = true;
-            public bool Arg2Enabled { get; set; } = true;
-            public string? OutputVar { get; set; }
-            public string? OutputPreview { get; set; }
+            private string _type = nameof(ArgKind.String);
+            private string? _value;
+            public string Type { get => _type; set => SetField(ref _type, value); }
+            public string? Value { get => _value; set => SetField(ref _value, value); }
+
+            public event PropertyChangedEventHandler? PropertyChanged;
+            private void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            private bool SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)
+            {
+                if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+                field = value;
+                OnPropertyChanged(name);
+                return true;
+            }
+        }
+
+        private sealed class ProcOpRow : INotifyPropertyChanged
+        {
+            private string _op = string.Empty;
+            private ProcArg _arg1 = new ProcArg();
+            private ProcArg _arg2 = new ProcArg();
+            private bool _arg1Enabled = true;
+            private bool _arg2Enabled = true;
+            private string? _outputVar;
+            private string? _outputPreview;
+
+            public string Op { get => _op; set => SetField(ref _op, value); }
+            public ProcArg Arg1 { get => _arg1; set => SetField(ref _arg1, value); }
+            public ProcArg Arg2 { get => _arg2; set => SetField(ref _arg2, value); }
+            public bool Arg1Enabled { get => _arg1Enabled; set => SetField(ref _arg1Enabled, value); }
+            public bool Arg2Enabled { get => _arg2Enabled; set => SetField(ref _arg2Enabled, value); }
+            public string? OutputVar { get => _outputVar; set => SetField(ref _outputVar, value); }
+            public string? OutputPreview { get => _outputPreview; set => SetField(ref _outputPreview, value); }
+
+            public event PropertyChangedEventHandler? PropertyChanged;
+            private void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            private bool SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)
+            {
+                if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+                field = value;
+                OnPropertyChanged(name);
+                return true;
+            }
         }
         private sealed class ProcStore { public Dictionary<string, List<ProcOpRow>> Methods { get; set; } = new(); }
 
@@ -177,16 +219,13 @@ namespace Wysg.Musm.Radium.Views
         // Operation selection -> preset arg types and enable/disable
         private void OnProcOpChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_handlingProcOpChange) return; // guard reentrancy (PP2)
+            if (_handlingProcOpChange) return;
             if (sender is System.Windows.Controls.ComboBox cb && cb.DataContext is ProcOpRow row)
             {
                 try
                 {
                     _handlingProcOpChange = true;
                     Debug.WriteLine($"[PP2] Op changed to: {row.Op}, FocusWithin={cb.IsKeyboardFocusWithin}, IsDropDownOpen={cb.IsDropDownOpen}");
-
-                    var grid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
-                    try { grid?.CommitEdit(DataGridEditingUnit.Cell, true); grid?.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
 
                     switch (row.Op)
                     {
@@ -210,13 +249,6 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
                             break;
-                    }
-
-                    // Keep dropdown open once user is editing; rely on StaysOpenOnEdit
-                    if (!cb.IsDropDownOpen)
-                    {
-                        cb.IsDropDownOpen = true;
-                        Debug.WriteLine("[PP2] Re-opened OpCombo after change to keep it interactive.");
                     }
                 }
                 finally { _handlingProcOpChange = false; }
@@ -291,8 +323,15 @@ namespace Wysg.Musm.Radium.Views
         // Update ProcedureVars after full run or edits
         private void UpdateProcedureVarsFrom(List<ProcOpRow> rows)
         {
+            // Only include variables that are actually produced (rows with OutputVar set)
             ProcedureVars.Clear();
-            for (int i = 0; i < rows.Count; i++) ProcedureVars.Add($"var{i + 1}");
+            foreach (var r in rows)
+            {
+                if (!string.IsNullOrWhiteSpace(r.OutputVar))
+                {
+                    if (!ProcedureVars.Contains(r.OutputVar)) ProcedureVars.Add(r.OutputVar);
+                }
+            }
         }
 
         // ========= Ancestry data model =========
@@ -303,6 +342,8 @@ namespace Wysg.Musm.Radium.Views
             public int? ControlTypeId { get; set; }
             public string? AutomationId { get; set; }
             public List<TreeNode> Children { get; } = new();
+            public int Level { get; set; }
+            public Brush? Highlight { get; set; }
         }
         private TreeNode? _ancestryRoot;
 
@@ -329,8 +370,10 @@ namespace Wysg.Musm.Radium.Views
                         Name = Safe(k, e => e.Name),
                         ClassName = Safe(k, e => e.ClassName),
                         ControlTypeId = Safe(k, e => (int?)e.Properties.ControlType.Value),
-                        AutomationId = Safe(k, e => e.AutomationId)
+                        AutomationId = Safe(k, e => e.AutomationId),
+                        Level = node.Level + 1
                     };
+                    // deep levels: color only the element of interest (handled by caller who knows the path). Default no color here.
                     node.Children.Add(childNode);
                     PopulateChildrenTree(childNode, k, maxDepth - 1);
                 }
@@ -352,7 +395,8 @@ namespace Wysg.Musm.Radium.Views
                 Name = Safe(element, e => e.Name),
                 ClassName = Safe(element, e => e.ClassName),
                 ControlTypeId = Safe(element, e => (int?)e.Properties.ControlType.Value),
-                AutomationId = Safe(element, e => e.AutomationId)
+                AutomationId = Safe(element, e => e.AutomationId),
+                Level = 1
             };
             PopulateChildrenTree(node, element, maxDepth);
             return node;
@@ -402,7 +446,7 @@ namespace Wysg.Musm.Radium.Views
         private void OnProcMethodChanged(object? sender, SelectionChangedEventArgs e)
         {
             var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
-            var tag = (cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
+            var tag = ((cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string) ?? ((cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content as string);
             var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
             if (string.IsNullOrWhiteSpace(tag) || procGrid == null) return;
             var steps = LoadProcedureForMethod(tag).ToList();
@@ -414,7 +458,7 @@ namespace Wysg.Musm.Radium.Views
         {
             var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
             var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
-            var tag = (cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
+            var tag = ((cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string) ?? ((cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content as string);
             if (string.IsNullOrWhiteSpace(tag)) { txtStatus.Text = "Select PACS method"; return; }
             if (procGrid == null) { txtStatus.Text = "No steps"; return; }
 
@@ -429,7 +473,7 @@ namespace Wysg.Musm.Radium.Views
         {
             var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
             var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
-            var tag = (cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string;
+            var tag = ((cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string) ?? ((cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content as string);
             if (string.IsNullOrWhiteSpace(tag)) { txtStatus.Text = "Select PACS method"; return; }
             if (procGrid == null) { txtStatus.Text = "No steps"; return; }
 
@@ -720,6 +764,10 @@ namespace Wysg.Musm.Radium.Views
                 chain.Reverse();
 
                 var b = new UiBookmarks.Bookmark { Name = string.Empty, ProcessName = string.IsNullOrWhiteSpace(procName) ? "Unknown" : procName };
+
+                // NOTE: Do NOT add the Desktop/top element as a node; first node should be the app window under Desktop
+                // to match root discovery and the crawl editor behavior.
+
                 foreach (var nodeEl in chain)
                 {
                     string? name = null, className = null, autoId = null; int? ctId = null;
@@ -755,10 +803,27 @@ namespace Wysg.Musm.Radium.Views
                         UseClassName = !string.IsNullOrEmpty(className),
                         UseControlTypeId = ctId.HasValue,
                         UseAutomationId = !string.IsNullOrEmpty(autoId),
-                        UseIndex = false,
+                        UseIndex = true,
                         Scope = UiBookmarks.SearchScope.Children
                     });
                 }
+
+                // Debug dump of captured chain for parity checks
+                try
+                {
+                    Debug.WriteLine($"[PP1][Pick] Proc='{b.ProcessName}', elements in chain={b.Chain.Count}");
+                    if (b.Chain.Count > 0)
+                    {
+                        var n0 = b.Chain[0];
+                        Debug.WriteLine($"[PP1][Pick] First node: Name='{n0.Name}', Class='{n0.ClassName}', AutoId='{n0.AutomationId}', CtId={n0.ControlTypeId}, Index={n0.IndexAmongMatches}");
+                    }
+                    for (int i = 0; i < b.Chain.Count; i++)
+                    {
+                        var n = b.Chain[i];
+                        Debug.WriteLine($"  [{i}] Include={n.Include} Scope={n.Scope} Use(Name={n.UseName},Class={n.UseClassName},Ct={n.UseControlTypeId},AutoId={n.UseAutomationId},Idx={n.UseIndex}) Name='{n.Name}' Class='{n.ClassName}' AutoId='{n.AutomationId}' CtId={n.ControlTypeId} Index={n.IndexAmongMatches}");
+                    }
+                }
+                catch { }
 
                 var cls = classNameSafe(el) ?? "?";
                 var ctid = controlTypeIdSafe(el);
@@ -776,7 +841,12 @@ namespace Wysg.Musm.Radium.Views
         private void HighlightBookmark(UiBookmarks.Bookmark b)
         {
             var (hwnd, el) = UiBookmarks.TryResolveBookmark(b);
-            if (el == null) { txtStatus.Text += " | Resolve failed"; return; }
+            if (el == null) {
+                try {
+                    var (_, _, trace) = UiBookmarks.TryResolveWithTrace(b);
+                    Debug.WriteLine("[PP1][ResolveTrace]\r\n" + trace);
+                } catch { }
+                txtStatus.Text += " | Resolve failed"; return; }
             var r = el.BoundingRectangle;
             var rect = new System.Drawing.Rectangle((int)r.Left, (int)r.Top, (int)r.Width, (int)r.Height);
             _overlay.ShowForRect(rect);
@@ -1338,11 +1408,58 @@ namespace Wysg.Musm.Radium.Views
             return sb.ToString().TrimEnd();
         }
 
-        // FlaUInspect-like tree: rebuild using resolved element as root; fallback to desktop windows if resolve fails
+        // FlaUInspect-like tree: rebuild using resolved element path to ensure parity with crawl editor
         private void RebuildAncestryFromRoot(UiBookmarks.Bookmark b)
         {
             try
             {
+                var (final, path) = UiBookmarks.ResolvePath(b);
+                if (final != null && path.Count > 0)
+                {
+                    // Build chain from actual chosen path.
+                    // path[0] is top root, last is final. We display chain to level 4 (or last available), then children of that node.
+                    int focusIndex = Math.Min(FocusChainDepth - 1, path.Count - 1);
+
+                    TreeNode rootNode = ToNode(path[0], level: 1);
+                    SetHighlight(rootNode); // L1 colored
+                    var chainNode = rootNode;
+                    for (int i = 1; i <= focusIndex; i++)
+                    {
+                        var next = ToNode(path[i], level: i + 1);
+                        SetHighlight(next); // L2-L4 colored
+                        chainNode.Children.Clear();
+                        chainNode.Children.Add(next);
+                        chainNode = next;
+                    }
+
+                    // Expand from level-4 element
+                    var focusEl = path[focusIndex];
+                    Debug.WriteLine($"[PP1] Using ResolvePath: pathCount={path.Count}, focusIndex={focusIndex}, focusClass={focusEl.ClassName}, focusName={focusEl.Name}");
+                    PopulateChildrenTree(chainNode, focusEl, maxDepth: FocusSubtreeMaxDepth);
+
+                    // Mark element-of-interest at each deeper level along the remaining path
+                    for (int i = focusIndex + 1; i < path.Count; i++)
+                    {
+                        var level = i + 1; // 1-based
+                        var target = path[i];
+                        var match = chainNode.Children.FirstOrDefault(c => string.Equals(c.AutomationId, Safe(target, e => e.AutomationId))
+                                                                           && string.Equals(c.ClassName, Safe(target, e => e.ClassName))
+                                                                           && c.ControlTypeId == Safe(target, e => (int?)e.Properties.ControlType.Value));
+                        if (match == null)
+                        {
+                            // if not found among immediate children (due to caps or structure), stop tagging further
+                            break;
+                        }
+                        chainNode = match;
+                        chainNode.Level = level;
+                        SetDeepHighlight(chainNode); // from level 5 and deeper
+                    }
+
+                    tvAncestry.ItemsSource = new[] { rootNode };
+                    return;
+                }
+
+                // Fallback to previous behavior when path cannot be built
                 var (_, targetEl, _) = UiBookmarks.TryResolveWithTrace(b);
                 if (targetEl != null)
                 {
@@ -1358,50 +1475,23 @@ namespace Wysg.Musm.Radium.Views
                     }
                     ancestors.Reverse();
 
-                    const int chainDepth = 4; // 1-based
-                    var focusIndex = Math.Min(Math.Max(chainDepth - 1, 0), ancestors.Count - 1);
-
-                    var rootEl = ancestors[0];
-                    var rootNode = new TreeNode
-                    {
-                        Name = Safe(rootEl, e => e.Name),
-                        ClassName = Safe(rootEl, e => e.ClassName),
-                        ControlTypeId = Safe(rootEl, e => (int?)e.Properties.ControlType.Value),
-                        AutomationId = Safe(rootEl, e => e.AutomationId)
-                    };
-
+                    var focusIndex = Math.Min(Math.Max(FocusChainDepth - 1, 0), ancestors.Count - 1);
+                    var rootNode = ToNode(ancestors[0], level: 1); SetHighlight(rootNode);
                     var chainNode = rootNode;
                     for (int i = 1; i <= focusIndex; i++)
                     {
-                        var ae = ancestors[i];
-                        var next = new TreeNode
-                        {
-                            Name = Safe(ae, e => e.Name),
-                            ClassName = Safe(ae, e => e.ClassName),
-                            ControlTypeId = Safe(ae, e => (int?)e.Properties.ControlType.Value),
-                            AutomationId = Safe(ae, e => e.AutomationId)
-                        };
-                        chainNode.Children.Clear();
-                        chainNode.Children.Add(next);
-                        chainNode = next;
+                        var next = ToNode(ancestors[i], level: i + 1); SetHighlight(next);
+                        chainNode.Children.Clear(); chainNode.Children.Add(next); chainNode = next;
                     }
-
-                    // Expand from level-4 element
-                    var focusEl = ancestors[focusIndex];
-                    Debug.WriteLine($"[PP1] ancestors={ancestors.Count}, focusIndex={focusIndex}, focusClass={focusEl.ClassName}, focusName={focusEl.Name}");
-                    try { var sel = focusEl.Patterns.Selection.PatternOrDefault; Debug.WriteLine($"[PP1] focus supports Selection? {sel!=null}"); } catch { }
-                    try { var table = focusEl.Patterns.Table.PatternOrDefault; Debug.WriteLine($"[PP1] focus supports Table? {table!=null}"); } catch { }
-                    try { var grid = focusEl.Patterns.Grid.PatternOrDefault; Debug.WriteLine($"[PP1] focus supports Grid? {grid!=null}"); } catch { }
-                    PopulateChildrenTree(chainNode, focusEl, maxDepth: 8);
-
+                    PopulateChildrenTree(chainNode, ancestors[focusIndex], maxDepth: FocusSubtreeMaxDepth);
                     tvAncestry.ItemsSource = new[] { rootNode };
                     return;
                 }
 
+                // Heuristic fallback unchanged
                 using (var automation2 = new UIA3Automation())
                 {
                     var desktop = automation2.GetDesktop();
-                    var items = new List<TreeNode>();
                     try
                     {
                         var cf = automation2.ConditionFactory;
@@ -1422,11 +1512,26 @@ namespace Wysg.Musm.Radium.Views
                             else roots = desktop.FindAllChildren(typeCond);
                         }
                         else roots = desktop.FindAllChildren(typeCond);
-                        foreach (var r in roots.Take(5)) items.Add(BuildTreeFromElement(r, maxDepth: 2)); // lighter fallback (PP1)
-                        txtStatus.Text = $"Ancestry fallback: roots={items.Count} for process='{proc}'";
+
+                        var rootCandidate = roots.FirstOrDefault();
+                        if (rootCandidate == null) { tvAncestry.ItemsSource = Array.Empty<TreeNode>(); return; }
+
+                        var rootNode = ToNode(rootCandidate, level: 1); SetHighlight(rootNode);
+                        var chainNode = rootNode; var curEl2 = rootCandidate;
+                        for (int level = 2; level <= FocusChainDepth; level++)
+                        {
+                            var children = curEl2.FindAllChildren(); if (children.Length == 0) break;
+                            var first = children[0]; var next = ToNode(first, level: level); SetHighlight(next);
+                            chainNode.Children.Clear(); chainNode.Children.Add(next); chainNode = next; curEl2 = first;
+                        }
+                        PopulateChildrenTree(chainNode, curEl2, maxDepth: FocusSubtreeMaxDepth);
+                        tvAncestry.ItemsSource = new[] { rootNode };
                     }
-                    catch { }
-                    tvAncestry.ItemsSource = items;
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("[PP1] Fallback error: " + ex);
+                        tvAncestry.ItemsSource = null;
+                    }
                 }
             }
             catch (Exception ex)
@@ -1435,8 +1540,30 @@ namespace Wysg.Musm.Radium.Views
                 tvAncestry.ItemsSource = null;
             }
 
-            static T? Safe<T>(AutomationElement e, Func<AutomationElement, T?> f)
-            { try { return f(e); } catch { return default; } }
+            static TreeNode ToNode(AutomationElement e, int level) => new TreeNode
+            {
+                Name = Safe(e, x => x.Name),
+                ClassName = Safe(e, x => x.ClassName),
+                ControlTypeId = Safe(e, x => (int?)x.Properties.ControlType.Value),
+                AutomationId = Safe(e, x => x.AutomationId),
+                Level = level
+            };
+            static T? Safe<T>(AutomationElement e, Func<AutomationElement, T?> f) { try { return f(e); } catch { return default; } }
+            void SetHighlight(TreeNode n)
+            {
+                try
+                {
+                    if (n.Level == 1) n.Highlight = (Brush)FindResource("Path.Level1");
+                    else if (n.Level == 2) n.Highlight = (Brush)FindResource("Path.Level2");
+                    else if (n.Level == 3) n.Highlight = (Brush)FindResource("Path.Level3");
+                    else if (n.Level == 4) n.Highlight = (Brush)FindResource("Path.Level4");
+                }
+                catch { }
+            }
+            void SetDeepHighlight(TreeNode n)
+            {
+                try { n.Highlight = (Brush)FindResource("Path.Level4"); } catch { }
+            }
         }
 
         // PP2: Force dropdown to open for Operation ComboBox inside DataGrid
