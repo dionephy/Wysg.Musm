@@ -511,6 +511,19 @@
                         <ComboBoxItem Tag="TryGetReportConclusion">TryGetReportConclusion</ComboBoxItem>
                         <ComboBoxItem Tag="GetReportConclusion">GetReportConclusion</ComboBoxItem>
                         <ComboBoxItem Tag="GetSelectedIdFromSearchResults">Get selected ID from search results list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedNameFromSearchResults">Get selected name from search results list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedSexFromSearchResults">Get selected sex from search results list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedBirthDateFromSearchResults">Get selected birth date from search results list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedAgeFromSearchResults">Get selected age from search results list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedStudynameFromSearchResults">Get selected studyname from search results list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedStudyDateTimeFromSearchResults">Get selected study date time from search results list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedRadiologistFromSearchResults">Get selected radiologist from search results list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedStudyRemarkFromSearchResults">Get selected study remark from search results list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedReportDateTimeFromSearchResults">Get selected report date time from search results list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedStudynameFromRelatedStudies">Get selected studyname from related studies list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedStudyDateTimeFromRelatedStudies">Get selected study date time from related studies list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedRadiologistFromRelatedStudies">Get selected radiologist from related studies list</ComboBoxItem>
+                        <ComboBoxItem Tag="GetSelectedReportDateTimeFromRelatedStudies">Get selected report date time from related studies list</ComboBoxItem>
                     </ComboBox>
                     <Button Content="Add" Click="OnAddProcRow"/>
                     <Button Content="Save" Margin="6,0,0,0" Click="OnSaveProcedure"/>
@@ -536,6 +549,8 @@
                                         <ComboBoxItem Content="TakeLast"/>
                                         <ComboBoxItem Content="Trim"/>
                                         <ComboBoxItem Content="Invoke"/>
+                                        <ComboBoxItem Content="GetValueFromSelection"/>
+                                        <ComboBoxItem Content="ToDateTime"/>
                                     </ComboBox>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>

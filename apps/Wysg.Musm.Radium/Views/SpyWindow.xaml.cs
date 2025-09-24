@@ -249,6 +249,15 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
                             break;
+                        case "GetValueFromSelection":
+                            // Arg1 element=list, Arg2 header string (default ID)
+                            row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg2.Value)) row.Arg2.Value = "ID";
+                            break;
+                        case "ToDateTime":
+                            row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false; // no Arg2
+                            break;
                     }
                 }
                 finally { _handlingProcOpChange = false; }
@@ -312,6 +321,60 @@ namespace Wysg.Musm.Radium.Views
                     var s = ResolveString(row.Arg1, vars);
                     valueToStore = s?.Trim();
                     preview = valueToStore ?? "(null)";
+                    break;
+                }
+                case "GetValueFromSelection":
+                {
+                    var el = ResolveElement(row.Arg1);
+                    var headerWanted = row.Arg2?.Value ?? "ID";
+                    if (string.IsNullOrWhiteSpace(headerWanted)) headerWanted = "ID";
+                    if (el == null) { preview = "(no element)"; valueToStore = null; break; }
+                    try
+                    {
+                        var selection = el.Patterns.Selection.PatternOrDefault;
+                        var selected = selection?.Selection?.Value ?? Array.Empty<AutomationElement>();
+                        if (selected.Length == 0)
+                        {
+                            selected = el.FindAllDescendants()
+                                .Where(a =>
+                                {
+                                    try { return a.Patterns.SelectionItem.IsSupported && a.Patterns.SelectionItem.PatternOrDefault?.IsSelected == true; }
+                                    catch { return false; }
+                                })
+                                .ToArray();
+                        }
+                        if (selected.Length == 0) { preview = "(no selection)"; valueToStore = null; break; }
+                        var rowEl = selected[0];
+                        var headers = GetHeaderTexts(el);
+                        var cells = GetRowCellValues(rowEl);
+                        if (headers.Count < cells.Count) for (int j = headers.Count; j < cells.Count; j++) headers.Add($"Col{j + 1}");
+                        else if (headers.Count > cells.Count) for (int j = cells.Count; j < headers.Count; j++) cells.Add(string.Empty);
+                        string? matched = null;
+                        for (int j = 0; j < headers.Count; j++)
+                        {
+                            var hNorm = NormalizeHeader(headers[j]);
+                            if (string.Equals(hNorm, headerWanted, StringComparison.OrdinalIgnoreCase)) { matched = cells[j]; break; }
+                        }
+                        if (matched == null)
+                        {
+                            for (int j = 0; j < headers.Count; j++)
+                            {
+                                var hNorm = NormalizeHeader(headers[j]);
+                                if (hNorm.IndexOf(headerWanted, StringComparison.OrdinalIgnoreCase) >= 0) { matched = cells[j]; break; }
+                            }
+                        }
+                        if (matched == null) { preview = $"({headerWanted} not found)"; valueToStore = null; }
+                        else { valueToStore = matched; preview = matched; }
+                    }
+                    catch { preview = "(error)"; valueToStore = null; }
+                    break;
+                }
+                case "ToDateTime":
+                {
+                    var s = ResolveString(row.Arg1, vars);
+                    if (string.IsNullOrWhiteSpace(s)) { preview = "(null)"; valueToStore = null; break; }
+                    if (TryParseYmdOrYmdHms(s.Trim(), out var dt)) { valueToStore = dt.ToString("o"); preview = dt.ToString("yyyy-MM-dd HH:mm:ss"); }
+                    else { preview = "(parse fail)"; valueToStore = null; }
                     break;
                 }
                 default:
@@ -535,7 +598,7 @@ namespace Wysg.Musm.Radium.Views
                     {
                         var input = ResolveString(row.Arg1, vars);
                         var sep = ResolveString(row.Arg2, vars) ?? string.Empty;
-                        if (input == null) { valueToStore = null; preview = "(null)"; break; }
+                        if (input == null) { preview = "(null)"; valueToStore = null; break; }
                         var parts = input.Split(new[] { sep }, StringSplitOptions.None);
                         valueToStore = string.Join("\u001F", parts);
                         preview = $"{parts.Length} parts";
@@ -556,8 +619,61 @@ namespace Wysg.Musm.Radium.Views
                         preview = valueToStore ?? "(null)";
                         break;
                     }
+                    case "GetValueFromSelection":
+                    {
+                        var el = ResolveElement(row.Arg1);
+                        var headerWanted = row.Arg2?.Value ?? "ID"; if (string.IsNullOrWhiteSpace(headerWanted)) headerWanted = "ID";
+                        if (el == null) { preview = "(no element)"; valueToStore = null; break; }
+                        try
+                        {
+                            var selection = el.Patterns.Selection.PatternOrDefault;
+                            var selected = selection?.Selection?.Value ?? Array.Empty<AutomationElement>();
+                            if (selected.Length == 0)
+                            {
+                                selected = el.FindAllDescendants()
+                                    .Where(a =>
+                                    {
+                                        try { return a.Patterns.SelectionItem.IsSupported && a.Patterns.SelectionItem.PatternOrDefault?.IsSelected == true; }
+                                        catch { return false; }
+                                    })
+                                    .ToArray();
+                            }
+                            if (selected.Length == 0) { preview = "(no selection)"; valueToStore = null; break; }
+                            var rowEl = selected[0];
+                            var headers = GetHeaderTexts(el);
+                            var cells = GetRowCellValues(rowEl);
+                            if (headers.Count < cells.Count) for (int j = headers.Count; j < cells.Count; j++) headers.Add($"Col{j + 1}");
+                            else if (headers.Count > cells.Count) for (int j = cells.Count; j < headers.Count; j++) cells.Add(string.Empty);
+                            string? matched = null;
+                            for (int j = 0; j < headers.Count; j++)
+                            {
+                                var hNorm = NormalizeHeader(headers[j]);
+                                if (string.Equals(hNorm, headerWanted, StringComparison.OrdinalIgnoreCase)) { matched = cells[j]; break; }
+                            }
+                            if (matched == null)
+                            {
+                                for (int j = 0; j < headers.Count; j++)
+                                {
+                                    var hNorm = NormalizeHeader(headers[j]);
+                                    if (hNorm.IndexOf(headerWanted, StringComparison.OrdinalIgnoreCase) >= 0) { matched = cells[j]; break; }
+                                }
+                            }
+                            if (matched == null) { preview = $"({headerWanted} not found)"; valueToStore = null; }
+                            else { valueToStore = matched; preview = matched; }
+                        }
+                        catch { preview = "(error)"; valueToStore = null; }
+                        break;
+                    }
+                    case "ToDateTime":
+                    {
+                        var s = ResolveString(row.Arg1, vars);
+                        if (string.IsNullOrWhiteSpace(s)) { preview = "(null)"; valueToStore = null; break; }
+                        if (TryParseYmdOrYmdHms(s.Trim(), out var dt)) { valueToStore = dt.ToString("o"); preview = dt.ToString("yyyy-MM-dd HH:mm:ss"); }
+                        else { preview = "(parse fail)"; valueToStore = null; }
+                        break;
+                    }
                     default:
-                        valueToStore = null; preview = "(unsupported)"; break;
+                        preview = "(unsupported)"; valueToStore = null; break;
                 }
 
                 vars[varName] = valueToStore;
@@ -857,6 +973,7 @@ namespace Wysg.Musm.Radium.Views
             var item = cmbKnown.SelectedItem as System.Windows.Controls.ComboBoxItem;
             var keyStr = item?.Tag as string;
             if (string.IsNullOrWhiteSpace(keyStr)) { txtStatus.Text = "Select a known control"; return; }
+            if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key)) { txtStatus.Text = "Invalid known control"; return; }
 
             var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: true);
             txtStatus.Text = msg;
@@ -871,8 +988,6 @@ namespace Wysg.Musm.Radium.Views
                 b.DirectAutomationId = string.IsNullOrWhiteSpace(directId) ? null : directId;
             }
 
-            if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key))
-            { txtStatus.Text = "Invalid known control"; return; }
             UiBookmarks.SaveMapping(key, b);
             ShowBookmarkDetails(b, $"Mapped {key}");
             HighlightBookmark(b);
@@ -1210,7 +1325,11 @@ namespace Wysg.Musm.Radium.Views
 
                 var line = string.Join(" | ", pairs
                     .Where(p => !string.IsNullOrWhiteSpace(p.Header) || !string.IsNullOrWhiteSpace(p.Value))
-                    .Select(p => string.IsNullOrWhiteSpace(p.Header) ? p.Value : ($"{p.Header}: {p.Value}"))
+                    .Select(p =>
+                    {
+                        if (string.IsNullOrWhiteSpace(p.Header)) return p.Value; // header blank, value present -> value only
+                        return $"{p.Header}: {p.Value}";
+                    })
                 );
                 txtStatus.Text = string.IsNullOrWhiteSpace(line) ? "Row Data: empty" : line;
             }
@@ -1245,9 +1364,10 @@ namespace Wysg.Musm.Radium.Views
                                         if (!string.IsNullOrWhiteSpace(t)) break;
                                     }
                                 }
-                                if (!string.IsNullOrWhiteSpace(t)) result.Add(t.Trim());
+                                // Preserve positional placeholder even if blank
+                                result.Add(string.IsNullOrWhiteSpace(t) ? string.Empty : t.Trim());
                             }
-                            catch { }
+                            catch { result.Add(string.Empty); }
                         }
                         if (result.Count > 0) return result;
                     }
@@ -1290,9 +1410,9 @@ namespace Wysg.Musm.Radium.Views
                                     if (!string.IsNullOrWhiteSpace(txt)) break;
                                 }
                             }
-                            if (!string.IsNullOrWhiteSpace(txt)) result.Add(txt.Trim());
+                            result.Add(string.IsNullOrWhiteSpace(txt) ? string.Empty : txt.Trim());
                         }
-                        catch { }
+                        catch { result.Add(string.Empty); }
                     }
                 }
             }
@@ -1312,22 +1432,25 @@ namespace Wysg.Musm.Radium.Views
                     {
                         try
                         {
-                            var txt = ReadCellText(c).Trim();
-                            if (!string.IsNullOrEmpty(txt)) values.Add(txt);
-                            else
+                            string cellText = ReadCellText(c).Trim();
+                            if (string.IsNullOrEmpty(cellText))
                             {
+                                // Probe grandchildren for a first non-empty text, otherwise keep empty placeholder
                                 foreach (var gc in c.FindAllChildren())
                                 {
                                     var t = ReadCellText(gc).Trim();
-                                    if (!string.IsNullOrEmpty(t)) { values.Add(t); break; }
+                                    if (!string.IsNullOrEmpty(t)) { cellText = t; break; }
                                 }
                             }
+                            // Always add a value (even if empty) to preserve column alignment
+                            values.Add(cellText);
                         }
-                        catch { }
+                        catch { values.Add(string.Empty); }
                     }
                 }
                 else
                 {
+                    // Fallback: collect up to 20 textual descendants; cannot guarantee alignment here
                     foreach (var d in row.FindAllDescendants())
                     {
                         try
@@ -1335,7 +1458,7 @@ namespace Wysg.Musm.Radium.Views
                             if ((int)d.ControlType == UIA_Text || (int)d.ControlType == UIA_DataItem)
                             {
                                 var t = ReadCellText(d).Trim();
-                                if (!string.IsNullOrEmpty(t)) values.Add(t);
+                                values.Add(t); // Add even if empty (rare)
                                 if (values.Count >= 20) break;
                             }
                         }
@@ -1408,6 +1531,18 @@ namespace Wysg.Musm.Radium.Views
             return sb.ToString().TrimEnd();
         }
 
+        private static bool TryParseYmdOrYmdHms(string s, out DateTime dt)
+        {
+            dt = default;
+            if (DateTime.TryParseExact(s, new[] { "yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss" }, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeLocal, out var parsed))
+            {
+                dt = parsed;
+                return true;
+            }
+            return false;
+        }
+
         // FlaUInspect-like tree: rebuild using resolved element path to ensure parity with crawl editor
         private void RebuildAncestryFromRoot(UiBookmarks.Bookmark b)
         {
@@ -1460,13 +1595,13 @@ namespace Wysg.Musm.Radium.Views
                 }
 
                 // Fallback to previous behavior when path cannot be built
-                var (_, targetEl, _) = UiBookmarks.TryResolveWithTrace(b);
-                if (targetEl != null)
+                var (_, el, _) = UiBookmarks.TryResolveWithTrace(b);
+                if (el != null)
                 {
                     using var automation = new UIA3Automation();
                     var walker = automation.TreeWalkerFactory.GetControlViewWalker();
                     var ancestors = new List<AutomationElement>();
-                    var cur = targetEl;
+                    var cur = el;
                     while (cur != null)
                     {
                         ancestors.Add(cur);

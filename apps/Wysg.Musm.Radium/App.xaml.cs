@@ -26,13 +26,23 @@ namespace Wysg.Musm.Radium
                 .ConfigureServices(ConfigureServices)
                 .UseSerilog()
                 .Build();
+            // Initialize Postgres first-chance exception sampler
+            ServicesInitialized = false; // flag
         }
+
+        private bool ServicesInitialized { get; set; }
 
         protected override async void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
             Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             await _host.StartAsync();
+            if (!ServicesInitialized)
+            {
+                try { Services.GetRequiredService<IRadiumLocalSettings>(); } catch { }
+                PgDebug.Initialize();
+                ServicesInitialized = true;
+            }
             await ShowSplashLoginAsync();
         }
 

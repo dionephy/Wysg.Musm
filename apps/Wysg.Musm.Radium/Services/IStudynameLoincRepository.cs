@@ -13,6 +13,7 @@ namespace Wysg.Musm.Radium.Services
         Task<IReadOnlyList<CommonPartRow>> GetCommonPartsAsync(int limit = 50);
         Task<IReadOnlyList<PlaybookMatchRow>> GetPlaybookMatchesAsync(IEnumerable<string> partNumbers);
         Task<IReadOnlyList<PlaybookPartDetailRow>> GetPlaybookPartsAsync(string loincNumber);
+        Task<StudynameDbDiagnostics> GetDiagnosticsAsync();
     }
 
     public sealed record StudynameRow(long Id, string Studyname);
@@ -21,4 +22,5 @@ namespace Wysg.Musm.Radium.Services
     public sealed record CommonPartRow(string PartNumber, string PartTypeName, string PartName, long UsageCount);
     public sealed record PlaybookMatchRow(string LoincNumber, string LongCommonName);
     public sealed record PlaybookPartDetailRow(string PartNumber, string PartName, string PartSequenceOrder);
+    public sealed record StudynameDbDiagnostics(string Database, string User, string Host, int Port, long StudynameCount, long StudyCount, long MappingCount, string MappingTable, string Source, System.DateTime RetrievedAtUtc);
 }

@@ -1,4 +1,6 @@
-﻿CREATE TABLE IF NOT EXISTS loinc.loinc_term
+﻿CREATE SCHEMA IF NOT EXISTS loinc;
+
+CREATE TABLE IF NOT EXISTS loinc.loinc_term
 (
     loinc_num text COLLATE pg_catalog."default" NOT NULL,
     component text COLLATE pg_catalog."default",
@@ -123,7 +125,7 @@ ALTER TABLE loinc.part
     preferred_name text COLLATE pg_catalog."default",
     rpid text COLLATE pg_catalog."default",
     long_name text COLLATE pg_catalog."default",
-    rp_id bigint NOT NULL DEFAULT nextval('loinc.rplaybook_rp_id_seq'::regclass),
+    rp_id bigserial,
     CONSTRAINT rplaybook_pkey PRIMARY KEY (rp_id),
     CONSTRAINT rplaybook_loinc_number_fkey FOREIGN KEY (loinc_number)
         REFERENCES loinc.loinc_term (loinc_num) MATCH SIMPLE

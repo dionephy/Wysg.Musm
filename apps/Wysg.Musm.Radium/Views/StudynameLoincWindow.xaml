@@ -190,6 +190,8 @@
         </DockPanel>
 
         <StackPanel Grid.Row="2" Grid.ColumnSpan="5" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Diagnostics" Command="{Binding DiagnosticsCommand}"/>
+            <TextBox Width="650" Margin="8,0,0,0" TextWrapping="Wrap" AcceptsReturn="True" Height="60" Text="{Binding DiagnosticsInfo}" IsReadOnly="True"/>
             <Button Content="Save" Command="{Binding SaveCommand}"/>
             <Button Content="Close" IsCancel="True"/>
         </StackPanel>

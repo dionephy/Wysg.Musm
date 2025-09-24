@@ -7,6 +7,14 @@
 
 ## SpyWindow ? Procedures Grid
 - [x] Stable presets; no loop; instant editor switching; dark ComboBoxes
+- [x] Add operation: GetValueFromSelection (Arg1 Element=list, Arg2 String=header, default "ID")
+- [x] Preserve blank cell placeholders in Row Data & selection extraction (alignment-safe)
+- [x] Preserve blank header placeholders (leading/internal). Row Data formatting skips only header+value both blank, value-only token if header blank.
+- [x] Add ToDateTime operation (parse yyyy-MM-dd / yyyy-MM-dd HH:mm:ss) storing ISO string
+- [x] Add PACS selection methods (name, sex, birth date, age, studyname, study datetime, radiologist, study remark, report datetime) for search & related lists
+- [x] Add Studyname DB diagnostics (repository GetDiagnosticsAsync, VM command, UI display)
+- [x] Add Postgres first-chance exception sampler (PgDebug) and initial repo logging
+- [x] Refactor PhraseService to use LocalConnectionString (remove hardcoded, future central migration note)
 
 ## PACS Methods ? Custom Procedures
 - [x] Add "Get selected ID from search results list" to PACS Method list in SpyWindow (tag: GetSelectedIdFromSearchResults)
@@ -27,7 +35,8 @@
 - [ ] Virtualization and header count badges
 - [ ] Repo tests with test DB
 
-
 ## Follow-ups
 - [ ] Settings UI for depths
 - [ ] Rank multiple first-node fallbacks by proximity to final mapping
+- [ ] Hook procedure runner (GetSelectedIdFromSearchResults) integration output area
+- [ ] JSON export of Row Data preserving blanks

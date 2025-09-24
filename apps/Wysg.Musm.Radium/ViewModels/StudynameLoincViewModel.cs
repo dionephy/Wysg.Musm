@@ -63,6 +63,7 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 if (p is PartItem it) AddPartToPreview(it);
             });
+            DiagnosticsCommand = new RelayCommand(async _ => await RunDiagnosticsAsync());
 
             SequenceOrderInput = "A";
 
@@ -168,6 +169,7 @@ namespace Wysg.Musm.Radium.ViewModels
         public ICommand AddStudynameCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand AddPartCommand { get; }
+        public ICommand DiagnosticsCommand { get; }
 
         private PlaybookItem? _selectedPlaybook;
         public PlaybookItem? SelectedPlaybook
@@ -421,6 +423,28 @@ namespace Wysg.Musm.Radium.ViewModels
             var payload = SelectedParts.Select(p => new MappingRow(p.PartNumber, string.IsNullOrWhiteSpace(p.PartSequenceOrder) ? "A" : p.PartSequenceOrder));
             await _repo.SaveMappingsAsync(SelectedStudyname.Id, payload);
             Debug.WriteLine("[Radium][VM] SaveAsync: done");
+        }
+
+        private string _diagnosticsInfo = string.Empty;
+        public string DiagnosticsInfo
+        {
+            get => _diagnosticsInfo;
+            set => SetProperty(ref _diagnosticsInfo, value);
+        }
+
+        private async Task RunDiagnosticsAsync()
+        {
+            try
+            {
+                var d = await _repo.GetDiagnosticsAsync();
+                DiagnosticsInfo = $"DB={d.Database} Host={d.Host}:{d.Port} User={d.User} Source={d.Source}\nStudynameCount={d.StudynameCount} StudyCount={d.StudyCount} MappingCount={d.MappingCount} Table={d.MappingTable} @ {d.RetrievedAtUtc:O}";
+                Debug.WriteLine("[Radium][VM] Diagnostics: " + DiagnosticsInfo);
+            }
+            catch (Exception ex)
+            {
+                DiagnosticsInfo = "Diagnostics error: " + ex.Message;
+                Debug.WriteLine("[Radium][VM] Diagnostics error: " + ex);
+            }
         }
 
         public class StudynameItem : BaseViewModel

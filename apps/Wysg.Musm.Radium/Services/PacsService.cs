@@ -57,64 +57,77 @@ namespace Wysg.Musm.Radium.Services
             {
                 try
                 {
-                    var (_, list) = UiBookmarks.Resolve(UiBookmarks.KnownControl.SearchResultsList);
-                    if (list == null) return (string?)null;
-
-                    // Find selected row
-                    var selection = list.Patterns.Selection.PatternOrDefault;
-                    var selected = selection?.Selection?.Value ?? Array.Empty<UIAElement>();
-                    if (selected.Length == 0)
-                    {
-                        selected = list.FindAllDescendants()
-                            .Where(a =>
-                            {
-                                try { return a.Patterns.SelectionItem.IsSupported && a.Patterns.SelectionItem.PatternOrDefault?.IsSelected == true; }
-                                catch { return false; }
-                            })
-                            .ToArray();
-                    }
-                    if (selected.Length == 0) return (string?)null;
-                    var row = selected[0];
-
-                    var headers = GetHeaderTexts(list);
-                    var cells = GetRowCellValues(row);
-
-                    if (headers.Count == 0 && cells.Count == 0) return (string?)null;
-
-                    // Normalize header lengths
-                    if (headers.Count < cells.Count)
-                        for (int i = headers.Count; i < cells.Count; i++) headers.Add($"Col{i + 1}");
-                    else if (headers.Count > cells.Count)
-                        for (int i = cells.Count; i < headers.Count; i++) cells.Add(string.Empty);
-
-                    // Try to locate ID column
-                    int idx = -1;
-                    for (int i = 0; i < headers.Count; i++)
-                    {
-                        var h = (headers[i] ?? string.Empty).Trim();
-                        if (string.Equals(h, "ID", StringComparison.OrdinalIgnoreCase)) { idx = i; break; }
-                    }
-                    if (idx < 0)
-                    {
-                        for (int i = 0; i < headers.Count; i++)
-                        {
-                            var h = (headers[i] ?? string.Empty).Trim();
-                            if (h.IndexOf("ID", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                h.IndexOf("Accession", StringComparison.OrdinalIgnoreCase) >= 0)
-                            { idx = i; break; }
-                        }
-                    }
-
-                    if (idx >= 0 && idx < cells.Count)
-                    {
-                        var val = cells[idx]?.Trim();
-                        return string.IsNullOrWhiteSpace(val) ? null : val;
-                    }
-
-                    return (string?)null;
+                    return GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "ID", "Accession", "Accession No." });
                 }
                 catch { return (string?)null; }
             });
+        }
+
+        public Task<string?> GetSelectedNameFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Name" }));
+        public Task<string?> GetSelectedSexFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Sex" }));
+        public Task<string?> GetSelectedBirthDateFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Birth Date", "BirthDate" }));
+        public Task<string?> GetSelectedAgeFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Age" }));
+        public Task<string?> GetSelectedStudynameFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Study Desc", "Study Description", "Studyname", "Study Name" }));
+        public Task<string?> GetSelectedStudyDateTimeFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Study Date", "Study Date Time", "Study DateTime" }));
+        public Task<string?> GetSelectedRadiologistFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Requesting Doctor", "Radiologist", "Doctor" }));
+        public Task<string?> GetSelectedStudyRemarkFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Study Comments", "Remark", "Comments" }));
+        public Task<string?> GetSelectedReportDateTimeFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Report approval dttm", "Report Date", "Report Date Time" }));
+
+        public Task<string?> GetSelectedStudynameFromRelatedStudiesAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Study Desc", "Study Description", "Studyname", "Study Name" }));
+        public Task<string?> GetSelectedStudyDateTimeFromRelatedStudiesAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Study Date", "Study Date Time", "Study DateTime" }));
+        public Task<string?> GetSelectedRadiologistFromRelatedStudiesAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Requesting Doctor", "Radiologist", "Doctor" }));
+        public Task<string?> GetSelectedReportDateTimeFromRelatedStudiesAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Report approval dttm", "Report Date", "Report Date Time" }));
+
+        private static string? GetValueFromListSelection(UiBookmarks.KnownControl control, string[] headerCandidates)
+        {
+            try
+            {
+                var (_, list) = UiBookmarks.Resolve(control);
+                if (list == null) return null;
+                var selection = list.Patterns.Selection.PatternOrDefault;
+                var selected = selection?.Selection?.Value ?? Array.Empty<UIAElement>();
+                if (selected.Length == 0)
+                {
+                    selected = list.FindAllDescendants().Where(a =>
+                    {
+                        try { return a.Patterns.SelectionItem.IsSupported && a.Patterns.SelectionItem.PatternOrDefault?.IsSelected == true; }
+                        catch { return false; }
+                    }).ToArray();
+                }
+                if (selected.Length == 0) return null;
+                var row = selected[0];
+                var headers = GetHeaderTexts(list);
+                var cells = GetRowCellValues(row);
+                if (headers.Count < cells.Count) for (int i = headers.Count; i < cells.Count; i++) headers.Add($"Col{i + 1}");
+                else if (headers.Count > cells.Count) for (int i = cells.Count; i < headers.Count; i++) cells.Add(string.Empty);
+                for (int i = 0; i < headerCandidates.Length; i++)
+                {
+                    var wanted = headerCandidates[i];
+                    int idx = FindHeaderIndex(headers, wanted);
+                    if (idx >= 0 && idx < cells.Count)
+                    {
+                        var val = cells[idx]?.Trim();
+                        if (!string.IsNullOrWhiteSpace(val)) return val;
+                    }
+                }
+                return null;
+            }
+            catch { return null; }
+        }
+
+        private static int FindHeaderIndex(List<string> headers, string wanted)
+        {
+            for (int i = 0; i < headers.Count; i++)
+            {
+                var h = headers[i] ?? string.Empty;
+                if (string.Equals(h, wanted, StringComparison.OrdinalIgnoreCase)) return i;
+            }
+            for (int i = 0; i < headers.Count; i++)
+            {
+                var h = headers[i] ?? string.Empty;
+                if (h.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) >= 0) return i;
+            }
+            return -1;
         }
 
         private static string ReadCellText(UIAElement cell)
@@ -199,17 +212,17 @@ namespace Wysg.Musm.Radium.Services
                         try
                         {
                             var txt = ReadCellText(c).Trim();
-                            if (!string.IsNullOrEmpty(txt)) values.Add(txt);
-                            else
+                            if (string.IsNullOrEmpty(txt))
                             {
                                 foreach (var gc in c.FindAllChildren())
                                 {
                                     var t = ReadCellText(gc).Trim();
-                                    if (!string.IsNullOrEmpty(t)) { values.Add(t); break; }
+                                    if (!string.IsNullOrEmpty(t)) { txt = t; break; }
                                 }
                             }
+                            values.Add(txt);
                         }
-                        catch { }
+                        catch { values.Add(string.Empty); }
                     }
                 }
                 else
@@ -219,7 +232,7 @@ namespace Wysg.Musm.Radium.Services
                         try
                         {
                             var t = ReadCellText(d).Trim();
-                            if (!string.IsNullOrEmpty(t)) values.Add(t);
+                            values.Add(t);
                             if (values.Count >= 20) break;
                         }
                         catch { }
