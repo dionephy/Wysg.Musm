@@ -30,10 +30,19 @@
 - [x] Playbook suggestions grouped by loinc_number; details pane shows part names + sequence order
 - [x] Single MainWindow on run (removed StartupUri; splash controls flow)
 - [x] Playbook threshold lowered to 2 (converter + VM)
+- [x] Playbook matches ListBox vertical scrollbar added (PP1 layout fix)
+- [x] Double-click playbook match imports all parts (async-safe, pair uniqueness) (PP2, PP3)
+- [x] Double-click playbook part adds that part if absent (pair uniqueness)
 - [x] Build passes
 - [ ] Add remove/reorder controls for preview
 - [ ] Virtualization and header count badges
 - [ ] Repo tests with test DB
+- [x] Remove Diagnostics button and textbox from XAML
+- [x] Remove DiagnosticsCommand and DiagnosticsInfo from ViewModel
+- [x] Verify Save button enabled when Studyname selected
+- [x] Add StatusMessage property + textbox binding
+- [x] Update StatusMessage on AddStudyname and Save
+- [x] Add Close button Click handler to close window
 
 ## Follow-ups
 - [ ] Settings UI for depths

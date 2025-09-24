@@ -34,26 +34,34 @@ Studynames List
 LOINC Parts UI
 - 4x5 grid of category listboxes (equal row heights), each with its own filter and vertical-only scrollbar
 - Items show only part_name (no part_number)
-- Double-click on an item adds it to Mapping Preview with Sequence Order input (default "A"); duplicates allowed
+- Double-click on category/Common item adds it to Mapping Preview with Sequence Order input (default "A"); duplicates allowed
 - Preview panel: shows each item with an editable PartSequenceOrder TextBox; double-click removes the item
 - Sequence Order input placed at the right side of the Preview header
 - Common list shows most-used parts (from repo aggregation), spanning two cells
 
 Playbook Suggestions (under Preview)
 - With ¡Ã 2 distinct selected parts, suggest playbooks grouped by loinc_number (each LOINC spans multiple part rows)
-  - LEFT: long_common_name (distinct by loinc_number)
+  - LEFT: long_common_name (distinct by loinc_number) ? vertical scrollbar present; layout changed from StackPanel to Grid so ListBox height is constrained ensuring scrollbar visibility (PP1 fix).
   - RIGHT: the playbook parts list for the selected loinc_number (part_name + part_sequence_order)
+- Double-click behaviors:
+  - Double-click a playbook (left list) imports all its parts with their sequence orders into Preview, skipping only duplicate (PartNumber + SequenceOrder) pairs. Uses async-safe wait loop to ensure parts have loaded before import (PP2 fix).
+  - Double-click a single playbook part (right list) adds that part if the combination PartNumber + SequenceOrder is not already present (PP3 rule refinement).
+
+Duplicate Rule (PP3)
+- Previous logic blocked duplicates by PartNumber only. Updated rule: allow same PartNumber multiple times if SequenceOrder differs. A duplicate is only when both PartNumber and PartSequenceOrder match an existing preview item.
 
 Acceptance Criteria
 - Single main window shown on run (no duplicate windows)
 - Studynames textbox filters in real-time
 - long_common_name suggestions appear under Preview when ¡Ã 2 parts match one or more loinc_number groups
-- Selecting a long_common_name shows its constituent parts and orders
+- Double-click on playbook reliably imports after async load without null/iteration errors
+- Duplicate rule honors (PartNumber + SequenceOrder) uniqueness
 - Build succeeds
 
 Notes / Future Enhancements
 - Remove/reorder controls for preview
 - Virtualization and count badges
+- Import button (double-click now handles bulk import)
 
 ## 5) Custom Procedure Operation: GetValueFromSelection
 Purpose
@@ -102,7 +110,7 @@ Solution
 
 Result
 - Leading blank header no longer causes value shifts.
-- Example corrected: either leading blank pair omitted (if value also blank) giving: `Status: Examined | ID: 239499 | Name: ±èº¹¸¸ | ... | Institution: BUSAN ST.MARY'S HOSPITAL` OR if value present for first blank header: `<value> | Status: Examined | ID: ...` maintaining order.
+- Example corrected: either leading blank pair omitted (if value also blank) giving: `Status: Examined | ID: 239499 | Name: ¡¦ | ... | Institution: BUSAN ST.MARY'S HOSPITAL` OR if value present for first blank header: `<value> | Status: Examined | ID: ...` maintaining order.
 
 Testing Scenarios
 1. Leading blank header with blank value ¡æ dropped; no shift.
@@ -149,24 +157,10 @@ Implementation
 Notes
 - All methods return raw string (no trimming beyond whitespace removal). Date/time values can be piped through `ToDateTime` in a procedure if normalization needed.
 
-## 10) Studyname DB Diagnostics (Current Iteration)
-Purpose
-- Provide in-app verification that data is being read from the intended local database without relying only on connection tests.
+## Removed Feature (Former #10 Diagnostics)
+- Repository Diagnostics command and UI removed to streamline window; underlying repository method may still exist but is no longer surfaced in the ViewModel or XAML.
 
-Implementation
-- Repository interface adds `GetDiagnosticsAsync` returning counts for key tables (rad_studyname, rad_study, mapping table) and connection metadata (db, host, user, port, table name, source, timestamp).
-- `StudynameLoincRepository` implements the method, infers mapping table name (existing logic) and builds a diagnostics record.
-- ViewModel exposes `DiagnosticsCommand` and `DiagnosticsInfo` (string) and writes to Debug output.
-- UI adds a Diagnostics button and readonly TextBox (multi-line) at bottom of Studyname ¡ê LOINC Parts window.
-
-Usage
-- Press Diagnostics to see counts; if zero unexpectedly user can confirm DB empty vs. query failure (would show error message).
-- Source field shows whether connection came from LocalConnectionString vs fallback.
-
-Future
-- Potentially add latency timings and last modified timestamps.
-
-## 11) Postgres First-Chance Exception Sampling
+## 10) Postgres First-Chance Exception Sampling
 Purpose
 - Reduce noise from repeated first-chance `PostgresException` during startup while still surfacing the first unique root cause.
 
@@ -179,7 +173,7 @@ Usage
 - Inspect log output (Serilog sinks) to identify the first logged Postgres error instead of many debugger popups.
 - After resolving root cause, the flood should disappear.
 
-## 12) PhraseService Connection Refactor
+## 11) PhraseService Connection Refactor
 Purpose
 - Remove hardcoded connection string causing failures when local DB name differs (3D000) and align with settings infrastructure.
 
@@ -190,3 +184,7 @@ Changes
 
 Future
 - Planned migration to use `CentralConnectionString` (central phrases) once consolidation is ready; code comments note this.
+
+## 4) Studyname ¡ê LOINC Parts window (excerpt updates)
+- StatusMessage textbox at bottom right shows recent actions (add studyname, save mappings).
+- Close button now explicitly handled (code-behind OnCloseClick) to close window.

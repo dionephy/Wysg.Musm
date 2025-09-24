@@ -23,29 +23,34 @@
 - R15: Add Studyname DB diagnostics (counts + connection metadata) ? DONE
 - R16: Add Postgres first-chance exception sampler + repo error logging ? DONE
 - R17: Refactor PhraseService to use settings-based connection (remove hardcoded) ? DONE
+- R18: Playbook matches ListBox vertical scrollbar ? DONE
+- R19: Double-click playbook match imports all parts (skip duplicates by PartNumber+SequenceOrder) ? DONE
+- R20: Double-click playbook part adds that part if absent (PartNumber+SequenceOrder uniqueness) ? DONE
+- R21: Fix PP1 layout so scrollbar shows (StackPanel¡æGrid re-layout) ? DONE
+- R22: Fix PP2 null/iteration timing via async wait before bulk import ? DONE
+- R23: Fix PP3 duplicate rule (allow same PartNumber different sequence) ? DONE
+- R24: Remove Diagnostics UI and related VM code ? DONE
+- R25: Ensure Save button enabled (depends on SelectedStudyname) and functional ? DONE
+- R26: Add status textbox showing recent action messages ? DONE
+- R27: Implement working Close button handler ? DONE
 
 ## Breakdown and status
-- R8.1: Remove StartupUri from App.xaml and open MainWindow only after SplashLogin success ? DONE
-- R9.1: Lower converter Minimum to 2 and VM threshold check to 2 ? DONE
-- R10.1: XAML add operation item; preset arg types in OnProcOpChanged; implement extraction logic in ExecuteSingle + RunProcedure ? DONE
-- R11.1: Modify GetRowCellValues to always add placeholders (no skip of blanks) ? DONE
-- R12.1: Modify GetHeaderTexts to add placeholder entries for blank header cells (no skip) ? DONE
-- R12.2: Adjust Row Data serialization: omit pair only if header+value both blank, value-only token if header blank but value present ? DONE
-- R13.1: Add ToDateTime to Op ComboBox, preset Arg1=Var, Arg2 disabled, implement parse helper ? DONE
-- R14.1: Add PACS method ComboBox items ? DONE
-- R14.2: Implement PacsService header-based selection helpers ? DONE
-- R15.1: Add GetDiagnosticsAsync to repository + implement queries ? DONE
-- R15.2: Add DiagnosticsCommand + DiagnosticsInfo to VM and UI button/textbox ? DONE
-- R16.1: Add PgDebug first-chance handler ? DONE
-- R16.2: Initialize handler at startup ? DONE
-- R16.3: Add targeted logging for repo methods ? PARTIAL (GetStudynamesAsync, EnsureStudynameAsync)
-- R17.1: Replace hardcoded connection with LocalConnectionString fallback ? DONE
-- R17.2: Add logging + note future central migration ? DONE
+- R18.1: Add ScrollViewer.VerticalScrollBarVisibility=Auto to PlaybookMatches ListBox ? DONE
+- R19.1: Code-behind double-click handler loads parts (ensures selection) and bulk-adds missing MappingPreviewItems (pair uniqueness) ? DONE
+- R20.1: Code-behind double-click handler for single PlaybookPart adds if not present (pair uniqueness) ? DONE
+- R21.1: Replace right panel StackPanel with Grid to constrain ListBox height (scrollbar visible) ? DONE
+- R22.1: Make handler async + short retry loop for PlaybookParts population ? DONE
+- R23.1: Update duplicate checks to PartNumber + PartSequenceOrder ? DONE
+- R24.1: Delete diagnostics button/textbox from XAML ? DONE
+- R24.2: Remove DiagnosticsCommand, DiagnosticsInfo, and related Debug output from VM ? DONE
+- R25.1: Confirm SaveCommand CanExecute bound to SelectedStudyname and UI button present ? DONE
+- R26.1: Implement status message logic in VM and bind to StatusTextBox in UI ? DONE
+- R27.1: Hook up Close button in UI to execute CloseCommand in VM ? DONE
 
 ## Next
 - N1: Relax matching rule (>= instead of = count) if partial matches desired
 - N2: Show LOINC code next to long_common_name
-- N3: Add a button to import selected playbook into preview
+- N3: Add a button to import selected playbook into preview (double-click already does import)
 - N4: Hook procedure runner to call service methods by tag and display results
 - N5: JSON export of Row Data preserving blanks
 

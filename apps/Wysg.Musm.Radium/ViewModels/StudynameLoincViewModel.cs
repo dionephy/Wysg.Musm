@@ -48,7 +48,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (string.IsNullOrWhiteSpace(StudynameFilter)) return true;
                 return it.Studyname?.IndexOf(StudynameFilter, StringComparison.OrdinalIgnoreCase) >= 0;
             };
-            PartsBySubcategory = new ObservableCollection<PartGroup>(); // legacy (unused)
+            PartsBySubcategory = new ObservableCollection<PartGroup>();
             Categories = new ObservableCollection<CategoryGroup>();
             CategoriesCol0 = new ObservableCollection<CategoryGroup>();
             CategoriesCol1 = new ObservableCollection<CategoryGroup>();
@@ -63,11 +63,8 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 if (p is PartItem it) AddPartToPreview(it);
             });
-            DiagnosticsCommand = new RelayCommand(async _ => await RunDiagnosticsAsync());
 
             SequenceOrderInput = "A";
-
-            Debug.WriteLine("[Radium][VM] StudynameLoincViewModel constructed; starting LoadAsync()");
             _ = LoadAsync();
         }
 
@@ -82,8 +79,8 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 if (SetProperty(ref _selectedStudyname, value))
                 {
-                    Debug.WriteLine($"[Radium][VM] SelectedStudyname set to {(value?.Studyname ?? "<null>")}");
                     _ = ReloadPartsAsync();
+                    (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -106,6 +103,13 @@ namespace Wysg.Musm.Radium.ViewModels
             set => SetProperty(ref _newStudynameInput, value ?? string.Empty);
         }
 
+        private string _statusMessage = string.Empty;
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set => SetProperty(ref _statusMessage, value);
+        }
+
         private string _sequenceOrderInput = "A";
         public string SequenceOrderInput
         {
@@ -113,63 +117,39 @@ namespace Wysg.Musm.Radium.ViewModels
             set => SetProperty(ref _sequenceOrderInput, string.IsNullOrWhiteSpace(value) ? "A" : value.Trim());
         }
 
-        // Legacy grouping (no longer used in XAML but kept for compatibility)
         public ObservableCollection<PartGroup> PartsBySubcategory { get; }
-
-        // New per-category groups with dedicated filters
         public ObservableCollection<CategoryGroup> Categories { get; }
         public ObservableCollection<CategoryGroup> CategoriesCol0 { get; }
         public ObservableCollection<CategoryGroup> CategoriesCol1 { get; }
         public ObservableCollection<CategoryGroup> CategoriesCol2 { get; }
         public Dictionary<string, CategoryGroup> CategoryByName { get; }
 
-        // Explicit properties for XAML grid placement
-        private CategoryGroup? _catImagingFocus;
-        public CategoryGroup? Cat_ImagingFocus { get => _catImagingFocus; private set => SetProperty(ref _catImagingFocus, value); }
-        private CategoryGroup? _catRegionImaged;
-        public CategoryGroup? Cat_RegionImaged { get => _catRegionImaged; private set => SetProperty(ref _catRegionImaged, value); }
-        private CategoryGroup? _catLateralityPresence;
-        public CategoryGroup? Cat_LateralityPresence { get => _catLateralityPresence; private set => SetProperty(ref _catLateralityPresence, value); }
-        private CategoryGroup? _catLaterality;
-        public CategoryGroup? Cat_Laterality { get => _catLaterality; private set => SetProperty(ref _catLaterality, value); }
-        private CategoryGroup? _catModalityType;
-        public CategoryGroup? Cat_ModalityType { get => _catModalityType; private set => SetProperty(ref _catModalityType, value); }
-        private CategoryGroup? _catModalitySubtype;
-        public CategoryGroup? Cat_ModalitySubtype { get => _catModalitySubtype; private set => SetProperty(ref _catModalitySubtype, value); }
-        private CategoryGroup? _catReasonForExam;
-        public CategoryGroup? Cat_ReasonForExam { get => _catReasonForExam; private set => SetProperty(ref _catReasonForExam, value); }
-        private CategoryGroup? _catTiming;
-        public CategoryGroup? Cat_Timing { get => _catTiming; private set => SetProperty(ref _catTiming, value); }
-        private CategoryGroup? _catPharmSubstance;
-        public CategoryGroup? Cat_Pharm_SubstanceGiven { get => _catPharmSubstance; private set => SetProperty(ref _catPharmSubstance, value); }
-        private CategoryGroup? _catPharmRoute;
-        public CategoryGroup? Cat_Pharm_Route { get => _catPharmRoute; private set => SetProperty(ref _catPharmRoute, value); }
-        private CategoryGroup? _catViewAggregation;
-        public CategoryGroup? Cat_View_Aggregation { get => _catViewAggregation; private set => SetProperty(ref _catViewAggregation, value); }
-        private CategoryGroup? _catViewType;
-        public CategoryGroup? Cat_View_ViewType { get => _catViewType; private set => SetProperty(ref _catViewType, value); }
-        private CategoryGroup? _catManeuverType;
-        public CategoryGroup? Cat_Maneuver_Type { get => _catManeuverType; private set => SetProperty(ref _catManeuverType, value); }
-        private CategoryGroup? _catSubject;
-        public CategoryGroup? Cat_Subject { get => _catSubject; private set => SetProperty(ref _catSubject, value); }
-        private CategoryGroup? _catGuidancePresence;
-        public CategoryGroup? Cat_Guidance_Presence { get => _catGuidancePresence; private set => SetProperty(ref _catGuidancePresence, value); }
-        private CategoryGroup? _catGuidanceAction;
-        public CategoryGroup? Cat_Guidance_Action { get => _catGuidanceAction; private set => SetProperty(ref _catGuidanceAction, value); }
-        private CategoryGroup? _catGuidanceApproach;
-        public CategoryGroup? Cat_Guidance_Approach { get => _catGuidanceApproach; private set => SetProperty(ref _catGuidanceApproach, value); }
-        private CategoryGroup? _catGuidanceObject;
-        public CategoryGroup? Cat_Guidance_Object { get => _catGuidanceObject; private set => SetProperty(ref _catGuidanceObject, value); }
+        private CategoryGroup? _catImagingFocus; public CategoryGroup? Cat_ImagingFocus { get => _catImagingFocus; private set => SetProperty(ref _catImagingFocus, value); }
+        private CategoryGroup? _catRegionImaged; public CategoryGroup? Cat_RegionImaged { get => _catRegionImaged; private set => SetProperty(ref _catRegionImaged, value); }
+        private CategoryGroup? _catLateralityPresence; public CategoryGroup? Cat_LateralityPresence { get => _catLateralityPresence; private set => SetProperty(ref _catLateralityPresence, value); }
+        private CategoryGroup? _catLaterality; public CategoryGroup? Cat_Laterality { get => _catLaterality; private set => SetProperty(ref _catLaterality, value); }
+        private CategoryGroup? _catModalityType; public CategoryGroup? Cat_ModalityType { get => _catModalityType; private set => SetProperty(ref _catModalityType, value); }
+        private CategoryGroup? _catModalitySubtype; public CategoryGroup? Cat_ModalitySubtype { get => _catModalitySubtype; private set => SetProperty(ref _catModalitySubtype, value); }
+        private CategoryGroup? _catReasonForExam; public CategoryGroup? Cat_ReasonForExam { get => _catReasonForExam; private set => SetProperty(ref _catReasonForExam, value); }
+        private CategoryGroup? _catTiming; public CategoryGroup? Cat_Timing { get => _catTiming; private set => SetProperty(ref _catTiming, value); }
+        private CategoryGroup? _catPharmSubstance; public CategoryGroup? Cat_Pharm_SubstanceGiven { get => _catPharmSubstance; private set => SetProperty(ref _catPharmSubstance, value); }
+        private CategoryGroup? _catPharmRoute; public CategoryGroup? Cat_Pharm_Route { get => _catPharmRoute; private set => SetProperty(ref _catPharmRoute, value); }
+        private CategoryGroup? _catViewAggregation; public CategoryGroup? Cat_View_Aggregation { get => _catViewAggregation; private set => SetProperty(ref _catViewAggregation, value); }
+        private CategoryGroup? _catViewType; public CategoryGroup? Cat_View_ViewType { get => _catViewType; private set => SetProperty(ref _catViewType, value); }
+        private CategoryGroup? _catManeuverType; public CategoryGroup? Cat_Maneuver_Type { get => _catManeuverType; private set => SetProperty(ref _catManeuverType, value); }
+        private CategoryGroup? _catSubject; public CategoryGroup? Cat_Subject { get => _catSubject; private set => SetProperty(ref _catSubject, value); }
+        private CategoryGroup? _catGuidancePresence; public CategoryGroup? Cat_Guidance_Presence { get => _catGuidancePresence; private set => SetProperty(ref _catGuidancePresence, value); }
+        private CategoryGroup? _catGuidanceAction; public CategoryGroup? Cat_Guidance_Action { get => _catGuidanceAction; private set => SetProperty(ref _catGuidanceAction, value); }
+        private CategoryGroup? _catGuidanceApproach; public CategoryGroup? Cat_Guidance_Approach { get => _catGuidanceApproach; private set => SetProperty(ref _catGuidanceApproach, value); }
+        private CategoryGroup? _catGuidanceObject; public CategoryGroup? Cat_Guidance_Object { get => _catGuidanceObject; private set => SetProperty(ref _catGuidanceObject, value); }
 
-        private CategoryGroup? _commonGroup;
-        public CategoryGroup? CommonGroup { get => _commonGroup; private set => SetProperty(ref _commonGroup, value); }
+        private CategoryGroup? _commonGroup; public CategoryGroup? CommonGroup { get => _commonGroup; private set => SetProperty(ref _commonGroup, value); }
 
         public ObservableCollection<MappingPreviewItem> SelectedParts { get; }
 
         public ICommand AddStudynameCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand AddPartCommand { get; }
-        public ICommand DiagnosticsCommand { get; }
 
         private PlaybookItem? _selectedPlaybook;
         public PlaybookItem? SelectedPlaybook
@@ -186,35 +166,23 @@ namespace Wysg.Musm.Radium.ViewModels
 
         public async Task LoadAsync()
         {
-            Debug.WriteLine("[Radium][VM] LoadAsync: begin");
             try
             {
                 Studynames.Clear();
                 var rows = await _repo.GetStudynamesAsync();
                 foreach (var row in rows)
                     Studynames.Add(new StudynameItem { Id = row.Id, Studyname = row.Studyname });
-                Debug.WriteLine($"[Radium][VM] LoadAsync: Studynames count={Studynames.Count}");
-
                 if (SelectedStudyname == null && Studynames.Count > 0)
                 {
                     SelectedStudyname = Studynames[0];
-                    Debug.WriteLine($"[Radium][VM] LoadAsync: auto-selected '{SelectedStudyname.Studyname}'");
                 }
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Radium][VM] LoadAsync: error {ex}");
-            }
+            catch { }
         }
 
-        public void Preselect(string studyname)
-        {
-            _ = PreselectAsync(studyname);
-        }
-
+        public void Preselect(string studyname) => _ = PreselectAsync(studyname);
         private async Task PreselectAsync(string studyname)
         {
-            Debug.WriteLine($"[Radium][VM] PreselectAsync: '{studyname}'");
             var found = Studynames.FirstOrDefault(s => s.Studyname == studyname);
             if (found == null)
             {
@@ -223,26 +191,22 @@ namespace Wysg.Musm.Radium.ViewModels
                 Studynames.Add(item);
                 SelectedStudyname = item;
             }
-            else
-            {
-                SelectedStudyname = found;
-            }
+            else SelectedStudyname = found;
         }
 
         private async Task AddStudynameAsync()
         {
             var name = string.IsNullOrWhiteSpace(NewStudynameInput) ? $"MRI NEW {DateTime.Now:HHmmss}" : NewStudynameInput.Trim();
-            Debug.WriteLine($"[Radium][VM] AddStudynameAsync: '{name}'");
             var id = await _repo.EnsureStudynameAsync(name);
             var item = new StudynameItem { Id = id, Studyname = name };
             Studynames.Add(item);
             SelectedStudyname = item;
             NewStudynameInput = string.Empty;
+            StatusMessage = $"Studyname '{name}' added.";
         }
 
         private async Task ReloadPartsAsync()
         {
-            Debug.WriteLine("[Radium][VM] ReloadPartsAsync: begin");
             PartsBySubcategory.Clear();
             Categories.Clear();
             CategoriesCol0.Clear();
@@ -253,16 +217,11 @@ namespace Wysg.Musm.Radium.ViewModels
             SelectedParts.Clear();
             PlaybookMatches.Clear();
             PlaybookParts.Clear();
-            if (SelectedStudyname == null)
-            {
-                Debug.WriteLine("[Radium][VM] ReloadPartsAsync: no SelectedStudyname");
-                return;
-            }
+            if (SelectedStudyname == null) return;
 
             var parts = await _repo.GetPartsAsync();
             var partsByNumber = parts.ToDictionary(p => p.PartNumber, p => p);
             var mappings = (await _repo.GetMappingsAsync(SelectedStudyname.Id));
-            Debug.WriteLine($"[Radium][VM] ReloadPartsAsync: parts={parts.Count}, mappings={mappings.Count}");
 
             var col0 = new[] { "Rad.Anatomic Location.Imaging Focus" };
             var col1 = new[] { "Rad.Anatomic Location.Region Imaged", "Rad.Anatomic Location.Laterality.Presence", "Rad.Anatomic Location.Laterality" };
@@ -301,38 +260,19 @@ namespace Wysg.Musm.Radium.ViewModels
             foreach (var p in parts)
             {
                 if (string.IsNullOrWhiteSpace(p.PartTypeName)) continue;
-                if (!catMap.TryGetValue(p.PartTypeName, out var g))
-                    continue;
-
-                var item = new PartItem
-                {
-                    PartNumber = p.PartNumber,
-                    PartTypeName = p.PartTypeName,
-                    PartName = p.PartName,
-                    PartDisplay = p.PartName
-                };
-                g.Items.Add(item);
+                if (!catMap.TryGetValue(p.PartTypeName, out var g)) continue;
+                g.Items.Add(new PartItem { PartNumber = p.PartNumber, PartTypeName = p.PartTypeName, PartName = p.PartName, PartDisplay = p.PartName });
             }
 
             foreach (var m in mappings)
             {
                 if (partsByNumber.TryGetValue(m.PartNumber, out var p))
                 {
-                    SelectedParts.Add(new MappingPreviewItem
-                    {
-                        PartNumber = p.PartNumber,
-                        PartDisplay = p.PartName,
-                        PartSequenceOrder = string.IsNullOrWhiteSpace(m.PartSequenceOrder) ? "A" : m.PartSequenceOrder
-                    });
+                    SelectedParts.Add(new MappingPreviewItem { PartNumber = p.PartNumber, PartDisplay = p.PartName, PartSequenceOrder = string.IsNullOrWhiteSpace(m.PartSequenceOrder) ? "A" : m.PartSequenceOrder });
                 }
                 else
                 {
-                    SelectedParts.Add(new MappingPreviewItem
-                    {
-                        PartNumber = m.PartNumber,
-                        PartDisplay = string.Empty,
-                        PartSequenceOrder = string.IsNullOrWhiteSpace(m.PartSequenceOrder) ? "A" : m.PartSequenceOrder
-                    });
+                    SelectedParts.Add(new MappingPreviewItem { PartNumber = m.PartNumber, PartDisplay = string.Empty, PartSequenceOrder = string.IsNullOrWhiteSpace(m.PartSequenceOrder) ? "A" : m.PartSequenceOrder });
                 }
             }
 
@@ -342,26 +282,14 @@ namespace Wysg.Musm.Radium.ViewModels
                 var cg = new CategoryGroup("Common");
                 foreach (var cp in common)
                 {
-                    cg.Items.Add(new PartItem
-                    {
-                        PartNumber = cp.PartNumber,
-                        PartTypeName = cp.PartTypeName,
-                        PartName = cp.PartName,
-                        PartDisplay = cp.PartName
-                    });
+                    cg.Items.Add(new PartItem { PartNumber = cp.PartNumber, PartTypeName = cp.PartTypeName, PartName = cp.PartName, PartDisplay = cp.PartName });
                 }
                 CommonGroup = cg;
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Radium][VM] GetCommonPartsAsync: error {ex}");
-            }
+            catch { }
 
-            foreach (var g in Categories)
-                g.Refresh();
+            foreach (var g in Categories) g.Refresh();
             CommonGroup?.Refresh();
-
-            Debug.WriteLine($"[Radium][VM] ReloadPartsAsync: categories={Categories.Count}, selectedPreview={SelectedParts.Count}");
         }
 
         private async Task RefreshPlaybookMatchesAsync()
@@ -369,22 +297,14 @@ namespace Wysg.Musm.Radium.ViewModels
             PlaybookMatches.Clear();
             PlaybookParts.Clear();
             var parts = SelectedParts.Select(p => p.PartNumber).Distinct().ToArray();
-            if (parts.Length < 2) // lowered from 3 to 2
-            {
-                Debug.WriteLine("[Radium][VM] Playbook: need >=2 parts to suggest");
-                return;
-            }
+            if (parts.Length < 2) return;
             try
             {
                 var matches = await _repo.GetPlaybookMatchesAsync(parts);
                 foreach (var m in matches)
                     PlaybookMatches.Add(new PlaybookItem { LoincNumber = m.LoincNumber, LongCommonName = m.LongCommonName });
-                Debug.WriteLine($"[Radium][VM] Playbook: matches={PlaybookMatches.Count}");
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Radium][VM] Playbook: error {ex}");
-            }
+            catch { }
         }
 
         private async Task LoadPlaybookPartsAsync(PlaybookItem? item)
@@ -396,25 +316,15 @@ namespace Wysg.Musm.Radium.ViewModels
                 var rows = await _repo.GetPlaybookPartsAsync(item.LoincNumber);
                 foreach (var r in rows)
                     PlaybookParts.Add(new PlaybookPartItem { PartNumber = r.PartNumber, PartName = r.PartName, PartSequenceOrder = r.PartSequenceOrder });
-                Debug.WriteLine($"[Radium][VM] Playbook parts: {PlaybookParts.Count}");
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Radium][VM] Playbook parts error: {ex}");
-            }
+            catch { }
         }
 
         private void AddPartToPreview(PartItem p)
         {
             if (p == null) return;
             var order = string.IsNullOrWhiteSpace(SequenceOrderInput) ? "A" : SequenceOrderInput;
-            SelectedParts.Add(new MappingPreviewItem
-            {
-                PartNumber = p.PartNumber,
-                PartDisplay = p.PartDisplay,
-                PartSequenceOrder = order
-            });
-            Debug.WriteLine($"[Radium][VM] AddPart: {p.PartNumber} order={order}");
+            SelectedParts.Add(new MappingPreviewItem { PartNumber = p.PartNumber, PartDisplay = p.PartDisplay, PartSequenceOrder = order });
         }
 
         private async Task SaveAsync()
@@ -422,29 +332,7 @@ namespace Wysg.Musm.Radium.ViewModels
             if (SelectedStudyname == null) return;
             var payload = SelectedParts.Select(p => new MappingRow(p.PartNumber, string.IsNullOrWhiteSpace(p.PartSequenceOrder) ? "A" : p.PartSequenceOrder));
             await _repo.SaveMappingsAsync(SelectedStudyname.Id, payload);
-            Debug.WriteLine("[Radium][VM] SaveAsync: done");
-        }
-
-        private string _diagnosticsInfo = string.Empty;
-        public string DiagnosticsInfo
-        {
-            get => _diagnosticsInfo;
-            set => SetProperty(ref _diagnosticsInfo, value);
-        }
-
-        private async Task RunDiagnosticsAsync()
-        {
-            try
-            {
-                var d = await _repo.GetDiagnosticsAsync();
-                DiagnosticsInfo = $"DB={d.Database} Host={d.Host}:{d.Port} User={d.User} Source={d.Source}\nStudynameCount={d.StudynameCount} StudyCount={d.StudyCount} MappingCount={d.MappingCount} Table={d.MappingTable} @ {d.RetrievedAtUtc:O}";
-                Debug.WriteLine("[Radium][VM] Diagnostics: " + DiagnosticsInfo);
-            }
-            catch (Exception ex)
-            {
-                DiagnosticsInfo = "Diagnostics error: " + ex.Message;
-                Debug.WriteLine("[Radium][VM] Diagnostics error: " + ex);
-            }
+            StatusMessage = $"Studyname '{SelectedStudyname.Studyname}' mappings saved ({SelectedParts.Count}).";
         }
 
         public class StudynameItem : BaseViewModel
@@ -473,10 +361,8 @@ namespace Wysg.Musm.Radium.ViewModels
                         View.Refresh();
                 }
             }
-
             public ObservableCollection<PartItem> Items { get; } = new();
             public ICollectionView View { get; }
-
             public CategoryGroup(string name)
             {
                 Name = name;
@@ -488,7 +374,6 @@ namespace Wysg.Musm.Radium.ViewModels
                     return it.PartDisplay?.IndexOf(Filter, StringComparison.OrdinalIgnoreCase) >= 0;
                 };
             }
-
             public void Refresh() => View.Refresh();
         }
 

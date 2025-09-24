@@ -1,5 +1,7 @@
 ﻿CREATE SCHEMA IF NOT EXISTS loinc;
 
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TABLE IF NOT EXISTS loinc.loinc_term
 (
     loinc_num text COLLATE pg_catalog."default" NOT NULL,

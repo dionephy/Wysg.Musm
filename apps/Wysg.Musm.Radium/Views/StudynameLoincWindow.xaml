@@ -149,8 +149,13 @@
                     <TextBox Width="100" Text="{Binding SequenceOrderInput, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
             </StackPanel>
-            <StackPanel>
-                <ListBox ItemsSource="{Binding SelectedParts}">
+            <!-- Use Grid to constrain suggestions area so scrollbars can appear -->
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <ListBox Grid.Row="0" ItemsSource="{Binding SelectedParts}">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
                             <EventSetter Event="MouseDoubleClick" Handler="OnPreviewItemDoubleClick"/>
@@ -166,16 +171,28 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <!-- Suggestions: two listboxes side-by-side -->
-                <Grid Margin="0,8,0,0">
+                <!-- Suggestions: two listboxes side-by-side in remaining space -->
+                <Grid Grid.Row="1" Margin="0,8,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <ListBox Grid.Column="0" ItemsSource="{Binding PlaybookMatches}" DisplayMemberPath="LongCommonName"
                              Visibility="{Binding SelectedParts.Count, Converter={StaticResource CountToVisibilityConverter}}"
-                             SelectedItem="{Binding SelectedPlaybook, Mode=TwoWay}"/>
-                    <ListBox Grid.Column="1" ItemsSource="{Binding PlaybookParts}">
+                             SelectedItem="{Binding SelectedPlaybook, Mode=TwoWay}"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <EventSetter Event="MouseDoubleClick" Handler="OnPlaybookMatchDoubleClick"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
+                    <ListBox Grid.Column="1" ItemsSource="{Binding PlaybookParts}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <EventSetter Event="MouseDoubleClick" Handler="OnPlaybookPartDoubleClick"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
@@ -186,14 +203,13 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
                 </Grid>
-            </StackPanel>
+            </Grid>
         </DockPanel>
 
         <StackPanel Grid.Row="2" Grid.ColumnSpan="5" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Diagnostics" Command="{Binding DiagnosticsCommand}"/>
-            <TextBox Width="650" Margin="8,0,0,0" TextWrapping="Wrap" AcceptsReturn="True" Height="60" Text="{Binding DiagnosticsInfo}" IsReadOnly="True"/>
+            <TextBox Width="520" Margin="0,0,12,0" Text="{Binding StatusMessage}" IsReadOnly="True"/>
             <Button Content="Save" Command="{Binding SaveCommand}"/>
-            <Button Content="Close" IsCancel="True"/>
+            <Button Content="Close" Click="OnCloseClick"/>
         </StackPanel>
     </Grid>
 </Window>

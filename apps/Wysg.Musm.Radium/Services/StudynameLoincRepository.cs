@@ -271,7 +271,7 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
             Debug.WriteLine($"[Repo][Call#{callId}] GetPlaybookMatchesAsync START parts={string.Join(',', partNumbers ?? Array.Empty<string>())}");
             var list = new List<PlaybookMatchRow>();
             var numbers = partNumbers?.Distinct().ToArray() ?? Array.Empty<string>();
-            if (numbers.Length < 3)
+            if (numbers.Length < 2)
             {
                 Debug.WriteLine($"[Repo][Call#{callId}] GetPlaybookMatchesAsync SKIP parts<3");
                 return list;
