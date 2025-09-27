@@ -31,7 +31,7 @@ namespace Wysg.Musm.Radium
         }
 
         private bool ServicesInitialized { get; set; }
-
+                
         protected override async void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
