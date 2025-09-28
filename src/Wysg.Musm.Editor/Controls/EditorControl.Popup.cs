@@ -171,6 +171,7 @@ namespace Wysg.Musm.Editor.Controls
                 if (string.IsNullOrEmpty(word)) { Debug.WriteLine("[Popup] close due to empty after key"); CloseCompletionWindow(); return; }
             }
 
+            // Ghost navigation when popup closed
             if (_completionWindow is null && ServerGhosts.HasItems)
             {
                 if (e.Key == Key.Down)
@@ -206,7 +207,16 @@ namespace Wysg.Musm.Editor.Controls
 
             if (_completionWindow != null && (e.Key is Key.Up or Key.Down))
             {
-                Debug.WriteLine("[Popup] Up/Down allow selection once");
+                var lb = _completionWindow.CompletionList?.ListBox;
+                if (lb != null && lb.SelectedIndex == -1)
+                {
+                    // first press → select first (Down) or last (Up) immediately
+                    _completionWindow.AllowSelectionByKeyboardOnce();
+                    if (e.Key == Key.Down) lb.SelectedIndex = 0; else lb.SelectedIndex = lb.Items.Count - 1;
+                    e.Handled = true; // prevent caret move
+                    return;
+                }
+                // subsequent navigation: allow one selection change per key
                 _completionWindow.AllowSelectionByKeyboardOnce();
                 return;
             }

@@ -64,10 +64,25 @@ Editor spec
 - save to local DB
 
 
-conclusion을 최종과 pre 두개로 분리해서 해야하려나?
 
+Report json components:
+- technique (string)
+- chief_complaint (string)
+- history_preview (string)
+- chief_complaint_proofread (string)
+- history (string)
+- history_proofread (string)
+- header_and_findings (string)
+- conclusion (string)
+- split_index (int)
+- comparison (string)
+- technique_proofread (string)
+- comparison_proofread (string)
+- findings_proofread (string)
+- conclusion_proofread (string)
+- findings (string)
+- conclusion_preview (string)
 
-Report json components: chief_complaint, history, technique, comparison, header_findings, conclusion, proofread_findings, proofread_conclusion
 
 
 Abbreviations

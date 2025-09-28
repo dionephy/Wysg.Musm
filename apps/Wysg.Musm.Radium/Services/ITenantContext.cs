@@ -4,5 +4,7 @@ namespace Wysg.Musm.Radium.Services
     {
         long TenantId { get; set; }
         string TenantCode { get; set; }
+        // New: central DB now uses account_id; keep backward compatibility
+        long AccountId { get; set; }
     }
 }

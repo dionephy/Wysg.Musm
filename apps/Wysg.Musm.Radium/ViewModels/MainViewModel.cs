@@ -5,12 +5,10 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using ICSharpCode.AvalonEdit.CodeCompletion;
 using Wysg.Musm.Editor.Controls;
-using Wysg.Musm.Editor.Snippets;
 using Wysg.Musm.Infrastructure.ViewModels;
 using Wysg.Musm.Radium.Services;
-using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace Wysg.Musm.Radium.ViewModels
 {
@@ -22,61 +20,63 @@ namespace Wysg.Musm.Radium.ViewModels
 
         public MainViewModel(IPhraseService phrases, ITenantContext tenant, IPhraseCache cache)
         {
-            _phrases = phrases;
-            _tenant = tenant;
-            _cache = cache;
-
+            _phrases = phrases; _tenant = tenant; _cache = cache;
             PreviousStudies = new ObservableCollection<PreviousStudyTab>();
             NewStudyCommand = new DelegateCommand(_ => OnNewStudy());
             AddStudyCommand = new DelegateCommand(_ => OnAddStudy(), _ => PatientLocked);
             SendReportPreviewCommand = new DelegateCommand(_ => OnSendReportPreview(), _ => PatientLocked);
             SendReportCommand = new DelegateCommand(_ => OnSendReport(), _ => PatientLocked);
             SelectPreviousStudyCommand = new DelegateCommand(o => OnSelectPrevious(o), _ => PatientLocked);
-
-            OpenStudynameMapCommand = new DelegateCommand(_ => Views.StudynameLoincWindow.Open(), _ => true);
+            OpenStudynameMapCommand = new DelegateCommand(_ => Views.StudynameLoincWindow.Open());
+            OpenPhraseManagerCommand = new DelegateCommand(_ => Views.PhrasesWindow.Open());
         }
 
-        private void OnSelectPrevious(object? o)
+        // Text bound to editors
+        private string _headerText = string.Empty; public string HeaderText { get => _headerText; set => SetProperty(ref _headerText, value); }
+        private string _findingsText = string.Empty; public string FindingsText { get => _findingsText; set => SetProperty(ref _findingsText, value); }
+        private string _conclusionText = string.Empty; public string ConclusionText { get => _conclusionText; set => SetProperty(ref _conclusionText, value); }
+
+        // Phrase capitalization dictionary
+        private HashSet<string>? _keepCapsFirstTokens; // tokens for which we keep initial capitalization
+        private bool _capsLoaded;
+        private async Task EnsureCapsAsync()
         {
-            if (o is not PreviousStudyTab tab)
-                return;
-
-            if (SelectedPreviousStudy?.Id == tab.Id)
+            if (_capsLoaded) return;
+            try
             {
-                // already selected; ensure flags are consistent
-                foreach (var t in PreviousStudies)
-                    t.IsSelected = (t.Id == tab.Id);
-                return;
+                var list = await _phrases.GetPhrasesForAccountAsync(_tenant.AccountId).ConfigureAwait(false);
+                _keepCapsFirstTokens = new HashSet<string>(list.Select(p => FirstToken(p)).Where(t => t.Length > 0 && char.IsUpper(t[0])), System.StringComparer.OrdinalIgnoreCase);
             }
-
-            SelectedPreviousStudy = tab; // setter will set flags
+            catch { _keepCapsFirstTokens = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase); }
+            finally { _capsLoaded = true; }
+        }
+        private static string FirstToken(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+            int i = 0; while (i < s.Length && !char.IsWhiteSpace(s[i])) i++; return s.Substring(0, i);
         }
 
-        // --- Editor initialization ---
         public void InitializeEditor(EditorControl editor)
         {
-            editor.MinCharsForSuggest = 1; // open when กร 1 letter
-            editor.SnippetProvider = new PhraseSnippetProvider(_phrases, _tenant, _cache);
+            editor.MinCharsForSuggest = 1;
+            editor.SnippetProvider = new PhraseCompletionProvider(_phrases, _tenant, _cache);
             editor.DebugSeedGhosts();
             editor.EnableGhostDebugAnchors(false);
-            // kick off prefetch ASAP
             _ = Task.Run(async () =>
             {
-                var all = await _phrases.GetPhrasesForTenantAsync(_tenant.TenantId);
-                _cache.Set(_tenant.TenantId, all);
+                var all = await _phrases.GetPhrasesForAccountAsync(_tenant.AccountId);
+                _cache.Set(_tenant.AccountId, all);
+                await EnsureCapsAsync();
             });
         }
 
-        // --- Placeholder state & models for Previous Studies Tabs ---
-        private bool _patientLocked;
-        public bool PatientLocked
+        private bool _patientLocked; public bool PatientLocked
         {
             get => _patientLocked;
             set
             {
                 if (SetProperty(ref _patientLocked, value))
                 {
-                    // Notify command requery
                     (AddStudyCommand as DelegateCommand)?.RaiseCanExecuteChanged();
                     (SendReportPreviewCommand as DelegateCommand)?.RaiseCanExecuteChanged();
                     (SendReportCommand as DelegateCommand)?.RaiseCanExecuteChanged();
@@ -86,170 +86,229 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         public ObservableCollection<PreviousStudyTab> PreviousStudies { get; }
-
-        private PreviousStudyTab? _selectedPreviousStudy;
-        public PreviousStudyTab? SelectedPreviousStudy
+        private PreviousStudyTab? _selectedPreviousStudy; public PreviousStudyTab? SelectedPreviousStudy
         {
             get => _selectedPreviousStudy;
             set
             {
                 if (SetProperty(ref _selectedPreviousStudy, value))
-                {
-                    // enforce radio-like selection
-                    foreach (var t in PreviousStudies)
-                        t.IsSelected = (value != null && t.Id == value.Id);
-                }
+                    foreach (var t in PreviousStudies) t.IsSelected = (value != null && t.Id == value!.Id);
             }
         }
 
+        private void OnSelectPrevious(object? o)
+        {
+            if (o is not PreviousStudyTab tab) return;
+            if (SelectedPreviousStudy?.Id == tab.Id)
+            {
+                foreach (var t in PreviousStudies) t.IsSelected = (t.Id == tab.Id);
+                return;
+            }
+            SelectedPreviousStudy = tab;
+        }
+
+        // Commands
         public ICommand NewStudyCommand { get; }
         public ICommand AddStudyCommand { get; }
         public ICommand SendReportPreviewCommand { get; }
         public ICommand SendReportCommand { get; }
         public ICommand SelectPreviousStudyCommand { get; }
         public ICommand OpenStudynameMapCommand { get; }
+        public ICommand OpenPhraseManagerCommand { get; }
 
+        private static readonly Random _rng = new();
         private void OnNewStudy()
         {
-            // Placeholder: toggle lock and clear previous studies
             PatientLocked = true;
             PreviousStudies.Clear();
             SelectedPreviousStudy = null;
+            HeaderText = FindingsText = ConclusionText = string.Empty;
+            _reportified = false; OnPropertyChanged(nameof(Reportified));
         }
 
-        private static readonly Random _rng = new Random();
         private void OnAddStudy()
         {
-            // TEST LOGIC: add several dummy previous studies with varying datetimes and JSON payloads
-            int toAdd = 3; // add 3 per click to test overflow
-            for (int i = 0; i < toAdd; i++)
+            var dt = System.DateTime.Now.AddDays(-_rng.Next(0, 120));
+            var header = "Technique: MRI Brain. Comparison: none.";
+            var findings = "Mild chronic microangiopathy.";
+            var conclusion = "No acute intracranial hemorrhage.";
+            var tab = new PreviousStudyTab { Id = Guid.NewGuid(), Title = dt.ToString("yyyy-MM-dd"), StudyDateTime = dt, Header = header, Findings = findings, Conclusion = conclusion, RawJson = JsonSerializer.Serialize(new { header, findings, conclusion }) };
+            PreviousStudies.Add(tab); SelectedPreviousStudy = tab;
+        }
+        private void OnSendReportPreview() { }
+        private void OnSendReport() { PatientLocked = false; }
+
+        // Reportify Toggle
+        private bool _reportified; public bool Reportified
+        {
+            get => _reportified;
+            set
             {
-                var dt = DateTime.Now.AddDays(-_rng.Next(0, 365)).AddMinutes(_rng.Next(0, 1440));
-                var header = $"Technique: {_pick(_techniques)} on {dt:yyyy-MM-dd}. Comparison: {_pick(_comparisons)}.";
-                var findings = $"Findings: {_lorem(_rng.Next(12, 24))}";
-                var conclusion = $"Conclusion: {_lorem(_rng.Next(8, 16))}";
-
-                var tab = new PreviousStudyTab
+                if (SetProperty(ref _reportified, value))
                 {
-                    Id = Guid.NewGuid(),
-                    Title = $"{dt:yyyy-MM-dd} Prev {PreviousStudies.Count + 1}",
-                    StudyDateTime = dt,
-                    Header = header,
-                    Findings = findings,
-                    Conclusion = conclusion,
-                    IsSelected = false,
-                };
-                tab.RawJson = JsonSerializer.Serialize(new { header = header, findings = findings, conclusion = conclusion });
-
-                PreviousStudies.Add(tab);
-                SelectedPreviousStudy = tab;
+                    if (value) { HeaderText = ReportifyBlock(HeaderText, false); FindingsText = ReportifyBlock(FindingsText, false); ConclusionText = ReportifyBlock(ConclusionText, true); }
+                    else { HeaderText = DereportifyBlock(HeaderText, false); FindingsText = DereportifyBlock(FindingsText, false); ConclusionText = DereportifyBlock(ConclusionText, true); }
+                }
             }
         }
 
-        private static readonly string[] _techniques = new[] { "MRI Brain", "CT Abdomen", "MRI Knee", "CT Chest" };
-        private static readonly string[] _comparisons = new[] { "no prior available", "compared to 2024-01-04", "improvement since last exam" };
-        private static string _pick(string[] arr) => arr[_rng.Next(arr.Length)];
-        private static string _lorem(int words)
+        // Reportify (paragraph-based for conclusion)
+        private string ReportifyBlock(string input, bool isConclusion)
         {
-            string[] pool = new[] { "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua", "ut", "enim", "ad", "minim", "veniam" };
-            return string.Join(' ', Enumerable.Range(0, words).Select(_ => pool[_rng.Next(pool.Length)])) + ".";
+            if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+            // Normalize newlines
+            input = input.Replace("\r\n", "\n");
+            // Split paragraphs by double newline
+            var paragraphs = input.Split(new string[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
+
+            for (int p = 0; p < paragraphs.Length; p++)
+            {
+                var lines = paragraphs[p].Split('\n');
+                for (int i = 0; i < lines.Length; i++)
+                    lines[i] = ReportifySentence(lines[i]);
+                paragraphs[p] = string.Join(System.Environment.NewLine, lines);
+            }
+
+            if (isConclusion && paragraphs.Length > 1)
+            {
+                // Number per paragraph: first line numbered; subsequent lines in paragraph indented
+                for (int i = 0; i < paragraphs.Length; i++)
+                {
+                    var lines = paragraphs[i].Split(new[] { System.Environment.NewLine }, StringSplitOptions.None);
+                    if (lines.Length > 0)
+                    {
+                        lines[0] = $"{i + 1}. {ReportifyLineExt(lines[0])}"; // ensure punctuation on first line
+                        for (int j = 1; j < lines.Length; j++)
+                            lines[j] = "   " + lines[j];
+                        paragraphs[i] = string.Join(System.Environment.NewLine, lines);
+                    }
+                }
+            }
+
+            return string.Join(System.Environment.NewLine + System.Environment.NewLine, paragraphs);
         }
 
-        private void OnSendReportPreview()
+        // Dereportify (inverse transform without original cache)
+        private string DereportifyBlock(string input, bool isConclusion)
         {
-            // Placeholder: no-op; keep for enabling button
+            if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+            input = input.Replace("\r\n", "\n");
+            var paragraphs = input.Split(new string[] { "\n\n" }, StringSplitOptions.None);
+            for (int p = 0; p < paragraphs.Length; p++)
+            {
+                var lines = paragraphs[p].Split(new[] { '\n' }, StringSplitOptions.None).ToList();
+                for (int i = 0; i < lines.Count; i++)
+                {
+                    var line = lines[i];
+                    // remove numbered prefix only on first line of a paragraph
+                    if (i == 0)
+                        line = Regex.Replace(line, @"^\s*\d+\.\s+", string.Empty);
+                    // remove indentation from continuation lines
+                    line = Regex.Replace(line, @"^ {1,4}", string.Empty);
+                    // remove trailing period (keep ellipsis)
+                    if (line.EndsWith('.') && !line.EndsWith("..")) line = line[..^1];
+                    // normalize arrow to have single following space
+                    line = Regex.Replace(line, @"^\s*-->\s*", "--> ");
+                    // decap
+                    line = DecapUnlessDictionary(line);
+                    lines[i] = line;
+                }
+                paragraphs[p] = string.Join(System.Environment.NewLine, lines);
+            }
+            return string.Join(System.Environment.NewLine + System.Environment.NewLine, paragraphs);
         }
 
-        private void OnSendReport()
+        private string ReportifySentence(string sentence)
         {
-            // Placeholder: unlock after send
-            PatientLocked = false;
-            PreviousStudies.Clear();
-            SelectedPreviousStudy = null;
+            if (string.IsNullOrWhiteSpace(sentence)) return string.Empty;
+            string res = PurifySentence(sentence, true);
+            res = GetBody(res, true);
+            if (res.Length == 0) return string.Empty;
+            res = char.ToUpper(res[0]) + (res.Length > 1 ? res[1..] : string.Empty);
+            char last = res[^1];
+            if (char.IsLetterOrDigit(last) || last == ')') res += ".";
+            return res;
+        }
+        private string ReportifyLineExt(string str)
+        {
+            if (string.IsNullOrEmpty(str)) return str;
+            string r = char.ToUpper(str[0]) + (str.Length > 1 ? str[1..] : string.Empty);
+            if (r.EndsWith('.')) return r;
+            if (char.IsLetterOrDigit(r[^1])) r += '.';
+            return r;
+        }
+        private string DecapUnlessDictionary(string line)
+        {
+            if (string.IsNullOrEmpty(line)) return line;
+            int idx = 0; while (idx < line.Length && char.IsWhiteSpace(line[idx])) idx++;
+            if (idx >= line.Length) return line;
+            char c = line[idx]; if (!char.IsUpper(c)) return line;
+            int end = idx; while (end < line.Length && char.IsLetter(line[end])) end++;
+            var token = line.Substring(idx, end - idx);
+            if (_keepCapsFirstTokens != null && _keepCapsFirstTokens.Contains(token)) return line;
+            var lowered = char.ToLower(c) + line[(idx + 1)..];
+            return idx == 0 ? lowered : line[..idx] + lowered;
         }
 
+        // Purify helpers (from legacy)
+        private string PurifySentence(string sentence, bool reportify)
+        {
+            string res = sentence.Trim();
+            res = _rxArrow.Replace(res, reportify ? " $1 " : "$1 ");
+            res = _rxBullet.Replace(res, "$1 ");
+            res = _rxAfterPunct.Replace(res, "$1 ");
+            res = _rxParensSpace.Replace(res, " $& ");
+            res = _rxNumberUnit.Replace(res, "$1 $3");
+            res = _rxDot.Replace(res, ". ");
+            res = _rxSpaces.Replace(res, " ");
+            res = _rxLParen.Replace(res, "(");
+            res = _rxRParen.Replace(res, ")");
+            return res.TrimEnd();
+        }
+        private string GetBody(string input, bool onlyNumber)
+        { string pattern = onlyNumber ? @"^(\d+\. |\d+\.)" : @"^(--> |-->|->|- |-|\*|\d+\. |\d+\.|\d+\))"; return Regex.Replace(input, pattern, string.Empty).TrimEnd(); }
+
+        // Regexes
+        private static readonly Regex _rxArrow = new(@"^(--?>)", RegexOptions.Compiled);
+        private static readonly Regex _rxBullet = new(@"^(-(?!\->)|\*)(?<!-)", RegexOptions.Compiled);
+        private static readonly Regex _rxAfterPunct = new(@"([;,:](?<!\d:))(?!\s)", RegexOptions.Compiled);
+        private static readonly Regex _rxParensSpace = new(@"(?<=\S)\((?=\S)(?!\s*s\s*\))|(?<=\S)\)(?=[^\.,\s])(?!:)", RegexOptions.Compiled);
+        private static readonly Regex _rxNumberUnit = new(@"(\d+(\.\d+)?)(cm|mm|ml)", RegexOptions.Compiled);
+        private static readonly Regex _rxDot = new(@"(?<=\D)\.(?=[^\.\)]|$)", RegexOptions.Compiled);
+        private static readonly Regex _rxSpaces = new(@"\s+", RegexOptions.Compiled);
+        private static readonly Regex _rxLParen = new(@"\(\s+", RegexOptions.Compiled);
+        private static readonly Regex _rxRParen = new(@"\s+\)", RegexOptions.Compiled);
+
+        // Previous study model
         public sealed class PreviousStudyTab : BaseViewModel
         {
             public Guid Id { get; set; }
             public string Title { get; set; } = string.Empty;
-            public DateTime StudyDateTime { get; set; }
+            public System.DateTime StudyDateTime { get; set; }
             public string Header { get; set; } = string.Empty;
             public string Findings { get; set; } = string.Empty;
             public string Conclusion { get; set; } = string.Empty;
             public string RawJson { get; set; } = string.Empty;
-
-            private bool _isSelected;
-            public bool IsSelected { get => _isSelected; set => SetProperty(ref _isSelected, value); }
+            private bool _isSelected; public bool IsSelected { get => _isSelected; set => SetProperty(ref _isSelected, value); }
             public override string ToString() => Title;
         }
 
-        private sealed class PhraseSnippetProvider : ISnippetProvider
-        {
-            private readonly IPhraseService _svc;
-            private readonly ITenantContext _ctx;
-            private readonly IPhraseCache _cache;
-            private volatile bool _prefetching;
-
-            public PhraseSnippetProvider(IPhraseService svc, ITenantContext ctx, IPhraseCache cache)
-            { _svc = svc; _ctx = ctx; _cache = cache; }
-
-            public IEnumerable<ICompletionData> GetCompletions(ICSharpCode.AvalonEdit.TextEditor editor)
-            {
-                var (prefix, start) = GetWordBeforeCaret(editor);
-                if (string.IsNullOrEmpty(prefix)) yield break;
-
-                if (!_cache.Has(_ctx.TenantId) && !_prefetching)
-                {
-                    _prefetching = true;
-                    _ = Task.Run(async () =>
-                    {
-                        var all = await _svc.GetPhrasesForTenantAsync(_ctx.TenantId);
-                        _cache.Set(_ctx.TenantId, all);
-                        _prefetching = false;
-                    });
-                    yield break; // no data yet; popup will open next time
-                }
-
-                var list = _cache.Get(_ctx.TenantId);
-                if (list.Count == 0) yield break;
-
-                var filtered = list.Where(t => t.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                                   .OrderBy(t => t.Length).ThenBy(t => t);
-
-                foreach (var t in filtered)
-                    yield return MusmCompletionData.Token(t);
-            }
-
-            private static (string word, int startOffset) GetWordBeforeCaret(ICSharpCode.AvalonEdit.TextEditor editor)
-            {
-                int caret = editor.CaretOffset;
-                var line = editor.Document.GetLineByOffset(caret);
-                var text = editor.Document.GetText(line.Offset, caret - line.Offset);
-
-                int i = text.Length - 1;
-                while (i >= 0)
-                {
-                    char ch = text[i];
-                    if (!char.IsLetter(ch)) break;
-                    i--;
-                }
-                int start = line.Offset + i + 1;
-                string word = editor.Document.GetText(start, caret - start);
-                return (word, start);
-            }
-        }
-
-        // Lightweight ICommand implementation
         private sealed class DelegateCommand : ICommand
         {
-            private readonly Action<object?> _execute;
-            private readonly Predicate<object?>? _canExecute;
-            public DelegateCommand(Action<object?> execute, Predicate<object?>? canExecute = null)
-            { _execute = execute; _canExecute = canExecute; }
-            public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
-            public void Execute(object? parameter) => _execute(parameter);
-            public event EventHandler? CanExecuteChanged;
-            public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+            private readonly Action<object?> _exec; private readonly Predicate<object?>? _can;
+            public DelegateCommand(Action<object?> exec, Predicate<object?>? can = null) { _exec = exec; _can = can; }
+            public bool CanExecute(object? parameter) => _can?.Invoke(parameter) ?? true;
+            public void Execute(object? parameter) => _exec(parameter);
+            public event System.EventHandler? CanExecuteChanged;
+            public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, System.EventArgs.Empty);
+        }
+
+        public (string header, string findings, string conclusion) GetDereportifiedSections()
+        {
+            string h = Reportified ? DereportifyBlock(HeaderText, false) : HeaderText;
+            string f = Reportified ? DereportifyBlock(FindingsText, false) : FindingsText;
+            string c = Reportified ? DereportifyBlock(ConclusionText, true) : ConclusionText;
+            return (h, f, c);
         }
     }
 }

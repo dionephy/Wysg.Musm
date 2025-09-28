@@ -9,5 +9,6 @@ namespace Wysg.Musm.Radium.Services
         public IReadOnlyList<string> Get(long tenantId) => _map.TryGetValue(tenantId, out var v) ? v : new List<string>();
         public void Set(long tenantId, IReadOnlyList<string> phrases) => _map[tenantId] = phrases;
         public bool Has(long tenantId) => _map.ContainsKey(tenantId);
+        public void Clear(long tenantId) => _map.TryRemove(tenantId, out _);
     }
 }

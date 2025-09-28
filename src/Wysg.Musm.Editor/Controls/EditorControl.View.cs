@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Wysg.Musm.Editor.Completion;
 using Wysg.Musm.Editor.Snippets;
 using Wysg.Musm.Editor.Ui;
+using System.Diagnostics; // added for logging
 
 namespace Wysg.Musm.Editor.Controls
 {
@@ -113,8 +114,7 @@ namespace Wysg.Musm.Editor.Controls
         private readonly DispatcherTimer _idleTimer;         // 2s idle → request server ghosts
         private bool _isScrolling;
         private bool _idlePausedForGhosts;
-
-
+        private bool _suppressHighlight;
 
         // ===== Popup & Renderer handles (implemented elsewhere) =====
         private MusmCompletionWindow? _completionWindow;     // used by Popup partial
@@ -123,74 +123,63 @@ namespace Wysg.Musm.Editor.Controls
         // ===== Idle event for VM =====
         public event EventHandler? IdleElapsed;
 
+        // diagnostic
+        private bool _mouseDownSelecting; // true while primary button held inside editor
+
         public EditorControl()
         {
             InitializeComponent();
 
             ServerGhosts = new GhostStore(InvalidateGhosts);
 
-            // ── 1) Robust scheduling: restart both short debounce (if you still use it)
-            //    and the 2s idle for server ghosts on any text change
             Editor.TextChanged += (_, __) =>
             {
-                RestartDebounce();   // your existing short debounce (e.g., inline/UX stuff)
-                RestartIdle();       // 2s idle for server ghosts
+                RestartDebounce();
+                RestartIdle();
             };
 
-            // Optional: caret moves can also restart idle if you want (kept off by default)
-            Editor.TextArea.Caret.PositionChanged += (_, __) => { /* no-op */ };
+            Editor.TextArea.Caret.PositionChanged += (_, __) => { /* noop */ };
 
-            // ── 2) Visual highlighter for the current “word of interest”
             _wordHi = new Ui.CurrentWordHighlighter(Editor, () =>
             {
+                if (_suppressHighlight) return null;
+                if (Editor.TextArea?.Selection is { IsEmpty: false }) return null;
                 if (_completionWindow == null || _lastWordStart < 0) return null;
                 var caret = Editor.CaretOffset;
-                var len = Math.Max(0, caret - _lastWordStart);
+                if (caret < _lastWordStart) return null;
+                var len = caret - _lastWordStart;
+                if (len <= 0) return null;
                 return new Wysg.Musm.Editor.Internal.InlineSegment(_lastWordStart, len);
             });
 
-            // ── 3) Core hooks (popup + focus/scroll awareness)
-            Editor.TextArea.TextEntered += OnTextEntered;                 // Popup partial
-            Editor.TextArea.TextEntering += OnTextEntering;               // Popup partial
-            // Use AddHandler to receive PreviewKeyDown even if already handled by other listeners
-            Editor.TextArea.AddHandler(UIElement.PreviewKeyDownEvent, new System.Windows.Input.KeyEventHandler(OnTextAreaPreviewKeyDown), true);
+            Editor.TextArea.TextEntered += OnTextEntered;
+            Editor.TextArea.TextEntering += OnTextEntering;
+            Editor.TextArea.AddHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler(OnTextAreaPreviewKeyDown), true);
             try { Editor.TextArea.SelectionChanged += OnSelectionChanged; } catch { }
             Editor.TextArea.TextView.ScrollOffsetChanged += OnScrollOffsetChanged;
             Editor.GotKeyboardFocus += OnFocusChanged;
             Editor.LostKeyboardFocus += OnFocusChanged;
 
-            // ── 4) Short debounce (kept if you have other 150–300ms UX)
             _debounce = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
-            {
-                Interval = TimeSpan.FromMilliseconds(DebounceMs)
-            };
+            { Interval = TimeSpan.FromMilliseconds(DebounceMs) };
             _debounce.Tick += OnDebounceTick;
 
-            // ── 5) Dedicated 2s idle timer ONLY for server ghosts
             _idleTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
-            {
-                Interval = TimeSpan.FromSeconds(2)
-            };
+            { Interval = TimeSpan.FromSeconds(2) };
             _idleTimer.Tick += OnIdleTimerTick;
 
-            // ── 6) Feature init (other partials)
-            InitPopup();        // EditorControl.Popup.cs
-            InitServerGhosts(); // EditorControl.ServerGhosts.cs
-            InitInlineGhost();  // optional partial
+            InitPopup();
+            InitServerGhosts();
+            InitInlineGhost();
 
-            // ── 7) Tab is used for accept; prevent raw '\t' insertion
             Loaded += (_, __) => DisableTabInsertion();
-
             Unloaded += OnUnloaded;
 
-            // ── 8) Bubble a few editor signals (your existing)
             Editor.TextChanged += (_, __) => RaiseEditorTextChanged();
             Editor.TextArea.Caret.PositionChanged += (_, __) => RaiseEditorCaretMoved();
 
-            // ── 9) Attach multiline-ghost renderer explicitly
             var view = Editor.TextArea.TextView;
             var area = Editor.TextArea;
-
             _ghostRenderer = new MultiLineGhostRenderer(
                 view,
                 area,
@@ -200,8 +189,17 @@ namespace Wysg.Musm.Editor.Controls
                 getFontSize: () => Editor.FontSize,
                 showAnchors: false);
             _ghostRenderer.Attach();
-        }
 
+            Editor.TextArea.PreviewMouseLeftButtonDown += (s,e) => {
+                _mouseDownSelecting = true; _suppressHighlight = false; // allow native selection highlight start
+                System.Diagnostics.Debug.WriteLine($"[SelDiag] MouseDown caret={Editor.CaretOffset}");
+            };
+            Editor.TextArea.PreviewMouseLeftButtonUp += (s,e) => {
+                _mouseDownSelecting = false; System.Diagnostics.Debug.WriteLine($"[SelDiag] MouseUp caret={Editor.CaretOffset}");
+                // resume timers
+                if (!ShouldPauseSuggestions()) { RestartDebounce(); RestartIdle(); }
+            };
+        }
 
         private static void OnDebounceMsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
@@ -263,6 +261,29 @@ namespace Wysg.Musm.Editor.Controls
 
         private void OnSelectionChanged(object? s, EventArgs e)
         {
+            try
+            {
+                var sel = Editor.TextArea?.Selection;
+                if (sel != null && !sel.IsEmpty && sel.SurroundingSegment != null)
+                {
+                    _suppressHighlight = true; _lastWordStart = -1;
+                    var seg = sel.SurroundingSegment;
+                    bool reverse = Editor.CaretOffset == seg.Offset; // caret at start => reverse drag
+                    System.Diagnostics.Debug.WriteLine($"[SelDiag] UPDATE seg=[{seg.Offset},{seg.EndOffset}) len={seg.Length} caret={Editor.CaretOffset} reverse={reverse}");
+                }
+                else if (sel != null && sel.IsEmpty)
+                {
+                    if (!_mouseDownSelecting)
+                        _suppressHighlight = false;
+                    System.Diagnostics.Debug.WriteLine($"[SelDiag] EMPTY caret={Editor.CaretOffset}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SelDiag] EX {ex.Message}");
+            }
+
+            if (_mouseDownSelecting) return; // do not restart timers mid-drag
             if (ShouldPauseSuggestions()) { _debounce.Stop(); _idleTimer.Stop(); }
             else { RestartDebounce(); RestartIdle(); }
         }
@@ -283,7 +304,7 @@ namespace Wysg.Musm.Editor.Controls
 
         // Conservative default; InlineGhost partial can override via another partial method if needed
         private bool ShouldPauseSuggestions() =>
-            !AiEnabled || !Editor.IsKeyboardFocusWithin || _isScrolling;
+            !AiEnabled || !Editor.IsKeyboardFocusWithin || _isScrolling || _mouseDownSelecting;
 
         private void OnUnloaded(object? sender, RoutedEventArgs e)
         {
@@ -315,9 +336,10 @@ namespace Wysg.Musm.Editor.Controls
             if (!AiEnabled) return;
             if (_idlePausedForGhosts) return;
 
-            // spec: close popup on idle, then ask server
-            CloseCompletionWindow();
-            _ = RequestServerGhostsAsync();  // this just raises IdleElapsed in your current setup
+            // New behavior (2025-09-28): do NOT close the completion popup on idle.
+            // Ghost (server) suggestions may now coexist with an open completion window.
+            // Previously: CloseCompletionWindow();
+            _ = RequestServerGhostsAsync();
         }
 
 
@@ -339,7 +361,7 @@ namespace Wysg.Musm.Editor.Controls
         {
             public event System.EventHandler? CanExecuteChanged { add { } remove { } }
             public bool CanExecute(object? parameter) => true;
-            public void Execute(object? parameter) { /* no-op */ }
+            public void Execute(object? parameter) { }
         }
     }
 }

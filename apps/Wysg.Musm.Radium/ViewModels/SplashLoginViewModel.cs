@@ -53,7 +53,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
             LoginCommand = new AsyncRelayCommand<object?>(OnEmailLoginAsync);
             GoogleLoginCommand = new AsyncRelayCommand(OnGoogleLoginAsync);
-            SignUpCommand = new RelayCommand(OnOpenSignUp);
+            SignUpCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnOpenSignUp);
             TestCentralCommand = new AsyncRelayCommand(OnTestCentralAsync);
 
             _ = InitializeAsync();

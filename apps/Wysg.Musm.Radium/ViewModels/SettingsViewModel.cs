@@ -30,7 +30,7 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             _local = local;
             LocalConnectionString = _local.LocalConnectionString ?? "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas";
-            SaveCommand = new RelayCommand(Save);
+            SaveCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(Save);
             TestLocalCommand = new AsyncRelayCommand(TestLocalAsync);
         }
 
