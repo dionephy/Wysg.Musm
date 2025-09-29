@@ -11,6 +11,9 @@ using Wysg.Musm.Radium.Services;
 using Wysg.Musm.Radium.ViewModels;
 using Wysg.Musm.Radium.Views;
 using System.Threading.Tasks;
+using System.Diagnostics;
+using Wysg.Musm.Radium.Services.Diagnostics; // added
+using Serilog.Events;
 
 namespace Wysg.Musm.Radium
 {
@@ -21,12 +24,36 @@ namespace Wysg.Musm.Radium
 
         public App()
         {
+            // Network trace (option 3): enable when RAD_TRACE_PG=1
+            bool tracePg = Environment.GetEnvironmentVariable("RAD_TRACE_PG") == "1";
+            if (Log.Logger == Serilog.Core.Logger.None)
+            {
+                var logCfg = new LoggerConfiguration()
+                    .MinimumLevel.Information()
+                    .Enrich.FromLogContext();
+
+                // Fallback: write Serilog events into Debug output via custom sink
+                logCfg = logCfg.WriteTo.Sink(new DebugSink());
+
+                if (tracePg)
+                {
+                    logCfg = logCfg
+                        .MinimumLevel.Override("Npgsql", LogEventLevel.Verbose)
+                        .MinimumLevel.Override("System.Net.Sockets", LogEventLevel.Debug);
+                    Debug.WriteLine("[Diag] Npgsql trace logging enabled (RAD_TRACE_PG=1)");
+                }
+                else
+                {
+                    logCfg = logCfg.MinimumLevel.Override("Npgsql", LogEventLevel.Warning);
+                }
+                Log.Logger = logCfg.CreateLogger();
+            }
+
             _host = Host
                 .CreateDefaultBuilder()
                 .ConfigureServices(ConfigureServices)
                 .UseSerilog()
                 .Build();
-            // Initialize Postgres first-chance exception sampler
             ServicesInitialized = false; // flag
         }
 
@@ -41,6 +68,7 @@ namespace Wysg.Musm.Radium
             {
                 try { Services.GetRequiredService<IRadiumLocalSettings>(); } catch { }
                 PgDebug.Initialize();
+                FirstChanceDiagnostics.Initialize(); // new
                 ServicesInitialized = true;
             }
             await ShowSplashLoginAsync();
@@ -62,10 +90,8 @@ namespace Wysg.Musm.Radium
             services.AddSingleton<ISupabaseService, SupabaseService>();
             services.AddSingleton<IAuthStorage, DpapiAuthStorage>();
 
-            // keep existing editor services
+            services.AddSingleton<ICentralDataSourceProvider, CentralDataSourceProvider>();
             services.AddSingleton<IPhraseService, PhraseService>();
-
-            // Repositories
             services.AddSingleton<IStudynameLoincRepository, StudynameLoincRepository>();
 
             services.AddTransient<SplashLoginViewModel>();
@@ -84,6 +110,26 @@ namespace Wysg.Musm.Radium
             splashLoginVM.LoginSuccess += () =>
             {
                 loginSuccess = true;
+                try
+                {
+                    BackgroundTask.Run("PhrasePreload", async () =>
+                    {
+                        if (Environment.GetEnvironmentVariable("RAD_DISABLE_PHRASE_PRELOAD") == "1")
+                        {
+                            Debug.WriteLine("[App][Preload] Skipped (RAD_DISABLE_PHRASE_PRELOAD=1)");
+                            return;
+                        }
+                        var tenant = _host.Services.GetRequiredService<ITenantContext>();
+                        if (tenant.TenantId > 0)
+                        {
+                            Debug.WriteLine($"[App][Preload] Start tenant={tenant.TenantId}");
+                            var phraseSvc = _host.Services.GetRequiredService<IPhraseService>();
+                            await phraseSvc.PreloadAsync(tenant.TenantId);
+                            Debug.WriteLine("[App][Preload] Done");
+                        }
+                    });
+                }
+                catch { }
                 splashLoginWindow.Close();
             };
 
@@ -101,6 +147,21 @@ namespace Wysg.Musm.Radium
             {
                 Shutdown();
             }
+        }
+    }
+
+    internal sealed class DebugSink : Serilog.Core.ILogEventSink
+    {
+        public void Emit(Serilog.Events.LogEvent logEvent)
+        {
+            try
+            {
+                var msg = logEvent.RenderMessage();
+                System.Diagnostics.Debug.WriteLine($"[Log][{logEvent.Level}] {msg}");
+                if (logEvent.Exception != null)
+                    System.Diagnostics.Debug.WriteLine(logEvent.Exception);
+            }
+            catch { }
         }
     }
 }

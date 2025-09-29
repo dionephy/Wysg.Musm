@@ -33,7 +33,11 @@ namespace Wysg.Musm.Radium.ViewModels
 
         public sealed class PhraseRow : BaseViewModel
         {
+            // The phrase list originally caused rev bumps on window open because setting the bound Active property
+            // triggered ToggleActiveAsync during initial population. We introduce a suppression window (InitializeActive)
+            // to assign the initial value without firing the service call, eliminating spurious UPDATE statements.
             private readonly PhrasesViewModel _owner;
+            private bool _suppressNotify; // prevents toggle during initial load / programmatic sync
             public PhraseRow(PhrasesViewModel owner) { _owner = owner; }
             public long Id { get; init; }
             public string Text { get; set; } = string.Empty;
@@ -44,11 +48,21 @@ namespace Wysg.Musm.Radium.ViewModels
                 set
                 {
                     if (SetProperty(ref _active, value))
-                        _ = _owner.OnActiveChangedAsync(this); // fire & forget
+                    {
+                        if (_suppressNotify) return; // skip toggle while initializing
+                        _ = _owner.OnActiveChangedAsync(this); // user initiated change
+                    }
                 }
             }
             public DateTime UpdatedAt { get; set; }
             public long Rev { get; set; }
+            public void InitializeActive(bool value)
+            {
+                _suppressNotify = true;
+                _active = value; // set backing directly to avoid SetProperty re-entry logic
+                OnPropertyChanged(nameof(Active));
+                _suppressNotify = false;
+            }
         }
 
         private async Task<long?> ResolveAccountIdAsync()
@@ -65,6 +79,8 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private async Task RefreshAsync()
         {
+            // Refresh repopulates the grid. For each row we call InitializeActive(...) so the first property set
+            // does not invoke ToggleActiveAsync (which would otherwise produce unnecessary UPDATE + trigger rev bump).
             var accountId = await ResolveAccountIdAsync();
             if (accountId == null)
             {
@@ -82,7 +98,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 Items.Clear();
                 foreach (var m in meta)
                 {
-                    var row = new PhraseRow(this) { Id = m.Id, Text = m.Text, Active = m.Active, UpdatedAt = m.UpdatedAt, Rev = m.Rev };
+                    var row = new PhraseRow(this) { Id = m.Id, Text = m.Text, UpdatedAt = m.UpdatedAt, Rev = m.Rev };
+                    row.InitializeActive(m.Active); // prevents accidental toggle
                     Items.Add(row);
                 }
             });
@@ -101,6 +118,9 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private async Task OnActiveChangedAsync(PhraseRow row)
         {
+            // Only invoked for genuine user interaction (checkbox edit). We still double-check server round-trip
+            // and, if the returned Active mismatches the user intent (possible race), we issue one corrective toggle.
+            // This preserves rev integrity while keeping UI consistent.
             if (row.Id == 0) return; // placeholder row
             var accountId = await ResolveAccountIdAsync();
             if (accountId == null) return;
@@ -115,7 +135,8 @@ namespace Wysg.Musm.Radium.ViewModels
             }
             Application.Current.Dispatcher.Invoke(() =>
             {
-                row.Active = updated.Active; // may trigger re-entry; guard by comparing
+                // Re-apply updated state (using InitializeActive to avoid recursive toggle) then update metadata.
+                row.InitializeActive(updated.Active);
                 row.UpdatedAt = updated.UpdatedAt;
                 row.Rev = updated.Rev;
             });

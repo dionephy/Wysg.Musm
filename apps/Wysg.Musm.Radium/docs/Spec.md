@@ -372,9 +372,27 @@ For full behavioral definitions see MUSM Editor Specification included in design
 - Save Selected button now enables immediately on checkbox toggle (command requery via callback and UpdateSourceTrigger=PropertyChanged).
 - Dark mode styling applied consistent with main Radium window (panel, border, grid colors).
 
-## Reliability Update: PhraseService Index Ensure
+## Reliability Update: Phrase Service Index Ensure
 - Added transient retry (max 3 attempts, linear backoff 300ms * attempt) for EnsureIndexAsync when encountering timeout/stream read exceptions.
 - On persistent failure after retries index creation is skipped (idempotent) with log entry; service continues.
+
+## Reliability Update: Phrase Revision Stabilization (2025-09-29)
+Problem
+- Opening the Phrase Manager or performing innocuous ensure calls caused `rev` and `updated_at` to increment even when no logical change (text/active) occurred.
+- Root causes:
+  1. Application UPSERT always executed conflict UPDATE setting updated_at + rev.
+  2. DB trigger `radium.touch_phrase` unconditionally bumped updated_at + rev on every UPDATE.
+  3. Initial DataGrid population toggled `Active` (property set) firing a service call that issued an UPDATE.
+Impact
+- Artificial version churn; noisy auditing; client caches invalidated needlessly.
+Resolution
+- DB trigger modified to bump only when `NEW.active IS DISTINCT FROM OLD.active OR NEW.text IS DISTINCT FROM OLD.text`.
+- Application `UpsertPhraseAsync` now pre-selects: returns early on no-op (active unchanged) and removes inline rev/updated_at assignments.
+- `ToggleActiveAsync` sends minimal UPDATE (no manual timestamp fields); relies solely on trigger condition.
+- UI population uses `InitializeActive` with suppression flag to avoid firing toggles during initial binding.
+Result
+- `rev` and `updated_at` remain stable across window opens unless a real state transition occurs.
+- Only intentional user toggles or text changes produce new revision numbers.
 
 ---
 End of cumulative specification.

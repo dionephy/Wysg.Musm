@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Npgsql;
 using NpgsqlTypes;
 using System.Diagnostics;
+using System.Net.Sockets;
+using System.IO;
 
 namespace Wysg.Musm.Radium.Services
 {
@@ -45,6 +47,18 @@ namespace Wysg.Musm.Radium.Services
             }
         }
 
+        private static void LogNetworkException(string phase, Exception ex)
+        {
+            if (ex is SocketException se)
+            {
+                Debug.WriteLine($"[Repo][NET][{phase}] SocketException {se.SocketErrorCode} {se.Message}");
+            }
+            else if (ex is IOException io && io.InnerException is SocketException ise)
+            {
+                Debug.WriteLine($"[Repo][NET][{phase}] IO->{ise.SocketErrorCode} {ise.Message}");
+            }
+        }
+
         private static async Task<string?> ResolveExistingMapTableAsync(NpgsqlConnection cn)
         {
             var sw = Stopwatch.StartNew();
@@ -82,7 +96,8 @@ namespace Wysg.Musm.Radium.Services
             await using var cn = Open();
             try
             {
-                await cn.OpenAsync();
+                try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn); }
+                catch (Exception openEx) { LogNetworkException("Open", openEx); throw; }
                 Debug.WriteLine($"[Repo][Call#{callId}] Connection Opened State={cn.FullState}");
                 await using var cmd = new NpgsqlCommand("SELECT id, studyname FROM med.rad_studyname ORDER BY studyname", cn);
                 await using var rd = await cmd.ExecuteReaderAsync();
@@ -115,7 +130,8 @@ namespace Wysg.Musm.Radium.Services
             await using var cn = Open();
             try
             {
-                await cn.OpenAsync();
+                try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn); }
+                catch (Exception openEx) { LogNetworkException("Open", openEx); throw; }
                 await using var cmd = new NpgsqlCommand(@"INSERT INTO med.rad_studyname(studyname)
 VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname RETURNING id;", cn);
                 cmd.Parameters.AddWithValue("@n", studyname);
@@ -142,7 +158,8 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
             await using var cn = Open();
             try
             {
-                await cn.OpenAsync();
+                try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn); }
+                catch (Exception openEx) { LogNetworkException("Open", openEx); throw; }
                 await using var cmd = new NpgsqlCommand("SELECT part_number, part_type_name, part_name FROM loinc.part ORDER BY part_type_name, part_name", cn);
                 await using var rd = await cmd.ExecuteReaderAsync();
                 while (await rd.ReadAsync())
@@ -168,7 +185,8 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
             await using var cn = Open();
             try
             {
-                await cn.OpenAsync();
+                try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn); }
+                catch (Exception openEx) { LogNetworkException("Open", openEx); throw; }
                 var tbl = await GetMapTableAsync(cn);
                 var sql = $@"SELECT p.part_number, p.part_type_name, p.part_name, COUNT(*) AS usage
                          FROM {tbl} m
@@ -202,7 +220,8 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
             await using var cn = Open();
             try
             {
-                await cn.OpenAsync();
+                try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn); }
+                catch (Exception openEx) { LogNetworkException("Open", openEx); throw; }
                 var tbl = await GetMapTableAsync(cn);
                 await using var cmd = new NpgsqlCommand($"SELECT part_number, part_sequence_order FROM {tbl} WHERE studyname_id=@id ORDER BY part_number", cn);
                 cmd.Parameters.AddWithValue("@id", studynameId);
@@ -226,7 +245,7 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
             var sw = Stopwatch.StartNew();
             Debug.WriteLine($"[Repo][Call#{callId}] SaveMappingsAsync START studynameId={studynameId}");
             await using var cn = Open();
-            await cn.OpenAsync();
+            await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn); // open exceptions propagate to caller
             var tbl = await GetMapTableAsync(cn);
             await using var tx = await cn.BeginTransactionAsync();
             try
@@ -239,9 +258,9 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
                 int inserted = 0;
                 await using (var ins = new NpgsqlCommand($"INSERT INTO {tbl}(studyname_id, part_number, part_sequence_order) VALUES (@id, @p, @o)", cn, (NpgsqlTransaction)tx))
                 {
-                    var pId = ins.Parameters.Add("@id", NpgsqlTypes.NpgsqlDbType.Bigint);
-                    var pNum = ins.Parameters.Add("@p", NpgsqlTypes.NpgsqlDbType.Text);
-                    var pOrd = ins.Parameters.Add("@o", NpgsqlTypes.NpgsqlDbType.Text);
+                    var pId = ins.Parameters.Add("@id", NpgsqlDbType.Bigint);
+                    var pNum = ins.Parameters.Add("@p", NpgsqlDbType.Text);
+                    var pOrd = ins.Parameters.Add("@o", NpgsqlDbType.Text);
                     foreach (var it in items)
                     {
                         pId.Value = studynameId;
@@ -279,7 +298,8 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
             await using var cn = Open();
             try
             {
-                await cn.OpenAsync();
+                try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn); }
+                catch (Exception openEx) { LogNetworkException("Open", openEx); throw; }
                 var sql = @"SELECT rb.loinc_number, max(rb.long_common_name) AS long_common_name
                         FROM loinc.rplaybook rb
                         WHERE rb.part_number = ANY(@nums)
@@ -287,9 +307,9 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
                         HAVING COUNT(DISTINCT rb.part_number) = @n
                         ORDER BY max(rb.long_common_name)";
                 await using var cmd = new NpgsqlCommand(sql, cn);
-                var pNums = cmd.Parameters.Add("@nums", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Text);
+                var pNums = cmd.Parameters.Add("@nums", NpgsqlDbType.Array | NpgsqlDbType.Text);
                 pNums.Value = numbers;
-                cmd.Parameters.Add("@n", NpgsqlTypes.NpgsqlDbType.Integer).Value = numbers.Length;
+                cmd.Parameters.Add("@n", NpgsqlDbType.Integer).Value = numbers.Length;
                 await using var rd = await cmd.ExecuteReaderAsync();
                 while (await rd.ReadAsync()) list.Add(new PlaybookMatchRow(rd.GetString(0), rd.IsDBNull(1) ? string.Empty : rd.GetString(1)));
                 sw.Stop();
@@ -313,7 +333,8 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
             await using var cn = Open();
             try
             {
-                await cn.OpenAsync();
+                try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn); }
+                catch (Exception openEx) { LogNetworkException("Open", openEx); throw; }
                 var sql = @"SELECT part_number, coalesce(part_name,''), coalesce(part_sequence_order,'A')
                         FROM loinc.rplaybook
                         WHERE loinc_number=@id
@@ -340,7 +361,7 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
             var sw = Stopwatch.StartNew();
             Debug.WriteLine($"[Repo][Call#{callId}] GetDiagnosticsAsync START");
             await using var cn = Open();
-            await cn.OpenAsync();
+            await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
             var builder = new NpgsqlConnectionStringBuilder(cn.ConnectionString);
             var src = _settings.LocalConnectionString != null && cn.ConnectionString.Contains(_settings.LocalConnectionString) ? "LocalConnectionString" : "Fallback";
             var mapTable = await GetMapTableAsync(cn);

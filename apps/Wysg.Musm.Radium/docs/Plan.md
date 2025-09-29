@@ -187,6 +187,21 @@ Estimated Output: 45–55 tasks (broader scope than template example) with expli
 - Replaced complex anchor-from-point + capture with lightweight caret-based anchor and delayed start flag _dragStarted to avoid freeze and re-entrancy.
 
 ---
+## Post-Fix Note: Phrase Revision Stabilization (2025-09-29)
+Identified Issues
+1. Unconditional trigger rev bump.
+2. App-side unconditional conflict UPDATE.
+3. UI binding side-effects (Active setter firing toggle during initial load).
+Mitigations
+- Conditional trigger logic.
+- Pre-select short-circuit in `UpsertPhraseAsync`.
+- Remove explicit updated_at/rev assignments in UPDATE SQL.
+- Suppressed initial Active change notifications in grid rows.
+Future Safeguards
+- Add unit test simulating refresh to assert zero UPDATE statements when no user interaction.
+- Add monitoring counter: logical_updates vs total_updates to detect regressions.
+
+---
 ## Phrase Extraction Window (New)
 - Create PhraseExtractionWindow (XAML + code-behind) bound to PhraseExtractionViewModel.
 - ViewModel responsibilities: hold lines, generate candidates, manage selection/saving states.

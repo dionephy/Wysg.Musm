@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Wysg.Musm.Infrastructure.ViewModels;
 using Wysg.Musm.Radium.Services;
+using Wysg.Musm.Radium.Services.Diagnostics; // added
 
 namespace Wysg.Musm.Radium.ViewModels
 {
@@ -61,35 +62,65 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private async Task InitializeAsync()
         {
-            await Task.Delay(300);
-
-            // Try silent login using refresh token if present
-            var storedRt = _storage.RefreshToken;
-            if (!string.IsNullOrWhiteSpace(storedRt))
+            try
             {
-                StatusMessage = "Restoring session...";
-                var refreshed = await _auth.RefreshAsync(storedRt!);
-                if (refreshed.Success)
+                Debug.WriteLine("[Splash][Init] Begin T=" + Environment.CurrentManagedThreadId);
+                await Task.Delay(300);
+
+                var storedRt = _storage.RefreshToken;
+                if (!string.IsNullOrWhiteSpace(storedRt))
                 {
-                    try
+                    StatusMessage = "Restoring session...";
+                    Debug.WriteLine("[Splash][Init] Attempt silent refresh");
+                    var refreshed = await _auth.RefreshAsync(storedRt!);
+                    Debug.WriteLine($"[Splash][Init] Refresh result Success={refreshed.Success}");
+                    if (refreshed.Success)
                     {
-                        long accountId = await _supabase.EnsureAccountAsync(refreshed.UserId, _storage.Email ?? string.Empty, _storage.DisplayName ?? string.Empty);
-                        await _supabase.UpdateLastLoginAsync(accountId);
-                        _tenantContext.TenantId = accountId;
-                        _tenantContext.TenantCode = refreshed.UserId;
-                        LoginSuccess?.Invoke();
-                        return;
-                    }
-                    catch (Exception ex)
-                    {
-                        ErrorMessage = $"Session restore failed: {ex.Message}";
+                        try
+                        {
+                            Debug.WriteLine("[Splash][Init] EnsureAccountAsync start for user=" + refreshed.UserId);
+                            long accountId = await _supabase.EnsureAccountAsync(refreshed.UserId, _storage.Email ?? string.Empty, _storage.DisplayName ?? string.Empty);
+
+                            // Set tenant + signal success BEFORE last-login update
+                            _tenantContext.TenantId = accountId;
+                            _tenantContext.TenantCode = refreshed.UserId;
+                            Debug.WriteLine("[Splash][Init] Silent login success (tenant set)");
+                            LoginSuccess?.Invoke();
+
+                            // Fire & forget last login update (silent) so UI isn't blocked
+                            BackgroundTask.Run("LastLoginUpdate", () => _supabase.UpdateLastLoginAsync(accountId, silent: true));
+                            return;
+                        }
+                        catch (OperationCanceledException oce)
+                        {
+                            Debug.WriteLine("[Splash][Init][CANCEL] " + oce);
+                            ErrorMessage = "Session restore canceled.";
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine("[Splash][Init][EX] " + ex);
+                            ErrorMessage = $"Session restore failed: {ex.Message}";
+                        }
                     }
                 }
-            }
 
-            IsLoading = false;
-            ShowLogin = true;
-            StatusMessage = "Please log in to continue";
+                IsLoading = false;
+                ShowLogin = true;
+                StatusMessage = "Please log in to continue";
+                Debug.WriteLine("[Splash][Init] Show login UI");
+            }
+            catch (OperationCanceledException oce)
+            {
+                Debug.WriteLine("[Splash][Init][CANCEL-OUTER] " + oce);
+                ErrorMessage = "Initialization canceled.";
+                IsLoading = false; ShowLogin = true; StatusMessage = "Retry login";
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[Splash][Init][EX-OUTER] " + ex);
+                ErrorMessage = ex.Message;
+                IsLoading = false; ShowLogin = true; StatusMessage = "Error - login manually";
+            }
         }
 
         private async Task OnEmailLoginAsync(object? parameter)
@@ -104,19 +135,28 @@ namespace Wysg.Musm.Radium.ViewModels
             try
             {
                 StatusMessage = "Signing in...";
+                Debug.WriteLine("[Splash][Login] Email sign-in start email=" + Email);
                 var auth = await _auth.SignInWithEmailPasswordAsync(Email.Trim(), password);
+                Debug.WriteLine("[Splash][Login] Auth success=" + auth.Success);
                 if (!auth.Success) { ErrorMessage = auth.Error; return; }
 
                 var accountId = await _supabase.EnsureAccountAsync(auth.UserId, auth.Email, auth.DisplayName);
-                await _supabase.UpdateLastLoginAsync(accountId);
+                await _supabase.UpdateLastLoginAsync(accountId); // interactive login keep errors visible
                 _tenantContext.TenantId = accountId;
                 _tenantContext.TenantCode = auth.UserId;
 
                 PersistAuth(auth);
+                Debug.WriteLine("[Splash][Login] Success account=" + accountId);
                 LoginSuccess?.Invoke();
+            }
+            catch (OperationCanceledException oce)
+            {
+                Debug.WriteLine("[Splash][Login][CANCEL] " + oce);
+                ErrorMessage = "Login canceled.";
             }
             catch (Exception ex)
             {
+                Debug.WriteLine("[Splash][Login][EX] " + ex);
                 ErrorMessage = $"Login error: {ex.Message}";
             }
             finally
@@ -132,19 +172,28 @@ namespace Wysg.Musm.Radium.ViewModels
             try
             {
                 StatusMessage = "Opening Google sign-in...";
+                Debug.WriteLine("[Splash][Google] Start");
                 var auth = await _auth.SignInWithGoogleAsync();
+                Debug.WriteLine("[Splash][Google] Auth success=" + auth.Success);
                 if (!auth.Success) { ErrorMessage = auth.Error; return; }
 
                 var accountId = await _supabase.EnsureAccountAsync(auth.UserId, auth.Email, auth.DisplayName);
-                await _supabase.UpdateLastLoginAsync(accountId);
+                await _supabase.UpdateLastLoginAsync(accountId); // interactive login keep errors visible
                 _tenantContext.TenantId = accountId;
                 _tenantContext.TenantCode = auth.UserId;
 
                 PersistAuth(auth);
+                Debug.WriteLine("[Splash][Google] Success account=" + accountId);
                 LoginSuccess?.Invoke();
+            }
+            catch (OperationCanceledException oce)
+            {
+                Debug.WriteLine("[Splash][Google][CANCEL] " + oce);
+                ErrorMessage = "Google login canceled.";
             }
             catch (Exception ex)
             {
+                Debug.WriteLine("[Splash][Google][EX] " + ex);
                 ErrorMessage = $"Google login error: {ex.Message}";
             }
             finally
@@ -182,8 +231,20 @@ namespace Wysg.Musm.Radium.ViewModels
             IsBusy = true; ErrorMessage = string.Empty; StatusMessage = "Testing central DB...";
             try
             {
+                Debug.WriteLine("[Splash][TestCentral] Start");
                 var (ok, msg) = await _supabase.TestConnectionAsync();
                 StatusMessage = ok ? msg : $"Central DB error: {msg}";
+                Debug.WriteLine($"[Splash][TestCentral] Done ok={ok} msg={msg}");
+            }
+            catch (OperationCanceledException oce)
+            {
+                Debug.WriteLine("[Splash][TestCentral][CANCEL] " + oce);
+                StatusMessage = "Central test canceled";
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[Splash][TestCentral][EX] " + ex);
+                StatusMessage = "Central test error: " + ex.Message;
             }
             finally { IsBusy = false; }
         }

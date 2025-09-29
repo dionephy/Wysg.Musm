@@ -8,6 +8,9 @@ namespace Wysg.Musm.Radium.Services
 
     public interface IPhraseService
     {
+        // Explicit one-time preload (fills in-memory snapshot; safe to call multiple times)
+        Task PreloadAsync(long accountId);
+
         // Snapshot-backed list (account scope)
         Task<IReadOnlyList<string>> GetPhrasesForAccountAsync(long accountId);
         Task<IReadOnlyList<string>> GetPhrasesByPrefixAccountAsync(long accountId, string prefix, int limit = 50);

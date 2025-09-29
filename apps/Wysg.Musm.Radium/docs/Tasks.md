@@ -11,6 +11,7 @@
 - [X] TM28 Phrase Extraction refinement (single-word auto-select, immediate Save enable) & PhraseService index retry logic.
 - [X] TM29 Phrase Extraction refinement: dereportified line sourcing + enabled-first ordering.
 - [X] TM30 Phrase Extraction dereportified loading + async non-blocking save (IsBusy gating).
+- [X] TM31 Phrase rev stabilization: conditional trigger + app pre-select no-op short-circuit + UI load suppression.
 
 **Input**: Spec.md & Plan.md (cumulative)  
 **Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  
@@ -169,3 +170,4 @@ Contract test parallel set: T120 T121 T122 T123 T124 T125 T126
 - [X] TM28 Phrase Extraction refinement (single-word auto-select, immediate Save enable) & PhraseService index retry logic.
 - [X] TM29 Phrase Extraction refinement: dereportified line sourcing + enabled-first ordering.
 - [X] TM30 Phrase Extraction dereportified loading + async non-blocking save (IsBusy gating).
+- [X] TM31 Phrase rev stabilization: conditional trigger + app pre-select no-op short-circuit + UI load suppression.
