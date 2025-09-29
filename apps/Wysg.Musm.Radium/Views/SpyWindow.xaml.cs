@@ -226,10 +226,10 @@ namespace Wysg.Musm.Radium.Views
                 {
                     _handlingProcOpChange = true;
                     Debug.WriteLine($"[PP2] Op changed to: {row.Op}, FocusWithin={cb.IsKeyboardFocusWithin}, IsDropDownOpen={cb.IsDropDownOpen}");
-
                     switch (row.Op)
                     {
                         case "GetText":
+                        case "GetTextOCR":
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
                             break;
@@ -250,13 +250,12 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
                             break;
                         case "GetValueFromSelection":
-                            // Arg1 element=list, Arg2 header string (default ID)
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg2.Value)) row.Arg2.Value = "ID";
                             break;
                         case "ToDateTime":
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false; // no Arg2
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
                             break;
                     }
                 }
@@ -281,6 +280,29 @@ namespace Wysg.Musm.Radium.Views
                         var legacy = el.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty;
                         valueToStore = !string.IsNullOrEmpty(val) ? val : (!string.IsNullOrEmpty(name) ? name : legacy);
                         preview = valueToStore ?? "(null)";
+                    }
+                    catch { valueToStore = null; preview = "(error)"; }
+                    break;
+                }
+                case "GetTextOCR":
+                {
+                    var el = ResolveElement(row.Arg1);
+                    if (el == null) { valueToStore = null; preview = "(no element)"; break; }
+                    try
+                    {
+                        // Use bounding rectangle of element for OCR region
+                        var r = el.BoundingRectangle;
+                        if (r.Width <= 0 || r.Height <= 0) { preview = "(no bounds)"; valueToStore = null; break; }
+                        var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
+                        // Fallback: if native handle not available, just fail
+                        if (hwnd == IntPtr.Zero) { preview = "(no hwnd)"; valueToStore = null; break; }
+                        var svc = ((App)Application.Current).Services.GetService(typeof(PacsService)) as PacsService;
+                        if (svc == null) { preview = "(no pacs svc)"; valueToStore = null; break; }
+                        // Crop region relative to window: attempt direct region OCR
+                        // Since we have hwnd for element, approximate region at (0,0) sized to element
+                        var (engine, text) = Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(0,0,(int)r.Width,(int)r.Height)).GetAwaiter().GetResult();
+                        if (!engine) { preview = "(ocr unavailable)"; valueToStore = null; }
+                        else { valueToStore = text; preview = string.IsNullOrWhiteSpace(text) ? "(empty)" : text!; }
                     }
                     catch { valueToStore = null; preview = "(error)"; }
                     break;
@@ -576,6 +598,29 @@ namespace Wysg.Musm.Radium.Views
                             var legacy = el.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty;
                             valueToStore = !string.IsNullOrEmpty(value) ? value : (!string.IsNullOrEmpty(name) ? name : legacy);
                             preview = valueToStore ?? "(null)";
+                        }
+                        catch { valueToStore = null; preview = "(error)"; }
+                        break;
+                    }
+                    case "GetTextOCR":
+                    {
+                        var el = ResolveElement(row.Arg1);
+                        if (el == null) { valueToStore = null; preview = "(no element)"; break; }
+                        try
+                        {
+                            // Use bounding rectangle of element for OCR region
+                            var r = el.BoundingRectangle;
+                            if (r.Width <= 0 || r.Height <= 0) { preview = "(no bounds)"; valueToStore = null; break; }
+                            var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
+                            // Fallback: if native handle not available, just fail
+                            if (hwnd == IntPtr.Zero) { preview = "(no hwnd)"; valueToStore = null; break; }
+                            var svc = ((App)Application.Current).Services.GetService(typeof(PacsService)) as PacsService;
+                            if (svc == null) { preview = "(no pacs svc)"; valueToStore = null; break; }
+                            // Crop region relative to window: attempt direct region OCR
+                            // Since we have hwnd for element, approximate region at (0,0) sized to element
+                            var (engine, text) = Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(0,0,(int)r.Width,(int)r.Height)).GetAwaiter().GetResult();
+                            if (!engine) { preview = "(ocr unavailable)"; valueToStore = null; }
+                            else { valueToStore = text; preview = string.IsNullOrWhiteSpace(text) ? "(empty)" : text!; }
                         }
                         catch { valueToStore = null; preview = "(error)"; }
                         break;

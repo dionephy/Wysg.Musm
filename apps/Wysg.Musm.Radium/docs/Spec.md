@@ -9,7 +9,7 @@
 ---
 # Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
-(Updated: account_id replaces tenant_id; phrase completion now uses in‑memory snapshot.)
+(Updated: account_id replaces tenant_id; phrase completion now uses in‑memory snapshot. Added OCR element text operation and current patient/study PACS banner extraction.)
 
 **Feature Branch**: `[radium-cumulative]`  
 **Created**: 2025-09-28  
@@ -19,8 +19,8 @@
 ---
 ## Execution Flow (main)
 ```
-1. Parse cumulative scope (reporting workflow + editor + mapping + PACS helpers)
-2. Extract key concepts: studies, previous reports, reporting pipeline, editor assistance, mapping, PACS submission
+1. Parse cumulative scope (reporting workflow + editor + mapping + PACS helpers + OCR utilities)
+2. Extract key concepts: studies, previous reports, reporting pipeline, editor assistance, mapping, PACS submission, OCR banner parsing
 3. Mark ambiguities
 4. Define user scenarios (radiologist daily workflow + assistant automation)
 5. Generate functional requirements (testable, numbered FR-###)
@@ -52,6 +52,9 @@ While entering findings, the editor provides: phrase / hotkey / snippet completi
 ### PACS Submission Story
 On completion, user initiates “Send to PACS”. System validates banner metadata matches current study, injects formatted (reportified + numbered) sections into the respective PACS fields, confirms acknowledgment, and persists final structured report + study metadata locally.
 
+### OCR & Live Banner Story
+User or automation needs quick extraction of patient number or study date/time from currently visible viewer banner (even if not mapped in UI tree). System provides lightweight OCR procedure operation and dedicated PACS methods to retrieve these values for chaining in custom procedures.
+
 ### Acceptance Scenarios
 1. Given a current study with unmapped studyname, when opened, then LOINC mapping window appears before editing proceeds (unless mapping already exists).
 2. Given modality = MR and missing technique mapping, when current study loads, then technique mapping capture window appears and upon confirmation Report.technique is populated.
@@ -60,6 +63,8 @@ On completion, user initiates “Send to PACS”. System validates banner metada
 5. Given user is idle (≥ GhostIdleMs) with no completion popup open, when suggestions available, then ghost suggestions render and can be accepted with Tab.
 6. Given findings text entered, when postprocess run, then conclusion preview and all proofread fields are generated exactly once per invocation and are traceable.
 7. Given Send to PACS executed, when PACS acknowledgment received, then system stores final report payload locally atomically (header+findings+conclusion with metadata) or reports failure with reason.
+8. Given the user adds a GetTextOCR operation to a procedure with an element target, then on run the system attempts OCR inside the element bounds and returns extracted text (or explicit reason markers when engine unavailable / empty).
+9. Given the user invokes new PACS methods (Get current patient number / Get current study date time) in procedures, then values derived from banner (digits cluster / date pattern) are returned when present.
 
 ### Edge Cases
 - What happens when studyname mapping window is closed without selection? → [NEEDS CLARIFICATION: fallback behavior – skip, force retry, or mark as unmapped?]
@@ -67,6 +72,8 @@ On completion, user initiates “Send to PACS”. System validates banner metada
 - Ghost suggestions appear but user begins typing mid‑suggestion → They must instantly disappear (no flicker insertion) and idle timer resets.
 - PACS field length limit exceeded → [NEEDS CLARIFICATION: truncation vs user warning]
 - Network/LLM service unavailable during postprocess → System must allow manual editing; mark fields requiring AI with placeholder and non‑blocking warning.
+- OCR engine unavailable (Windows OCR not enabled) → Operation returns explicit "(ocr unavailable)" preview token without throwing.
+- Patient number regex finds multiple sequences → Longest sequence selected.
 
 ---
 ## Requirements (mandatory)
@@ -113,11 +120,14 @@ On completion, user initiates “Send to PACS”. System validates banner metada
 - **FR-095** Procedure operation GetValueFromSelection MUST return target column value using normalization rules and alignment preservation.
 - **FR-096** Procedure operation ToDateTime MUST parse supported date/time formats or report parse fail without throwing.
 - **FR-097** PACS selection helper methods MUST retrieve structured field values (name, sex, birth date, etc.) from either Search Results or Related Study list selections using unified header logic.
+- **FR-098** Procedure operation GetTextOCR MUST perform OCR on target element bounds and return extracted text or explicit status tokens ("(no element)", "(ocr unavailable)", "(empty)" etc.).
+- **FR-099** PACS helper MUST expose current patient number via banner heuristic (longest digit sequence length ≥5) and current study date/time via date(+time) pattern.
 
 ### Functional Requirements (Reliability & Logging)
 - **FR-120** First-chance Postgres exception sampler MUST log each unique (SqlState|Message) only once per application session.
 - **FR-121** PhraseService MUST use configurable LocalConnectionString (settings) with fallback; no hardcoded credentials.
 - **FR-122** System MUST allow continuation of reporting if any single LLM call fails, marking only affected fields.
+- **FR-123** OCR / banner extraction failures MUST NOT crash procedure execution; they return null output with diagnostic preview.
 
 ### Data & Key Entities
 - **Report**: technique, chief_complaint, history_preview, chief_complaint_proofread, history, history_proofread, header_and_findings, conclusion, split_index, comparison, technique_proofread, comparison_proofread, findings_proofread, conclusion_proofread, findings, conclusion_preview.
@@ -138,7 +148,7 @@ On completion, user initiates “Send to PACS”. System validates banner metada
 ### Requirement Completeness
 - [ ] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements testable & numbered
-- [x] Scope boundaries: Reporting workflow (current + previous), mapping, editor assistance, PACS submission
+- [x] Scope boundaries: Reporting workflow (current + previous), mapping, editor assistance, PACS submission, OCR extraction
 - [ ] Assumptions validated (pending clarifications)
 
 ---
@@ -158,10 +168,11 @@ On completion, user initiates “Send to PACS”. System validates banner metada
 3. Technique derivation rule from LOINC parts (deterministic mapping or user input precedence?).
 4. Acceptable latency targets for postprocess (LLM) before offering manual fallback.
 5. Ghost suggestion insertion span (line remainder vs context-aware region) final policy.
+6. OCR banner element reliability vs whole-window heuristic fallback thresholds.
 
 ---
 ## Non-Functional (Derived)
-- **Performance**: Header metadata render <1s (local). Ghost suggestion request dispatch ≤100ms after idle event. LOINC mapping UI list filtering <150ms on typical dataset.
+- **Performance**: Header metadata render <1s (local). Ghost suggestion request dispatch ≤100ms after idle event. LOINC mapping UI list filtering <150ms on typical dataset. OCR element operation should return in <1.2s typical (depends on Windows OCR engine).
 - **Reliability**: Any single external (LLM) failure must not block manual editing or PACS send if mandatory fields filled.
 - **Observability**: Structured logging for each pipeline stage (event type, duration, success/failure) [NEEDS CLARIFICATION: log schema].
 - **Local Persistence**: Final report write must be atomic (transaction or temp+rename) [detail for plan].
@@ -171,6 +182,7 @@ On completion, user initiates “Send to PACS”. System validates banner metada
 - Over-reliance on LLM latency impacting radiologist throughput.
 - Ambiguous previous report headers producing incorrect structured fields (mitigate with confidence score + fallback).
 - Mapping quality affecting downstream technique auto-fill accuracy.
+- OCR variability across workstation font/render settings impacting patient number extraction accuracy.
 
 ---
 ## Appendix A: Implemented Feature Record (Traceability – Historical Notes)
@@ -329,17 +341,10 @@ Implementation
 Notes
 - All methods return raw string (no trimming beyond whitespace removal). Date/time values can be piped through `ToDateTime` in a procedure if normalization needed.
 
-## Removed Feature (Former #10 Diagnostics)
-- Repository Diagnostics command and UI removed to streamline window; underlying repository method may still exist but is no longer surfaced in the ViewModel or XAML.
-
 ## 10) Postgres First-Chance Exception Sampling
 - `PgDebug.Initialize()` registers a first-chance handler capturing `PostgresException` once per (SqlState|MessageText) pair and logs via Serilog at Warning level.
 - Added initialization in `App.OnStartup` before splash login.
 - Repository methods now log explicit PostgresException details with SqlState and server message for triage.
-
-Usage
-- Inspect log output (Serilog sinks) to identify the first logged Postgres error instead of many debugger popups.
-- After resolving root cause, the flood should disappear.
 
 ## 11) PhraseService Connection Refactor
 Changes
@@ -356,6 +361,11 @@ For full behavioral definitions see MUSM Editor Specification included in design
 ## Update Log (2025-09-28)
 - Replaced terminology: tenant_id → account_id in all phrase related requirements.
 - Phrase completion (FR-050..FR-053) now explicitly sourced from snapshot in PhraseService (AccountPhraseState) instead of direct DB each keystroke.
+
+## Update Log (2025-09-29)
+- Added GetTextOCR procedure operation (FR-098).
+- Added PACS banner helpers: GetCurrentPatientNumber, GetCurrentStudyDateTime (FR-099, FR-123 reliability clause).
+- Application shutdown behavior updated: app exits when main window closed (usability improvement, not numbered FR; aligns with standard desktop UX).
 
 ---
 ## Feature Update (Reportified Toggle - Inverse Dereportify)
@@ -379,20 +389,12 @@ For full behavioral definitions see MUSM Editor Specification included in design
 ## Reliability Update: Phrase Revision Stabilization (2025-09-29)
 Problem
 - Opening the Phrase Manager or performing innocuous ensure calls caused `rev` and `updated_at` to increment even when no logical change (text/active) occurred.
-- Root causes:
-  1. Application UPSERT always executed conflict UPDATE setting updated_at + rev.
-  2. DB trigger `radium.touch_phrase` unconditionally bumped updated_at + rev on every UPDATE.
-  3. Initial DataGrid population toggled `Active` (property set) firing a service call that issued an UPDATE.
 Impact
 - Artificial version churn; noisy auditing; client caches invalidated needlessly.
 Resolution
-- DB trigger modified to bump only when `NEW.active IS DISTINCT FROM OLD.active OR NEW.text IS DISTINCT FROM OLD.text`.
-- Application `UpsertPhraseAsync` now pre-selects: returns early on no-op (active unchanged) and removes inline rev/updated_at assignments.
-- `ToggleActiveAsync` sends minimal UPDATE (no manual timestamp fields); relies solely on trigger condition.
-- UI population uses `InitializeActive` with suppression flag to avoid firing toggles during initial binding.
+- Conditional trigger + app-side short-circuit; removed unconditional rev bump.
 Result
 - `rev` and `updated_at` remain stable across window opens unless a real state transition occurs.
-- Only intentional user toggles or text changes produce new revision numbers.
 
 ---
 End of cumulative specification.

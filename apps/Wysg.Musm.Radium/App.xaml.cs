@@ -141,7 +141,8 @@ namespace Wysg.Musm.Radium
                 var mainWindow = new MainWindow { DataContext = mainVM };
                 Current.MainWindow = mainWindow;
                 mainWindow.Show();
-                Current.ShutdownMode = ShutdownMode.OnLastWindowClose;
+                // Ensure application exits when main window closes regardless of auxiliary tool windows
+                Current.ShutdownMode = ShutdownMode.OnMainWindowClose;
             }
             else
             {

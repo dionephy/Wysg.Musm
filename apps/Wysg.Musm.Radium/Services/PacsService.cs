@@ -15,6 +15,7 @@ using System.Runtime.InteropServices;
 using System.Linq;
 using System.Collections.Generic;
 using UIAElement = FlaUI.Core.AutomationElements.AutomationElement;
+using System.Text.RegularExpressions;
 
 namespace Wysg.Musm.Radium.Services
 {
@@ -77,6 +78,43 @@ namespace Wysg.Musm.Radium.Services
         public Task<string?> GetSelectedStudyDateTimeFromRelatedStudiesAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Study Date", "Study Date Time", "Study DateTime" }));
         public Task<string?> GetSelectedRadiologistFromRelatedStudiesAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Requesting Doctor", "Radiologist", "Doctor" }));
         public Task<string?> GetSelectedReportDateTimeFromRelatedStudiesAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Report approval dttm", "Report Date", "Report Date Time" }));
+
+        // NEW: Current patient number parsed from viewer banner (OCR/text) heuristics.
+        public Task<string?> GetCurrentPatientNumberAsync() => Task.Run(() =>
+        {
+            try
+            {
+                var (_, banner) = TryAutoLocateBanner();
+                if (string.IsNullOrWhiteSpace(banner)) return (string?)null;
+                // Heuristic: patient number often first token / digits cluster before first comma
+                // Extract longest digit sequence of length >=5
+                var match = Regex.Matches(banner, "[0-9]{5,}").Cast<Match>().OrderByDescending(m => m.Value.Length).FirstOrDefault();
+                return match?.Value;
+            }
+            catch { return (string?)null; }
+        });
+
+        // NEW: Current study date time parsed from banner tokens (YYYY-MM-DD or with time)
+        public Task<string?> GetCurrentStudyDateTimeAsync() => Task.Run(() =>
+        {
+            try
+            {
+                var (_, banner) = TryAutoLocateBanner();
+                if (string.IsNullOrWhiteSpace(banner)) return (string?)null;
+                // Look for date pattern
+                var dateMatch = Regex.Match(banner, @"(20[0-9]{2}[-/][01][0-9][-/.][0-3][0-9])");
+                if (!dateMatch.Success) return (string?)null;
+                var date = dateMatch.Groups[1].Value.Replace('/', '-').Replace('.', '-');
+                // Optional time immediately after
+                var timeMatch = Regex.Match(banner.Substring(dateMatch.Index + dateMatch.Length), @"\s+([0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?)");
+                if (timeMatch.Success)
+                {
+                    return date + " " + timeMatch.Groups[1].Value;
+                }
+                return date;
+            }
+            catch { return (string?)null; }
+        });
 
         private static string? GetValueFromListSelection(UiBookmarks.KnownControl control, string[] headerCandidates)
         {
@@ -188,8 +226,7 @@ namespace Wysg.Musm.Radium.Services
                         var name = ReadCellText(ch);
                         if (!string.IsNullOrWhiteSpace(name) && name.Length < 40)
                         {
-                            // Weak heuristic: a row of short texts could be a header row
-                            // We do not accumulate here aggressively to avoid noise
+                            // heuristic placeholder
                         }
                     }
                     catch { }

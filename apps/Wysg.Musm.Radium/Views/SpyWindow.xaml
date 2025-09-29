@@ -219,7 +219,7 @@
             <ComboBox x:Name="cmbKnown" Width="300" SelectionChanged="OnKnownSelectionChanged" SelectedValuePath="Tag">
                 <ComboBoxItem Tag="StudyInfoBanner">Study info banner</ComboBoxItem>
                 <ComboBoxItem Tag="RelatedStudyList">Related studies list</ComboBoxItem>
-                <ComboBoxItem Tag="SelectedStudyInSearch">Selected study in search result</ComboBoxItem>
+                <ComboBoxItem Tag="SelectedStudyInSearchResult">Selected study in search result</ComboBoxItem>
                 <ComboBoxItem Tag="SelectedStudyInRelated">Selected study in related studies</ComboBoxItem>
                 <ComboBoxItem Tag="CloseWorklistButton">Close worklist button</ComboBoxItem>
                 <ComboBoxItem Tag="WorklistWindow">Worklist window</ComboBoxItem>
@@ -524,6 +524,9 @@
                         <ComboBoxItem Tag="GetSelectedStudyDateTimeFromRelatedStudies">Get selected study date time from related studies list</ComboBoxItem>
                         <ComboBoxItem Tag="GetSelectedRadiologistFromRelatedStudies">Get selected radiologist from related studies list</ComboBoxItem>
                         <ComboBoxItem Tag="GetSelectedReportDateTimeFromRelatedStudies">Get selected report date time from related studies list</ComboBoxItem>
+                        <!-- New PACS methods -->
+                        <ComboBoxItem Tag="GetCurrentPatientNumber">Get current patient number</ComboBoxItem>
+                        <ComboBoxItem Tag="GetCurrentStudyDateTime">Get current study date time</ComboBoxItem>
                     </ComboBox>
                     <Button Content="Add" Click="OnAddProcRow"/>
                     <Button Content="Save" Margin="6,0,0,0" Click="OnSaveProcedure"/>
@@ -532,7 +535,6 @@
                 <DataGrid x:Name="gridProcSteps" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                           VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
                     <DataGrid.Columns>
-                        <!-- Operation selector -->
                         <DataGridTemplateColumn Header="Operation" Width="150">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -545,6 +547,7 @@
                                               PreviewKeyDown="OnOpComboPreviewKeyDown"
                                               SelectionChanged="OnProcOpChanged">
                                         <ComboBoxItem Content="GetText"/>
+                                        <ComboBoxItem Content="GetTextOCR"/>
                                         <ComboBoxItem Content="Split"/>
                                         <ComboBoxItem Content="TakeLast"/>
                                         <ComboBoxItem Content="Trim"/>
@@ -555,8 +558,6 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-
-                        <!-- Arg1 Type -->
                         <DataGridTemplateColumn Header="Arg1 Type" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -710,8 +711,6 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-
-                        <!-- Output var and preview -->
                         <DataGridTextColumn Header="OutputVar" Binding="{Binding OutputVar}" IsReadOnly="True" Width="100"/>
                         <DataGridTextColumn Header="Output" Binding="{Binding OutputPreview}" IsReadOnly="True" Width="2*"/>
 

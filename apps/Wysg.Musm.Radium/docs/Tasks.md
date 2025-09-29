@@ -12,6 +12,11 @@
 - [X] TM29 Phrase Extraction refinement: dereportified line sourcing + enabled-first ordering.
 - [X] TM30 Phrase Extraction dereportified loading + async non-blocking save (IsBusy gating).
 - [X] TM31 Phrase rev stabilization: conditional trigger + app pre-select no-op short-circuit + UI load suppression.
+- [X] T205 Add GetTextOCR procedure operation (SpyWindow XAML + code-behind) (FR-098).
+- [X] T206 Extend PacsService with GetCurrentPatientNumberAsync heuristic (FR-099).
+- [X] T207 Extend PacsService with GetCurrentStudyDateTimeAsync date/time pattern extraction (FR-099/FR-123).
+- [X] T208 Update App shutdown behavior to OnMainWindowClose after main window shows (usability).
+- [X] T209 Update Spec/Plan/Tasks docs with FR-098..FR-099, FR-123 (documentation sync).
 
 **Input**: Spec.md & Plan.md (cumulative)  
 **Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  
@@ -54,6 +59,7 @@ Legend:
 - [ ] T126 [P] Test IPacsSubmissionService.ValidateAsync blocks on mismatched banner  
 - [ ] T127 Orchestrator test: sequence stages populating FR-001..FR-017 fields (mocks)  
 - [ ] T128 Failure path test: LLM failure marks only affected fields & continues (FR-122)  
+- [ ] T129 OCR op test: engine unavailable path returns "(ocr unavailable)" (FR-098/FR-123)  
 
 ## Phase 2 ? Models & Infrastructure
 - [ ] T130 Implement entity classes (ReportState DTO) in src/.../Reporting/Models  
@@ -71,6 +77,7 @@ Legend:
 - [ ] T145 Implement PacsSubmissionService (ValidateAsync, SubmitAsync)  
 - [ ] T146 Implement StudynameMappingService (playbook suggestions already legacy) unify interface  
 - [ ] T147 Implement ReportPipeline orchestrator (stage enum + idempotent transitions)  
+- [ ] T148 Add PacsService banner extraction tests (patient number & study datetime) (FR-099)  
 
 ## Phase 2 ? Editor Integration Enhancements
 - [ ] T150 Add ghost acceptance span policy implementation (depends T105) (FR-056)  
@@ -80,7 +87,7 @@ Legend:
 - [ ] T154 Idle closure + ghost trigger test (FR-055)  
 
 ## Phase 3 ? Pipeline Wiring (UI)
-- [ ] T160 Hook UI command: Load Current Study → invoke pipeline stages 1?5 automatically (FR-001..FR-005)  
+- [ ] T160 Hook UI command: Load Current Study → invoke pipeline stages 1–5 automatically (FR-001..FR-005)  
 - [ ] T161 Integrate previous study retrieval + comparison selection UI (FR-007..FR-012)  
 - [ ] T162 Wire postprocess command invoking FR-014..FR-017 sequence (LLM + RBM)  
 - [ ] T163 Display proofread vs original toggles  
@@ -106,10 +113,10 @@ Legend:
 
 ## Phase 5 ? Documentation & Finalization
 - [ ] T200 Update quickstart with actual commands & sample timeline  
-- [ ] T201 Add troubleshooting section (LLM failures, PACS mismatch)  
+- [ ] T201 Add troubleshooting section (LLM failures, PACS mismatch, OCR unavailable)  
 - [ ] T202 Update agent context file with final tech + last 3 changes  
 - [ ] T203 Review all FR coverage matrix (Spec vs tests)  
-- [ ] T204 Final acceptance checklist sign-off
+- [ ] T204 Final acceptance checklist sign-off  
 
 ---
 ## Legacy Completed (Traceability)
@@ -119,10 +126,11 @@ Legend:
 ---
 ## Dependencies
 - T103 before T132; T104 before T133; T105 before T150  
-- Contract tests (T120?T128) must fail before implementing services (T140?T147)  
+- Contract tests (T120–T129) must fail before implementing services (T140–T147)  
 - LLM client (T142) before pipeline orchestrator (T147)  
 - Pipeline orchestrator before UI wiring (T160+)  
 - Technique derivation rule (T102) before mapping derivation integration (T180)  
+- OCR op tests (T129) before expanding procedure automation scenarios
 
 ---
 ## Parallel Execution Examples
@@ -133,8 +141,8 @@ Contract test parallel set: T120 T121 T122 T123 T124 T125 T126
 ## Validation Checklist
 - [ ] All FR-001..FR-020 have at least one test task
 - [ ] All FR-050..FR-058 have editor test or impl task
-- [ ] All FR-090..FR-097 mapping & procedure tasks enumerated
-- [ ] All FR-120..FR-122 reliability tasks covered
+- [ ] All FR-090..FR-099 mapping & procedure tasks enumerated
+- [ ] All FR-120..FR-123 reliability tasks covered
 - [ ] No unresolved dependency loops
 - [ ] Each task has concrete output (file(s) or behavior)
 
