@@ -14,6 +14,7 @@ namespace Wysg.Musm.Editor.Controls
         private int _lastWordStart = -1;
         private string _lastWordText = string.Empty;
         private Ui.CurrentWordHighlighter? _wordHi;
+        private bool _hasUserNavigated = false; // Track if user has used Up/Down navigation
 
         private static (int start, string text) GetCurrentWord(TextDocument doc, int caret)
         {
@@ -53,7 +54,7 @@ namespace Wysg.Musm.Editor.Controls
 
             Debug.WriteLine($"[Popup] word='{word}' start={start} lastStart={_lastWordStart} lastWord='{_lastWordText}'");
 
-            // (1) do not rebuild if word didn’t change
+            // (1) do not rebuild if word didn't change
             if (start == _lastWordStart && string.Equals(word, _lastWordText, StringComparison.Ordinal))
                 return;
 
@@ -74,6 +75,7 @@ namespace Wysg.Musm.Editor.Controls
                 _completionWindow = new MusmCompletionWindow(Editor);
                 _completionWindow.Closed += (_, __) => _completionWindow = null;
                 _completionWindow.Show();
+                _hasUserNavigated = false; // Reset navigation flag for new window
                 Debug.WriteLine("[Popup] open completion window");
             }
             _completionWindow.StartOffset = start;
@@ -208,20 +210,66 @@ namespace Wysg.Musm.Editor.Controls
             if (_completionWindow != null && (e.Key is Key.Up or Key.Down))
             {
                 var lb = _completionWindow.CompletionList?.ListBox;
-                if (lb != null && lb.SelectedIndex == -1)
+                if (lb != null)
                 {
-                    // first press → select first (Down) or last (Up) immediately
+                    Debug.WriteLine($"[Popup] Up/Down navigation: current selection={lb.SelectedIndex}, items={lb.Items.Count}, hasUserNavigated={_hasUserNavigated}");
+                    
+                    if (!_hasUserNavigated)
+                    {
+                        // first navigation → select first (Down) or last (Up) immediately
+                        Debug.WriteLine("[Popup] First navigation: allowing selection");
+                        _completionWindow.AllowSelectionByKeyboardOnce();
+                        _hasUserNavigated = true; // Mark that user has now navigated
+                        
+                        // Give the ListBox focus to ensure keyboard events work properly
+                        if (!lb.IsFocused)
+                        {
+                            lb.Focus();
+                            Debug.WriteLine("[Popup] Giving ListBox focus");
+                        }
+                        
+                        if (e.Key == Key.Down) 
+                            lb.SelectedIndex = 0; 
+                        else 
+                            lb.SelectedIndex = lb.Items.Count - 1;
+                        e.Handled = true; // prevent caret move
+                        Debug.WriteLine($"[Popup] First navigation: set selection to {lb.SelectedIndex}");
+                        return;
+                    }
+                    
+                    // subsequent navigation: allow one selection change per key and let ListBox handle it
+                    Debug.WriteLine("[Popup] Subsequent navigation: allowing selection change");
                     _completionWindow.AllowSelectionByKeyboardOnce();
-                    if (e.Key == Key.Down) lb.SelectedIndex = 0; else lb.SelectedIndex = lb.Items.Count - 1;
-                    e.Handled = true; // prevent caret move
-                    return;
+                    
+                    // Ensure ListBox has focus
+                    if (!lb.IsFocused)
+                    {
+                        lb.Focus();
+                        Debug.WriteLine("[Popup] Giving ListBox focus for navigation");
+                    }
+                    
+                    // Let the ListBox handle the navigation naturally
+                    if (e.Key == Key.Down && lb.SelectedIndex < lb.Items.Count - 1)
+                    {
+                        lb.SelectedIndex++;
+                        e.Handled = true;
+                        Debug.WriteLine($"[Popup] Down navigation: moved to {lb.SelectedIndex}");
+                    }
+                    else if (e.Key == Key.Up && lb.SelectedIndex > 0)
+                    {
+                        lb.SelectedIndex--;
+                        e.Handled = true;
+                        Debug.WriteLine($"[Popup] Up navigation: moved to {lb.SelectedIndex}");
+                    }
+                    else
+                    {
+                        e.Handled = true; // Prevent further processing even if at boundaries
+                        Debug.WriteLine($"[Popup] Navigation at boundary: {e.Key}, index={lb.SelectedIndex}");
+                    }
                 }
-                // subsequent navigation: allow one selection change per key
-                _completionWindow.AllowSelectionByKeyboardOnce();
                 return;
             }
         }
-
 
         private void CloseCompletionWindow()
         {
@@ -231,6 +279,7 @@ namespace Wysg.Musm.Editor.Controls
                 _completionWindow.Closed -= (_, __) => _completionWindow = null; // remove anonymous
                 _completionWindow.Close();
                 _completionWindow = null;
+                _hasUserNavigated = false; // Reset navigation flag when closing
             }
         }
 
@@ -243,7 +292,5 @@ namespace Wysg.Musm.Editor.Controls
                     e.Handled = true;
             };
         }
-
-       
     }
 }

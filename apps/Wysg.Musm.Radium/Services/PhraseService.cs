@@ -15,6 +15,7 @@ namespace Wysg.Musm.Radium.Services
     {
         private readonly IRadiumLocalSettings _settings;
         private readonly ICentralDataSourceProvider _dsProvider;
+        private readonly IPhraseCache _cache; // Add cache reference
         private readonly string _fallback = "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas;Timeout=3"; // legacy fallback (dev only)
 
         // Backend detection (single-flight)
@@ -53,10 +54,11 @@ namespace Wysg.Musm.Radium.Services
         private DateTime _lastIndexCheckUtc = DateTime.MinValue;
         private int _indexCreateInFlight = 0;
 
-        public PhraseService(IRadiumLocalSettings settings, ICentralDataSourceProvider dsProvider)
+        public PhraseService(IRadiumLocalSettings settings, ICentralDataSourceProvider dsProvider, IPhraseCache cache)
         {
             _settings = settings;
             _dsProvider = dsProvider;
+            _cache = cache; // Store cache reference
             Debug.WriteLine("[PhraseService] Using central radium.phrase delta-sync backend.");
         }
 
@@ -644,6 +646,10 @@ namespace Wysg.Musm.Radium.Services
             }
             if (info.Rev > st.MaxRev) st.MaxRev = info.Rev;
             if (info.Id > st.MaxIdLoaded) st.MaxIdLoaded = info.Id;
+            
+            // Clear completion cache to force refresh on next completion request
+            _cache.Clear(info.AccountId);
+            Debug.WriteLine($"[PhraseService] Cleared completion cache for account={info.AccountId} after phrase upsert");
         }
 
         public async Task<PhraseInfo?> ToggleActiveAsync(long accountId, long phraseId)
@@ -685,6 +691,11 @@ namespace Wysg.Musm.Radium.Services
                         {
                             row.Active = info.Active; row.UpdatedAt = info.UpdatedAt; row.Rev = info.Rev; if (info.Rev > st.MaxRev) st.MaxRev = info.Rev;
                         }
+                        
+                        // Clear completion cache when active state changes
+                        _cache.Clear(accountId);
+                        Debug.WriteLine($"[PhraseService] Cleared completion cache for account={accountId} after toggle");
+                        
                         return info;
                     }
                     return null;

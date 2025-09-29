@@ -1,5 +1,16 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Bug Fixes (2025-01-01)
+- **FR-126** Phrase extraction window MUST use proper dependency injection to prevent service injection errors during phrase save operations.
+- **FR-127** Completion popup Down/Up key navigation MUST work reliably by properly handling keyboard events and selection state management.
+- **FR-128** Completion popup selection guard MUST prevent recursive clearing while allowing legitimate keyboard navigation by temporarily disabling selection event handlers during programmatic changes.
+- **FR-129** Completion popup MUST preserve selections that are added via keyboard navigation by detecting multiple SelectionChanged events from single user actions and allowing new selections without interference.
+- **FR-130** Completion popup keyboard navigation MUST correctly handle first vs subsequent navigation by tracking user navigation state rather than relying on selection index, ensuring first Down key always selects first item (index 0).
+
+## Update: Editor Completion Improvements (2025-01-01)
+- **FR-124** Completion list MUST refresh immediately when new phrases are added via phrase extractor or phrase manager by clearing completion cache on phrase upsert/toggle.
+- **FR-125** Down/Up key navigation MUST work properly in completion popup by allowing selection changes during keyboard navigation.
+
 ## Update: Phrase Extraction Window (Dereportified Source + Non-blocking Save)
 - Extraction now always uses dereportified versions of current header/findings/conclusion even if UI is in reportified state (uses MainViewModel.GetDereportifiedSections()).
 - Save Selected executes asynchronously with IsBusy gating; UI remains responsive (no freeze on network latency).
@@ -47,10 +58,10 @@ Radiologist requests a previous study. Radium retrieves prior report text, split
 Mapping specialist (or radiologist) opens Studyname→LOINC window, filters studynames, assembles parts via category lists and/or playbook suggestions, adjusts sequence ordering, and saves mapping so future automatic technique / standardized naming can occur without manual prompts.
 
 ### Editor Productivity Story
-While entering findings, the editor provides: phrase / hotkey / snippet completions after minimal typing; optional idle ghost (AI) multi‑line suggestions without interrupting typing; snippet placeholder navigation; ability to import and transform prior study findings via contextual action.
+While entering findings, the editor provides: phrase / hotkey / snippet completions after minimal typing; optional idle ghost (AI) multi‑line suggestions without interrupting typing; snippet placeholder navigation; ability to import and transform prior study findings via contextual action. Completion list updates immediately when new phrases are added.
 
 ### PACS Submission Story
-On completion, user initiates “Send to PACS”. System validates banner metadata matches current study, injects formatted (reportified + numbered) sections into the respective PACS fields, confirms acknowledgment, and persists final structured report + study metadata locally.
+On completion, user initiates "Send to PACS". System validates banner metadata matches current study, injects formatted (reportified + numbered) sections into the respective PACS fields, confirms acknowledgment, and persists final structured report + study metadata locally.
 
 ### OCR & Live Banner Story
 User or automation needs quick extraction of patient number or study date/time from currently visible viewer banner (even if not mapped in UI tree). System provides lightweight OCR procedure operation and dedicated PACS methods to retrieve these values for chaining in custom procedures.
@@ -65,6 +76,13 @@ User or automation needs quick extraction of patient number or study date/time f
 7. Given Send to PACS executed, when PACS acknowledgment received, then system stores final report payload locally atomically (header+findings+conclusion with metadata) or reports failure with reason.
 8. Given the user adds a GetTextOCR operation to a procedure with an element target, then on run the system attempts OCR inside the element bounds and returns extracted text (or explicit reason markers when engine unavailable / empty).
 9. Given the user invokes new PACS methods (Get current patient number / Get current study date time) in procedures, then values derived from banner (digits cluster / date pattern) are returned when present.
+10. **Given user adds new phrases via phrase extractor or phrase manager, when user types prefix of new phrase in editor, then completion popup shows new phrases immediately without restart.**
+11. **Given completion popup is open and user presses Down/Up keys, then selection changes to next/previous item respectively.**
+12. **Given user clicks "Extract Phrases" button, when phrase extraction window opens, then all services are properly injected and phrase saving works without errors.**
+13. **Given completion popup with multiple items is displayed and user presses Down key repeatedly, then selection moves through all items sequentially without skipping or stopping.**
+14. **Given completion popup selection guard is active, when legitimate keyboard navigation occurs, then selection changes are preserved without being cleared by the guard mechanism.**
+15. **Given multiple SelectionChanged events fire from a single keyboard navigation action, when selection is added via Down/Up keys, then the selection is preserved and not immediately cleared by subsequent events.**
+16. **Given completion popup is displayed with 3 items and user has not yet navigated, when user presses Down key for the first time, then selection moves to first item (index 0), and subsequent Down keys navigate normally through remaining items.**
 
 ### Edge Cases
 - What happens when studyname mapping window is closed without selection? → [NEEDS CLARIFICATION: fallback behavior – skip, force retry, or mark as unmapped?]
@@ -111,6 +129,15 @@ User or automation needs quick extraction of patient number or study date/time f
 - **FR-057** Snippet insertion MUST expand placeholders and allow Tab/Shift+Tab navigation through ordered placeholders.
 - **FR-058** Import-from-previous-study command MUST allow user to insert transformed previous findings into current cursor location (LLM transform) without overwriting unrelated text.
 
+### Functional Requirements (Editor Completion Improvements & Bug Fixes)
+- **FR-124** Completion cache MUST be invalidated immediately when phrases are added or modified via UpsertPhraseAsync or ToggleActiveAsync to ensure new phrases appear in completion list without application restart.
+- **FR-125** Completion popup MUST respond to Down/Up key navigation by allowing selection changes when ListBox has keyboard focus, while maintaining exact-match-only selection for non-keyboard events.
+- **FR-126** Phrase extraction window MUST use dependency injection to resolve PhraseExtractionViewModel with all required services properly injected to prevent runtime errors during phrase operations.
+- **FR-127** Completion popup keyboard navigation MUST handle Up/Down keys reliably by explicitly managing selection state and preventing event propagation conflicts that could interfere with navigation.
+- **FR-128** Completion popup selection guard MUST handle multiple selection events from single user actions by preventing recursive clearing and temporarily disabling event handlers during programmatic selection changes.
+- **FR-129** Completion popup selection preservation MUST detect and allow new selections added via keyboard navigation by analyzing SelectionChanged event patterns and preventing immediate clearing of legitimate user selections.
+- **FR-130** Completion popup first navigation detection MUST track user navigation state using a dedicated flag rather than selection index to ensure first Down key always selects first item (index 0) regardless of existing selections from exact matching.
+
 ### Functional Requirements (Mapping & Procedures)
 - **FR-090** Studyname→LOINC mapping UI MUST allow multi-part selection, ordering (sequence letters), and duplicate part numbers with distinct sequence order (pair uniqueness rule).
 - **FR-091** System MUST surface playbook suggestions once ≥2 distinct selected parts exist.
@@ -148,7 +175,7 @@ User or automation needs quick extraction of patient number or study date/time f
 ### Requirement Completeness
 - [ ] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements testable & numbered
-- [x] Scope boundaries: Reporting workflow (current + previous), mapping, editor assistance, PACS submission, OCR extraction
+- [x] Scope boundaries: Reporting workflow (current + previous), mapping, editor assistance, PACS submission, OCR extraction, completion improvements, bug fixes
 - [ ] Assumptions validated (pending clarifications)
 
 ---
@@ -172,8 +199,8 @@ User or automation needs quick extraction of patient number or study date/time f
 
 ---
 ## Non-Functional (Derived)
-- **Performance**: Header metadata render <1s (local). Ghost suggestion request dispatch ≤100ms after idle event. LOINC mapping UI list filtering <150ms on typical dataset. OCR element operation should return in <1.2s typical (depends on Windows OCR engine).
-- **Reliability**: Any single external (LLM) failure must not block manual editing or PACS send if mandatory fields filled.
+- **Performance**: Header metadata render <1s (local). Ghost suggestion request dispatch ≤100ms after idle event. LOINC mapping UI list filtering <150ms on typical dataset. OCR element operation should return in <1.2s typical (depends on Windows OCR engine). Completion cache refresh <50ms after phrase add/modify. Keyboard navigation response <50ms. Selection guard event handling <10ms. Multiple event handling <5ms. Navigation state tracking <1ms.
+- **Reliability**: Any single external (LLM) failure must not block manual editing or PACS send if mandatory fields filled. Dependency injection must resolve all required services to prevent runtime failures. Selection guard must prevent infinite recursion. Multiple SelectionChanged events must be handled gracefully. Navigation state must be tracked accurately.
 - **Observability**: Structured logging for each pipeline stage (event type, duration, success/failure) [NEEDS CLARIFICATION: log schema].
 - **Local Persistence**: Final report write must be atomic (transaction or temp+rename) [detail for plan].
 
@@ -191,20 +218,39 @@ User or automation needs quick extraction of patient number or study date/time f
 ---
 # Legacy / Implementation Detail Chronicle
 
-## 1) Spy UI Tree focus behavior
+## 1) Bug Fixes (2025-01-01 - Latest)
+- **Navigation State Tracking**: Added _hasUserNavigated flag to EditorControl to properly track whether user has used keyboard navigation, ensuring first Down key always selects first item (index 0) regardless of existing selections from exact matching. Reset flag when creating new completion window and when closing.
+
+## 2) Bug Fixes (2025-01-01 - Previous)
+- **Multiple Event Handling**: Enhanced MusmCompletionWindow selection guard to detect and preserve selections that are added via keyboard navigation by analyzing SelectionChanged event patterns (added vs removed items). Added logic to prevent immediate clearing of new selections that don't have corresponding removals.
+- **Keyboard Focus Management**: Improved EditorControl keyboard navigation to ensure ListBox gets proper focus during navigation, enhancing the keyboard focus detection in the selection guard.
+
+## 3) Bug Fixes (2025-01-01 - Earlier)
+- **Selection Guard Recursion Prevention**: Enhanced MusmCompletionWindow selection guard to prevent recursive clearing by temporarily disabling SelectionChanged event handler during programmatic selection changes. Added logic to detect and allow programmatic clearing operations.
+- **Navigation Event Handling**: Improved EditorControl keyboard navigation logic with enhanced debugging and better flow control to ensure AllowSelectionByKeyboardOnce is called at the appropriate time before selection changes.
+
+## 4) Bug Fixes (2025-01-01 - Earlier)
+- **Phrase Extraction Service Injection**: Fixed PhraseExtractionWindow creation to use dependency injection (GetService<PhraseExtractionViewModel>()) instead of manual instantiation, preventing service injection errors during phrase save operations.
+- **Completion Navigation Enhancement**: Improved Up/Down key handling in completion popup by explicitly managing selection state transitions and ensuring proper event handling to prevent navigation conflicts.
+
+## 5) Editor Completion Improvements (2025-01-01)
+- **Immediate Cache Refresh**: Added IPhraseCache.Clear() method and cache invalidation in PhraseService.UpsertPhraseAsync() and ToggleActiveAsync() to ensure completion list updates immediately when phrases are added/modified.
+- **Fixed Down/Up Navigation**: Modified MusmCompletionWindow selection guard to allow keyboard navigation while maintaining exact-match-only behavior for non-keyboard selection events.
+
+## 6) Spy UI Tree focus behavior
 - Show a single chain down to level 4 (root → ... → level 4).
 - Expand the children of the level-4 element; depth bounded by `FocusSubtreeMaxDepth`.
 - Depths configurable via constants in `SpyWindow`.
 
-## 2) Procedures grid argument editors
+## 7) Procedures grid argument editors
 - Operation presets set Arg1/Arg2 types and enablement, with immediate editor switch.
 - Element/Var editors use dark ComboBoxes.
 
-## 3) PACS Methods (Custom Procedures): "Get selected ID from search results list"
+## 8) PACS Methods (Custom Procedures): "Get selected ID from search results list"
 - New method Tag="GetSelectedIdFromSearchResults".
 - Implements PacsService.GetSelectedIdFromSearchResultsAsync.
 
-## 4) Studyname → LOINC Parts window
+## 9) Studyname → LOINC Parts window
 Goal
 - Provide clear mapping UI from med.rad_studyname to LOINC Parts.
 
@@ -247,7 +293,7 @@ Notes / Future Enhancements
 - Virtualization and count badges
 - Import button (double-click now handles bulk import)
 
-## 5) Custom Procedure Operation: GetValueFromSelection
+## 10) Custom Procedure Operation: GetValueFromSelection
 Purpose
 - Allow a procedure step to extract the value of a specific column header from the currently selected row of a list (e.g., mapped SearchResultsList) reusing the Row Data parsing logic.
 
@@ -276,11 +322,11 @@ Implementation Notes
 - Execution implemented in both single-row Set (ExecuteSingle) and full Run (RunProcedure) flows.
 - Reuses `GetHeaderTexts` + `GetRowCellValues` + `NormalizeHeader` helpers already present in SpyWindow code-behind.
 
-## 6) Row Data & Selection Value Alignment Preservation
+## 11) Row Data & Selection Value Alignment Preservation
 Change (Earlier Iteration)
 - `GetRowCellValues` now always adds placeholders for blank cells (no skipping) to keep header/value alignment.
 
-## 7) Blank Header Column Preservation (Current Iteration)
+## 12) Blank Header Column Preservation (Current Iteration)
 Problem
 - Some lists contain a leading blank header cell (first column intentionally unlabeled). Previous logic skipped blank headers which then shifted all subsequent header/value associations (e.g. Status value appearing under ID header).
 
@@ -302,7 +348,7 @@ Testing Scenarios
 3. Internal blank header between populated headers → value-only token preserved in position.
 4. `GetValueFromSelection` unaffected; indexing uses parallel arrays including blank header placeholders.
 
-## 8) Operation: ToDateTime
+## 13) Operation: ToDateTime
 Purpose
 - Convert a string variable containing a date or date-time in formats `YYYY-MM-DD` or `YYYY-MM-DD HH:mm:ss` into a normalized DateTime ISO string stored in a new var.
 
@@ -316,7 +362,7 @@ Parse Rules
 - Exact match using `InvariantCulture` for the two patterns.
 - `AssumeLocal` style.
 
-## 9) New PACS Selection Methods
+## 14) New PACS Selection Methods
 Added Methods (Search Results list unless noted):
 - Get selected name from search results list
 - Get selected sex from search results list
@@ -341,12 +387,12 @@ Implementation
 Notes
 - All methods return raw string (no trimming beyond whitespace removal). Date/time values can be piped through `ToDateTime` in a procedure if normalization needed.
 
-## 10) Postgres First-Chance Exception Sampling
+## 15) Postgres First-Chance Exception Sampling
 - `PgDebug.Initialize()` registers a first-chance handler capturing `PostgresException` once per (SqlState|MessageText) pair and logs via Serilog at Warning level.
 - Added initialization in `App.OnStartup` before splash login.
 - Repository methods now log explicit PostgresException details with SqlState and server message for triage.
 
-## 11) PhraseService Connection Refactor
+## 16) PhraseService Connection Refactor
 Changes
 - PhraseService now consumes `IRadiumLocalSettings.LocalConnectionString` with legacy fallback.
 - Added debug logging of host/db/user when opening connections.
@@ -355,7 +401,7 @@ Changes
 Future
 - Planned migration to use `CentralConnectionString` (central phrases) once consolidation is ready; code comments note this.
 
-## 12) Editor Specification (Summary Reference)
+## 17) Editor Specification (Summary Reference)
 For full behavioral definitions see MUSM Editor Specification included in design docs (source: spec_editor.md). Key points mapped to FR-050..FR-058.
 
 ## Update Log (2025-09-28)
@@ -366,6 +412,15 @@ For full behavioral definitions see MUSM Editor Specification included in design
 - Added GetTextOCR procedure operation (FR-098).
 - Added PACS banner helpers: GetCurrentPatientNumber, GetCurrentStudyDateTime (FR-099, FR-123 reliability clause).
 - Application shutdown behavior updated: app exits when main window closed (usability improvement, not numbered FR; aligns with standard desktop UX).
+
+## Update Log (2025-01-01)
+- Added completion cache invalidation (FR-124) in PhraseService to clear cache when phrases are added/modified.
+- Fixed completion popup keyboard navigation (FR-125) to allow Down/Up key selection changes.
+- Fixed phrase extraction window service injection (FR-126) to prevent runtime errors.
+- Enhanced completion popup navigation handling (FR-127) for reliable keyboard interaction.
+- Prevented selection guard recursion (FR-128) to maintain proper navigation flow.
+- Improved multiple event handling (FR-129) to preserve keyboard-driven selections.
+- Fixed first navigation detection (FR-130) to ensure consistent Down key behavior.
 
 ---
 ## Feature Update (Reportified Toggle - Inverse Dereportify)

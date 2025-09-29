@@ -17,6 +17,20 @@
 - [X] T207 Extend PacsService with GetCurrentStudyDateTimeAsync date/time pattern extraction (FR-099/FR-123).
 - [X] T208 Update App shutdown behavior to OnMainWindowClose after main window shows (usability).
 - [X] T209 Update Spec/Plan/Tasks docs with FR-098..FR-099, FR-123 (documentation sync).
+- [X] T210 Add IPhraseCache.Clear() method for cache invalidation (FR-124).
+- [X] T211 Implement completion cache invalidation in PhraseService.UpsertPhraseAsync() and ToggleActiveAsync() (FR-124).
+- [X] T212 Fix MusmCompletionWindow keyboard navigation by updating selection guard for Down/Up keys (FR-125).
+- [X] T213 Update documentation with editor completion improvements (FR-124, FR-125).
+- [X] T214 Fix phrase extraction window service injection by using DI instead of manual instantiation (FR-126).
+- [X] T215 Register PhraseExtractionViewModel in DI container (FR-126).
+- [X] T216 Enhance completion popup Up/Down key handling with explicit selection management (FR-127).
+- [X] T217 Update documentation with bug fixes (FR-126, FR-127).
+- [X] T218 Prevent selection guard recursion by temporarily disabling event handlers during programmatic changes (FR-128).
+- [X] T219 Update documentation with selection guard recursion fix (FR-128).
+- [X] T220 Enhance selection preservation for keyboard navigation by analyzing SelectionChanged event patterns (FR-129).
+- [X] T221 Update documentation with multiple event handling improvement (FR-129).
+- [X] T222 Add navigation state tracking flag to ensure first Down key selects first item consistently (FR-130).
+- [X] T223 Update documentation with navigation state tracking implementation (FR-130).
 
 **Input**: Spec.md & Plan.md (cumulative)  
 **Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  
@@ -85,13 +99,20 @@ Legend:
 - [ ] T152 Snippet placeholder navigation validation tests (FR-057)  
 - [ ] T153 Completion popup test: exact match only selection (FR-052)  
 - [ ] T154 Idle closure + ghost trigger test (FR-055)  
+- [X] T155 Completion cache invalidation test: verify Clear() called on phrase add/modify (FR-124)
+- [X] T156 Keyboard navigation test: verify Down/Up keys change selection in completion popup (FR-125)
+- [X] T157 Service injection test: verify PhraseExtractionViewModel resolves from DI with all dependencies (FR-126)
+- [X] T158 Navigation reliability test: verify Up/Down keys work consistently in completion popup (FR-127)
+- [X] T159 Selection guard recursion test: verify multiple selection events don't cause infinite recursion (FR-128)
+- [X] T160 Multiple event handling test: verify SelectionChanged event patterns are analyzed correctly (FR-129)
+- [X] T161 Navigation state tracking test: verify first Down key always selects first item (FR-130)
 
 ## Phase 3 ? Pipeline Wiring (UI)
-- [ ] T160 Hook UI command: Load Current Study → invoke pipeline stages 1–5 automatically (FR-001..FR-005)  
-- [ ] T161 Integrate previous study retrieval + comparison selection UI (FR-007..FR-012)  
-- [ ] T162 Wire postprocess command invoking FR-014..FR-017 sequence (LLM + RBM)  
-- [ ] T163 Display proofread vs original toggles  
-- [ ] T164 Error banner for individual stage failures (FR-122)  
+- [ ] T162 Hook UI command: Load Current Study → invoke pipeline stages 1–5 automatically (FR-001..FR-005)  
+- [ ] T163 Integrate previous study retrieval + comparison selection UI (FR-007..FR-012)  
+- [ ] T164 Wire postprocess command invoking FR-014..FR-017 sequence (LLM + RBM)  
+- [ ] T165 Display proofread vs original toggles  
+- [ ] T166 Error banner for individual stage failures (FR-122)  
 
 ## Phase 3 ? PACS & Persistence
 - [ ] T170 Validate banner vs metadata prior to send (FR-018)  
@@ -110,6 +131,11 @@ Legend:
 - [ ] T192 Failure injection tests (simulate LLM timeout)  
 - [ ] T193 Snapshot tests for reportifier + numberer outputs  
 - [ ] T194 Performance test harness (measure idle→ghost dispatch latency)  
+- [ ] T195 Performance test for completion cache refresh latency (target <50ms) (FR-124)
+- [ ] T196 Performance test for keyboard navigation response time (target <50ms) (FR-127)
+- [ ] T197 Performance test for selection guard event handling (target <10ms) (FR-128)
+- [ ] T198 Performance test for multiple event processing (target <5ms) (FR-129)
+- [ ] T199 Performance test for navigation state tracking (target <1ms) (FR-130)
 
 ## Phase 5 ? Documentation & Finalization
 - [ ] T200 Update quickstart with actual commands & sample timeline  
@@ -128,26 +154,33 @@ Legend:
 - T103 before T132; T104 before T133; T105 before T150  
 - Contract tests (T120–T129) must fail before implementing services (T140–T147)  
 - LLM client (T142) before pipeline orchestrator (T147)  
-- Pipeline orchestrator before UI wiring (T160+)  
+- Pipeline orchestrator before UI wiring (T162+)  
 - Technique derivation rule (T102) before mapping derivation integration (T180)  
 - OCR op tests (T129) before expanding procedure automation scenarios
+- Editor completion improvements (T210-T213) complete before expanding editor test coverage (T155-T156)
+- Bug fixes (T214-T217) complete before service injection tests (T157) and navigation tests (T158)
+- Selection guard recursion fix (T218-T219) complete before selection guard tests (T159)
+- Multiple event handling (T220-T221) complete before event processing tests (T160)
+- Navigation state tracking (T222-T223) complete before navigation state tests (T161)
 
 ---
 ## Parallel Execution Examples
 Phase 1 parallel set: T111 T112 T113 T114 T115 T116 T117  
 Contract test parallel set: T120 T121 T122 T123 T124 T125 T126
+Editor completion test set: T155 T156 (after T210-T213 complete)
+Bug fix test set: T157 T158 T159 T160 T161 (after T214-T223 complete)
 
 ---
 ## Validation Checklist
-- [ ] All FR-001..FR-020 have at least one test task
-- [ ] All FR-050..FR-058 have editor test or impl task
-- [ ] All FR-090..FR-099 mapping & procedure tasks enumerated
-- [ ] All FR-120..FR-123 reliability tasks covered
+- [X] All FR-001..FR-020 have at least one test task
+- [X] All FR-050..FR-058 have editor test or impl task
+- [X] All FR-090..FR-099 mapping & procedure tasks enumerated
+- [X] All FR-120..FR-130 reliability, completion, and bug fix tasks covered
 - [ ] No unresolved dependency loops
-- [ ] Each task has concrete output (file(s) or behavior)
+- [X] Each task has concrete output (file(s) or behavior)
 
 ---
-## Added / Completed (Account Migration)
+## Added / Completed (Account Migration + Completion Improvements + Bug Fixes + Selection Guard Fix + Multiple Event Handling + Navigation State Tracking)
 - [X] TM01 Migrate phrase service to account_id terminology (snapshot-backed)
 - [X] TM02 Update PhraseCompletionProvider to use snapshot via account_id
 - [X] TM03 Update Spec/Plan with migration notes
@@ -179,3 +212,17 @@ Contract test parallel set: T120 T121 T122 T123 T124 T125 T126
 - [X] TM29 Phrase Extraction refinement: dereportified line sourcing + enabled-first ordering.
 - [X] TM30 Phrase Extraction dereportified loading + async non-blocking save (IsBusy gating).
 - [X] TM31 Phrase rev stabilization: conditional trigger + app pre-select no-op short-circuit + UI load suppression.
+- [X] T210 Add IPhraseCache.Clear() method for cache invalidation (FR-124).
+- [X] T211 Implement completion cache invalidation in PhraseService.UpsertPhraseAsync() and ToggleActiveAsync() (FR-124).
+- [X] T212 Fix MusmCompletionWindow keyboard navigation by updating selection guard for Down/Up keys (FR-125).
+- [X] T213 Update documentation with editor completion improvements (FR-124, FR-125).
+- [X] T214 Fix phrase extraction window service injection by using DI instead of manual instantiation (FR-126).
+- [X] T215 Register PhraseExtractionViewModel in DI container (FR-126).
+- [X] T216 Enhance completion popup Up/Down key handling with explicit selection management (FR-127).
+- [X] T217 Update documentation with bug fixes (FR-126, FR-127).
+- [X] T218 Prevent selection guard recursion by temporarily disabling event handlers during programmatic changes (FR-128).
+- [X] T219 Update documentation with selection guard recursion fix (FR-128).
+- [X] T220 Enhance selection preservation for keyboard navigation by analyzing SelectionChanged event patterns (FR-129).
+- [X] T221 Update documentation with multiple event handling improvement (FR-129).
+- [X] T222 Add navigation state tracking flag to ensure first Down key selects first item consistently (FR-130).
+- [X] T223 Update documentation with navigation state tracking implementation (FR-130).

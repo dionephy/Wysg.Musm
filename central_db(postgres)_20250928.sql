@@ -72,13 +72,9 @@ CREATE FUNCTION radium.touch_phrase()
     LANGUAGE plpgsql
     COST 100
     VOLATILE NOT LEAKPROOF
-AS $BODY$
-BEGIN
-  NEW.updated_at := now();
-  -- bump rev on any content/state change
-  NEW.rev := nextval('radium.phrase_rev_seq');
-  RETURN NEW;
-END$BODY$;
+AS $BODY$ BEGIN IF (NEW.active IS DISTINCT FROM OLD.active OR NEW.text IS DISTINCT FROM OLD.text) THEN NEW.updated_at := now(); NEW.rev := nextval('radium.phrase_rev_seq'); ELSE -- no logical change: keep original timestamps / rev 
+NEW.updated_at := OLD.updated_at; NEW.rev := OLD.rev; END IF; RETURN NEW; END $BODY$;
 
 ALTER FUNCTION radium.touch_phrase()
     OWNER TO postgres;
+

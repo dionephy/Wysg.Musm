@@ -99,6 +99,7 @@ namespace Wysg.Musm.Radium
             services.AddTransient<MainViewModel>();
             services.AddTransient<StudynameLoincViewModel>();
             services.AddTransient<PhrasesViewModel>();
+            services.AddTransient<PhraseExtractionViewModel>();
         }
 
         public async Task ShowSplashLoginAsync()

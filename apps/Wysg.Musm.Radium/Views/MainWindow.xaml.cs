@@ -396,18 +396,19 @@ namespace Wysg.Musm.Radium.Views
             {
                 if (DataContext is not MainViewModel vm) return;
                 var app = (App)Application.Current;
-                var phraseSvc = app.Services.GetService(typeof(IPhraseService)) as IPhraseService;
-                var tenant = app.Services.GetService(typeof(ITenantContext)) as ITenantContext;
-                if (phraseSvc == null || tenant == null)
+                
+                // Use DI to get the view model with all dependencies properly injected
+                var vmExtract = app.Services.GetService<PhraseExtractionViewModel>();
+                if (vmExtract == null)
                 {
-                    MessageBox.Show("Phrase service not available.", "Extract Phrases", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("Phrase extraction service not available.", "Extract Phrases", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
-                var win = new PhraseExtractionWindow { Owner = this };
+                
+                var win = new PhraseExtractionWindow { Owner = this, DataContext = vmExtract };
+                
                 // Build dereportified / raw lines from current editors
                 var (header, findings, conclusion) = vm.GetDereportifiedSections();
-                var vmExtract = new Wysg.Musm.Radium.ViewModels.PhraseExtractionViewModel(phraseSvc, tenant);
-                win.DataContext = vmExtract;
                 vmExtract.LoadFromDeReportified(header, findings, conclusion);
                 win.Show();
             }

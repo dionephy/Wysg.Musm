@@ -50,16 +50,53 @@ namespace Wysg.Musm.Editor.Completion
 
         private void OnListSelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
+            Debug.WriteLine($"[CW] SelectionChanged: added={e.AddedItems?.Count}, removed={e.RemovedItems?.Count}, permit={_allowSelectionOnce}");
+            
             if (_allowSelectionOnce)
             {
                 _allowSelectionOnce = false; // consume permit
+                Debug.WriteLine("[CW] Selection allowed (consumed permit)");
                 return;
             }
-            // otherwise, enforce exact-match-only by clearing selection
-            if (CompletionList?.ListBox is { } lb)
+            
+            // Allow selection changes when triggered by keyboard navigation
+            // Check if the ListBox itself has focus (not just keyboard focus within)
+            if (CompletionList?.ListBox is { } lb && (lb.IsFocused || lb.IsKeyboardFocusWithin))
+            {
+                Debug.WriteLine("[CW] Selection allowed (keyboard focus)");
+                return;
+            }
+            
+            // Allow selection changes when the window or completion list has focus
+            if (IsFocused || CompletionList?.IsFocused == true)
+            {
+                Debug.WriteLine("[CW] Selection allowed (window focused)");
+                return;
+            }
+            
+            // Don't interfere with programmatic clearing of selection (when setting to -1)
+            if (CompletionList?.ListBox is { } listBox && listBox.SelectedIndex == -1)
+            {
+                Debug.WriteLine("[CW] Selection cleared programmatically, allowing");
+                return;
+            }
+            
+            // Don't clear selection if we just set it (prevent immediate clearing after setting)
+            if (e.AddedItems?.Count > 0 && e.RemovedItems?.Count == 0)
+            {
+                Debug.WriteLine("[CW] Selection just added, checking if we should preserve it");
+                // Allow new selections for a brief moment to prevent immediate clearing
+                return;
+            }
+            
+            // Otherwise, enforce exact-match-only by clearing selection
+            if (CompletionList?.ListBox is { } clearListBox && clearListBox.SelectedIndex != -1)
             {
                 Debug.WriteLine("[CW] clear selection (guard)");
-                lb.SelectedIndex = -1;
+                // Temporarily disable our own handler to prevent recursion
+                clearListBox.SelectionChanged -= OnListSelectionChanged;
+                clearListBox.SelectedIndex = -1;
+                clearListBox.SelectionChanged += OnListSelectionChanged;
             }
         }
 
@@ -180,11 +217,13 @@ namespace Wysg.Musm.Editor.Completion
             Debug.WriteLine($"[CW] SelectExactOrNone word='{word}' match={(match!=null)}");
             if (match != null)
             {
+                _allowSelectionOnce = true; // Allow this programmatic selection
                 CompletionList.ListBox.SelectedItem = match;
                 CompletionList.ListBox.ScrollIntoView(match);
             }
             else
             {
+                _allowSelectionOnce = true; // Allow clearing selection
                 CompletionList.ListBox.SelectedIndex = -1;
             }
         }
