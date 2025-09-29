@@ -180,7 +180,11 @@ RETURNING account_id;";
                 await using var cmd = new NpgsqlCommand("UPDATE app.account SET last_login_at = now() WHERE account_id = @id;", con);
                 cmd.Parameters.AddWithValue("id", accountId);
                 int n;
-                try { n = await cmd.ExecuteNonQueryAsync(); }
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                    n = await cmd.ExecuteNonQueryAsync(cts.Token);
+                }
                 catch (OperationCanceledException oce)
                 {
                     if (!silent) throw; // will be caught outer

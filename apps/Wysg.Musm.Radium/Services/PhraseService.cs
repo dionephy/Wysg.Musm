@@ -145,6 +145,29 @@ namespace Wysg.Musm.Radium.Services
             finally { _backendChecked = true; }
         }
 
+        private static bool IsTransientTimeout(Exception ex)
+        {
+            // Enhanced logic matching SupabaseService
+            if (ex is TimeoutException) return true;
+            if (ex is NpgsqlException npg)
+            {
+                if (npg.InnerException is TimeoutException) return true;
+                if (ContainsSocketTimeout(npg)) return true;
+                if (npg.Message.IndexOf("Timeout during reading attempt", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                if (npg.Message.IndexOf("Exception while reading from stream", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            }
+            if (ContainsSocketTimeout(ex)) return true;
+            if (ex is IOException io && io.InnerException is TimeoutException) return true;
+            return false;
+
+            static bool ContainsSocketTimeout(Exception e)
+            {
+                for (var cur = e; cur != null; cur = cur.InnerException)
+                    if (cur is SocketException se && se.SocketErrorCode == SocketError.TimedOut) return true;
+                return false;
+            }
+        }
+
         private async Task EnsureIndexAsync()
         {
             if (_indexEnsured) return;
@@ -155,62 +178,101 @@ namespace Wysg.Musm.Radium.Services
 
             if (Interlocked.CompareExchange(ref _indexCreateInFlight, 1, 0) != 1)
             {
-                try
+                const int maxAttempts = 2; // retry transient failures
+                int attempt = 0;
+                while (attempt < maxAttempts)
                 {
-                    await using var con = CreateConnection();
-                    try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con); }
-                    catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][INDEX][CANCEL-Open] " + oce.Message); _indexEnsured = true; return; }
-
-                    const string existsSql = "SELECT 1 FROM pg_indexes WHERE schemaname='radium' AND indexname='ix_phrase_account_id'";
                     try
                     {
-                        await using (var existsCmd = new NpgsqlCommand(existsSql, con) { CommandTimeout = 10 })
+                        await using var con = CreateConnection();
+                        try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con); }
+                        catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][INDEX][CANCEL-Open] " + oce.Message); _indexEnsured = true; return; }
+                        catch (Exception ex) when (IsTransientTimeout(ex))
                         {
-                            var exists = await existsCmd.ExecuteScalarAsync() != null;
-                            if (exists) { _indexEnsured = true; return; }
+                            attempt++;
+                            if (attempt < maxAttempts)
+                            {
+                                Debug.WriteLine($"[PhraseService][INDEX][RETRY {attempt}] Open transient: {ex.GetType().Name} {ex.Message}");
+                                await Task.Delay(200 * attempt);
+                                continue;
+                            }
+                            Debug.WriteLine($"[PhraseService][INDEX] Max retries exceeded for open: {ex.Message}");
+                            _indexEnsured = true; return;
                         }
-                    }
-                    catch (OperationCanceledException oce)
-                    {
-                        Debug.WriteLine("[PhraseService][INDEX][CANCEL-Exists] " + oce.Message);
-                        _indexEnsured = true; return;
-                    }
 
-                    const string createSql = "CREATE INDEX IF NOT EXISTS ix_phrase_account_id ON radium.phrase (account_id, id)";
-                    try
-                    {
-                        await using (var st = new NpgsqlCommand("SET LOCAL statement_timeout TO 30000", con))
-                            await st.ExecuteNonQueryAsync();
-                        await using var cmd = new NpgsqlCommand(createSql, con) { CommandTimeout = 40 };
-                        await cmd.ExecuteNonQueryAsync();
-                        Debug.WriteLine("[PhraseService][INDEX] Created / verified index.");
-                        _indexEnsured = true;
-                    }
-                    catch (OperationCanceledException oce)
-                    {
-                        Debug.WriteLine("[PhraseService][INDEX][CANCEL-Build] " + oce.Message);
-                        _indexEnsured = true;
+                        const string existsSql = "SELECT 1 FROM pg_indexes WHERE schemaname='radium' AND indexname='ix_phrase_account_id'";
+                        try
+                        {
+                            await using (var existsCmd = new NpgsqlCommand(existsSql, con) { CommandTimeout = 8 })
+                            {
+                                var exists = await existsCmd.ExecuteScalarAsync() != null;
+                                if (exists) { _indexEnsured = true; return; }
+                            }
+                        }
+                        catch (OperationCanceledException oce)
+                        {
+                            Debug.WriteLine("[PhraseService][INDEX][CANCEL-Exists] " + oce.Message);
+                            _indexEnsured = true; return;
+                        }
+                        catch (Exception ex) when (IsTransientTimeout(ex))
+                        {
+                            attempt++;
+                            if (attempt < maxAttempts)
+                            {
+                                Debug.WriteLine($"[PhraseService][INDEX][RETRY {attempt}] Exists check transient: {ex.GetType().Name} {ex.Message}");
+                                await Task.Delay(200 * attempt);
+                                continue; // retry entire method
+                            }
+                            Debug.WriteLine($"[PhraseService][INDEX] Max retries exceeded for exists check: {ex.Message}");
+                            _indexEnsured = true; return;
+                        }
+
+                        const string createSql = "CREATE INDEX IF NOT EXISTS ix_phrase_account_id ON radium.phrase (account_id, id)";
+                        try
+                        {
+                            await using (var st = new NpgsqlCommand("SET LOCAL statement_timeout TO 30000", con))
+                                await st.ExecuteNonQueryAsync();
+                            await using var cmd = new NpgsqlCommand(createSql, con) { CommandTimeout = 40 };
+                            await cmd.ExecuteNonQueryAsync();
+                            Debug.WriteLine("[PhraseService][INDEX] Created / verified index.");
+                            _indexEnsured = true;
+                            return;
+                        }
+                        catch (OperationCanceledException oce)
+                        {
+                            Debug.WriteLine("[PhraseService][INDEX][CANCEL-Build] " + oce.Message);
+                            _indexEnsured = true; return;
+                        }
+                        catch (Exception ex) when (IsTransientTimeout(ex))
+                        {
+                            attempt++;
+                            if (attempt < maxAttempts)
+                            {
+                                Debug.WriteLine($"[PhraseService][INDEX][RETRY {attempt}] Build transient: {ex.GetType().Name} {ex.Message}");
+                                await Task.Delay(200 * attempt);
+                                continue;
+                            }
+                            Debug.WriteLine($"[PhraseService][INDEX] Max retries exceeded for build: {ex.Message}");
+                            _indexEnsured = true; return;
+                        }
+                        catch (Exception ex) when (IsTransient(ex))
+                        {
+                            Debug.WriteLine($"[PhraseService][INDEX] Transient during build: {ex.Message} (skip)");
+                            _indexEnsured = true; return;
+                        }
                     }
                     catch (Exception ex) when (IsTransient(ex))
                     {
-                        Debug.WriteLine($"[PhraseService][INDEX] Transient during build: {ex.Message} (skip)");
-                        _indexEnsured = true;
+                        Debug.WriteLine($"[PhraseService][INDEX] Transient open: {ex.Message} (skip this round)");
+                        _indexEnsured = true; return;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[PhraseService][INDEX] Unrecoverable: {ex.Message} (skip)");
+                        _indexEnsured = true; return;
                     }
                 }
-                catch (Exception ex) when (IsTransient(ex))
-                {
-                    Debug.WriteLine($"[PhraseService][INDEX] Transient open: {ex.Message} (skip this round)");
-                    _indexEnsured = true;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[PhraseService][INDEX] Unrecoverable: {ex.Message} (skip)");
-                    _indexEnsured = true;
-                }
-                finally
-                {
-                    Interlocked.Exchange(ref _indexCreateInFlight, 0);
-                }
+                Interlocked.Exchange(ref _indexCreateInFlight, 0);
             }
         }
 
@@ -320,6 +382,7 @@ namespace Wysg.Musm.Radium.Services
                     catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][Page][CANCEL] " + oce.Message); break; }
                     catch (TimeoutException tex) { Debug.WriteLine($"[PhraseService][WARN] Page timeout size={pageSize} afterId={lastId}: {tex.Message}"); pageSize = Math.Max(50, pageSize / 2); continue; }
                     catch (NpgsqlException nex) when (nex.InnerException is TimeoutException) { pageSize = Math.Max(50, pageSize / 2); Debug.WriteLine($"[PhraseService][WARN] Npgsql timeout size->{pageSize}"); continue; }
+                    catch (Exception ex) when (IsTransientTimeout(ex)) { pageSize = Math.Max(50, pageSize / 2); Debug.WriteLine($"[PhraseService][WARN] Transient timeout size->{pageSize}: {ex.Message}"); continue; }
                     sw.Stop();
                     if (rows.Count == 0) break;
                     foreach (var r in rows)
@@ -379,6 +442,11 @@ namespace Wysg.Musm.Radium.Services
             {
                 Debug.WriteLine($"[PhraseService][TIMEOUT] LoadPage after={afterId} take={take}: {tex.Message}");
                 throw tex; // convert to TimeoutException for outer logic
+            }
+            catch (Exception ex) when (IsTransientTimeout(ex))
+            {
+                Debug.WriteLine($"[PhraseService][TIMEOUT-TRANSIENT] LoadPage after={afterId} take={take}: {ex.GetType().Name} {ex.Message}");
+                throw new TimeoutException($"Transient timeout in LoadPage: {ex.Message}", ex);
             }
             return list;
         }
@@ -460,6 +528,12 @@ namespace Wysg.Musm.Radium.Services
                     con = CreateConnection();
                     try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false); }
                     catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][Upsert][CANCEL-Open] " + oce.Message); if (attempts >= 4) throw; else continue; }
+                    catch (Exception ex) when (IsTransientTimeout(ex) && attempts < 4)
+                    {
+                        Debug.WriteLine($"[PhraseService][Upsert][RETRY {attempts}] Open transient: {ex.GetType().Name} {ex.Message}");
+                        await Task.Delay(150 * attempts).ConfigureAwait(false);
+                        continue;
+                    }
                     await using (var stCmd = new NpgsqlCommand("SET LOCAL statement_timeout TO 10000", con))
                         await stCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
 
@@ -533,7 +607,7 @@ namespace Wysg.Musm.Radium.Services
                     if (attempts < 4) { await Task.Delay(150 * attempts).ConfigureAwait(false); continue; }
                     throw;
                 }
-                catch (Exception ex) when (IsTransient(ex) && attempts < 4)
+                catch (Exception ex) when ((IsTransient(ex) || IsTransientTimeout(ex)) && attempts < 4)
                 {
                     Debug.WriteLine($"[PhraseService][RETRY] Upsert attempt={attempts} text='{text}' transient: {ex.Message}");
                     if (con != null) try { NpgsqlConnection.ClearPool(con); } catch { }
@@ -591,6 +665,12 @@ namespace Wysg.Musm.Radium.Services
                     con = CreateConnection();
                     try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false); }
                     catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][Toggle][CANCEL-Open] " + oce.Message); if (attempts < 4) { await Task.Delay(150 * attempts); continue; } else return null; }
+                    catch (Exception ex) when (IsTransientTimeout(ex) && attempts < 4)
+                    {
+                        Debug.WriteLine($"[PhraseService][Toggle][RETRY {attempts}] Open transient: {ex.GetType().Name} {ex.Message}");
+                        await Task.Delay(150 * attempts);
+                        continue;
+                    }
                     await using (var stCmd = new NpgsqlCommand("SET LOCAL statement_timeout TO 8000", con))
                         await stCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
                     await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 30 };
@@ -615,7 +695,7 @@ namespace Wysg.Musm.Radium.Services
                     if (attempts < 4) { await Task.Delay(150 * attempts); continue; }
                     return null;
                 }
-                catch (Exception ex) when (IsTransient(ex) && attempts < 4)
+                catch (Exception ex) when ((IsTransient(ex) || IsTransientTimeout(ex)) && attempts < 4)
                 {
                     Debug.WriteLine($"[PhraseService][RETRY] Toggle attempt={attempts} id={phraseId} transient: {ex.Message}");
                     if (con != null) try { NpgsqlConnection.ClearPool(con); } catch { }
