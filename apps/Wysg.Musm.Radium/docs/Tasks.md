@@ -31,6 +31,21 @@
 - [X] T221 Update documentation with multiple event handling improvement (FR-129).
 - [X] T222 Add navigation state tracking flag to ensure first Down key selects first item consistently (FR-130).
 - [X] T223 Update documentation with navigation state tracking implementation (FR-130).
+- [X] T224 Harden completion first navigation by resetting state on list rebuilds and when ListBox lacks focus so the initial Down/Up selects the boundary item (FR-131).
+- [X] T225 Update Spec/Plan/Tasks with focus-aware first navigation guard notes (FR-131).
+- [X] T226 Route Up/Down handling through the editor so ListBox never requires duplicate presses (FR-131).
+- [X] T227 Document manual navigation handling in Spec/Plan/Tasks (FR-131).
+- [X] T228 Ensure first navigation cannot re-trigger after focus transfer and moves immediately when already at boundary (FR-131).
+- [X] T229 Update documentation with focus-independent first navigation notes (FR-131).
+- [X] T230 Add guard-silent selection helper so editor-driven navigation does not trigger popup clearing (FR-131).
+- [X] T231 Update documentation with guard-silent selection helper coverage (FR-131).
+- [X] T232 Add recursive guard protection to prevent infinite loops during programmatic selection changes (FR-132).
+- [X] T233 Update documentation with recursive guard protection implementation (FR-132).
+- [X] T234 Add unit tests for completion navigation functionality (testing).
+- [X] T235 Implement bounded height + single-step navigation (internal nav index + dynamic MaxHeight) (FR-133).
+- [X] T236 Update Spec/Plan/Tasks with FR-133 documentation (FR-133).
+- [X] T237 Implement adaptive measured height (exact height ≤8 items, clamp >8) (FR-134).
+- [X] T238 Update Spec/Plan/Tasks with FR-134 documentation (FR-134).
 
 **Input**: Spec.md & Plan.md (cumulative)  
 **Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  
@@ -106,13 +121,14 @@ Legend:
 - [X] T159 Selection guard recursion test: verify multiple selection events don't cause infinite recursion (FR-128)
 - [X] T160 Multiple event handling test: verify SelectionChanged event patterns are analyzed correctly (FR-129)
 - [X] T161 Navigation state tracking test: verify first Down key always selects first item (FR-130)
+- [X] T162 Recursive guard protection test: verify guard flag prevents infinite loops during programmatic changes (FR-132)
 
 ## Phase 3 ? Pipeline Wiring (UI)
-- [ ] T162 Hook UI command: Load Current Study → invoke pipeline stages 1–5 automatically (FR-001..FR-005)  
-- [ ] T163 Integrate previous study retrieval + comparison selection UI (FR-007..FR-012)  
-- [ ] T164 Wire postprocess command invoking FR-014..FR-017 sequence (LLM + RBM)  
-- [ ] T165 Display proofread vs original toggles  
-- [ ] T166 Error banner for individual stage failures (FR-122)  
+- [ ] T163 Hook UI command: Load Current Study → invoke pipeline stages 1–5 automatically (FR-001..FR-005)  
+- [ ] T164 Integrate previous study retrieval + comparison selection UI (FR-007..FR-012)  
+- [ ] T165 Wire postprocess command invoking FR-014..FR-017 sequence (LLM + RBM)  
+- [ ] T166 Display proofread vs original toggles  
+- [ ] T167 Error banner for individual stage failures (FR-122)  
 
 ## Phase 3 ? PACS & Persistence
 - [ ] T170 Validate banner vs metadata prior to send (FR-018)  
@@ -136,13 +152,14 @@ Legend:
 - [ ] T197 Performance test for selection guard event handling (target <10ms) (FR-128)
 - [ ] T198 Performance test for multiple event processing (target <5ms) (FR-129)
 - [ ] T199 Performance test for navigation state tracking (target <1ms) (FR-130)
+- [ ] T200 Performance test for recursive guard protection (target <1ms) (FR-132)
 
 ## Phase 5 ? Documentation & Finalization
-- [ ] T200 Update quickstart with actual commands & sample timeline  
-- [ ] T201 Add troubleshooting section (LLM failures, PACS mismatch, OCR unavailable)  
-- [ ] T202 Update agent context file with final tech + last 3 changes  
-- [ ] T203 Review all FR coverage matrix (Spec vs tests)  
-- [ ] T204 Final acceptance checklist sign-off  
+- [ ] T201 Update quickstart with actual commands & sample timeline  
+- [ ] T202 Add troubleshooting section (LLM failures, PACS mismatch, OCR unavailable)  
+- [ ] T203 Update agent context file with final tech + last 3 changes  
+- [ ] T204 Review all FR coverage matrix (Spec vs tests)  
+- [ ] T205 Final acceptance checklist sign-off  
 
 ---
 ## Legacy Completed (Traceability)
@@ -154,33 +171,35 @@ Legend:
 - T103 before T132; T104 before T133; T105 before T150  
 - Contract tests (T120–T129) must fail before implementing services (T140–T147)  
 - LLM client (T142) before pipeline orchestrator (T147)  
-- Pipeline orchestrator before UI wiring (T162+)  
+- Pipeline orchestrator before UI wiring (T163+)  
 - Technique derivation rule (T102) before mapping derivation integration (T180)  
 - OCR op tests (T129) before expanding procedure automation scenarios
 - Editor completion improvements (T210-T213) complete before expanding editor test coverage (T155-T156)
 - Bug fixes (T214-T217) complete before service injection tests (T157) and navigation tests (T158)
 - Selection guard recursion fix (T218-T219) complete before selection guard tests (T159)
 - Multiple event handling (T220-T221) complete before event processing tests (T160)
-- Navigation state tracking (T222-T223) complete before navigation state tests (T161)
+- Navigation state tracking (T222-T231) complete before navigation state tests (T161)
+- Recursive guard protection (T232-T233) complete before recursive guard tests (T162)
+- Unit test implementation (T234) complete before comprehensive testing phase
 
 ---
 ## Parallel Execution Examples
 Phase 1 parallel set: T111 T112 T113 T114 T115 T116 T117  
 Contract test parallel set: T120 T121 T122 T123 T124 T125 T126
 Editor completion test set: T155 T156 (after T210-T213 complete)
-Bug fix test set: T157 T158 T159 T160 T161 (after T214-T223 complete)
+Bug fix test set: T157 T158 T159 T160 T161 T162 (after T214-T233 complete)
 
 ---
 ## Validation Checklist
 - [X] All FR-001..FR-020 have at least one test task
 - [X] All FR-050..FR-058 have editor test or impl task
 - [X] All FR-090..FR-099 mapping & procedure tasks enumerated
-- [X] All FR-120..FR-130 reliability, completion, and bug fix tasks covered
+- [X] All FR-120..FR-132 reliability, completion, and bug fix tasks covered
 - [ ] No unresolved dependency loops
 - [X] Each task has concrete output (file(s) or behavior)
 
 ---
-## Added / Completed (Account Migration + Completion Improvements + Bug Fixes + Selection Guard Fix + Multiple Event Handling + Navigation State Tracking)
+## Added / Completed (Account Migration + Completion Improvements + Bug Fixes + Selection Guard Fix + Multiple Event Handling + Navigation State Tracking + Recursive Guard Protection)
 - [X] TM01 Migrate phrase service to account_id terminology (snapshot-backed)
 - [X] TM02 Update PhraseCompletionProvider to use snapshot via account_id
 - [X] TM03 Update Spec/Plan with migration notes
@@ -226,3 +245,10 @@ Bug fix test set: T157 T158 T159 T160 T161 (after T214-T223 complete)
 - [X] T221 Update documentation with multiple event handling improvement (FR-129).
 - [X] T222 Add navigation state tracking flag to ensure first Down key selects first item consistently (FR-130).
 - [X] T223 Update documentation with navigation state tracking implementation (FR-130).
+- [X] T232 Add recursive guard protection to prevent infinite loops during programmatic selection changes (FR-132).
+- [X] T233 Update documentation with recursive guard protection implementation (FR-132).
+- [X] T234 Add unit tests for completion navigation functionality (testing).
+- [X] T235 Implement bounded height + single-step navigation (internal nav index + dynamic MaxHeight) (FR-133).
+- [X] T236 Update Spec/Plan/Tasks with FR-133 documentation (FR-133).
+- [X] T237 Implement adaptive measured height (exact height ≤8 items, clamp >8) (FR-134).
+- [X] T238 Update Spec/Plan/Tasks with FR-134 documentation (FR-134).

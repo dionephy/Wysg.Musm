@@ -1,5 +1,11 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Completion Navigation Guard (2025-09-30)
+- **FR-131** Completion popup MUST treat the first Down/Up navigation after the editor regains focus as selecting the natural boundary item (first/last) even if a prior selection was left behind, by recalculating navigation state whenever the list is rebuilt and when the list lacks keyboard focus, and the editor MUST adjust selection without raising guard-driven clears so the very next key advances immediately without requiring duplicate keystrokes.
+- **FR-132** Completion popup selection guard MUST prevent recursive event handling and properly handle navigation by using a guard flag to prevent infinite recursion during programmatic selection changes.
+- **FR-133** Completion popup MUST: (a) never skip intermediate items during sequential Up/Down navigation (one keypress → move exactly one item), and (b) cap visible item height to at most 8 items (dynamic ListBox MaxHeight) while allowing scroll for overflow.
+- **FR-134** Completion popup MUST auto-size its height exactly to (items_count * measured_item_height + padding) when item_count ≤ 8, and clamp to 8-items height when item_count > 8, updating after list rebuilds and after selection-induced layout changes.
+
 ## Update: Bug Fixes (2025-01-01)
 - **FR-126** Phrase extraction window MUST use proper dependency injection to prevent service injection errors during phrase save operations.
 - **FR-127** Completion popup Down/Up key navigation MUST work reliably by properly handling keyboard events and selection state management.
@@ -40,12 +46,16 @@
 8. Return SUCCESS (spec ready for planning updates)
 ```
 ---
+
+
 ## ⚡ Quick Guidelines
 - Focuses on WHAT value Radium delivers to radiologist and supporting assistants
 - Technical HOW (algorithms, classes, UI control specifics) deferred to plan & appendix
 - Ambiguities explicitly tagged
 
 ---
+
+
 ## User Scenarios & Testing (mandatory)
 
 ### Primary User Story – Current Study Reporting
@@ -83,6 +93,7 @@ User or automation needs quick extraction of patient number or study date/time f
 14. **Given completion popup selection guard is active, when legitimate keyboard navigation occurs, then selection changes are preserved without being cleared by the guard mechanism.**
 15. **Given multiple SelectionChanged events fire from a single keyboard navigation action, when selection is added via Down/Up keys, then the selection is preserved and not immediately cleared by subsequent events.**
 16. **Given completion popup is displayed with 3 items and user has not yet navigated, when user presses Down key for the first time, then selection moves to first item (index 0), and subsequent Down keys navigate normally through remaining items.**
+17. **Given completion popup navigation guard prevents recursive events, when programmatic selection changes occur, then the guard prevents infinite loops while preserving legitimate navigation.**
 
 ### Edge Cases
 - What happens when studyname mapping window is closed without selection? → [NEEDS CLARIFICATION: fallback behavior – skip, force retry, or mark as unmapped?]
@@ -92,6 +103,7 @@ User or automation needs quick extraction of patient number or study date/time f
 - Network/LLM service unavailable during postprocess → System must allow manual editing; mark fields requiring AI with placeholder and non‑blocking warning.
 - OCR engine unavailable (Windows OCR not enabled) → Operation returns explicit "(ocr unavailable)" preview token without throwing.
 - Patient number regex finds multiple sequences → Longest sequence selected.
+- Completion popup navigation causes recursive events → Selection guard prevents infinite loops while allowing legitimate navigation.
 
 ---
 ## Requirements (mandatory)
@@ -137,6 +149,10 @@ User or automation needs quick extraction of patient number or study date/time f
 - **FR-128** Completion popup selection guard MUST handle multiple selection events from single user actions by preventing recursive clearing and temporarily disabling event handlers during programmatic selection changes.
 - **FR-129** Completion popup selection preservation MUST detect and allow new selections added via keyboard navigation by analyzing SelectionChanged event patterns and preventing immediate clearing of legitimate user selections.
 - **FR-130** Completion popup first navigation detection MUST track user navigation state using a dedicated flag rather than selection index to ensure first Down key always selects first item (index 0) regardless of existing selections from exact matching.
+- **FR-131** Completion popup MUST recompute first-navigation state when suggestions refresh or the editor owns focus so that the first Down/Up key after typing selects the first or last item instead of skipping ahead even if the list retained a prior selection, and the editor MUST directly handle subsequent Up/Down keys so the very next press moves to the adjacent item on the first try.
+- **FR-132** Completion popup selection guard MUST prevent recursive event handling by using a guard flag to stop infinite loops during programmatic changes while preserving legitimate keyboard navigation.
+- **FR-133** Completion popup MUST: (a) never skip intermediate items during sequential Up/Down navigation (one keypress → move exactly one item), and (b) cap visible item height to at most 8 items (dynamic ListBox MaxHeight) while allowing scroll for overflow.
+- **FR-134** Completion popup MUST auto-size its height exactly to (items_count * measured_item_height + padding) when item_count ≤ 8, and clamp to 8-items height when item_count > 8, updating after list rebuilds and after selection-induced layout changes.
 
 ### Functional Requirements (Mapping & Procedures)
 - **FR-090** Studyname→LOINC mapping UI MUST allow multi-part selection, ordering (sequence letters), and duplicate part numbers with distinct sequence order (pair uniqueness rule).
@@ -199,8 +215,8 @@ User or automation needs quick extraction of patient number or study date/time f
 
 ---
 ## Non-Functional (Derived)
-- **Performance**: Header metadata render <1s (local). Ghost suggestion request dispatch ≤100ms after idle event. LOINC mapping UI list filtering <150ms on typical dataset. OCR element operation should return in <1.2s typical (depends on Windows OCR engine). Completion cache refresh <50ms after phrase add/modify. Keyboard navigation response <50ms. Selection guard event handling <10ms. Multiple event handling <5ms. Navigation state tracking <1ms.
-- **Reliability**: Any single external (LLM) failure must not block manual editing or PACS send if mandatory fields filled. Dependency injection must resolve all required services to prevent runtime failures. Selection guard must prevent infinite recursion. Multiple SelectionChanged events must be handled gracefully. Navigation state must be tracked accurately.
+- **Performance**: Header metadata render <1s (local). Ghost suggestion request dispatch ≤100ms after idle event. LOINC mapping UI list filtering <150ms on typical dataset. OCR element operation should return in <1.2s typical (depends on Windows OCR engine). Completion cache refresh <50ms after phrase add/modify. Keyboard navigation response <50ms. Selection guard event handling <10ms. Multiple event handling <5ms. Navigation state tracking <1ms. Recursive guard handling <1ms.
+- **Reliability**: Any single external (LLM) failure must not block manual editing or PACS send if mandatory fields filled. Dependency injection must resolve all required services to prevent runtime failures. Selection guard must prevent infinite recursion. Multiple SelectionChanged events must be handled gracefully. Navigation state must be tracked accurately. Recursive event handling must be prevented.
 - **Observability**: Structured logging for each pipeline stage (event type, duration, success/failure) [NEEDS CLARIFICATION: log schema].
 - **Local Persistence**: Final report write must be atomic (transaction or temp+rename) [detail for plan].
 
@@ -210,6 +226,7 @@ User or automation needs quick extraction of patient number or study date/time f
 - Ambiguous previous report headers producing incorrect structured fields (mitigate with confidence score + fallback).
 - Mapping quality affecting downstream technique auto-fill accuracy.
 - OCR variability across workstation font/render settings impacting patient number extraction accuracy.
+- Completion popup navigation recursion causing UI freezes or instability.
 
 ---
 ## Appendix A: Implemented Feature Record (Traceability – Historical Notes)
@@ -220,6 +237,7 @@ User or automation needs quick extraction of patient number or study date/time f
 
 ## 1) Bug Fixes (2025-01-01 - Latest)
 - **Navigation State Tracking**: Added _hasUserNavigated flag to EditorControl to properly track whether user has used keyboard navigation, ensuring first Down key always selects first item (index 0) regardless of existing selections from exact matching. Reset flag when creating new completion window and when closing.
+- **Recursive Guard Protection**: Enhanced MusmCompletionWindow selection guard to prevent recursive event handling by adding _handlingSelectionChange flag and proper event flow control during programmatic selection changes.
 
 ## 2) Bug Fixes (2025-01-01 - Previous)
 - **Multiple Event Handling**: Enhanced MusmCompletionWindow selection guard to detect and preserve selections that are added via keyboard navigation by analyzing SelectionChanged event patterns (added vs removed items). Added logic to prevent immediate clearing of new selections that don't have corresponding removals.
@@ -421,6 +439,9 @@ For full behavioral definitions see MUSM Editor Specification included in design
 - Prevented selection guard recursion (FR-128) to maintain proper navigation flow.
 - Improved multiple event handling (FR-129) to preserve keyboard-driven selections.
 - Fixed first navigation detection (FR-130) to ensure consistent Down key behavior.
+- Enhanced recursive guard protection (FR-132) to prevent infinite loops during programmatic changes.
+- Added precise single-step navigation and bounded height for completion popup (FR-133).
+- Implemented adaptive popup height adjustment with clamp to 8-items (FR-134).
 
 ---
 ## Feature Update (Reportified Toggle - Inverse Dereportify)

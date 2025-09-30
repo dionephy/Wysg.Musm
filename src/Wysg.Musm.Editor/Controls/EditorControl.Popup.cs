@@ -1,4 +1,4 @@
-﻿// src/Wysg.Musm.Editor/Controls/EditorControl.Popup.cs
+﻿// src/Wysk.Musm.Editor/Controls/EditorControl.Popup.cs
 using ICSharpCode.AvalonEdit.CodeCompletion;
 using ICSharpCode.AvalonEdit.Document;
 using System;
@@ -15,6 +15,7 @@ namespace Wysg.Musm.Editor.Controls
         private string _lastWordText = string.Empty;
         private Ui.CurrentWordHighlighter? _wordHi;
         private bool _hasUserNavigated = false; // Track if user has used Up/Down navigation
+        private int _navIndex = -1; // Internal navigation index decoupled from ListBox immediate changes
 
         private static (int start, string text) GetCurrentWord(TextDocument doc, int caret)
         {
@@ -75,8 +76,11 @@ namespace Wysg.Musm.Editor.Controls
                 _completionWindow = new MusmCompletionWindow(Editor);
                 _completionWindow.Closed += (_, __) => _completionWindow = null;
                 _completionWindow.Show();
-                _hasUserNavigated = false; // Reset navigation flag for new window
                 Debug.WriteLine("[Popup] open completion window");
+            }
+            else
+            {
+                Debug.WriteLine("[Popup] reuse completion window");
             }
             _completionWindow.StartOffset = start;
             Debug.WriteLine($"[Popup] set StartOffset={start}");
@@ -87,10 +91,15 @@ namespace Wysg.Musm.Editor.Controls
             foreach (var it in items) list.Add(it);
             Debug.WriteLine($"[Popup] items count={list.Count}");
 
+            // Adjust popup height after repopulation
+            _completionWindow.AdjustListBoxHeight();
+
+            // Reset navigation state any time we rebuild the list so the next Up/Down behaves like first navigation.
+            _hasUserNavigated = false;
+            _navIndex = -1;
             // exact-match-only selection
             _completionWindow.SelectExactOrNone(word);
         }
-
         private void OnTextEntering(object? s, System.Windows.Input.TextCompositionEventArgs e)
         {
             if (_completionWindow != null && e.Text.Length > 0 && !char.IsLetterOrDigit(e.Text[0]))
@@ -103,7 +112,7 @@ namespace Wysg.Musm.Editor.Controls
             int sel = _completionWindow?.CompletionList?.ListBox?.SelectedIndex ?? -2; // -2 means no window
             int startOff = _completionWindow?.StartOffset ?? -1;
             int endOff = _completionWindow?.EndOffset ?? -1;
-            Debug.WriteLine($"[Popup] PKD key={e.Key} popup={( _completionWindow!=null)} sel={sel} caret={caret} range=[{startOff},{endOff}]");
+            Debug.WriteLine($"[Popup] PKD key={e.Key} popup={( _completionWindow!=null)} sel={sel} caret={caret} range=[{startOff},{endOff}] navIndex={_navIndex} navigated={_hasUserNavigated}");
 
             // editing keys remove ghosts
             if (ServerGhosts.HasItems && (e.Key is Key.Back or Key.Delete or Key.Enter or Key.Return))
@@ -138,12 +147,7 @@ namespace Wysg.Musm.Editor.Controls
                     Debug.WriteLine($"[Popup] HOME move caret -> {newOff}, range=[{rangeStart},{rangeEnd}]");
                     e.Handled = true;
                     Editor.CaretOffset = newOff;
-                    if (newOff < rangeStart || newOff > rangeEnd)
-                    {
-                        Debug.WriteLine("[Popup] HOME outside range -> close");
-                        _lastWordStart = -1; // clear highlight
-                        CloseCompletionWindow();
-                    }
+                    if (newOff < rangeStart || newOff > rangeEnd) { Debug.WriteLine("[Popup] HOME outside range -> close"); _lastWordStart = -1; CloseCompletionWindow(); }
                     return;
                 }
                 if (e.Key == Key.End)
@@ -152,15 +156,10 @@ namespace Wysg.Musm.Editor.Controls
                     int rangeEnd = _completionWindow.EndOffset;
                     var line = Editor.Document.GetLineByOffset(Editor.CaretOffset);
                     int newOff = line.EndOffset;
-                    Debug.WriteLine($"[Popup] END move caret -> {newOff}, range=[{rangeStart},{rangeEnd}]");
+                    Debug.WriteLine($"[Popup] END move caret -> {newOff}, range=[{rangeStart},{endOff}]");
                     e.Handled = true;
                     Editor.CaretOffset = newOff;
-                    if (newOff < rangeStart || newOff > rangeEnd)
-                    {
-                        Debug.WriteLine("[Popup] END outside range -> close");
-                        _lastWordStart = -1; // clear highlight
-                        CloseCompletionWindow();
-                    }
+                    if (newOff < rangeStart || newOff > rangeEnd) { Debug.WriteLine("[Popup] END outside range -> close"); _lastWordStart = -1; CloseCompletionWindow(); }
                     return;
                 }
             }
@@ -178,23 +177,15 @@ namespace Wysg.Musm.Editor.Controls
             {
                 if (e.Key == Key.Down)
                 {
-                    ServerGhosts.MoveSelection(+1);
-                    InvalidateGhosts();
-                    e.Handled = true;
-                    return;
+                    ServerGhosts.MoveSelection(+1); InvalidateGhosts(); e.Handled = true; return;
                 }
                 if (e.Key == Key.Up)
                 {
-                    ServerGhosts.MoveSelection(-1);
-                    InvalidateGhosts();
-                    e.Handled = true;
-                    return;
+                    ServerGhosts.MoveSelection(-1); InvalidateGhosts(); e.Handled = true; return;
                 }
                 if (e.Key == Key.Tab)
                 {
-                    if (AcceptSelectedServerGhost())
-                        e.Handled = true;
-                    return;
+                    if (AcceptSelectedServerGhost()) e.Handled = true; return;
                 }
             }
 
@@ -207,66 +198,33 @@ namespace Wysg.Musm.Editor.Controls
                 return;
             }
 
+            // Handle Up/Down navigation in completion window
             if (_completionWindow != null && (e.Key is Key.Up or Key.Down))
             {
                 var lb = _completionWindow.CompletionList?.ListBox;
-                if (lb != null)
+                if (lb == null) { e.Handled = true; return; }
+                int count = lb.Items.Count;
+                if (count == 0) { e.Handled = true; return; }
+
+                if (!_hasUserNavigated)
                 {
-                    Debug.WriteLine($"[Popup] Up/Down navigation: current selection={lb.SelectedIndex}, items={lb.Items.Count}, hasUserNavigated={_hasUserNavigated}");
-                    
-                    if (!_hasUserNavigated)
-                    {
-                        // first navigation → select first (Down) or last (Up) immediately
-                        Debug.WriteLine("[Popup] First navigation: allowing selection");
-                        _completionWindow.AllowSelectionByKeyboardOnce();
-                        _hasUserNavigated = true; // Mark that user has now navigated
-                        
-                        // Give the ListBox focus to ensure keyboard events work properly
-                        if (!lb.IsFocused)
-                        {
-                            lb.Focus();
-                            Debug.WriteLine("[Popup] Giving ListBox focus");
-                        }
-                        
-                        if (e.Key == Key.Down) 
-                            lb.SelectedIndex = 0; 
-                        else 
-                            lb.SelectedIndex = lb.Items.Count - 1;
-                        e.Handled = true; // prevent caret move
-                        Debug.WriteLine($"[Popup] First navigation: set selection to {lb.SelectedIndex}");
-                        return;
-                    }
-                    
-                    // subsequent navigation: allow one selection change per key and let ListBox handle it
-                    Debug.WriteLine("[Popup] Subsequent navigation: allowing selection change");
-                    _completionWindow.AllowSelectionByKeyboardOnce();
-                    
-                    // Ensure ListBox has focus
-                    if (!lb.IsFocused)
-                    {
-                        lb.Focus();
-                        Debug.WriteLine("[Popup] Giving ListBox focus for navigation");
-                    }
-                    
-                    // Let the ListBox handle the navigation naturally
-                    if (e.Key == Key.Down && lb.SelectedIndex < lb.Items.Count - 1)
-                    {
-                        lb.SelectedIndex++;
-                        e.Handled = true;
-                        Debug.WriteLine($"[Popup] Down navigation: moved to {lb.SelectedIndex}");
-                    }
-                    else if (e.Key == Key.Up && lb.SelectedIndex > 0)
-                    {
-                        lb.SelectedIndex--;
-                        e.Handled = true;
-                        Debug.WriteLine($"[Popup] Up navigation: moved to {lb.SelectedIndex}");
-                    }
-                    else
-                    {
-                        e.Handled = true; // Prevent further processing even if at boundaries
-                        Debug.WriteLine($"[Popup] Navigation at boundary: {e.Key}, index={lb.SelectedIndex}");
-                    }
+                    _hasUserNavigated = true;
+                    _navIndex = e.Key == Key.Down ? 0 : count - 1;
+                    Debug.WriteLine($"[Popup] First nav set navIndex={_navIndex}");
+                    _completionWindow.SetSelectionSilently(_navIndex);
+                    e.Handled = true;
+                    return;
                 }
+
+                // subsequent
+                if (_navIndex < 0) _navIndex = lb.SelectedIndex; // safety
+                int delta = e.Key == Key.Down ? 1 : -1;
+                int newIndex = _navIndex + delta;
+                if (newIndex < 0) newIndex = 0; else if (newIndex >= count) newIndex = count - 1;
+                Debug.WriteLine($"[Popup] Subsequent nav from {_navIndex} -> {newIndex}");
+                _navIndex = newIndex;
+                _completionWindow.SetSelectionSilently(_navIndex);
+                e.Handled = true;
                 return;
             }
         }
@@ -279,7 +237,8 @@ namespace Wysg.Musm.Editor.Controls
                 _completionWindow.Closed -= (_, __) => _completionWindow = null; // remove anonymous
                 _completionWindow.Close();
                 _completionWindow = null;
-                _hasUserNavigated = false; // Reset navigation flag when closing
+                _hasUserNavigated = false;
+                _navIndex = -1;
             }
         }
 

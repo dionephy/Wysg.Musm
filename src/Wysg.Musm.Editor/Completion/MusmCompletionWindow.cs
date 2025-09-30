@@ -11,14 +11,12 @@ using ICSharpCode.AvalonEdit.Document;
 
 namespace Wysg.Musm.Editor.Completion
 {
-    /// <summary>
-    /// Completion window that replaces the whole "word around caret"
-    /// (prefix and tail on the current line). Filtering on by default.
-    /// </summary>
     public sealed class MusmCompletionWindow : CompletionWindow
     {
         private readonly TextEditor _editor;
         private bool _allowSelectionOnce;
+        private bool _handlingSelectionChange;
+        private const int MaxVisibleItems = 8; // constant cap requested
 
         public MusmCompletionWindow(TextEditor editor)
             : base(editor?.TextArea ?? throw new ArgumentNullException(nameof(editor)))
@@ -27,81 +25,114 @@ namespace Wysg.Musm.Editor.Completion
 
             CloseAutomatically = true;
             CompletionList.IsFiltering = true;
-            SizeToContent = SizeToContent.Height;
-            MaxHeight = 320;
+            // Width grows with content; height we manage manually each rebuild
+            SizeToContent = SizeToContent.Width;
+            MaxHeight = 320; // hard ceiling safeguard
             Width = 360;
 
-            // Optional: match editor font
             try { CompletionList.ListBox.FontFamily = _editor.FontFamily; } catch { }
             try { CompletionList.ListBox.FontSize = _editor.FontSize; } catch { }
-
-            // Never preselect by default
             try { CompletionList.ListBox.SelectedIndex = -1; } catch { }
-
-            // Guard selection: only allow when explicitly permitted
             try { CompletionList.ListBox.SelectionChanged += OnListSelectionChanged; } catch { }
-
-            // Handle keys when the list has focus (Enter/Home/End)
             try { CompletionList.ListBox.PreviewKeyDown += OnListPreviewKeyDown; } catch { }
-
-            // Track caret changes to adjust/close; caret moves should not auto-select
             try { TextArea.Caret.PositionChanged += OnCaretPositionChanged; } catch { }
+        }
+
+        public void AdjustListBoxHeight()
+        {
+            if (CompletionList?.ListBox is not { } lb) return;
+
+            // Force generation of first container so we can measure actual item height
+            if (lb.Items.Count > 0)
+            {
+                // Apply a quick layout pass
+                lb.UpdateLayout();
+            }
+
+            double itemHeight = 0;
+            if (lb.Items.Count > 0)
+            {
+                var container = lb.ItemContainerGenerator.ContainerFromIndex(0) as ListBoxItem;
+                if (container != null)
+                {
+                    container.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    itemHeight = container.DesiredSize.Height;
+                }
+            }
+            if (itemHeight <= 0) itemHeight = lb.FontSize * 1.35; // heuristic fallback
+            if (itemHeight < 14) itemHeight = 14; // lower bound
+            if (itemHeight > 40) itemHeight = 40; // safety upper bound
+
+            int count = lb.Items.Count;
+            int visible = Math.Min(count, MaxVisibleItems);
+            double listHeight = visible * itemHeight + 4; // padding for borders
+
+            // Apply fixed (not just MaxHeight) so window shrinks when item count smaller
+            lb.Height = listHeight;
+            lb.MaxHeight = listHeight; // lock exact height (scrollbar appears if more items than visible)
+
+            // Derive window chrome overhead (empirical small constant)
+            double chrome = 20; // title/border/padding inside completion window template
+            double desiredWindowHeight = listHeight + chrome;
+            if (desiredWindowHeight > MaxHeight) desiredWindowHeight = MaxHeight;
+
+            // Only set if different to avoid layout churn
+            if (Math.Abs(Height - desiredWindowHeight) > 0.5)
+            {
+                Height = desiredWindowHeight;
+            }
+
+            Debug.WriteLine($"[CW] AdjustListBoxHeight count={count} visible={visible} itemH={itemHeight:F1} listH={listHeight:F1} winH={Height:F1}");
         }
 
         private void OnListSelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
+            if (_handlingSelectionChange) return;
             Debug.WriteLine($"[CW] SelectionChanged: added={e.AddedItems?.Count}, removed={e.RemovedItems?.Count}, permit={_allowSelectionOnce}");
-            
             if (_allowSelectionOnce)
             {
-                _allowSelectionOnce = false; // consume permit
+                _allowSelectionOnce = false;
                 Debug.WriteLine("[CW] Selection allowed (consumed permit)");
                 return;
             }
-            
-            // Allow selection changes when triggered by keyboard navigation
-            // Check if the ListBox itself has focus (not just keyboard focus within)
             if (CompletionList?.ListBox is { } lb && (lb.IsFocused || lb.IsKeyboardFocusWithin))
             {
                 Debug.WriteLine("[CW] Selection allowed (keyboard focus)");
                 return;
             }
-            
-            // Allow selection changes when the window or completion list has focus
             if (IsFocused || CompletionList?.IsFocused == true)
             {
                 Debug.WriteLine("[CW] Selection allowed (window focused)");
                 return;
             }
-            
-            // Don't interfere with programmatic clearing of selection (when setting to -1)
-            if (CompletionList?.ListBox is { } listBox && listBox.SelectedIndex == -1)
+            if (CompletionList?.ListBox is { } clb && clb.SelectedIndex == -1)
             {
                 Debug.WriteLine("[CW] Selection cleared programmatically, allowing");
                 return;
             }
-            
-            // Don't clear selection if we just set it (prevent immediate clearing after setting)
-            if (e.AddedItems?.Count > 0 && e.RemovedItems?.Count == 0)
+            if (e.AddedItems?.Count > 0)
             {
-                Debug.WriteLine("[CW] Selection just added, checking if we should preserve it");
-                // Allow new selections for a brief moment to prevent immediate clearing
+                Debug.WriteLine("[CW] New selection added (allow)");
                 return;
             }
-            
-            // Otherwise, enforce exact-match-only by clearing selection
             if (CompletionList?.ListBox is { } clearListBox && clearListBox.SelectedIndex != -1)
             {
                 Debug.WriteLine("[CW] clear selection (guard)");
-                // Temporarily disable our own handler to prevent recursion
-                clearListBox.SelectionChanged -= OnListSelectionChanged;
-                clearListBox.SelectedIndex = -1;
-                clearListBox.SelectionChanged += OnListSelectionChanged;
+                _handlingSelectionChange = true;
+                try { clearListBox.SelectedIndex = -1; }
+                finally { _handlingSelectionChange = false; }
             }
         }
 
         private void OnListPreviewKeyDown(object? sender, KeyEventArgs e)
         {
+            if (e.Key == Key.Up || e.Key == Key.Down)
+            {
+                e.Handled = true;
+                Debug.WriteLine($"[CW] Suppress internal key={e.Key}");
+                return;
+            }
+
             Debug.WriteLine($"[CW] PKD key={e.Key} sel={CompletionList?.ListBox?.SelectedIndex}");
             if (CompletionList?.ListBox is null) return;
 
@@ -119,26 +150,22 @@ namespace Wysg.Musm.Editor.Completion
                 }
                 return;
             }
-
             if (e.Key == Key.Home)
             {
                 Debug.WriteLine("[CW] HOME move + maybe close");
                 e.Handled = true;
                 var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
                 _editor.CaretOffset = line.Offset;
-                if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset)
-                    Close();
+                if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
                 return;
             }
-
             if (e.Key == Key.End)
             {
                 Debug.WriteLine("[CW] END move + maybe close");
                 e.Handled = true;
                 var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
                 _editor.CaretOffset = line.EndOffset;
-                if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset)
-                    Close();
+                if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
                 return;
             }
         }
@@ -153,14 +180,12 @@ namespace Wysg.Musm.Editor.Completion
                 if (CloseAutomatically) Close();
                 return;
             }
-
             var (word, ok) = TryGetWordAtCaret();
             Debug.WriteLine($"[CW] word='{word}' ok={ok}");
             if (!ok || string.IsNullOrEmpty(word))
             {
                 Debug.WriteLine("[CW] empty word → close");
                 if (CloseAutomatically) Close();
-                return;
             }
         }
 
@@ -217,20 +242,41 @@ namespace Wysg.Musm.Editor.Completion
             Debug.WriteLine($"[CW] SelectExactOrNone word='{word}' match={(match!=null)}");
             if (match != null)
             {
-                _allowSelectionOnce = true; // Allow this programmatic selection
+                _allowSelectionOnce = true;
                 CompletionList.ListBox.SelectedItem = match;
                 CompletionList.ListBox.ScrollIntoView(match);
             }
             else
             {
-                _allowSelectionOnce = true; // Allow clearing selection
+                _allowSelectionOnce = true;
                 CompletionList.ListBox.SelectedIndex = -1;
             }
+            AdjustListBoxHeight(); // ensure height adapts when selection triggers virtualization/layout changes
         }
 
         /// <summary>
         /// Allow one selection change (e.g., caused by Up/Down).
         /// </summary>
         public void AllowSelectionByKeyboardOnce() => _allowSelectionOnce = true;
+
+        /// <summary>
+        /// Update the ListBox selection without triggering the guard logic.
+        /// </summary>
+        public void SetSelectionSilently(int index)
+        {
+            if (CompletionList?.ListBox is not { } lb) return;
+            Debug.WriteLine($"[CW] SetSelectionSilently: index={index}, current={lb.SelectedIndex}");
+            _handlingSelectionChange = true;
+            try
+            {
+                if (index >= 0 && index < lb.Items.Count)
+                {
+                    lb.SelectedIndex = index;
+                    lb.ScrollIntoView(lb.SelectedItem);
+                }
+                else lb.SelectedIndex = -1;
+            }
+            finally { _handlingSelectionChange = false; }
+        }
     }
 }

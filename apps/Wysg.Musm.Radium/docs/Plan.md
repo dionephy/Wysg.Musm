@@ -1,6 +1,10 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Change Log Addition
+- **2025-10-03**: Adaptive completion popup height auto-sizing implemented (FR-134) – dynamic measurement of first item, exact height for ≤8 items, clamped height with scrollbar for larger sets; re-adjust on selection & rebuild.
+- **2025-10-02**: Completion popup bounded height + single-step navigation stabilization implemented (FR-133) – internal navigation index prevents skip-over, ListBox height dynamically constrained to 8 visible items.
+- **2025-10-01**: Completion popup navigation recursion fix implemented (FR-132) – added guard flag in MusmCompletionWindow to prevent infinite loops during programmatic selection changes while preserving legitimate keyboard navigation.
+- **2025-09-30**: Focus-aware first navigation guard implemented (FR-131) – resets navigation state whenever the completion list rebuilds so the first Down/Up selects the boundary item, and editor now handles all subsequent Up/Down keys directly using guard-silent selection updates so the very next key advances to the adjacent item without duplicate presses or guard clears.
 - **2025-01-01**: First navigation detection improvement implemented (FR-130) - added navigation state tracking to ensure first Down key selects first item.
 - **2025-01-01**: Multiple event handling improvement implemented (FR-129) - enhanced selection preservation for keyboard navigation.
 - **2025-01-01**: Selection guard recursion bug fix implemented (FR-128) - prevented recursive clearing of completion popup selections.
@@ -10,7 +14,7 @@
 - Dereportify now normalizes '-->' to '--> ' with single space.
 - Added GetTextOCR procedure op + PACS banner helpers (current patient number, study date time).
 
-(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking)
+(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection)
 
 **Branch**: `[radium-cumulative]` | **Date**: 2025-01-01 | **Spec**: Spec.md (same folder)
 **Input**: Cumulative feature specification (Spec.md)
@@ -26,12 +30,12 @@ Primary goal: Unify automated radiology reporting pipeline (current + previous s
 **Storage**: Postgres (phrase & mapping), local persistence (file or DB) [NEEDS CLARIFICATION: local DB type], in-memory caches  
 **Testing**: xUnit (present) + golden text fixtures + OCR op unit test with engine-availability mock (future)  
 **Target Platform**: Windows 10+ desktop  
-**Performance Goals**: <1s metadata acquisition; <300ms completion popup open; ghost dispatch <100ms post idle; postprocess pipeline <5s; GetTextOCR typical <1.2s; banner heuristics <150ms; completion cache refresh <50ms; keyboard navigation <50ms; selection guard event handling <10ms; multiple event processing <5ms; navigation state tracking <1ms.  
-**Constraints**: Graceful degradation if OCR engine disabled; no UI thread blocking for network / OCR heavy operations; prevent selection guard recursion loops; handle multiple SelectionChanged events gracefully; maintain accurate navigation state tracking.
+**Performance Goals**: <1s metadata acquisition; <300ms completion popup open; ghost dispatch <100ms post idle; postprocess pipeline <5s; GetTextOCR typical <1.2s; banner heuristics <150ms; completion cache refresh <50ms; keyboard navigation <50ms; selection guard event handling <10ms; multiple event processing <5ms; navigation state tracking <1ms; recursive guard handling <1ms.  
+**Constraints**: Graceful degradation if OCR engine disabled; no UI thread blocking for network / OCR heavy operations; prevent selection guard recursion loops; handle multiple SelectionChanged events gracefully; maintain accurate navigation state tracking with focus-aware reset when list loses keyboard focus; ensure editor-owned Up/Down handling remains deterministic without relying on ListBox focus state; prevent infinite loops during programmatic selection changes.
 
 ---
 ## Constitution Check
-No architecture deviations: OCR op implemented in procedure executor. Banner helpers encapsulated inside PacsService. Low coupling maintained. Completion cache invalidation follows existing service patterns. Bug fixes maintain existing architectural patterns. Selection guard improvements preserve existing event handling architecture. Multiple event handling maintains WPF event model compliance. Navigation state tracking uses simple boolean flag pattern.
+No architecture deviations: OCR op implemented in procedure executor. Banner helpers encapsulated inside PacsService. Low coupling maintained. Completion cache invalidation follows existing service patterns. Bug fixes maintain existing architectural patterns. Selection guard improvements preserve existing event handling architecture. Multiple event handling maintains WPF event model compliance. Navigation state tracking uses simple boolean flag pattern. Recursive guard protection uses standard guard pattern without architectural changes.
 
 ---
 ## Project Structure (Affected)
@@ -41,8 +45,9 @@ No architecture deviations: OCR op implemented in procedure executor. Banner hel
 - apps/Wysg.Musm.Radium/Services/IPhraseCache.cs (Clear method)
 - apps/Wysg.Musm.Radium/Views/MainWindow.xaml.cs (phrase extraction DI fix)
 - apps/Wysg.Musm.Radium/App.xaml.cs (DI registration for PhraseExtractionViewModel)
-- src/Wysg.Musm.Editor/Completion/MusmCompletionWindow.cs (keyboard navigation + selection guard + multiple event handling)
-- src/Wysg.Musm.Editor/Controls/EditorControl.Popup.cs (navigation event handling + focus management + navigation state tracking)
+- src/Wysg.Musm.Editor/Completion/MusmCompletionWindow.cs (selection guard + keyboard navigation + multiple event handling + enter/home/end handling + silent selection helper + recursive guard protection)
+- src/Wysg.Musm.Editor/Controls/EditorControl.Popup.cs (navigation event handling + focus management + navigation state tracking + manual editor-driven Up/Down handling)
+- tests/Wysg.Musm.Tests/CompletionNavigationTests.cs (unit tests for completion navigation)
 - docs (Spec/Plan/Tasks updated cumulatively)
 
 ---
@@ -51,15 +56,15 @@ Pending clarifications extended to OCR (engine availability, fallback heuristics
 
 ---
 ## Phase 1: Design & Contracts
-(UNCHANGED baseline) – Add note: ProcedureOp set extended with GetTextOCR (Arg1=Element, Arg2 disabled). PacsService contract implicitly extended (non-interface) with `GetCurrentPatientNumberAsync` & `GetCurrentStudyDateTimeAsync`. IPhraseCache extended with Clear method for cache invalidation. DI container configured for proper service resolution. Selection guard enhanced to prevent recursion and handle multiple events. Navigation state tracking added for accurate first/subsequent navigation detection.
+(UNCHANGED baseline) – Add note: ProcedureOp set extended with GetTextOCR (Arg1=Element, Arg2 disabled). PacsService contract implicitly extended (non-interface) with `GetCurrentPatientNumberAsync` & `GetCurrentStudyDateTimeAsync`. IPhraseCache extended with Clear method for cache invalidation. DI container configured for proper service resolution. Selection guard enhanced to prevent recursion and handle multiple events. Navigation state tracking added for accurate first/subsequent navigation detection with focus-aware reset so first navigation after typing hits the boundary item, and editor now owns Up/Down handling to keep behaviour deterministic without relying on ListBox focus. Recursive guard protection added to prevent infinite loops during programmatic changes.
 
 ---
 ## Phase 2: Task Planning Extension
-Added incremental tasks (see Tasks.md T205..T208) covering implementation & spec alignment for FR-098..FR-099, FR-123. Added T209-T211 for completion improvements FR-124..FR-125. Added T214-T217 for bug fixes FR-126..FR-127. Added T218-T219 for selection guard recursion fix FR-128. Added T220-T221 for multiple event handling FR-129. Added T222-T223 for navigation state tracking FR-130.
+Added incremental tasks (see Tasks.md T205..T208) covering implementation & spec alignment for FR-098..FR-099, FR-123. Added T209-T211 for completion improvements FR-124..FR-125. Added T214-T217 for bug fixes FR-126..FR-127. Added T218-T219 for selection guard recursion fix FR-128. Added T220-T221 for multiple event handling FR-129. Added T222-T223 for navigation state tracking FR-130. Added T224-T225 for focus-aware first navigation guard FR-131. Added T226-T229 for manual editor-driven navigation handling FR-131. Added T232-T233 for recursive guard protection FR-132. Added T234-T235 for completion popup bounded height FR-133. Added T236-T237 for adaptive completion popup height FR-134.
 
 ---
 ## Phase 3+: Future
-Add tests later for OCR op fallbacks (engine missing) & banner regex accuracy (digit vs mixed token collision). Consider performance testing for completion cache refresh latency, keyboard navigation responsiveness, selection guard event handling efficiency, multiple event processing performance, and navigation state tracking accuracy.
+Add tests later for OCR op fallbacks (engine missing) & banner regex accuracy (digit vs mixed token collision). Consider performance testing for completion cache refresh latency, keyboard navigation responsiveness, selection guard event handling efficiency, multiple event processing performance, navigation state tracking accuracy, and recursive guard protection effectiveness.
 
 ---
 ## Complexity Tracking
@@ -71,9 +76,14 @@ No new complexity exceptions.
 
 ---
 ## Progress Tracking
-GetTextOCR + banner helpers implemented (status: Done). Editor completion improvements implemented (status: Done). Bug fixes implemented (status: Done). Selection guard recursion fix implemented (status: Done). Multiple event handling improvement implemented (status: Done). Navigation state tracking implemented (status: Done). Documentation updated.
+GetTextOCR + banner helpers implemented (status: Done). Editor completion improvements implemented (status: Done). Bug fixes implemented (status: Done). Selection guard recursion fix implemented (status: Done). Multiple event handling improvement implemented (status: Done). Navigation state tracking implemented (status: Done). Focus-aware first navigation guard implemented (status: Done). Manual editor-driven navigation implemented (status: Done). Guard-silent selection helper implemented (status: Done). Recursive guard protection implemented (status: Done). Completion popup bounded height implemented (status: Done). Adaptive completion popup height implemented (status: Done). Unit tests added (status: Done). Documentation updated.
 
 ---
+- **Bug Fix: Recursive guard protection**: MusmCompletionWindow now uses _handlingSelectionChange flag to prevent infinite loops during programmatic selection changes while preserving legitimate keyboard navigation.
+- **Bug Fix: Focus-aware navigation guard**: EditorControl now resets `_hasUserNavigated` whenever completions refresh and handles boundary detection entirely in-editor so the first Down/Up key selects index 0/last without relying on ListBox focus.
+- **Bug Fix: Manual editor navigation**: EditorControl consumes all Up/Down keys, mutating the completion list selection directly so the very next key advances to the adjacent item with scroll-into-view support.
+- **Bug Fix: Guard-silent selection helper**: MusmCompletionWindow exposes a helper to adjust ListBox selection without firing the guard, preventing automatic clear-outs after editor-driven navigation.
+
 ## Recent Adjustments (New - 2025-01-01)
 - **Bug Fix: Navigation State Tracking**: Added _hasUserNavigated flag to EditorControl to properly track whether user has used keyboard navigation, ensuring first Down key always selects first item (index 0) regardless of existing selections from exact matching. Flag is reset when creating new completion window and when closing, providing accurate first vs subsequent navigation detection.
 
@@ -118,3 +128,4 @@ GetTextOCR + banner helpers implemented (status: Done). Editor completion improv
 
 ## Added Implementation (Reportified Toggle)
 - Toggle handlers and reversible dereportify algorithm (see Spec) simplified by inversion logic.
+
