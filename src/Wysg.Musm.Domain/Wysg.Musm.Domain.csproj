@@ -4,6 +4,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RootNamespace>Wysg.Musm.Domain</RootNamespace>
+    <AssemblyName>Wysg.Musm.Domain</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

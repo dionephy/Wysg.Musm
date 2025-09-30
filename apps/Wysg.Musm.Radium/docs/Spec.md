@@ -1,5 +1,21 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: AI Server & LLM Orchestration Skeleton (2025-10-05)
+- **FR-AI-001** System MUST expose central server-hosted AI pipeline so multiple intranet Radium clients can consume structured skills (no raw free-form prompt endpoint) via future API project endpoints.
+- **FR-AI-002** Domain layer MUST define provider-agnostic interfaces (ILLMClient, IModelRouter, IStudyRemarkParser, IPatientRemarkParser, IHeaderSplitter, IHeaderParser, IConclusionGenerator, IProofreader, IReportPipeline, IInferenceTelemetry) without vendor dependencies.
+- **FR-AI-003** UseCases layer MUST implement ReportPipeline orchestrator sequencing skills for current study intake and postprocess (initial minimal stages implemented now: study remark, patient remark, conclusion preview + proofreading).
+- **FR-AI-004** Infrastructure layer MUST supply NoOp skill implementations (pass-through / empty) for offline or development mode until real adapters added.
+- **FR-AI-005** API host MUST register AI services through AddMusmAi() DI extension (toggle real vs NoOp later) so server can be started without model configuration.
+- **FR-AI-006** Adding real LLM provider MUST require only Infrastructure additions + DI wiring; Domain & UseCases remain unchanged (plug-in architecture guarantee).
+- **FR-AI-007** Telemetry abstraction (IInferenceTelemetry) MUST allow capturing per-skill latency, token counts, success flag, and error message; NoOp implementation is a benign sink.
+- **FR-AI-008** ReportState record MUST support immutable With() shallow copies for stage-by-stage enrichment (already implemented).
+- **FR-AI-009** Failure in non-critical skill (e.g., conclusion generation) MUST NOT nullify previously populated fields (pipeline to adopt try/catch in future implementation phase – placeholder noted).
+- **FR-AI-010** Model routing MUST be centrally configurable (IModelRouter) enabling later heuristics (latency/cost) without updating orchestrator code.
+
+> NOTE: These FR-AI-### items augment existing FR series; they will map to forthcoming tasks (see Tasks.md additions) and future endpoint designs.
+
+---
+
 ## Update: Completion Navigation Guard (2025-09-30)
 - **FR-131** Completion popup MUST treat the first Down/Up navigation after the editor regains focus as selecting the natural boundary item (first/last) even if a prior selection was left behind, by recalculating navigation state whenever the list is rebuilt and when the list lacks keyboard focus, and the editor MUST adjust selection without raising guard-driven clears so the very next key advances immediately without requiring duplicate keystrokes.
 - **FR-132** Completion popup selection guard MUST prevent recursive event handling and properly handle navigation by using a guard flag to prevent infinite recursion during programmatic selection changes.

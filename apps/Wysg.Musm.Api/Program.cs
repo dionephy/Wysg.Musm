@@ -1,3 +1,5 @@
+using Wysg.Musm.Infrastructure.AI; // extension registration
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -5,6 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// AI (LLM) skeleton registration (NoOp implementations until real adapters added)
+builder.Services.AddMusmAi(useNoOp: true);
 
 var app = builder.Build();
 

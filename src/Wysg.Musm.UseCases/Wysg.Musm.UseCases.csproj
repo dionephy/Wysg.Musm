@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Wysg.Musm.Domain\Wysg.Musm.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

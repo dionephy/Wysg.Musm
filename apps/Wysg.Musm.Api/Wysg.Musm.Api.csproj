@@ -10,4 +10,10 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.9" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Wysg.Musm.Infrastructure\Wysg.Musm.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Wysg.Musm.UseCases\Wysg.Musm.UseCases.csproj" />
+    <ProjectReference Include="..\..\src\Wysg.Musm.Domain\Wysg.Musm.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

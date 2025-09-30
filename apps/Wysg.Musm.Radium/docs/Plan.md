@@ -129,3 +129,37 @@ GetTextOCR + banner helpers implemented (status: Done). Editor completion improv
 ## Added Implementation (Reportified Toggle)
 - Toggle handlers and reversible dereportify algorithm (see Spec) simplified by inversion logic.
 
+# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
+
+## Change Log Addition (2025-10-05)
+- Added AI orchestration skeleton (Domain interfaces + UseCases ReportPipeline + Infrastructure NoOp skills + DI AddMusmAi extension + API registration). Implements FR-AI-001..FR-AI-008 partial (FR-AI-009/010 future enhancements).
+
+## AI Architecture Overview (New Section)
+Layer Responsibilities:
+1. Domain (Wysg.Musm.Domain.AI)
+   - Pure contracts & record types (provider agnostic) : ILLMClient, IModelRouter, skill interfaces, ReportState, context records.
+2. UseCases (Wysg.Musm.UseCases.AI)
+   - Orchestrator (ReportPipeline) composing skill interfaces; no vendor code.
+3. Infrastructure (Wysg.Musm.Infrastructure.AI)
+   - Adapters (future: OpenAI/Ollama), routing, telemetry, prompt templates. Currently: NoOp implementations for development.
+4. API Host (Wysg.Musm.Api)
+   - Registers AddMusmAi(); future Minimal API endpoints expose structured skills (e.g., POST /api/report/current-study-intake, POST /api/report/postprocess). No direct raw prompt endpoint.
+
+Dependency Direction: UI/Clients -> API (HTTP) -> UseCases -> Domain; Infrastructure implements Domain & is registered only at host boundary.
+
+Extensibility Path:
+- Add real provider: implement ILLMClient + skill classes; adjust AddMusmAi(useNoOp:false) + config binding.
+- Add new skill: define interface in Domain, implement Infrastructure adapter, extend ReportPipeline or new orchestrator.
+
+Fallback Strategy:
+- NoOp skills return empty strings/unchanged text enabling UI operation without blocking (graceful degradation while server offline).
+
+Telemetry Plan:
+- IInferenceTelemetry future implementation logs structured event {skill, model, ms, success, tokens} (Serilog sink + optional metrics).
+
+Next Steps (AI):
+- Define JSON contract validation & retry guard.
+- Implement HeaderSplitter, HeaderParser, Proofreader (real) + routing heuristics.
+- Add error isolation (try/catch around each stage) fulfilling FR-AI-009.
+- Add configuration section: "Ai:Provider:OpenAI" etc.
+
