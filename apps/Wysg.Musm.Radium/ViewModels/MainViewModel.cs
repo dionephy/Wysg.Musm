@@ -184,14 +184,101 @@ namespace Wysg.Musm.Radium.ViewModels
             _reportified = false; OnPropertyChanged(nameof(Reportified));
         }
 
-        private void OnAddStudy()
+        private async void OnAddStudy()
         {
-            var dt = System.DateTime.Now.AddDays(-_rng.Next(0, 120));
-            var header = "Technique: MRI Brain. Comparison: none.";
-            var findings = "Mild chronic microangiopathy.";
-            var conclusion = "No acute intracranial hemorrhage.";
-            var tab = new PreviousStudyTab { Id = Guid.NewGuid(), Title = dt.ToString("yyyy-MM-dd"), StudyDateTime = dt, Header = header, Findings = findings, Conclusion = conclusion, RawJson = JsonSerializer.Serialize(new { header, findings, conclusion }) };
-            PreviousStudies.Add(tab); SelectedPreviousStudy = tab;
+            if (_studyRepo == null) return;
+            try
+            {
+                // Fetch metadata from related studies selection (studyname + datetime + radiologist + report date)
+                var studyName = await _pacs.GetSelectedStudynameFromRelatedStudiesAsync();
+                var dtStr = await _pacs.GetSelectedStudyDateTimeFromRelatedStudiesAsync();
+                var radiologist = await _pacs.GetSelectedRadiologistFromRelatedStudiesAsync();
+                var reportDateStr = await _pacs.GetSelectedReportDateTimeFromRelatedStudiesAsync();
+
+                if (!DateTime.TryParse(dtStr, out var studyDt)) return; // cannot proceed without study datetime
+                DateTime? reportDt = null; if (DateTime.TryParse(reportDateStr, out var rdt)) reportDt = rdt;
+
+                // Ensure patient+study row (use currently loaded patient context)
+                var studyId = await _studyRepo.EnsureStudyAsync(PatientNumber, PatientName, PatientSex, null, studyName, studyDt);
+                if (studyId == null) return;
+
+                // Verify viewer banner matches selected related study before pulling findings/conclusion
+                var bannerTuple = _pacs.TryAutoLocateBanner();
+                // Previous logic required banner check; now we attempt retrieval regardless, but keep a soft validation flag
+                bool bannerLooksValid = false;
+                if (!string.IsNullOrWhiteSpace(bannerTuple.text))
+                {
+                    var text = bannerTuple.text!;
+                    bannerLooksValid = (!string.IsNullOrWhiteSpace(PatientNumber) && text.Contains(PatientNumber, StringComparison.OrdinalIgnoreCase)) &&
+                                      (text.Contains(studyDt.Year.ToString()) || text.Contains(studyDt.ToString("yyyy-MM-dd")));
+                }
+
+                // Always try to fetch both variants; pick longer non-null
+                var f1Task = _pacs.GetCurrentFindingsAsync();
+                var f2Task = _pacs.GetCurrentFindings2Async();
+                var c1Task = _pacs.GetCurrentConclusionAsync();
+                var c2Task = _pacs.GetCurrentConclusion2Async();
+                await Task.WhenAll(f1Task, f2Task, c1Task, c2Task);
+                var f1 = f1Task.Result; var f2 = f2Task.Result; var c1 = c1Task.Result; var c2 = c2Task.Result;
+                string findings = (f2?.Length ?? 0) > (f1?.Length ?? 0) ? (f2 ?? string.Empty) : (f1 ?? string.Empty);
+                string conclusion = (c2?.Length ?? 0) > (c1?.Length ?? 0) ? (c2 ?? string.Empty) : (c1 ?? string.Empty);
+                if (string.IsNullOrWhiteSpace(findings)) findings = string.Empty; // leave blank but explicit
+                if (string.IsNullOrWhiteSpace(conclusion)) conclusion = string.Empty;
+
+                // Build partial report JSON according to spec
+                var reportObj = new
+                {
+                    technique = string.Empty,
+                    chief_complaint = string.Empty,
+                    history_preview = string.Empty,
+                    chief_complaint_proofread = string.Empty,
+                    history = string.Empty,
+                    history_proofread = string.Empty,
+                    header_and_findings = findings ?? string.Empty,
+                    conclusion = conclusion ?? string.Empty,
+                    split_index = 0,
+                    comparison = string.Empty,
+                    technique_proofread = string.Empty,
+                    comparison_proofread = string.Empty,
+                    findings_proofread = string.Empty,
+                    conclusion_proofread = string.Empty,
+                    findings = findings ?? string.Empty,
+                    conclusion_preview = string.Empty
+                };
+                string json = JsonSerializer.Serialize(reportObj);
+
+                await _studyRepo.InsertPartialReportAsync(studyId.Value, radiologist, reportDt, json, isMine: false, isCreated: false);
+
+                // Refresh previous studies from DB
+                PreviousStudies.Clear();
+                var rows = await _studyRepo.GetReportsForPatientAsync(PatientNumber);
+                foreach (var r in rows)
+                {
+                    string f = string.Empty; string c = string.Empty; string headerFind = string.Empty;
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(r.ReportJson);
+                        var root = doc.RootElement;
+                        if (root.TryGetProperty("header_and_findings", out var hf)) headerFind = hf.GetString() ?? string.Empty;
+                        if (root.TryGetProperty("findings", out var ff)) f = ff.GetString() ?? headerFind;
+                        if (root.TryGetProperty("conclusion", out var cc)) c = cc.GetString() ?? string.Empty;
+                    }
+                    catch { }
+                    var tab = new PreviousStudyTab
+                    {
+                        Id = Guid.NewGuid(),
+                        Title = r.StudyDateTime.ToString("yyyy-MM-dd"),
+                        StudyDateTime = r.StudyDateTime,
+                        Header = string.Empty,
+                        Findings = string.IsNullOrWhiteSpace(f) ? headerFind : f,
+                        Conclusion = c,
+                        RawJson = r.ReportJson
+                    };
+                    PreviousStudies.Add(tab);
+                }
+                if (PreviousStudies.Count > 0) SelectedPreviousStudy = PreviousStudies.First();
+            }
+            catch { }
         }
         private void OnSendReportPreview() { }
         private void OnSendReport() { PatientLocked = false; }

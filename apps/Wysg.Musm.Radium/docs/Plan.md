@@ -11,6 +11,8 @@
 - **2025-10-05**: FR-149 Auto-clear UseIndex after Pick capture.
 - **2025-10-05**: FR-150 Added ReportText2 KnownControl + XAML combo item.
 - **2025-10-05**: FR-151 Added PACS getters (findings/conclusion variants) + procedure combo entries + PacsService wrappers.
+- **2025-10-05**: FR-152 AddStudy now ingests previous report: ensures study, validates banner, fetches findings/conclusion variants, inserts partial rad_report, refreshes PreviousStudies via repository.
+- **2025-10-05**: FR-152a Always attempt findings/conclusion retrieval and filter PreviousStudies to only those with reports containing either field.
 
 (Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection)
 
@@ -156,6 +158,8 @@ GetTextOCR + banner helpers implemented (status: Done). Editor completion improv
 - **2025-10-05**: FR-149 Auto-clear UseIndex after Pick capture.
 - **2025-10-05**: FR-150 Added ReportText2 KnownControl + XAML combo item.
 - **2025-10-05**: FR-151 Added PACS getters (findings/conclusion variants) + procedure combo entries + PacsService wrappers.
+- **2025-10-05**: FR-152 AddStudy now ingests previous report: ensures study, validates banner, fetches findings/conclusion variants, inserts partial rad_report, refreshes PreviousStudies via repository.
+- **2025-10-05**: FR-152a Always attempt findings/conclusion retrieval and filter PreviousStudies to only those with reports containing either field.
 
 (Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection)
 

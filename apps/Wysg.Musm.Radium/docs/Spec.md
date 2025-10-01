@@ -1,10 +1,14 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Previous report ingestion refinements (2025-10-05)
+- **FR-152a** Ensure AddStudy always populates `header_and_findings` and `conclusion` (attempt retrieval regardless of banner validity) and only display studies with at least one report row containing either field.
+
 ## Update: Tree default disabled & new PACS getters (2025-10-05)
 - **FR-148** SpyWindow TreeView MUST be disabled (hidden) by default; user enables via checkbox.
 - **FR-149** After a Pick capture, system MUST auto-clear (uncheck) UseIndex for all nodes in captured chain.
 - **FR-150** Add new bookmark target `ReportText2` for alternate report text control mapping.
 - **FR-151** Add PACS procedure method tags & service accessors: GetCurrentFindings, GetCurrentConclusion, GetCurrentFindings2, GetCurrentConclusion2.
+- **FR-152** When AddStudy command invoked: gather selected related study metadata, ensure rad_study, verify banner matches patient/study date; pull findings/conclusion (choose longer variant); build partial report JSON with only `header_and_findings` and `conclusion` populated plus duplication in `findings`; insert med.rad_report row (is_created=false, is_mine=false, created_by=radiologist, report_datetime=report date); refresh PreviousStudies from DB.
 
 ## Prior Recent Updates
 - FR-146 Birth date persistence.
@@ -143,6 +147,7 @@ User or automation needs quick extraction of patient number or study date/time f
 - **FR-019** System MUST submit (header_reportified + findings_reportified) and (conclusion_reportified_numbered) to appropriate PACS fields and confirm acceptance.
 - **FR-020** System MUST persist final report (header_findings composite, conclusion, structured JSON components) on successful PACS acknowledgment.
 - **FR-021** System MUST fetch selected patient/study metadata from Search Results list and expose as properties + `CurrentStudyLabel` string on New Study.
+- **FR-022** System MUST (when AddStudy command invoked) gather selected related study metadata, ensure rad_study, verify banner matches patient/study date, pull findings/conclusion (choose longer variant), build partial report JSON with only `header_and_findings` and `conclusion` populated plus duplication in `findings`, insert med.rad_report row (is_created=false, is_mine=false, created_by=radiologist, report_datetime=report date), refresh PreviousStudies from DB.
 
 ### Functional Requirements (Editor Assistance)
 - **FR-050** Editor MUST open completion popup only when current contiguous letter span length ≥ configured MinCharsForSuggest and provider returns ≥1 item.

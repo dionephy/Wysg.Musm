@@ -68,6 +68,8 @@
 - [X] T258 Clear UseIndex flags after Pick (FR-149).
 - [X] T259 Add ReportText2 bookmark option (FR-150).
 - [X] T260 Add current findings/conclusion getters (primary + variant) (FR-151).
+- [X] T261 Implement previous report ingestion on AddStudy (FR-152) with partial JSON + DB persistence + UI refresh.
+- [X] T262 Ensure findings/conclusion always retrieved and filter previous studies list to only studies having populated report fields (FR-152a).
 
 **Input**: Spec.md & Plan.md (cumulative)  
 **Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  
