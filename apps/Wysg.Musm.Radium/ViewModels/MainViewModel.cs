@@ -17,6 +17,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly IPhraseService _phrases;
         private readonly ITenantContext _tenant;
         private readonly IPhraseCache _cache;
+        private readonly PacsService _pacs = new(); // PACS service instance for current study metadata
 
         public MainViewModel(IPhraseService phrases, ITenantContext tenant, IPhraseCache cache)
         {
@@ -29,6 +30,49 @@ namespace Wysg.Musm.Radium.ViewModels
             SelectPreviousStudyCommand = new DelegateCommand(o => OnSelectPrevious(o), _ => PatientLocked);
             OpenStudynameMapCommand = new DelegateCommand(_ => Views.StudynameLoincWindow.Open());
             OpenPhraseManagerCommand = new DelegateCommand(_ => Views.PhrasesWindow.Open());
+        }
+
+        // Current study PACS metadata (populated on New Study)
+        private string _patientName = string.Empty; public string PatientName { get => _patientName; set { if (SetProperty(ref _patientName, value)) UpdateCurrentStudyLabel(); } }
+        private string _patientNumber = string.Empty; public string PatientNumber { get => _patientNumber; set { if (SetProperty(ref _patientNumber, value)) UpdateCurrentStudyLabel(); } }
+        private string _patientSex = string.Empty; public string PatientSex { get => _patientSex; set { if (SetProperty(ref _patientSex, value)) UpdateCurrentStudyLabel(); } }
+        private string _patientAge = string.Empty; public string PatientAge { get => _patientAge; set { if (SetProperty(ref _patientAge, value)) UpdateCurrentStudyLabel(); } }
+        private string _studyName = string.Empty; public string StudyName { get => _studyName; set { if (SetProperty(ref _studyName, value)) UpdateCurrentStudyLabel(); } }
+        private string _studyDateTime = string.Empty; public string StudyDateTime { get => _studyDateTime; set { if (SetProperty(ref _studyDateTime, value)) UpdateCurrentStudyLabel(); } }
+
+        private string _currentStudyLabel = "Current Study"; public string CurrentStudyLabel { get => _currentStudyLabel; private set => SetProperty(ref _currentStudyLabel, value); }
+        private void UpdateCurrentStudyLabel()
+        {
+            // Build a concise summary; use '?' for missing fields
+            string fmt(string s) => string.IsNullOrWhiteSpace(s) ? "?" : s.Trim();
+            CurrentStudyLabel = $"{fmt(PatientName)} | {fmt(PatientNumber)} | {fmt(PatientSex)} | {fmt(PatientAge)} | {fmt(StudyName)} | {fmt(StudyDateTime)}";
+        }
+
+        private async Task FetchCurrentStudyAsync()
+        {
+            try
+            {
+                // Query PACS list selection in parallel
+                var nameTask = _pacs.GetSelectedNameFromSearchResultsAsync();
+                var numberTask = _pacs.GetSelectedIdFromSearchResultsAsync();
+                var sexTask = _pacs.GetSelectedSexFromSearchResultsAsync();
+                var ageTask = _pacs.GetSelectedAgeFromSearchResultsAsync();
+                var studyNameTask = _pacs.GetSelectedStudynameFromSearchResultsAsync();
+                var dtTask = _pacs.GetSelectedStudyDateTimeFromSearchResultsAsync();
+
+                await Task.WhenAll(nameTask, numberTask, sexTask, ageTask, studyNameTask, dtTask);
+
+                PatientName = nameTask.Result ?? string.Empty;
+                PatientNumber = numberTask.Result ?? string.Empty;
+                PatientSex = sexTask.Result ?? string.Empty;
+                PatientAge = ageTask.Result ?? string.Empty;
+                StudyName = studyNameTask.Result ?? string.Empty;
+                StudyDateTime = dtTask.Result ?? string.Empty;
+            }
+            catch
+            {
+                // Leave defaults; label will show '?' placeholders
+            }
         }
 
         // Text bound to editors
@@ -123,6 +167,10 @@ namespace Wysg.Musm.Radium.ViewModels
             PreviousStudies.Clear();
             SelectedPreviousStudy = null;
             HeaderText = FindingsText = ConclusionText = string.Empty;
+            // Reset current study properties first (show placeholders until PACS data arrives)
+            PatientName = PatientNumber = PatientSex = PatientAge = StudyName = StudyDateTime = string.Empty;
+            UpdateCurrentStudyLabel();
+            _ = FetchCurrentStudyAsync(); // fire & forget
             _reportified = false; OnPropertyChanged(nameof(Reportified));
         }
 

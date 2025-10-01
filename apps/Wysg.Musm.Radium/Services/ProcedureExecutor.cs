@@ -1,0 +1,307 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+using FlaUI.Core.AutomationElements;
+using FlaUI.UIA3;
+
+namespace Wysg.Musm.Radium.Services
+{
+    /// <summary>
+    /// Executes user-defined PACS procedures saved by SpyWindow (ui-procedures.json).
+    /// Mirrors the minimal data contract from SpyWindow's internal ProcStore/ProcOpRow/ProcArg classes
+    /// so that PACS service methods can be fully data?driven (customizable) instead of hard-coded.
+    /// </summary>
+    internal static class ProcedureExecutor
+    {
+        // --- Data contracts (shape must match SpyWindow serialization) ---
+        private sealed class ProcStore { public Dictionary<string, List<ProcOpRow>> Methods { get; set; } = new(); }
+        private sealed class ProcOpRow
+        {
+            public string Op { get; set; } = string.Empty;
+            public ProcArg Arg1 { get; set; } = new();
+            public ProcArg Arg2 { get; set; } = new();
+            public ProcArg Arg3 { get; set; } = new();
+            public bool Arg1Enabled { get; set; } = true;
+            public bool Arg2Enabled { get; set; } = true;
+            public bool Arg3Enabled { get; set; } = false;
+        }
+        private sealed class ProcArg { public string Type { get; set; } = "String"; public string? Value { get; set; } }
+
+        private enum ArgKind { Element, String, Number, Var }
+
+        private static string GetProcPath()
+        {
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Wysg.Musm", "Radium");
+            Directory.CreateDirectory(dir);
+            return Path.Combine(dir, "ui-procedures.json");
+        }
+
+        private static ProcStore Load()
+        {
+            try
+            {
+                var p = GetProcPath();
+                if (!File.Exists(p)) return new ProcStore();
+                return JsonSerializer.Deserialize<ProcStore>(File.ReadAllText(p), new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? new ProcStore();
+            }
+            catch { return new ProcStore(); }
+        }
+
+        public static Task<string?> ExecuteAsync(string methodTag)
+        {
+            return Task.Run(() => ExecuteInternal(methodTag));
+        }
+
+        private static string? ExecuteInternal(string methodTag)
+        {
+            if (string.IsNullOrWhiteSpace(methodTag)) return null;
+            var store = Load();
+            if (!store.Methods.TryGetValue(methodTag, out var steps) || steps.Count == 0) return null; // no custom procedure defined
+
+            var vars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            string? last = null;
+            for (int i = 0; i < steps.Count; i++)
+            {
+                var row = steps[i];
+                var (preview, value) = ExecuteRow(row, vars);
+                vars[$"var{i + 1}"] = value;
+                if (value != null) last = value;
+            }
+            return last;
+        }
+
+        private static (string preview, string? value) ExecuteRow(ProcOpRow row, Dictionary<string, string?> vars)
+        {
+            string? valueToStore = null;
+            string preview;
+            switch (row.Op)
+            {
+                case "Split":
+                {
+                    var input = ResolveString(row.Arg1, vars);
+                    var sep = ResolveString(row.Arg2, vars) ?? string.Empty;
+                    var indexStr = ResolveString(row.Arg3, vars);
+                    if (input == null) { return ("(null)", null); }
+                    var parts = input.Split(new[] { sep }, StringSplitOptions.None);
+                    if (!string.IsNullOrWhiteSpace(indexStr) && int.TryParse(indexStr.Trim(), out var idx))
+                    {
+                        if (idx >= 0 && idx < parts.Length) { valueToStore = parts[idx]; preview = valueToStore ?? string.Empty; }
+                        else { preview = $"(index out of range {parts.Length})"; }
+                    }
+                    else
+                    {
+                        valueToStore = string.Join("\u001F", parts);
+                        preview = parts.Length + " parts";
+                    }
+                    return (preview, valueToStore);
+                }
+                case "GetText":
+                case "GetTextOCR":
+                case "Invoke":
+                case "GetValueFromSelection":
+                case "ToDateTime":
+                case "TakeLast":
+                case "Trim":
+                    return ExecuteElemental(row, vars);
+                default:
+                    return ("(unsupported)", null);
+            }
+        }
+
+        private static (string preview, string? value) ExecuteElemental(ProcOpRow row, Dictionary<string, string?> vars)
+        {
+            try
+            {
+                switch (row.Op)
+                {
+                    case "GetText":
+                    {
+                        var el = ResolveElement(row.Arg1);
+                        if (el == null) return ("(no element)", null);
+                        try
+                        {
+                            var name = el.Name;
+                            var val = el.Patterns.Value.PatternOrDefault?.Value ?? string.Empty;
+                            var legacy = el.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty;
+                            var txt = !string.IsNullOrEmpty(val) ? val : (!string.IsNullOrEmpty(name) ? name : legacy);
+                            return (txt ?? string.Empty, txt);
+                        }
+                        catch { return ("(error)", null); }
+                    }
+                    case "GetTextOCR":
+                    {
+                        var el = ResolveElement(row.Arg1);
+                        if (el == null) return ("(no element)", null);
+                        try
+                        {
+                            var r = el.BoundingRectangle; if (r.Width <= 0 || r.Height <= 0) return ("(no bounds)", null);
+                            var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value); if (hwnd == IntPtr.Zero) return ("(no hwnd)", null);
+                            var (engine, text) = Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(0,0,(int)r.Width,(int)r.Height)).ConfigureAwait(false).GetAwaiter().GetResult();
+                            if (!engine) return ("(ocr unavailable)", null);
+                            return (string.IsNullOrWhiteSpace(text) ? "(empty)" : text!, text);
+                        }
+                        catch { return ("(error)", null); }
+                    }
+                    case "Invoke":
+                    {
+                        var el = ResolveElement(row.Arg1);
+                        if (el == null) return ("(no element)", null);
+                        try
+                        {
+                            var inv = el.Patterns.Invoke.PatternOrDefault; if (inv != null) inv.Invoke(); else el.Patterns.Toggle.PatternOrDefault?.Toggle();
+                            return ("(invoked)", null);
+                        }
+                        catch { return ("(error)", null); }
+                    }
+                    case "TakeLast":
+                    {
+                        var combined = ResolveString(row.Arg1, vars) ?? string.Empty;
+                        var arr = combined.Split('\u001F'); var value = arr.Length > 0 ? arr[^1] : string.Empty;
+                        return (value, value);
+                    }
+                    case "Trim":
+                    {
+                        var s = ResolveString(row.Arg1, vars); var v = s?.Trim(); return (v ?? "(null)", v);
+                    }
+                    case "GetValueFromSelection":
+                    {
+                        var el = ResolveElement(row.Arg1); var headerWanted = row.Arg2?.Value ?? "ID"; if (string.IsNullOrWhiteSpace(headerWanted)) headerWanted = "ID";
+                        if (el == null) return ("(no element)", null);
+                        try
+                        {
+                            var selection = el.Patterns.Selection.PatternOrDefault;
+                            var selected = selection?.Selection?.Value ?? Array.Empty<AutomationElement>();
+                            if (selected.Length == 0)
+                            {
+                                selected = el.FindAllDescendants().Where(a => { try { return a.Patterns.SelectionItem.IsSupported && a.Patterns.SelectionItem.PatternOrDefault?.IsSelected == true; } catch { return false; } }).ToArray();
+                            }
+                            if (selected.Length == 0) return ("(no selection)", null);
+                            var rowEl = selected[0];
+                            var headers = SpyHeaderHelpers.GetHeaderTexts(el);
+                            var cells = SpyHeaderHelpers.GetRowCellValues(rowEl);
+                            if (headers.Count < cells.Count) for (int j = headers.Count; j < cells.Count; j++) headers.Add($"Col{j + 1}");
+                            else if (headers.Count > cells.Count) for (int j = cells.Count; j < headers.Count; j++) cells.Add(string.Empty);
+                            string? matched = null;
+                            for (int j = 0; j < headers.Count; j++) if (string.Equals(SpyHeaderHelpers.NormalizeHeader(headers[j]), headerWanted, StringComparison.OrdinalIgnoreCase)) { matched = cells[j]; break; }
+                            if (matched == null)
+                                for (int j = 0; j < headers.Count; j++) if (SpyHeaderHelpers.NormalizeHeader(headers[j]).IndexOf(headerWanted, StringComparison.OrdinalIgnoreCase) >= 0) { matched = cells[j]; break; }
+                            if (matched == null) return ($"({headerWanted} not found)", null);
+                            return (matched, matched);
+                        }
+                        catch { return ("(error)", null); }
+                    }
+                    case "ToDateTime":
+                    {
+                        var s = ResolveString(row.Arg1, vars); if (string.IsNullOrWhiteSpace(s)) return ("(null)", null);
+                        if (DateTime.TryParse(s.Trim(), out var dt)) { var iso = dt.ToString("o"); return (dt.ToString("yyyy-MM-dd HH:mm:ss"), iso); }
+                        return ("(parse fail)", null);
+                    }
+                }
+            }
+            catch { }
+            return ("(unsupported)", null);
+        }
+
+        private static AutomationElement? ResolveElement(ProcArg arg)
+        {
+            if (ParseArgKind(arg.Type) != ArgKind.Element) return null;
+            var tag = arg.Value ?? string.Empty;
+            if (!Enum.TryParse<UiBookmarks.KnownControl>(tag, out var key)) return null;
+            var tuple = UiBookmarks.Resolve(key);
+            return tuple.element;
+        }
+
+        private static string? ResolveString(ProcArg arg, Dictionary<string, string?> vars)
+        {
+            var type = ParseArgKind(arg.Type);
+            return type switch
+            {
+                ArgKind.Var => (arg.Value != null && vars.TryGetValue(arg.Value, out var v)) ? v : null,
+                ArgKind.String => arg.Value,
+                ArgKind.Number => arg.Value,
+                ArgKind.Element => null,
+                _ => null
+            };
+        }
+
+        private static ArgKind ParseArgKind(string? s)
+        {
+            if (Enum.TryParse<ArgKind>(s, true, out var k)) return k;
+            return s?.Equals("Var", StringComparison.OrdinalIgnoreCase) == true ? ArgKind.Var :
+                   s?.Equals("Element", StringComparison.OrdinalIgnoreCase) == true ? ArgKind.Element :
+                   s?.Equals("Number", StringComparison.OrdinalIgnoreCase) == true ? ArgKind.Number : ArgKind.String;
+        }
+
+        // Small helper subset copied from SpyWindow for header/value extraction consistency
+        private static class SpyHeaderHelpers
+        {
+            public static string NormalizeHeader(string h)
+            {
+                h = (h ?? string.Empty).Trim();
+                if (string.Equals(h, "Accession", StringComparison.OrdinalIgnoreCase)) return "Accession No.";
+                if (string.Equals(h, "Study Description", StringComparison.OrdinalIgnoreCase)) return "Study Desc";
+                if (string.Equals(h, "Institution Name", StringComparison.OrdinalIgnoreCase)) return "Institution";
+                if (string.Equals(h, "BirthDate", StringComparison.OrdinalIgnoreCase)) return "Birth Date";
+                if (string.Equals(h, "BodyPart", StringComparison.OrdinalIgnoreCase)) return "Body Part";
+                return h;
+            }
+            public static List<string> GetHeaderTexts(AutomationElement list)
+            {
+                var headers = new List<string>();
+                try
+                {
+                    var kids = list.FindAllChildren();
+                    if (kids.Length > 0)
+                    {
+                        var headerRow = kids[0];
+                        var cells = headerRow.FindAllChildren();
+                        foreach (var c in cells)
+                        {
+                            string txt = TryRead(c);
+                            if (string.IsNullOrWhiteSpace(txt))
+                            {
+                                foreach (var g in c.FindAllChildren()) { txt = TryRead(g); if (!string.IsNullOrWhiteSpace(txt)) break; }
+                            }
+                            headers.Add(string.IsNullOrWhiteSpace(txt) ? string.Empty : txt.Trim());
+                        }
+                    }
+                }
+                catch { }
+                return headers;
+            }
+            public static List<string> GetRowCellValues(AutomationElement row)
+            {
+                var vals = new List<string>();
+                try
+                {
+                    var children = row.FindAllChildren();
+                    foreach (var c in children)
+                    {
+                        string txt = TryRead(c).Trim();
+                        if (string.IsNullOrEmpty(txt))
+                        {
+                            foreach (var gc in c.FindAllChildren()) { var t = TryRead(gc).Trim(); if (!string.IsNullOrEmpty(t)) { txt = t; break; } }
+                        }
+                        vals.Add(txt);
+                    }
+                }
+                catch { }
+                return vals;
+            }
+            private static string TryRead(AutomationElement el)
+            {
+                try
+                {
+                    var vp = el.Patterns.Value.PatternOrDefault; if (vp != null && vp.Value.TryGetValue(out var v) && !string.IsNullOrWhiteSpace(v)) return v;
+                }
+                catch { }
+                try { var n = el.Name; if (!string.IsNullOrWhiteSpace(n)) return n; } catch { }
+                try { var l = el.Patterns.LegacyIAccessible.PatternOrDefault?.Name; if (!string.IsNullOrWhiteSpace(l)) return l; } catch { }
+                return string.Empty;
+            }
+        }
+    }
+}

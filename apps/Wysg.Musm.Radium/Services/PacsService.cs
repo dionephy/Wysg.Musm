@@ -31,6 +31,18 @@ namespace Wysg.Musm.Radium.Services
 
         public PacsService(string processName = "INFINITT") => _proc = processName;
 
+        // Generic executor: try custom procedure (ui-procedures.json) first, else fallback supplier
+        private static async Task<string?> ExecCustomOrAsync(string methodTag, Func<string?> fallback)
+        {
+            try
+            {
+                var custom = await ProcedureExecutor.ExecuteAsync(methodTag).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(custom)) return custom;
+            }
+            catch { /* swallow custom errors */ }
+            try { return fallback(); } catch { return null; }
+        }
+
         public async Task OpenWorklistAsync()
         {
             using var mfc = MfcUi.Attach(_proc);
@@ -47,73 +59,55 @@ namespace Wysg.Musm.Radium.Services
             return items;
         }
 
-        /// <summary>
-        /// Locate the mapped SearchResultsList and return the "ID" value of the currently selected row.
-        /// If header "ID" is not found, tries a header containing "ID" or "Accession".
-        /// Returns null when list/selection not found or value empty.
-        /// </summary>
-        public Task<string?> GetSelectedIdFromSearchResultsAsync()
-        {
-            return Task.Run(() =>
-            {
-                try
-                {
-                    return GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "ID", "Accession", "Accession No." });
-                }
-                catch { return (string?)null; }
-            });
-        }
+        // Search Results list based (custom procedure first)
+        public Task<string?> GetSelectedIdFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedIdFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "ID", "Accession", "Accession No." }));
+        public Task<string?> GetSelectedNameFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedNameFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Name" }));
+        public Task<string?> GetSelectedSexFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedSexFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Sex" }));
+        public Task<string?> GetSelectedBirthDateFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedBirthDateFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Birth Date", "BirthDate" }));
+        public Task<string?> GetSelectedAgeFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedAgeFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Age" }));
+        public Task<string?> GetSelectedStudynameFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedStudynameFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Study Desc", "Study Description", "Studyname", "Study Name" }));
+        public Task<string?> GetSelectedStudyDateTimeFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedStudyDateTimeFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Study Date", "Study Date Time", "Study DateTime" }));
+        public Task<string?> GetSelectedRadiologistFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedRadiologistFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Requesting Doctor", "Radiologist", "Doctor" }));
+        public Task<string?> GetSelectedStudyRemarkFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedStudyRemarkFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Study Comments", "Remark", "Comments" }));
+        public Task<string?> GetSelectedReportDateTimeFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedReportDateTimeFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Report approval dttm", "Report Date", "Report Date Time" }));
 
-        public Task<string?> GetSelectedNameFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Name" }));
-        public Task<string?> GetSelectedSexFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Sex" }));
-        public Task<string?> GetSelectedBirthDateFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Birth Date", "BirthDate" }));
-        public Task<string?> GetSelectedAgeFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Age" }));
-        public Task<string?> GetSelectedStudynameFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Study Desc", "Study Description", "Studyname", "Study Name" }));
-        public Task<string?> GetSelectedStudyDateTimeFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Study Date", "Study Date Time", "Study DateTime" }));
-        public Task<string?> GetSelectedRadiologistFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Requesting Doctor", "Radiologist", "Doctor" }));
-        public Task<string?> GetSelectedStudyRemarkFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Study Comments", "Remark", "Comments" }));
-        public Task<string?> GetSelectedReportDateTimeFromSearchResultsAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Report approval dttm", "Report Date", "Report Date Time" }));
-
-        public Task<string?> GetSelectedStudynameFromRelatedStudiesAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Study Desc", "Study Description", "Studyname", "Study Name" }));
-        public Task<string?> GetSelectedStudyDateTimeFromRelatedStudiesAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Study Date", "Study Date Time", "Study DateTime" }));
-        public Task<string?> GetSelectedRadiologistFromRelatedStudiesAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Requesting Doctor", "Radiologist", "Doctor" }));
-        public Task<string?> GetSelectedReportDateTimeFromRelatedStudiesAsync() => Task.Run(() => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Report approval dttm", "Report Date", "Report Date Time" }));
+        // Related Studies list based
+        public Task<string?> GetSelectedStudynameFromRelatedStudiesAsync() => ExecCustomOrAsync("GetSelectedStudynameFromRelatedStudies", () => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Study Desc", "Study Description", "Studyname", "Study Name" }));
+        public Task<string?> GetSelectedStudyDateTimeFromRelatedStudiesAsync() => ExecCustomOrAsync("GetSelectedStudyDateTimeFromRelatedStudies", () => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Study Date", "Study Date Time", "Study DateTime" }));
+        public Task<string?> GetSelectedRadiologistFromRelatedStudiesAsync() => ExecCustomOrAsync("GetSelectedRadiologistFromRelatedStudies", () => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Requesting Doctor", "Radiologist", "Doctor" }));
+        public Task<string?> GetSelectedReportDateTimeFromRelatedStudiesAsync() => ExecCustomOrAsync("GetSelectedReportDateTimeFromRelatedStudies", () => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Report approval dttm", "Report Date", "Report Date Time" }));
 
         // NEW: Current patient number parsed from viewer banner (OCR/text) heuristics.
-        public Task<string?> GetCurrentPatientNumberAsync() => Task.Run(() =>
+        public Task<string?> GetCurrentPatientNumberAsync() => ExecCustomOrAsync("GetCurrentPatientNumber", () =>
         {
             try
             {
                 var (_, banner) = TryAutoLocateBanner();
-                if (string.IsNullOrWhiteSpace(banner)) return (string?)null;
+                if (string.IsNullOrWhiteSpace(banner)) return null;
                 // Heuristic: patient number often first token / digits cluster before first comma
                 // Extract longest digit sequence of length >=5
                 var match = Regex.Matches(banner, "[0-9]{5,}").Cast<Match>().OrderByDescending(m => m.Value.Length).FirstOrDefault();
                 return match?.Value;
             }
-            catch { return (string?)null; }
+            catch { return null; }
         });
 
         // NEW: Current study date time parsed from banner tokens (YYYY-MM-DD or with time)
-        public Task<string?> GetCurrentStudyDateTimeAsync() => Task.Run(() =>
+        public Task<string?> GetCurrentStudyDateTimeAsync() => ExecCustomOrAsync("GetCurrentStudyDateTime", () =>
         {
             try
             {
                 var (_, banner) = TryAutoLocateBanner();
-                if (string.IsNullOrWhiteSpace(banner)) return (string?)null;
+                if (string.IsNullOrWhiteSpace(banner)) return null;
                 // Look for date pattern
                 var dateMatch = Regex.Match(banner, @"(20[0-9]{2}[-/][01][0-9][-/.][0-3][0-9])");
-                if (!dateMatch.Success) return (string?)null;
+                if (!dateMatch.Success) return null;
                 var date = dateMatch.Groups[1].Value.Replace('/', '-').Replace('.', '-');
                 // Optional time immediately after
                 var timeMatch = Regex.Match(banner.Substring(dateMatch.Index + dateMatch.Length), @"\s+([0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?)");
-                if (timeMatch.Success)
-                {
-                    return date + " " + timeMatch.Groups[1].Value;
-                }
-                return date;
+                return timeMatch.Success ? date + " " + timeMatch.Groups[1].Value : date;
             }
-            catch { return (string?)null; }
+            catch { return null; }
         });
 
         private static string? GetValueFromListSelection(UiBookmarks.KnownControl control, string[] headerCandidates)
@@ -138,9 +132,8 @@ namespace Wysg.Musm.Radium.Services
                 var cells = GetRowCellValues(row);
                 if (headers.Count < cells.Count) for (int i = headers.Count; i < cells.Count; i++) headers.Add($"Col{i + 1}");
                 else if (headers.Count > cells.Count) for (int i = cells.Count; i < headers.Count; i++) cells.Add(string.Empty);
-                for (int i = 0; i < headerCandidates.Length; i++)
+                foreach (var wanted in headerCandidates)
                 {
-                    var wanted = headerCandidates[i];
                     int idx = FindHeaderIndex(headers, wanted);
                     if (idx >= 0 && idx < cells.Count)
                     {

@@ -1,6 +1,10 @@
 ﻿# Tasks: Radium Cumulative (Reporting Pipeline + Editor + Mapping + PACS)
 
 ## Added
+- [X] T245 Wire custom ProcedureExecutor into PacsService getters (FR-137 implementation complete).
+- [X] T244 Remove deprecated GetReportConclusion/TryGetReportConclusion PACS methods from UI and spec.
+- [X] T243 Implement ProcedureExecutor for data-driven PACS methods (FR-137) and wire future replacement of hard-coded PacsService lookups.
+- [X] T242 Implement CurrentStudyLabel population on New Study (FR-136) – add PACS metadata properties & async fetch.
 - [X] T241 Refine Split operation preview to output only selected part (remove metadata) (FR-135 update).
 - [X] T239 Extend Split operation with Arg3 index argument (code + XAML) (FR-135).
 - [X] T240 Update Spec/Plan/Tasks docs for Split Arg3 support (FR-135).

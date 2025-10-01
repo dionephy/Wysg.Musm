@@ -388,8 +388,6 @@
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,8">
                     <TextBlock Text="PACS Method:" VerticalAlignment="Center"/>
                     <ComboBox x:Name="cmbProcMethod" Width="220" Margin="6,0,12,0" SelectedValuePath="Tag">
-                        <ComboBoxItem Tag="TryGetReportConclusion">TryGetReportConclusion</ComboBoxItem>
-                        <ComboBoxItem Tag="GetReportConclusion">GetReportConclusion</ComboBoxItem>
                         <ComboBoxItem Tag="GetSelectedIdFromSearchResults">Get selected ID from search results list</ComboBoxItem>
                         <ComboBoxItem Tag="GetSelectedNameFromSearchResults">Get selected name from search results list</ComboBoxItem>
                         <ComboBoxItem Tag="GetSelectedSexFromSearchResults">Get selected sex from search results list</ComboBoxItem>

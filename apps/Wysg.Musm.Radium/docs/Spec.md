@@ -1,7 +1,14 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Custom PACS Procedure Execution (2025-10-05)
+- **FR-137** (Implemented) PACS metadata retrieval methods execute user-defined procedure steps from `ui-procedures.json` when a procedure with matching method tag exists; if absent they fall back to legacy heuristic (now wired in PacsService).
+- Removed deprecated PACS methods `GetReportConclusion` and `TryGetReportConclusion` from UI and specification scope.
+
 ## Update: Split Preview Refinement (2025-10-05)
 - **FR-135 Update** Split operation preview now returns only the extracted part value when Arg3 (index) is supplied (removed prior metadata format `part[i]='value' (N parts)`). Legacy behavior unchanged when Arg3 omitted (joins all parts with unit separator, preview displays part count).
+
+## Update: Current Study Label Population (2025-10-05)
+- **FR-136** When user clicks New Study, system MUST fetch selected patient/study metadata (name, number/ID, sex, age, studyname, study date/time) from Search Results list via PacsService and expose them as individual properties plus a concatenated `CurrentStudyLabel` string (placeholders '?' for unavailable fields) bound to the main header label.
 
 ## Update: AI Server & LLM Orchestration Skeleton (2025-10-05)
 - **FR-AI-001** System MUST expose central server-hosted AI pipeline so multiple intranet Radium clients can consume structured skills (no raw free-form prompt endpoint) via future API project endpoints.
@@ -148,6 +155,7 @@ User or automation needs quick extraction of patient number or study date/time f
 - **FR-018** System MUST validate banner metadata vs current study prior to PACS submission and block send on mismatch with explicit reason.
 - **FR-019** System MUST submit (header_reportified + findings_reportified) and (conclusion_reportified_numbered) to appropriate PACS fields and confirm acceptance.
 - **FR-020** System MUST persist final report (header_findings composite, conclusion, structured JSON components) on successful PACS acknowledgment.
+- **FR-021** System MUST fetch selected patient/study metadata from Search Results list and expose as properties + `CurrentStudyLabel` string on New Study.
 
 ### Functional Requirements (Editor Assistance)
 - **FR-050** Editor MUST open completion popup only when current contiguous letter span length ≥ configured MinCharsForSuggest and provider returns ≥1 item.
@@ -463,6 +471,8 @@ For full behavioral definitions see MUSM Editor Specification included in design
 - Added precise single-step navigation and bounded height for completion popup (FR-133).
 - Implemented adaptive popup height adjustment with clamp to 8-items (FR-134).
 - Updated Split operation index argument handling (FR-135) to support optional third argument for part index selection.
+- Added Current Study Label population from PACS on New Study (FR-136).
+- Updated PACS metadata retrieval methods to execute user-defined procedure steps (FR-137).
 
 ---
 ## Feature Update (Reportified Toggle - Inverse Dereportify)

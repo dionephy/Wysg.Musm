@@ -184,7 +184,7 @@
                     </StackPanel>
 
                     <!-- Lower row: placeholder label for current study/patient detail -->
-                    <TextBlock Grid.Row="1" Padding="2,2,0,0" Text="Current Study" Foreground="#5A9FD6"/>
+                    <TextBlock Grid.Row="1" Padding="2,2,0,0" Text="{Binding CurrentStudyLabel}" Foreground="#5A9FD6"/>
                 </Grid>
 
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="4"/>

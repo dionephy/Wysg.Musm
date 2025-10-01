@@ -1,6 +1,9 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Change Log Addition
+- **2025-10-05**: Wired custom procedure execution into all PACS metadata getters (FR-137 implemented) with fallback to legacy heuristics.
+- **2025-10-05**: Added ProcedureExecutor to enable data-driven PACS method execution from saved procedures (FR-137). Deprecated `GetReportConclusion`/`TryGetReportConclusion` removed from UI.
+- **2025-10-05**: Current study label metadata fetch implemented (FR-136) – New Study triggers async PACS selection read (name, id, sex, age, studyname, study datetime) stored as properties & concatenated `CurrentStudyLabel` bound to UI.
 - **2025-10-05**: Split operation preview refined (FR-135 update) – when Arg3 index provided preview now shows only selected part value (metadata removed). Legacy multi-join preview unchanged when Arg3 absent.
 - **2025-10-05**: Split operation extended with Arg3 index (FR-135) – optional numeric index selects single part; legacy multi-part join retained when Arg3 empty.
 - **2025-10-05**: AI orchestration skeleton added (Domain interfaces + UseCases ReportPipeline + Infrastructure NoOp skills + DI AddMusmAi extension + API registration). Implements FR-AI-001..FR-AI-008 partial (FR-AI-009/010 future enhancements).
@@ -63,7 +66,7 @@ Pending clarifications extended to OCR (engine availability, fallback heuristics
 
 ---
 ## Phase 2: Task Planning Extension
-Added incremental tasks (see Tasks.md T205..T208) covering implementation & spec alignment for FR-098..FR-099, FR-123. Added T209-T211 for completion improvements FR-124..FR-125. Added T214-T217 for bug fixes FR-126..FR-127. Added T218-T219 for selection guard recursion fix FR-128. Added T220-T221 for multiple event handling FR-129. Added T222-T223 for navigation state tracking FR-130. Added T224-T225 for focus-aware first navigation guard FR-131. Added T226-T229 for manual editor-driven navigation handling FR-131. Added T232-T233 for recursive guard protection FR-132. Added T234-T235 for completion popup bounded height FR-133. Added T236-T237 for adaptive completion popup height FR-134. Added T238-T239 for split operation Arg3 support FR-135.
+Added incremental tasks (see Tasks.md T205..T208) covering implementation & spec alignment for FR-098..FR-099, FR-123. Added T209-T211 for completion improvements FR-124..FR-125. Added T214-T217 for bug fixes FR-126..FR-127. Added T218-T219 for selection guard recursion fix FR-128. Added T220-T221 for multiple event handling FR-129. Added T222-T223 for navigation state tracking FR-130. Added T224-T225 for focus-aware first navigation guard FR-131. Added T226-T229 for manual editor-driven navigation handling FR-131. Added T232-T233 for recursive guard protection FR-132. Added T234-T235 for completion popup bounded height FR-133. Added T236-T237 for adaptive completion popup height FR-134. Added T238-T239 for split operation Arg3 support FR-135. Added T240-T241 for current study label metadata fetch FR-136.
 
 ---
 ## Phase 3+: Future
@@ -80,7 +83,7 @@ No new complexity exceptions.
 ---
 ## Progress Tracking
 Split Arg3 index support implemented (status: Done, FR-135).
-GetTextOCR + banner helpers implemented (status: Done). Editor completion improvements implemented (status: Done). Bug fixes implemented (status: Done). Selection guard recursion fix implemented (status: Done). Multiple event handling improvement implemented (status: Done). Navigation state tracking implemented (status: Done). Focus-aware first navigation guard implemented (status: Done). Manual editor-driven navigation implemented (status: Done). Guard-silent selection helper implemented (status: Done). Recursive guard protection implemented (status: Done). Completion popup bounded height implemented (status: Done). Adaptive completion popup height implemented (status: Done). Unit tests added (status: Done). Documentation updated.
+GetTextOCR + banner helpers implemented (status: Done). Editor completion improvements implemented (status: Done). Bug fixes implemented (status: Done). Selection guard recursion fix implemented (status: Done). Multiple event handling improvement implemented (status: Done). Navigation state tracking implemented (status: Done). Focus-aware first navigation guard implemented (status: Done). Manual editor-driven navigation implemented (status: Done). Guard-silent selection helper implemented (status: Done). Recursive guard protection implemented (status: Done). Completion popup bounded height implemented (status: Done). Adaptive completion popup height implemented (status: Done). Current study label metadata fetch implemented (status: Done). Unit tests added (status: Done). Documentation updated.
 
 ---
 - **Bug Fix: Recursive guard protection**: MusmCompletionWindow now uses _handlingSelectionChange flag to prevent infinite loops during programmatic selection changes while preserving legitimate keyboard navigation.
@@ -136,7 +139,26 @@ GetTextOCR + banner helpers implemented (status: Done). Editor completion improv
 # Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Change Log Addition (2025-10-05)
-- Added AI orchestration skeleton (Domain interfaces + UseCases ReportPipeline + Infrastructure NoOp skills + DI AddMusmAi extension + API registration). Implements FR-AI-001..FR-AI-008 partial (FR-AI-009/010 future enhancements).
+- Wired custom procedure execution into all PACS metadata getters (FR-137 implemented) with fallback to legacy heuristics.
+- Added ProcedureExecutor to enable data-driven PACS method execution from saved procedures (FR-137). Deprecated `GetReportConclusion`/`TryGetReportConclusion` removed from UI.
+- Current study label metadata fetch implemented (FR-136) – New Study triggers async PACS selection read (name, id, sex, age, studyname, study datetime) stored as properties & concatenated `CurrentStudyLabel` bound to UI.
+- Split operation preview refined (FR-135 update) – when Arg3 index provided preview now shows only selected part value (metadata removed). Legacy multi-join preview unchanged when Arg3 absent.
+- Split operation extended with Arg3 index (FR-135) – optional numeric index selects single part; legacy multi-part join retained when Arg3 empty.
+- AI orchestration skeleton added (Domain interfaces + UseCases ReportPipeline + Infrastructure NoOp skills + DI AddMusmAi extension + API registration). Implements FR-AI-001..FR-AI-008 partial (FR-AI-009/010 future enhancements).
+- Adaptive completion popup height auto-sizing implemented (FR-134) – dynamic measurement of first item, exact height for ≤8 items, clamped height with scrollbar for larger sets; re-adjust on selection & rebuild.
+- Completion popup bounded height + single-step navigation stabilization implemented (FR-133) – internal navigation index prevents skip-over, ListBox height dynamically constrained to 8 visible items.
+- Completion popup navigation recursion fix implemented (FR-132) – added guard flag in MusmCompletionWindow to prevent infinite loops during programmatic selection changes while preserving legitimate keyboard navigation.
+- Focus-aware first navigation guard implemented (FR-131) – resets navigation state whenever the completion list rebuilds so the first Down/Up selects the boundary item, and editor now handles all subsequent Up/Down keys directly using guard-silent selection updates so the very next key advances to the adjacent item without duplicate presses or guard clears.
+- First navigation detection improvement implemented (FR-130) - added navigation state tracking to ensure first Down key selects first item.
+- Multiple event handling improvement implemented (FR-129) - enhanced selection preservation for keyboard navigation.
+- Selection guard recursion bug fix implemented (FR-128) - prevented recursive clearing of completion popup selections.
+- Bug fixes implemented - phrase extraction service injection (FR-126) and completion popup navigation reliability (FR-127).
+- Editor completion improvements implemented - completion cache invalidation (FR-124) and keyboard navigation fix (FR-125).
+- Paragraph-based conclusion numbering implemented (multi-paragraph only).
+- Dereportify now normalizes '-->' to '--> ' with single space.
+- Added GetTextOCR procedure op + PACS banner helpers (current patient number, study date time).
+
+(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection)
 
 ## AI Architecture Overview (New Section)
 Layer Responsibilities:
