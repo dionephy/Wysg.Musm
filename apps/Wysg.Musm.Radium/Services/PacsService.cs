@@ -65,6 +65,10 @@ namespace Wysg.Musm.Radium.Services
         // Procedure-only banner helpers
         public Task<string?> GetCurrentPatientNumberAsync() => ExecCustom("GetCurrentPatientNumber");
         public Task<string?> GetCurrentStudyDateTimeAsync() => ExecCustom("GetCurrentStudyDateTime");
+        public Task<string?> GetCurrentFindingsAsync() => ExecCustom("GetCurrentFindings");
+        public Task<string?> GetCurrentConclusionAsync() => ExecCustom("GetCurrentConclusion");
+        public Task<string?> GetCurrentFindings2Async() => ExecCustom("GetCurrentFindings2");
+        public Task<string?> GetCurrentConclusion2Async() => ExecCustom("GetCurrentConclusion2");
 
         public async Task<bool> IsViewerWindowAsync(IntPtr hwnd)
         {

@@ -841,7 +841,8 @@ namespace Wysg.Musm.Radium.Views
             this.Tag = b;
             b.ProcessName = string.IsNullOrWhiteSpace(procName) ? b.ProcessName : procName;
             ShowBookmarkDetails(b, "Captured chain");
-            HighlightBookmark(b);
+            foreach (var n in b.Chain) { n.UseIndex = false; }
+            GridChain.ItemsSource = null; GridChain.ItemsSource = b.Chain; // refresh grid
         }
 
         private (UiBookmarks.Bookmark? bookmark, string? procName, string message) CaptureUnderMouse(bool preferAutomationId)

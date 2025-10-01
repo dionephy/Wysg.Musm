@@ -1,12 +1,15 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
-## Update: Birth Date Persistence & Tree Toggle (2025-10-05)
-- **FR-146** System MUST persist patient birth_date (when available from PACS birth date procedure) during patient upsert.
-- **FR-147** SpyWindow MUST provide a user-toggle (checkbox) to enable/disable ancestry tree building to mitigate performance issues; when unchecked tree is hidden and not rebuilt.
+## Update: Tree default disabled & new PACS getters (2025-10-05)
+- **FR-148** SpyWindow TreeView MUST be disabled (hidden) by default; user enables via checkbox.
+- **FR-149** After a Pick capture, system MUST auto-clear (uncheck) UseIndex for all nodes in captured chain.
+- **FR-150** Add new bookmark target `ReportText2` for alternate report text control mapping.
+- **FR-151** Add PACS procedure method tags & service accessors: GetCurrentFindings, GetCurrentConclusion, GetCurrentFindings2, GetCurrentConclusion2.
 
 ## Prior Recent Updates
-- FR-144 Schema alignment (is_male) & FR-145 temporary tree disable.
-- (Earlier entries unchanged.)
+- FR-146 Birth date persistence.
+- FR-147 Tree toggle user control.
+- FR-144/FR-145 earlier (see history).
 
 ---
 

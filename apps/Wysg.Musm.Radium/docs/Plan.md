@@ -3,29 +3,14 @@
 ## Change Log Addition
 - **2025-10-05**: Implemented patient/study/studyname upsert logic via `IRadStudyRepository` (FR-142).
 - **2025-10-05**: Optimized SpyWindow pick (bounded traversal + guarded property access) reducing UIA property exceptions (FR-143).
-- **2025-10-05**: Added UIA element caching in ProcedureExecutor (FR-140) to reduce remapping overhead.
-- **2025-10-05**: Added persistence stub after New Study metadata fetch (FR-141) awaiting repository integration.
-- **2025-10-05**: Added StudyDateTime normalization to `yyyy-MM-dd HH:mm:ss` in current study label (FR-138).
-- **2025-10-05**: Added placeholder hook for loading previous studies on New Study (FR-139 – pending real data service method).
-- **2025-10-05**: Removed heuristic fallbacks for PACS metadata getters – now procedure-only (FR-137 finalized). Returns null when no custom procedure saved.
-- **2025-10-05**: Wired custom procedure execution into all PACS metadata getters (FR-137 implemented) with fallback to legacy heuristics.
-- **2025-10-05**: Added ProcedureExecutor to enable data-driven PACS method execution from saved procedures (FR-137). Deprecated `GetReportConclusion`/`TryGetReportConclusion` removed from UI.
-- **2025-10-05**: Current study label metadata fetch implemented (FR-136) – New Study triggers async PACS selection read (name, id, sex, age, studyname, study datetime) stored as properties & concatenated `CurrentStudyLabel` bound to UI.
-- **2025-10-05**: Split operation preview refined (FR-135 update) – when Arg3 index provided preview now shows only selected part value (metadata removed). Legacy multi-join preview unchanged when Arg3 absent.
-- **2025-10-05**: Split operation extended with Arg3 index (FR-135) – optional numeric index selects single part; legacy multi-part join retained when Arg3 empty.
-- **2025-10-05**: AI orchestration skeleton added (Domain interfaces + UseCases ReportPipeline + Infrastructure NoOp skills + DI AddMusmAi extension + API registration). Implements FR-AI-001..FR-AI-008 partial (FR-AI-009/010 future enhancements).
-- **2025-10-03**: Adaptive completion popup height auto-sizing implemented (FR-134) – dynamic measurement of first item, exact height for ≤8 items, clamped height with scrollbar for larger sets; re-adjust on selection & rebuild.
-- **2025-10-02**: Completion popup bounded height + single-step navigation stabilization implemented (FR-133) – internal navigation index prevents skip-over, ListBox height dynamically constrained to 8 visible items.
-- **2025-10-01**: Completion popup navigation recursion fix implemented (FR-132) – added guard flag in MusmCompletionWindow to prevent infinite loops during programmatic selection changes while preserving legitimate keyboard navigation.
-- **2025-09-30**: Focus-aware first navigation guard implemented (FR-131) – resets navigation state whenever the completion list rebuilds so the first Down/Up selects the boundary item, and editor now handles all subsequent Up/Down keys directly using guard-silent selection updates so the very next key advances to the adjacent item without duplicate presses or guard clears.
-- **2025-01-01**: First navigation detection improvement implemented (FR-130) - added navigation state tracking to ensure first Down key selects first item.
-- **2025-01-01**: Multiple event handling improvement implemented (FR-129) - enhanced selection preservation for keyboard navigation.
-- **2025-01-01**: Selection guard recursion bug fix implemented (FR-128) - prevented recursive clearing of completion popup selections.
-- **2025-01-01**: Bug fixes implemented - phrase extraction service injection (FR-126) and completion popup navigation reliability (FR-127).
-- **2025-01-01**: Editor completion improvements implemented - completion cache invalidation (FR-124) and keyboard navigation fix (FR-125).
-- Paragraph-based conclusion numbering implemented (multi-paragraph only).
-- Dereportify now normalizes '-->' to '--> ' with single space.
-- Added GetTextOCR procedure op + PACS banner helpers (current patient number, study date time).
+- **2025-10-05**: Adjusted RadStudyRepository to use is_male column (schema alignment) (FR-144).
+- **2025-10-05**: Disabled SpyWindow tree reconstruction to improve pick performance (FR-145).
+- **2025-10-05**: Added birth_date capture and persistence if PACS provides birth date (FR-146).
+- **2025-10-05**: Added SpyWindow checkbox to enable/disable UI tree (FR-147).
+- **2025-10-05**: FR-148 TreeView default disabled (SpyWindow checkbox starts unchecked).
+- **2025-10-05**: FR-149 Auto-clear UseIndex after Pick capture.
+- **2025-10-05**: FR-150 Added ReportText2 KnownControl + XAML combo item.
+- **2025-10-05**: FR-151 Added PACS getters (findings/conclusion variants) + procedure combo entries + PacsService wrappers.
 
 (Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection)
 
@@ -167,6 +152,10 @@ GetTextOCR + banner helpers implemented (status: Done). Editor completion improv
 - **2025-10-05**: Disabled SpyWindow tree reconstruction to improve pick performance (FR-145).
 - **2025-10-05**: Added birth_date capture and persistence if PACS provides birth date (FR-146).
 - **2025-10-05**: Added SpyWindow checkbox to enable/disable UI tree (FR-147).
+- **2025-10-05**: FR-148 TreeView default disabled (SpyWindow checkbox starts unchecked).
+- **2025-10-05**: FR-149 Auto-clear UseIndex after Pick capture.
+- **2025-10-05**: FR-150 Added ReportText2 KnownControl + XAML combo item.
+- **2025-10-05**: FR-151 Added PACS getters (findings/conclusion variants) + procedure combo entries + PacsService wrappers.
 
 (Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection)
 

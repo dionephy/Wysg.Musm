@@ -236,11 +236,12 @@
                 <ComboBoxItem Tag="ViewerToolbar">Viewer toolbar</ComboBoxItem>
                 <ComboBoxItem Tag="OpenWorklistButton">Open worklist button</ComboBoxItem>
                 <ComboBoxItem Tag="ReportCommitButton">Report commit button</ComboBoxItem>
+                <ComboBoxItem Tag="ReportText2">Report text 2</ComboBoxItem>
             </ComboBox>
             <Button Content="Map" Margin="6,0,0,0" Click="OnMapSelected"/>
             <Button Content="Resolve" Margin="6,0,0,0" Click="OnResolveSelected"/>
             <Button Content="Reload" Margin="6,0,0,0" Click="OnReload"/>
-            <CheckBox x:Name="chkEnableTree" Content="Enable Tree" Margin="12,0,0,0" IsChecked="True"/>
+            <CheckBox x:Name="chkEnableTree" Content="Enable Tree" Margin="12,0,0,0" IsChecked="False"/>
         </StackPanel>
 
         <!-- Middle: Left tree + Right editor -->
@@ -406,6 +407,10 @@
                         <!-- New PACS methods -->
                         <ComboBoxItem Tag="GetCurrentPatientNumber">Get current patient number</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentStudyDateTime">Get current study date time</ComboBoxItem>
+                        <ComboBoxItem Tag="GetCurrentFindings">Get current findings</ComboBoxItem>
+                        <ComboBoxItem Tag="GetCurrentConclusion">Get current conclusion</ComboBoxItem>
+                        <ComboBoxItem Tag="GetCurrentFindings2">Get current findings 2</ComboBoxItem>
+                        <ComboBoxItem Tag="GetCurrentConclusion2">Get current conclusion 2</ComboBoxItem>
                     </ComboBox>
                     <Button Content="Add" Click="OnAddProcRow"/>
                     <Button Content="Save" Margin="6,0,0,0" Click="OnSaveProcedure"/>

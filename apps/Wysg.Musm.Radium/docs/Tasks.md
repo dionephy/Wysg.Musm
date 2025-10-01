@@ -64,6 +64,10 @@
 - [X] T254 Temporarily disable SpyWindow ancestry tree to improve pick speed (FR-145).
 - [X] T255 Persist patient birth_date via RadStudyRepository (FR-146).
 - [X] T256 Add SpyWindow tree enable/disable checkbox (FR-147).
+- [X] T257 Disable tree by default (FR-148).
+- [X] T258 Clear UseIndex flags after Pick (FR-149).
+- [X] T259 Add ReportText2 bookmark option (FR-150).
+- [X] T260 Add current findings/conclusion getters (primary + variant) (FR-151).
 
 **Input**: Spec.md & Plan.md (cumulative)  
 **Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  

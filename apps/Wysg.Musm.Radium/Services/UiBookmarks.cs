@@ -30,6 +30,7 @@ public sealed class UiBookmarks
         StudyList,
         RelatedStudyList,
         ReportText,
+        ReportText2,
         ReportInput,
         ViewerWindow,
         ViewerToolbar,
