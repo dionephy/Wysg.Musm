@@ -186,8 +186,8 @@ namespace Wysg.Musm.Radium.Views
             }
         }
 
-        // Set row: execute only this row with current state and produce var#
-        private void OnSetProcRow(object sender, RoutedEventArgs e)
+        // Set row: execute only this row with current state and produce var# (async safe for OCR)
+        private async void OnSetProcRow(object sender, RoutedEventArgs e)
         {
             var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
             if (procGrid == null) return;
@@ -203,13 +203,15 @@ namespace Wysg.Musm.Radium.Views
                 var vars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
                 for (int i = 0; i < index; i++) vars[$"var{i + 1}"] = list[i].OutputVar != null ? list[i].OutputPreview : null;
 
-                // Execute this row
                 var varName = $"var{index + 1}";
-                var (preview, value) = ExecuteSingle(row, vars);
+                (string preview, string? value) result;
+                if (string.Equals(row.Op, "GetTextOCR", StringComparison.OrdinalIgnoreCase))
+                    result = await ExecuteSingleAsync(row, vars);
+                else
+                    result = ExecuteSingle(row, vars);
                 row.OutputVar = varName;
-                row.OutputPreview = preview;
+                row.OutputPreview = result.preview;
 
-                // Update ProcedureVars list (makes the new var selectable in drop-downs)
                 if (!ProcedureVars.Contains(varName)) ProcedureVars.Add(varName);
                 procGrid.ItemsSource = null; procGrid.ItemsSource = list; // refresh
             }
@@ -251,7 +253,7 @@ namespace Wysg.Musm.Radium.Views
                             break;
                         case "GetValueFromSelection":
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg2.Value)) row.Arg2.Value = "ID";
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg2.Value)) row.Arg2.Value = "ID"; // corrected property Arg2Enabled
                             break;
                         case "ToDateTime":
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
@@ -286,21 +288,16 @@ namespace Wysg.Musm.Radium.Views
                 }
                 case "GetTextOCR":
                 {
+                    // Synchronous path kept for run-procedure fallback; OnSetProcRow now uses async variant to avoid deadlock.
                     var el = ResolveElement(row.Arg1);
                     if (el == null) { valueToStore = null; preview = "(no element)"; break; }
                     try
                     {
-                        // Use bounding rectangle of element for OCR region
                         var r = el.BoundingRectangle;
                         if (r.Width <= 0 || r.Height <= 0) { preview = "(no bounds)"; valueToStore = null; break; }
                         var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
-                        // Fallback: if native handle not available, just fail
                         if (hwnd == IntPtr.Zero) { preview = "(no hwnd)"; valueToStore = null; break; }
-                        var svc = ((App)Application.Current).Services.GetService(typeof(PacsService)) as PacsService;
-                        if (svc == null) { preview = "(no pacs svc)"; valueToStore = null; break; }
-                        // Crop region relative to window: attempt direct region OCR
-                        // Since we have hwnd for element, approximate region at (0,0) sized to element
-                        var (engine, text) = Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(0,0,(int)r.Width,(int)r.Height)).GetAwaiter().GetResult();
+                        var (engine, text) = Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(0, 0, (int)r.Width, (int)r.Height)).ConfigureAwait(false).GetAwaiter().GetResult();
                         if (!engine) { preview = "(ocr unavailable)"; valueToStore = null; }
                         else { valueToStore = text; preview = string.IsNullOrWhiteSpace(text) ? "(empty)" : text!; }
                     }
@@ -403,6 +400,26 @@ namespace Wysg.Musm.Radium.Views
                     preview = "(unsupported)"; valueToStore = null; break;
             }
             return (preview, valueToStore);
+        }
+
+        // Async execution for OCR to avoid UI deadlock (FR-135)
+        private async Task<(string preview, string? value)> ExecuteSingleAsync(ProcOpRow row, Dictionary<string, string?> vars)
+        {
+            if (!string.Equals(row.Op, "GetTextOCR", StringComparison.OrdinalIgnoreCase))
+                return ExecuteSingle(row, vars);
+            var el = ResolveElement(row.Arg1);
+            if (el == null) return ("(no element)", null);
+            try
+            {
+                var r = el.BoundingRectangle;
+                if (r.Width <= 0 || r.Height <= 0) return ("(no bounds)", null);
+                var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
+                if (hwnd == IntPtr.Zero) return ("(no hwnd)", null);
+                var (engine, text) = await Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(0, 0, (int)r.Width, (int)r.Height));
+                if (!engine) return ("(ocr unavailable)", null);
+                return (string.IsNullOrWhiteSpace(text) ? "(empty)" : text!, text);
+            }
+            catch { return ("(error)", null); }
         }
 
         // Update ProcedureVars after full run or edits
@@ -554,7 +571,7 @@ namespace Wysg.Musm.Radium.Views
             txtStatus.Text = $"Saved procedure for {tag}";
         }
 
-        private void OnRunProcedure(object sender, RoutedEventArgs e)
+        private async void OnRunProcedure(object sender, RoutedEventArgs e)
         {
             var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
             var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
@@ -565,12 +582,47 @@ namespace Wysg.Musm.Radium.Views
             try { procGrid.CommitEdit(DataGridEditingUnit.Cell, true); procGrid.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
             var steps = procGrid.Items.OfType<ProcOpRow>().Where(s => !string.IsNullOrWhiteSpace(s.Op)).ToList();
 
-            var (result, annotated) = RunProcedure(steps);
+            var (result, annotated) = await RunProcedureAsync(steps);
             procGrid.ItemsSource = null; procGrid.ItemsSource = annotated;
             UpdateProcedureVarsFrom(annotated);
             txtStatus.Text = result ?? "(null)";
         }
 
+        private async Task<(string? result, List<ProcOpRow> annotated)> RunProcedureAsync(List<ProcOpRow> steps)
+        {
+            var vars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            string? last = null;
+            var annotated = new List<ProcOpRow>();
+
+            for (int i = 0; i < steps.Count; i++)
+            {
+                var row = steps[i];
+                string varName = $"var{i + 1}";
+                row.OutputVar = varName;
+                string? valueToStore = null;
+                string preview;
+
+                if (string.Equals(row.Op, "GetTextOCR", StringComparison.OrdinalIgnoreCase))
+                {
+                    var (p, v) = await ExecuteSingleAsync(row, vars);
+                    preview = p; valueToStore = v;
+                }
+                else
+                {
+                    var (p, v) = ExecuteSingle(row, vars);
+                    preview = p; valueToStore = v;
+                }
+
+                vars[varName] = valueToStore;
+                if (valueToStore != null) last = valueToStore;
+                row.OutputPreview = preview;
+                annotated.Add(row);
+            }
+
+            return (last, annotated);
+        }
+
+        // Legacy synchronous runner retained (not used by buttons now)
         private (string? result, List<ProcOpRow> annotated) RunProcedure(List<ProcOpRow> steps)
         {
             var vars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
@@ -582,151 +634,12 @@ namespace Wysg.Musm.Radium.Views
                 var row = steps[i];
                 string varName = $"var{i + 1}";
                 row.OutputVar = varName;
-                string? preview = null;
-                string? valueToStore = null;
-
-                switch (row.Op)
-                {
-                    case "GetText":
-                    {
-                        var el = ResolveElement(row.Arg1);
-                        if (el == null) { valueToStore = null; preview = "(no element)"; break; }
-                        try
-                        {
-                            var name = el.Name;
-                            var value = el.Patterns.Value.PatternOrDefault?.Value ?? string.Empty;
-                            var legacy = el.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty;
-                            valueToStore = !string.IsNullOrEmpty(value) ? value : (!string.IsNullOrEmpty(name) ? name : legacy);
-                            preview = valueToStore ?? "(null)";
-                        }
-                        catch { valueToStore = null; preview = "(error)"; }
-                        break;
-                    }
-                    case "GetTextOCR":
-                    {
-                        var el = ResolveElement(row.Arg1);
-                        if (el == null) { valueToStore = null; preview = "(no element)"; break; }
-                        try
-                        {
-                            // Use bounding rectangle of element for OCR region
-                            var r = el.BoundingRectangle;
-                            if (r.Width <= 0 || r.Height <= 0) { preview = "(no bounds)"; valueToStore = null; break; }
-                            var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
-                            // Fallback: if native handle not available, just fail
-                            if (hwnd == IntPtr.Zero) { preview = "(no hwnd)"; valueToStore = null; break; }
-                            var svc = ((App)Application.Current).Services.GetService(typeof(PacsService)) as PacsService;
-                            if (svc == null) { preview = "(no pacs svc)"; valueToStore = null; break; }
-                            // Crop region relative to window: attempt direct region OCR
-                            // Since we have hwnd for element, approximate region at (0,0) sized to element
-                            var (engine, text) = Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(0,0,(int)r.Width,(int)r.Height)).GetAwaiter().GetResult();
-                            if (!engine) { preview = "(ocr unavailable)"; valueToStore = null; }
-                            else { valueToStore = text; preview = string.IsNullOrWhiteSpace(text) ? "(empty)" : text!; }
-                        }
-                        catch { valueToStore = null; preview = "(error)"; }
-                        break;
-                    }
-                    case "Invoke":
-                    {
-                        var el = ResolveElement(row.Arg1);
-                        if (el == null) { valueToStore = null; preview = "(no element)"; break; }
-                        try
-                        {
-                            var inv = el.Patterns.Invoke.PatternOrDefault;
-                            if (inv != null) inv.Invoke();
-                            else { var t = el.Patterns.Toggle.PatternOrDefault; if (t != null) t.Toggle(); }
-                            valueToStore = null; preview = "(invoked)";
-                        }
-                        catch { valueToStore = null; preview = "(error)"; }
-                        break;
-                    }
-                    case "Split":
-                    {
-                        var input = ResolveString(row.Arg1, vars);
-                        var sep = ResolveString(row.Arg2, vars) ?? string.Empty;
-                        if (input == null) { preview = "(null)"; valueToStore = null; break; }
-                        var parts = input.Split(new[] { sep }, StringSplitOptions.None);
-                        valueToStore = string.Join("\u001F", parts);
-                        preview = $"{parts.Length} parts";
-                        break;
-                    }
-                    case "TakeLast":
-                    {
-                        var combined = ResolveString(row.Arg1, vars) ?? string.Empty;
-                        var arr = combined.Split('\u001F');
-                        valueToStore = arr.Length > 0 ? arr[^1] : string.Empty;
-                        preview = valueToStore ?? "(null)";
-                        break;
-                    }
-                    case "Trim":
-                    {
-                        var s = ResolveString(row.Arg1, vars);
-                        valueToStore = s?.Trim();
-                        preview = valueToStore ?? "(null)";
-                        break;
-                    }
-                    case "GetValueFromSelection":
-                    {
-                        var el = ResolveElement(row.Arg1);
-                        var headerWanted = row.Arg2?.Value ?? "ID"; if (string.IsNullOrWhiteSpace(headerWanted)) headerWanted = "ID";
-                        if (el == null) { preview = "(no element)"; valueToStore = null; break; }
-                        try
-                        {
-                            var selection = el.Patterns.Selection.PatternOrDefault;
-                            var selected = selection?.Selection?.Value ?? Array.Empty<AutomationElement>();
-                            if (selected.Length == 0)
-                            {
-                                selected = el.FindAllDescendants()
-                                    .Where(a =>
-                                    {
-                                        try { return a.Patterns.SelectionItem.IsSupported && a.Patterns.SelectionItem.PatternOrDefault?.IsSelected == true; }
-                                        catch { return false; }
-                                    })
-                                    .ToArray();
-                            }
-                            if (selected.Length == 0) { preview = "(no selection)"; valueToStore = null; break; }
-                            var rowEl = selected[0];
-                            var headers = GetHeaderTexts(el);
-                            var cells = GetRowCellValues(rowEl);
-                            if (headers.Count < cells.Count) for (int j = headers.Count; j < cells.Count; j++) headers.Add($"Col{j + 1}");
-                            else if (headers.Count > cells.Count) for (int j = cells.Count; j < headers.Count; j++) cells.Add(string.Empty);
-                            string? matched = null;
-                            for (int j = 0; j < headers.Count; j++)
-                            {
-                                var hNorm = NormalizeHeader(headers[j]);
-                                if (string.Equals(hNorm, headerWanted, StringComparison.OrdinalIgnoreCase)) { matched = cells[j]; break; }
-                            }
-                            if (matched == null)
-                            {
-                                for (int j = 0; j < headers.Count; j++)
-                                {
-                                    var hNorm = NormalizeHeader(headers[j]);
-                                    if (hNorm.IndexOf(headerWanted, StringComparison.OrdinalIgnoreCase) >= 0) { matched = cells[j]; break; }
-                                }
-                            }
-                            if (matched == null) { preview = $"({headerWanted} not found)"; valueToStore = null; }
-                            else { valueToStore = matched; preview = matched; }
-                        }
-                        catch { preview = "(error)"; valueToStore = null; }
-                        break;
-                    }
-                    case "ToDateTime":
-                    {
-                        var s = ResolveString(row.Arg1, vars);
-                        if (string.IsNullOrWhiteSpace(s)) { preview = "(null)"; valueToStore = null; break; }
-                        if (TryParseYmdOrYmdHms(s.Trim(), out var dt)) { valueToStore = dt.ToString("o"); preview = dt.ToString("yyyy-MM-dd HH:mm:ss"); }
-                        else { preview = "(parse fail)"; valueToStore = null; }
-                        break;
-                    }
-                    default:
-                        preview = "(unsupported)"; valueToStore = null; break;
-                }
-
+                var (preview, valueToStore) = ExecuteSingle(row, vars);
                 vars[varName] = valueToStore;
                 last = valueToStore ?? last;
                 row.OutputPreview = preview;
                 annotated.Add(row);
             }
-
             return (last, annotated);
         }
 
