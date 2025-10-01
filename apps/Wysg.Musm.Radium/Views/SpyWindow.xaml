@@ -330,32 +330,8 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center">
-                                                <CheckBox.Style>
-                                                    <Style TargetType="CheckBox" BasedOn="{StaticResource DarkCheckBox}">
-                                                        <Setter Property="IsEnabled" Value="True"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
-                                                                <Setter Property="IsChecked" Value="False"/>
-                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </CheckBox.Style>
-                                            </CheckBox>
-                                            <TextBox Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="160" Margin="6,0,0,0">
-                                                <TextBox.Style>
-                                                    <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
-                                                        <Setter Property="IsEnabled" Value="True"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
-                                                                <Setter Property="Text" Value=""/>
-                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBox.Style>
-                                            </TextBox>
+                                            <CheckBox IsChecked="{Binding UseName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
+                                            <TextBox Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="160" Margin="6,0,0,0"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -364,32 +340,8 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center">
-                                                <CheckBox.Style>
-                                                    <Style TargetType="CheckBox" BasedOn="{StaticResource DarkCheckBox}">
-                                                        <Setter Property="IsEnabled" Value="True"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
-                                                                <Setter Property="IsChecked" Value="False"/>
-                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </CheckBox.Style>
-                                            </CheckBox>
-                                            <TextBox Text="{Binding ClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="180" Margin="6,0,0,0">
-                                                <TextBox.Style>
-                                                    <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
-                                                        <Setter Property="IsEnabled" Value="True"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
-                                                                <Setter Property="Text" Value=""/>
-                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBox.Style>
-                                            </TextBox>
+                                            <CheckBox IsChecked="{Binding UseClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
+                                            <TextBox Text="{Binding ClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="180" Margin="6,0,0,0"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -398,32 +350,8 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center">
-                                                <CheckBox.Style>
-                                                    <Style TargetType="CheckBox" BasedOn="{StaticResource DarkCheckBox}">
-                                                        <Setter Property="IsEnabled" Value="True"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
-                                                                <Setter Property="IsChecked" Value="False"/>
-                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </CheckBox.Style>
-                                            </CheckBox>
-                                            <TextBox Text="{Binding ControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="6,0,0,0">
-                                                <TextBox.Style>
-                                                    <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
-                                                        <Setter Property="IsEnabled" Value="True"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
-                                                                <Setter Property="Text" Value=""/>
-                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBox.Style>
-                                            </TextBox>
+                                            <CheckBox IsChecked="{Binding UseControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
+                                            <TextBox Text="{Binding ControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="6,0,0,0"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -432,32 +360,8 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseAutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center">
-                                                <CheckBox.Style>
-                                                    <Style TargetType="CheckBox" BasedOn="{StaticResource DarkCheckBox}">
-                                                        <Setter Property="IsEnabled" Value="True"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
-                                                                <Setter Property="IsChecked" Value="False"/>
-                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </CheckBox.Style>
-                                            </CheckBox>
-                                            <TextBox Text="{Binding AutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="160" Margin="6,0,0,0">
-                                                <TextBox.Style>
-                                                    <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
-                                                        <Setter Property="IsEnabled" Value="True"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
-                                                                <Setter Property="Text" Value=""/>
-                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBox.Style>
-                                            </TextBox>
+                                            <CheckBox IsChecked="{Binding UseAutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
+                                            <TextBox Text="{Binding AutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="160" Margin="6,0,0,0"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -466,32 +370,8 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center">
-                                                <CheckBox.Style>
-                                                    <Style TargetType="CheckBox" BasedOn="{StaticResource DarkCheckBox}">
-                                                        <Setter Property="IsEnabled" Value="True"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
-                                                                <Setter Property="IsChecked" Value="False"/>
-                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </CheckBox.Style>
-                                            </CheckBox>
-                                            <TextBox Text="{Binding IndexAmongMatches, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="40" Margin="6,0,0,0">
-                                                <TextBox.Style>
-                                                    <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
-                                                        <Setter Property="IsEnabled" Value="True"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding LocateIndex}" Value="0">
-                                                                <Setter Property="Text" Value="0"/>
-                                                                <Setter Property="IsEnabled" Value="False"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBox.Style>
-                                            </TextBox>
+                                            <CheckBox IsChecked="{Binding UseIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
+                                            <TextBox Text="{Binding IndexAmongMatches, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="40" Margin="6,0,0,0"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -561,10 +441,7 @@
                         <DataGridTemplateColumn Header="Arg1 Type" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox Width="80"
-                                              SelectedValuePath="Content"
-                                              SelectedValue="{ Binding Arg1.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              IsEnabled="{Binding Arg1Enabled}">
+                                    <ComboBox Width="80" SelectedValuePath="Content" SelectedValue="{ Binding Arg1.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg1Enabled}">
                                         <ComboBoxItem Content="Element"/>
                                         <ComboBoxItem Content="String"/>
                                         <ComboBoxItem Content="Number"/>
@@ -573,14 +450,11 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-
-                        <!-- Arg1 Value dynamic -->
                         <DataGridTemplateColumn Header="Arg1" Width="*">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.Resources>
-                                            <!-- Hidden by default, still inherit the default dark ComboBox style -->
                                             <Style TargetType="ComboBox" x:Key="HiddenDarkCombo">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.BasedOn>
@@ -588,7 +462,6 @@
                                                 </Style.BasedOn>
                                             </Style>
                                         </Grid.Resources>
-                                        <!-- Element chooser -->
                                         <ComboBox Width="180" ItemsSource="{Binding DataContext.KnownControlTags, ElementName=Root}"
                                                   SelectedValue="{Binding Arg1.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <ComboBox.Style>
@@ -601,7 +474,6 @@
                                                 </Style>
                                             </ComboBox.Style>
                                         </ComboBox>
-                                        <!-- Var chooser -->
                                         <ComboBox Width="180" ItemsSource="{Binding DataContext.ProcedureVars, ElementName=Root}"
                                                   SelectedValue="{Binding Arg1.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <ComboBox.Style>
@@ -614,7 +486,6 @@
                                                 </Style>
                                             </ComboBox.Style>
                                         </ComboBox>
-                                        <!-- String/Number textbox -->
                                         <TextBox Width="220" Text="{Binding Arg1.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <TextBox.Style>
                                                 <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
@@ -634,15 +505,10 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-
-                        <!-- Arg2 Type -->
                         <DataGridTemplateColumn Header="Arg2 Type" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox Width="80"
-                                              SelectedValuePath="Content"
-                                              SelectedValue="{Binding Arg2.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              IsEnabled="{Binding Arg2Enabled}">
+                                    <ComboBox Width="80" SelectedValuePath="Content" SelectedValue="{Binding Arg2.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg2Enabled}">
                                         <ComboBoxItem Content="Element"/>
                                         <ComboBoxItem Content="String"/>
                                         <ComboBoxItem Content="Number"/>
@@ -651,8 +517,6 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-
-                        <!-- Arg2 Value dynamic -->
                         <DataGridTemplateColumn Header="Arg2" Width="*">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -711,10 +575,77 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
+                        <!-- NEW Arg3 columns for procedure grid -->
+                        <DataGridTemplateColumn Header="Arg3 Type" Width="90">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox Width="80" SelectedValuePath="Content" SelectedValue="{Binding Arg3.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg3Enabled}">
+                                        <ComboBoxItem Content="Element"/>
+                                        <ComboBoxItem Content="String"/>
+                                        <ComboBoxItem Content="Number"/>
+                                        <ComboBoxItem Content="Var"/>
+                                    </ComboBox>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Arg3" Width="120">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.Resources>
+                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo3">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.BasedOn>
+                                                    <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}" />
+                                                </Style.BasedOn>
+                                            </Style>
+                                        </Grid.Resources>
+                                        <ComboBox Width="110" ItemsSource="{Binding DataContext.KnownControlTags, ElementName=Root}" SelectedValue="{Binding Arg3.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenDarkCombo3}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Arg3.Type}" Value="Element">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Setter Property="IsEnabled" Value="{Binding Arg3Enabled}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ComboBox.Style>
+                                        </ComboBox>
+                                        <ComboBox Width="110" ItemsSource="{Binding DataContext.ProcedureVars, ElementName=Root}" SelectedValue="{Binding Arg3.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenDarkCombo3}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Arg3.Type}" Value="Var">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Setter Property="IsEnabled" Value="{Binding Arg3Enabled}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ComboBox.Style>
+                                        </ComboBox>
+                                        <TextBox Width="110" Text="{Binding Arg3.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Setter Property="IsEnabled" Value="{Binding Arg3Enabled}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Arg3.Type}" Value="Element">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Arg3.Type}" Value="Var">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="OutputVar" Binding="{Binding OutputVar}" IsReadOnly="True" Width="100"/>
                         <DataGridTextColumn Header="Output" Binding="{Binding OutputPreview}" IsReadOnly="True" Width="2*"/>
-
-                        <!-- Row actions -->
                         <DataGridTemplateColumn Header="Actions" Width="120">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -731,8 +662,6 @@
         </GroupBox>
 
         <!-- Bottom status -->
-        <TextBox Grid.Row="3" x:Name="txtStatus" IsReadOnly="True"
-                 Background="{StaticResource Dark.Panel}" Foreground="{StaticResource Dark.Foreground}" BorderBrush="{StaticResource Dark.Border}" BorderThickness="1"
-                 TextWrapping="Wrap" AcceptsReturn="True" Height="120" VerticalScrollBarVisibility="Auto"/>
+        <TextBox Grid.Row="3" x:Name="txtStatus" IsReadOnly="True" Height="120" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"/>
     </Grid>
 </Window>

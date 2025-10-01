@@ -1,5 +1,8 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Split Preview Refinement (2025-10-05)
+- **FR-135 Update** Split operation preview now returns only the extracted part value when Arg3 (index) is supplied (removed prior metadata format `part[i]='value' (N parts)`). Legacy behavior unchanged when Arg3 omitted (joins all parts with unit separator, preview displays part count).
+
 ## Update: AI Server & LLM Orchestration Skeleton (2025-10-05)
 - **FR-AI-001** System MUST expose central server-hosted AI pipeline so multiple intranet Radium clients can consume structured skills (no raw free-form prompt endpoint) via future API project endpoints.
 - **FR-AI-002** Domain layer MUST define provider-agnostic interfaces (ILLMClient, IModelRouter, IStudyRemarkParser, IPatientRemarkParser, IHeaderSplitter, IHeaderParser, IConclusionGenerator, IProofreader, IReportPipeline, IInferenceTelemetry) without vendor dependencies.
@@ -181,6 +184,7 @@ User or automation needs quick extraction of patient number or study date/time f
 - **FR-097** PACS selection helper methods MUST retrieve structured field values (name, sex, birth date, etc.) from either Search Results or Related Study list selections using unified header logic.
 - **FR-098** Procedure operation GetTextOCR MUST perform OCR on target element bounds and return extracted text or explicit status tokens ("(no element)", "(ocr unavailable)", "(empty)" etc.).
 - **FR-099** PACS helper MUST expose current patient number via banner heuristic (longest digit sequence length ≥5) and current study date/time via date(+time) pattern.
+- **FR-135** Custom procedure Split operation MUST support optional third argument (Arg3, Number) representing zero-based index; when provided and within bounds the operation stores only that part and preview shows part[index]; when out of range preview = (index out of range N); when omitted legacy behavior (all parts joined with \u001F) is preserved.
 
 ### Functional Requirements (Reliability & Logging)
 - **FR-120** First-chance Postgres exception sampler MUST log each unique (SqlState|Message) only once per application session.
@@ -458,6 +462,7 @@ For full behavioral definitions see MUSM Editor Specification included in design
 - Enhanced recursive guard protection (FR-132) to prevent infinite loops during programmatic changes.
 - Added precise single-step navigation and bounded height for completion popup (FR-133).
 - Implemented adaptive popup height adjustment with clamp to 8-items (FR-134).
+- Updated Split operation index argument handling (FR-135) to support optional third argument for part index selection.
 
 ---
 ## Feature Update (Reportified Toggle - Inverse Dereportify)

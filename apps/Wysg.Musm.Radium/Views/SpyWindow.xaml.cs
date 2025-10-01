@@ -117,16 +117,20 @@ namespace Wysg.Musm.Radium.Views
             private string _op = string.Empty;
             private ProcArg _arg1 = new ProcArg();
             private ProcArg _arg2 = new ProcArg();
+            private ProcArg _arg3 = new ProcArg();
             private bool _arg1Enabled = true;
             private bool _arg2Enabled = true;
+            private bool _arg3Enabled = false;
             private string? _outputVar;
             private string? _outputPreview;
 
             public string Op { get => _op; set => SetField(ref _op, value); }
             public ProcArg Arg1 { get => _arg1; set => SetField(ref _arg1, value); }
             public ProcArg Arg2 { get => _arg2; set => SetField(ref _arg2, value); }
+            public ProcArg Arg3 { get => _arg3; set => SetField(ref _arg3, value); }
             public bool Arg1Enabled { get => _arg1Enabled; set => SetField(ref _arg1Enabled, value); }
             public bool Arg2Enabled { get => _arg2Enabled; set => SetField(ref _arg2Enabled, value); }
+            public bool Arg3Enabled { get => _arg3Enabled; set => SetField(ref _arg3Enabled, value); }
             public string? OutputVar { get => _outputVar; set => SetField(ref _outputVar, value); }
             public string? OutputPreview { get => _outputPreview; set => SetField(ref _outputPreview, value); }
 
@@ -234,30 +238,41 @@ namespace Wysg.Musm.Radium.Views
                         case "GetTextOCR":
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3.Value = string.Empty; row.Arg3Enabled = false;
                             break;
                         case "Invoke":
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3.Value = string.Empty; row.Arg3Enabled = false;
                             break;
                         case "Split":
+                            // Arg1 = source var, Arg2 = separator, Arg3 = index (number)
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; // corrected property name
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg3.Value)) row.Arg3.Value = "0";
                             break;
                         case "TakeLast":
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3.Value = string.Empty; row.Arg3Enabled = false;
                             break;
                         case "Trim":
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3.Value = string.Empty; row.Arg3Enabled = false;
                             break;
                         case "GetValueFromSelection":
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg2.Value)) row.Arg2.Value = "ID"; // corrected property Arg2Enabled
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg2.Value)) row.Arg2.Value = "ID";
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3.Value = string.Empty; row.Arg3Enabled = false;
                             break;
                         case "ToDateTime":
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3.Value = string.Empty; row.Arg3Enabled = false;
+                            break;
+                        default:
+                            row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
                     }
                 }
@@ -271,6 +286,34 @@ namespace Wysg.Musm.Radium.Views
             string preview;
             switch (row.Op)
             {
+                case "Split":
+                {
+                    var input = ResolveString(row.Arg1, vars);
+                    var sep = ResolveString(row.Arg2, vars) ?? string.Empty;
+                    var indexStr = ResolveString(row.Arg3, vars);
+                    if (input == null) { preview = "(null)"; valueToStore = null; break; }
+                    var parts = input.Split(new[] { sep }, StringSplitOptions.None);
+                    if (!string.IsNullOrWhiteSpace(indexStr) && int.TryParse(indexStr.Trim(), out var idx))
+                    {
+                        if (idx >= 0 && idx < parts.Length)
+                        {
+                            valueToStore = parts[idx];
+                            // Preview should be just the extracted part (no metadata per user request)
+                            preview = valueToStore ?? string.Empty;
+                        }
+                        else
+                        {
+                            valueToStore = null; preview = $"(index out of range {parts.Length})";
+                        }
+                    }
+                    else
+                    {
+                        // No index -> legacy behaviour (store all parts joined with unit separator, preview part count)
+                        valueToStore = string.Join("\u001F", parts);
+                        preview = $"{parts.Length} parts";
+                    }
+                    break;
+                }
                 case "GetText":
                 {
                     var el = ResolveElement(row.Arg1);
@@ -288,7 +331,6 @@ namespace Wysg.Musm.Radium.Views
                 }
                 case "GetTextOCR":
                 {
-                    // Synchronous path kept for run-procedure fallback; OnSetProcRow now uses async variant to avoid deadlock.
                     var el = ResolveElement(row.Arg1);
                     if (el == null) { valueToStore = null; preview = "(no element)"; break; }
                     try
@@ -315,16 +357,6 @@ namespace Wysg.Musm.Radium.Views
                         preview = "(invoked)"; valueToStore = null;
                     }
                     catch { preview = "(error)"; valueToStore = null; }
-                    break;
-                }
-                case "Split":
-                {
-                    var input = ResolveString(row.Arg1, vars);
-                    var sep = ResolveString(row.Arg2, vars) ?? string.Empty;
-                    if (input == null) { preview = "(null)"; valueToStore = null; break; }
-                    var parts = input.Split(new[] { sep }, StringSplitOptions.None);
-                    valueToStore = string.Join("\u001F", parts);
-                    preview = $"{parts.Length} parts";
                     break;
                 }
                 case "TakeLast":

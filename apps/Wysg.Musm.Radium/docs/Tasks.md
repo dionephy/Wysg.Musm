@@ -1,6 +1,9 @@
 ﻿# Tasks: Radium Cumulative (Reporting Pipeline + Editor + Mapping + PACS)
 
 ## Added
+- [X] T241 Refine Split operation preview to output only selected part (remove metadata) (FR-135 update).
+- [X] T239 Extend Split operation with Arg3 index argument (code + XAML) (FR-135).
+- [X] T240 Update Spec/Plan/Tasks docs for Split Arg3 support (FR-135).
 - [X] TM21 Drag selection stabilization (_mouseSelecting flag + suppression + logging).
 - [X] TM22 Reverse drag selection enforcement (anchor + manual Select).
 - [X] TM23 Debounce selection change handling during drag (stabilize reverse selection + reduce log noise).
@@ -191,6 +194,7 @@ Bug fix test set: T157 T158 T159 T160 T161 T162 (after T214-T233 complete)
 
 ---
 ## Validation Checklist
+- [X] FR-135 documented and implemented (Split Arg3 index).
 - [X] All FR-001..FR-020 have at least one test task
 - [X] All FR-050..FR-058 have editor test or impl task
 - [X] All FR-090..FR-099 mapping & procedure tasks enumerated

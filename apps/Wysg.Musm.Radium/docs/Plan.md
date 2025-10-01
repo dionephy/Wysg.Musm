@@ -1,6 +1,9 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Change Log Addition
+- **2025-10-05**: Split operation preview refined (FR-135 update) – when Arg3 index provided preview now shows only selected part value (metadata removed). Legacy multi-join preview unchanged when Arg3 absent.
+- **2025-10-05**: Split operation extended with Arg3 index (FR-135) – optional numeric index selects single part; legacy multi-part join retained when Arg3 empty.
+- **2025-10-05**: AI orchestration skeleton added (Domain interfaces + UseCases ReportPipeline + Infrastructure NoOp skills + DI AddMusmAi extension + API registration). Implements FR-AI-001..FR-AI-008 partial (FR-AI-009/010 future enhancements).
 - **2025-10-03**: Adaptive completion popup height auto-sizing implemented (FR-134) – dynamic measurement of first item, exact height for ≤8 items, clamped height with scrollbar for larger sets; re-adjust on selection & rebuild.
 - **2025-10-02**: Completion popup bounded height + single-step navigation stabilization implemented (FR-133) – internal navigation index prevents skip-over, ListBox height dynamically constrained to 8 visible items.
 - **2025-10-01**: Completion popup navigation recursion fix implemented (FR-132) – added guard flag in MusmCompletionWindow to prevent infinite loops during programmatic selection changes while preserving legitimate keyboard navigation.
@@ -60,7 +63,7 @@ Pending clarifications extended to OCR (engine availability, fallback heuristics
 
 ---
 ## Phase 2: Task Planning Extension
-Added incremental tasks (see Tasks.md T205..T208) covering implementation & spec alignment for FR-098..FR-099, FR-123. Added T209-T211 for completion improvements FR-124..FR-125. Added T214-T217 for bug fixes FR-126..FR-127. Added T218-T219 for selection guard recursion fix FR-128. Added T220-T221 for multiple event handling FR-129. Added T222-T223 for navigation state tracking FR-130. Added T224-T225 for focus-aware first navigation guard FR-131. Added T226-T229 for manual editor-driven navigation handling FR-131. Added T232-T233 for recursive guard protection FR-132. Added T234-T235 for completion popup bounded height FR-133. Added T236-T237 for adaptive completion popup height FR-134.
+Added incremental tasks (see Tasks.md T205..T208) covering implementation & spec alignment for FR-098..FR-099, FR-123. Added T209-T211 for completion improvements FR-124..FR-125. Added T214-T217 for bug fixes FR-126..FR-127. Added T218-T219 for selection guard recursion fix FR-128. Added T220-T221 for multiple event handling FR-129. Added T222-T223 for navigation state tracking FR-130. Added T224-T225 for focus-aware first navigation guard FR-131. Added T226-T229 for manual editor-driven navigation handling FR-131. Added T232-T233 for recursive guard protection FR-132. Added T234-T235 for completion popup bounded height FR-133. Added T236-T237 for adaptive completion popup height FR-134. Added T238-T239 for split operation Arg3 support FR-135.
 
 ---
 ## Phase 3+: Future
@@ -76,6 +79,7 @@ No new complexity exceptions.
 
 ---
 ## Progress Tracking
+Split Arg3 index support implemented (status: Done, FR-135).
 GetTextOCR + banner helpers implemented (status: Done). Editor completion improvements implemented (status: Done). Bug fixes implemented (status: Done). Selection guard recursion fix implemented (status: Done). Multiple event handling improvement implemented (status: Done). Navigation state tracking implemented (status: Done). Focus-aware first navigation guard implemented (status: Done). Manual editor-driven navigation implemented (status: Done). Guard-silent selection helper implemented (status: Done). Recursive guard protection implemented (status: Done). Completion popup bounded height implemented (status: Done). Adaptive completion popup height implemented (status: Done). Unit tests added (status: Done). Documentation updated.
 
 ---
