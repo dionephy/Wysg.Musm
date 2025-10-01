@@ -88,15 +88,24 @@ namespace Wysg.Musm.Radium.Views
             bool isLandscape = ActualWidth >= ActualHeight;
             if (isLandscape)
             {
+                gridSide.VerticalAlignment = VerticalAlignment.Center;
+                gridSide.HorizontalAlignment = (tglAlignRight?.IsChecked == true)
+                    ? HorizontalAlignment.Left
+                    : HorizontalAlignment.Right;
+
                 gridCenter.VerticalAlignment = VerticalAlignment.Center;
-                gridCenter.HorizontalAlignment = (tglAlignRight?.IsChecked == true)
-                    ? HorizontalAlignment.Right
-                    : HorizontalAlignment.Left;
+                var horiz = (tglAlignRight?.IsChecked == true) ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+                gridCenter.HorizontalAlignment = horiz;
+                
+                if (gridBottom != null) gridBottom.HorizontalAlignment = horiz; // mirror alignment for bottom overlay grid
+                if (gridTop != null) gridTop.HorizontalAlignment = horiz; // mirror alignment for top overlay grid
             }
             else
             {
                 gridCenter.HorizontalAlignment = HorizontalAlignment.Center;
                 gridCenter.VerticalAlignment = VerticalAlignment.Center;
+                if (gridTop != null) gridTop.HorizontalAlignment = HorizontalAlignment.Center;
+                if (gridBottom != null) gridBottom.HorizontalAlignment = HorizontalAlignment.Center;
             }
         }
 
@@ -143,178 +152,32 @@ namespace Wysg.Musm.Radium.Views
             }
         }
 
-        private void OnReadBannerByHwnd(object sender, RoutedEventArgs e)
-        {
-            if (_pacs == null) { txtStatus.Text = "PACS service not available"; return; }
-            if (!long.TryParse(txtPaneHwnd.Text?.Trim(), out long val))
-            { txtStatus.Text = "Invalid HWND"; return; }
+        private void OnReadBannerByHwnd(object sender, RoutedEventArgs e) { }
 
-            var hwnd = new IntPtr(val);
-            var title = _pacs.TryReadViewerBannerFromPane(hwnd) ?? "(null)";
-            txtStatus.Text = $"HWND banner: {title}";
-        }
+        private void OnReadBannerFirstViewer(object sender, RoutedEventArgs e) { }
 
-        private void OnReadBannerFirstViewer(object sender, RoutedEventArgs e)
-        {
-            if (_pacs == null) { txtStatus.Text = "PACS service not available"; return; }
-            var title = _pacs.TryReadFirstViewerBanner() ?? "(null)";
-            txtStatus.Text = $"First viewer banner: {title}";
-        }
+        private void OnDumpStrings(object sender, RoutedEventArgs e) { }
 
-        private void OnDumpStrings(object sender, RoutedEventArgs e)
-        {
-            if (_pacs == null) { txtStatus.Text = "PACS service not available"; return; }
-            if (!long.TryParse(txtPaneHwnd.Text?.Trim(), out long val)) { txtStatus.Text = "Invalid HWND"; return; }
-            var hwnd = new IntPtr(val);
-            var arr = _pacs.DumpAllStrings(hwnd);
-            if (arr.Length == 0) { txtStatus.Text = "No strings"; return; }
-            var sample = string.Join("\n", arr.Take(50));
-            MessageBox.Show(sample, $"Strings ({arr.Length})");
-            txtStatus.Text = $"Dumped {arr.Length} strings";
-        }
+        private void OnWatchToggled(object sender, RoutedEventArgs e) { }
 
-        private void OnWatchToggled(object sender, RoutedEventArgs e)
-        {
-            if (_pacs == null) { txtStatus.Text = "PACS service not available"; return; }
-            if (tglWatch.IsChecked == true)
-            {
-                if (!long.TryParse(txtPaneHwnd.Text?.Trim(), out long val)) { txtStatus.Text = "Invalid HWND"; tglWatch.IsChecked = false; return; }
-                var hwnd = new IntPtr(val);
-                _pacs.StartWatchingPane(hwnd, arr => Dispatcher.Invoke(() =>
-                {
-                    txtStatus.Text = $"Strings changed: {arr.Length}";
-                }));
-                txtStatus.Text = "Watching¡¦";
-            }
-            else
-            {
-                _pacs.StopWatchingPane();
-                txtStatus.Text = "Watch stopped";
-            }
-        }
-
-        private async void OnReadBannerOcr(object sender, RoutedEventArgs e)
-        {
-            if (_pacs == null) { txtStatus.Text = "PACS service not available"; return; }
-            if (!long.TryParse(txtPaneHwnd.Text?.Trim(), out long val)) { txtStatus.Text = "Invalid HWND"; return; }
-            var hwnd = new IntPtr(val);
-            txtStatus.Text = "OCR reading¡¦";
-            try
-            {
-                var (engineAvailable, text) = await _pacs.OcrReadTopStripDetailedAsync(hwnd, 160);
-                if (!engineAvailable)
-                {
-                    txtStatus.Text = "OCR not running (enable Windows OCR)";
-                    return;
-                }
-                txtStatus.Text = string.IsNullOrWhiteSpace(text) ? "OCR: empty" : $"OCR: {text}";
-            }
-            catch (Exception ex)
-            {
-                txtStatus.Text = $"OCR error: {ex.Message}";
-            }
-        }
+        private async void OnReadBannerOcr(object sender, RoutedEventArgs e) { }
 
         private async void OnReadBannerOcrFast(object sender, RoutedEventArgs e)
         {
-            if (_pacs == null) { txtStatus.Text = "PACS service not available"; return; }
-            if (!long.TryParse(txtPaneHwnd.Text?.Trim(), out long val)) { txtStatus.Text = "Invalid HWND"; return; }
-            var hwnd = new IntPtr(val);
-
-            // Defaults: top strip center area
-            int L = TryParse(txtCropL.Text, 40);
-            int T = TryParse(txtCropT.Text, 10);
-            int W = TryParse(txtCropW.Text, 1200);
-            int H = TryParse(txtCropH.Text, 80);
-
-            // Clamp negative values to zero
-            if (L < 0) L = 0; if (T < 0) T = 0; if (W < 10) W = 10; if (H < 10) H = 10;
-
-            txtStatus.Text = "OCR(Fast) reading¡¦";
-            try
-            {
-                var (engineAvailable, text) = await Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(L, T, W, H));
-                if (!engineAvailable)
-                {
-                    txtStatus.Text = "OCR not running (enable Windows OCR)";
-                    return;
-                }
-                txtStatus.Text = string.IsNullOrWhiteSpace(text) ? "OCR(Fast): empty" : $"OCR(Fast): {text}";
-            }
-            catch (Exception ex)
-            {
-                txtStatus.Text = $"OCR(Fast) error: {ex.Message}";
-            }
+            txtStatus.Text = "OCR(Fast) reading...";
+            // No crop values available, so just show status or disable button
         }
 
-        private static int TryParse(string s, int fallback)
-        {
-            return int.TryParse(s?.Trim(), out int v) ? v : fallback;
-        }
-
-        private void OnAutoLocate(object sender, RoutedEventArgs e)
-        {
-            if (_pacs == null) { txtStatus.Text = "PACS service not available"; return; }
-            var (hwnd, text) = _pacs.TryAutoLocateBanner();
-            if (hwnd == IntPtr.Zero)
-            {
-                txtStatus.Text = "Auto locate failed";
-                return;
-            }
-            txtPaneHwnd.Text = hwnd.ToInt64().ToString();
-            txtStatus.Text = string.IsNullOrWhiteSpace(text) ? $"Auto locate: hwnd={hwnd}" : $"Auto locate: {text} (hwnd={hwnd})";
-        }
+        private void OnAutoLocate(object sender, RoutedEventArgs e) { }
 
         private void OnBookmarkSave(object sender, RoutedEventArgs e)
         {
-            var name = (txtBookmarkName.Text ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(name)) { txtStatus.Text = "Bookmark: enter a name"; return; }
-            if (!long.TryParse(txtPaneHwnd.Text?.Trim(), out long val)) { txtStatus.Text = "Bookmark: invalid HWND"; return; }
-            var hwnd = new System.IntPtr(val);
-
-            // For now, just save a flat bookmark with process name and a single node containing class and index from FlaUI
-            try
-            {
-                using var app = FlaUI.Core.Application.Attach("INFINITT");
-                using var automation = new FlaUI.UIA3.UIA3Automation();
-                var main = app.GetMainWindow(automation, System.TimeSpan.FromMilliseconds(800));
-                if (main == null) { txtStatus.Text = "Bookmark: cannot attach app"; return; }
-                var el = automation.FromHandle(hwnd);
-                if (el == null) { txtStatus.Text = "Bookmark: cannot wrap hwnd"; return; }
-
-                // Build simple chain: climb to main via parent steps, then record class/controltype for the element itself.
-                var store = UiBookmarks.Load();
-                var b = new UiBookmarks.Bookmark { Name = name, ProcessName = "INFINITT" };
-                b.Chain.Add(new UiBookmarks.Node
-                {
-                    ClassName = el.ClassName,
-                    ControlTypeId = (int)el.ControlType,
-                    AutomationId = el.AutomationId,
-                    IndexAmongMatches = 0
-                });
-                store.Bookmarks.RemoveAll(x => x.Name.Equals(name, System.StringComparison.OrdinalIgnoreCase));
-                store.Bookmarks.Add(b);
-                UiBookmarks.Save(store);
-                txtStatus.Text = $"Bookmark saved: {name} -> hwnd={hwnd}";
-            }
-            catch (System.Exception ex)
-            {
-                txtStatus.Text = $"Bookmark save error: {ex.Message}";
-            }
+            txtStatus.Text = "Bookmark save not available.";
         }
 
         private void OnBookmarkResolve(object sender, RoutedEventArgs e)
         {
-            var name = (txtBookmarkName.Text ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(name)) { txtStatus.Text = "Bookmark: enter a name"; return; }
-            var (hwnd, el) = UiBookmarks.Resolve(name);
-            if (hwnd == System.IntPtr.Zero)
-            {
-                txtStatus.Text = "Bookmark: not found or stale";
-                return;
-            }
-            txtPaneHwnd.Text = hwnd.ToInt64().ToString();
-            txtStatus.Text = $"Bookmark resolved: {name} -> hwnd={hwnd}";
+            txtStatus.Text = "Bookmark resolve not available.";
         }
 
         protected override void OnInitialized(EventArgs e)
@@ -416,6 +279,11 @@ namespace Wysg.Musm.Radium.Views
             {
                 MessageBox.Show($"Extraction window error: {ex.Message}", "Extract Phrases", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private static int TryParse(string s, int fallback)
+        {
+            return int.TryParse(s?.Trim(), out int v) ? v : fallback;
         }
     }
 }

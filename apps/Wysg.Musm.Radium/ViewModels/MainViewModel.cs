@@ -42,7 +42,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _studyName = string.Empty; public string StudyName { get => _studyName; set { if (SetProperty(ref _studyName, value)) UpdateCurrentStudyLabel(); } }
         private string _studyDateTime = string.Empty; public string StudyDateTime { get => _studyDateTime; set { if (SetProperty(ref _studyDateTime, value)) UpdateCurrentStudyLabel(); } }
 
-        private string _currentStudyLabel = "Current Study"; public string CurrentStudyLabel { get => _currentStudyLabel; private set => SetProperty(ref _currentStudyLabel, value); }
+        private string _currentStudyLabel = "Current\nStudy"; public string CurrentStudyLabel { get => _currentStudyLabel; private set => SetProperty(ref _currentStudyLabel, value); }
         private void UpdateCurrentStudyLabel()
         {
             string fmt(string s) => string.IsNullOrWhiteSpace(s) ? "?" : s.Trim();
@@ -53,7 +53,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (DateTime.TryParse(dt, out var parsed)) dt = parsed.ToString("yyyy-MM-dd HH:mm:ss");
             }
             else dt = "?";
-            CurrentStudyLabel = $"({fmt(PatientNumber)}){fmt(PatientName)}({fmt(PatientSex)}/{fmt(PatientAge)})-{fmt(StudyName)}({dt})";
+            CurrentStudyLabel = $"({fmt(PatientNumber)}){fmt(PatientName)}({fmt(PatientSex)}/{fmt(PatientAge)})\n{fmt(StudyName)}({dt})";
         }
 
         private async Task FetchCurrentStudyAsync()
@@ -147,7 +147,10 @@ namespace Wysg.Musm.Radium.ViewModels
             set
             {
                 if (SetProperty(ref _selectedPreviousStudy, value))
+                {
                     foreach (var t in PreviousStudies) t.IsSelected = (value != null && t.Id == value!.Id);
+                    ApplyPreviousReportifiedState();
+                }
             }
         }
 
@@ -435,6 +438,7 @@ namespace Wysg.Musm.Radium.ViewModels
             public string Conclusion { get; set; } = string.Empty;
             public string RawJson { get; set; } = string.Empty;
             private bool _isSelected; public bool IsSelected { get => _isSelected; set => SetProperty(ref _isSelected, value); }
+            public bool ReportifiedApplied { get; set; } = false; // new flag for reportify state
             public override string ToString() => Title;
         }
 
@@ -471,6 +475,46 @@ namespace Wysg.Musm.Radium.ViewModels
                 await _studyRepo.EnsurePatientStudyAsync(PatientNumber, PatientName, PatientSex, birthDate, StudyName, dt == DateTime.MinValue ? null : dt);
             }
             catch { }
+        }
+
+        private bool _previousReportified; public bool PreviousReportified
+        {
+            get => _previousReportified;
+            set
+            {
+                if (SetProperty(ref _previousReportified, value))
+                {
+                    ApplyPreviousReportifiedState();
+                }
+            }
+        }
+
+        private void ApplyPreviousReportifiedState()
+        {
+            var tab = SelectedPreviousStudy;
+            if (tab == null) return;
+            if (PreviousReportified)
+            {
+                if (!tab.ReportifiedApplied)
+                {
+                    tab.Header = ReportifyBlock(tab.Header, false);
+                    tab.Findings = ReportifyBlock(tab.Findings, false);
+                    tab.Conclusion = ReportifyBlock(tab.Conclusion, true);
+                    tab.ReportifiedApplied = true;
+                    OnPropertyChanged(nameof(SelectedPreviousStudy));
+                }
+            }
+            else
+            {
+                if (tab.ReportifiedApplied)
+                {
+                    tab.Header = DereportifyBlock(tab.Header, false);
+                    tab.Findings = DereportifyBlock(tab.Findings, false);
+                    tab.Conclusion = DereportifyBlock(tab.Conclusion, true);
+                    tab.ReportifiedApplied = false;
+                    OnPropertyChanged(nameof(SelectedPreviousStudy));
+                }
+            }
         }
     }
 }
