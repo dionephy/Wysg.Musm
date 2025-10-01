@@ -1,10 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Windows.Automation;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
-using FlaUI.Core.Conditions;
 using FlaUI.UIA3;
 using Wysg.Musm.MFCUIA;
 using Wysg.Musm.MFCUIA.Core.Controls;
@@ -12,14 +10,10 @@ using Wysg.Musm.MFCUIA.Selectors;
 using Wysg.Musm.MFCUIA.Session;
 using System.Drawing;
 using System.Runtime.InteropServices;
-using System.Linq;
-using System.Collections.Generic;
-using UIAElement = FlaUI.Core.AutomationElements.AutomationElement;
-using System.Text.RegularExpressions;
 
 namespace Wysg.Musm.Radium.Services
 {
-    // Slim PACS automation using the new MFCUIA library + FlaUI helpers
+    // PACS automation ? now fully procedure-driven for metadata getters (no fallbacks)
     public sealed class PacsService
     {
         private readonly string _proc;
@@ -31,17 +25,8 @@ namespace Wysg.Musm.Radium.Services
 
         public PacsService(string processName = "INFINITT") => _proc = processName;
 
-        // Generic executor: try custom procedure (ui-procedures.json) first, else fallback supplier
-        private static async Task<string?> ExecCustomOrAsync(string methodTag, Func<string?> fallback)
-        {
-            try
-            {
-                var custom = await ProcedureExecutor.ExecuteAsync(methodTag).ConfigureAwait(false);
-                if (!string.IsNullOrWhiteSpace(custom)) return custom;
-            }
-            catch { /* swallow custom errors */ }
-            try { return fallback(); } catch { return null; }
-        }
+        // Execute custom procedure only (caller must define it in ui-procedures.json)
+        private static Task<string?> ExecCustom(string methodTag) => ProcedureExecutor.ExecuteAsync(methodTag);
 
         public async Task OpenWorklistAsync()
         {
@@ -59,219 +44,27 @@ namespace Wysg.Musm.Radium.Services
             return items;
         }
 
-        // Search Results list based (custom procedure first)
-        public Task<string?> GetSelectedIdFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedIdFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "ID", "Accession", "Accession No." }));
-        public Task<string?> GetSelectedNameFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedNameFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Name" }));
-        public Task<string?> GetSelectedSexFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedSexFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Sex" }));
-        public Task<string?> GetSelectedBirthDateFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedBirthDateFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Birth Date", "BirthDate" }));
-        public Task<string?> GetSelectedAgeFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedAgeFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Age" }));
-        public Task<string?> GetSelectedStudynameFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedStudynameFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Study Desc", "Study Description", "Studyname", "Study Name" }));
-        public Task<string?> GetSelectedStudyDateTimeFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedStudyDateTimeFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Study Date", "Study Date Time", "Study DateTime" }));
-        public Task<string?> GetSelectedRadiologistFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedRadiologistFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Requesting Doctor", "Radiologist", "Doctor" }));
-        public Task<string?> GetSelectedStudyRemarkFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedStudyRemarkFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Study Comments", "Remark", "Comments" }));
-        public Task<string?> GetSelectedReportDateTimeFromSearchResultsAsync() => ExecCustomOrAsync("GetSelectedReportDateTimeFromSearchResults", () => GetValueFromListSelection(UiBookmarks.KnownControl.SearchResultsList, new[] { "Report approval dttm", "Report Date", "Report Date Time" }));
+        // Procedure-only metadata getters (Search Results list)
+        public Task<string?> GetSelectedIdFromSearchResultsAsync() => ExecCustom("GetSelectedIdFromSearchResults");
+        public Task<string?> GetSelectedNameFromSearchResultsAsync() => ExecCustom("GetSelectedNameFromSearchResults");
+        public Task<string?> GetSelectedSexFromSearchResultsAsync() => ExecCustom("GetSelectedSexFromSearchResults");
+        public Task<string?> GetSelectedBirthDateFromSearchResultsAsync() => ExecCustom("GetSelectedBirthDateFromSearchResults");
+        public Task<string?> GetSelectedAgeFromSearchResultsAsync() => ExecCustom("GetSelectedAgeFromSearchResults");
+        public Task<string?> GetSelectedStudynameFromSearchResultsAsync() => ExecCustom("GetSelectedStudynameFromSearchResults");
+        public Task<string?> GetSelectedStudyDateTimeFromSearchResultsAsync() => ExecCustom("GetSelectedStudyDateTimeFromSearchResults");
+        public Task<string?> GetSelectedRadiologistFromSearchResultsAsync() => ExecCustom("GetSelectedRadiologistFromSearchResults");
+        public Task<string?> GetSelectedStudyRemarkFromSearchResultsAsync() => ExecCustom("GetSelectedStudyRemarkFromSearchResults");
+        public Task<string?> GetSelectedReportDateTimeFromSearchResultsAsync() => ExecCustom("GetSelectedReportDateTimeFromSearchResults");
 
-        // Related Studies list based
-        public Task<string?> GetSelectedStudynameFromRelatedStudiesAsync() => ExecCustomOrAsync("GetSelectedStudynameFromRelatedStudies", () => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Study Desc", "Study Description", "Studyname", "Study Name" }));
-        public Task<string?> GetSelectedStudyDateTimeFromRelatedStudiesAsync() => ExecCustomOrAsync("GetSelectedStudyDateTimeFromRelatedStudies", () => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Study Date", "Study Date Time", "Study DateTime" }));
-        public Task<string?> GetSelectedRadiologistFromRelatedStudiesAsync() => ExecCustomOrAsync("GetSelectedRadiologistFromRelatedStudies", () => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Requesting Doctor", "Radiologist", "Doctor" }));
-        public Task<string?> GetSelectedReportDateTimeFromRelatedStudiesAsync() => ExecCustomOrAsync("GetSelectedReportDateTimeFromRelatedStudies", () => GetValueFromListSelection(UiBookmarks.KnownControl.RelatedStudyList, new[] { "Report approval dttm", "Report Date", "Report Date Time" }));
+        // Procedure-only metadata getters (Related Studies list)
+        public Task<string?> GetSelectedStudynameFromRelatedStudiesAsync() => ExecCustom("GetSelectedStudynameFromRelatedStudies");
+        public Task<string?> GetSelectedStudyDateTimeFromRelatedStudiesAsync() => ExecCustom("GetSelectedStudyDateTimeFromRelatedStudies");
+        public Task<string?> GetSelectedRadiologistFromRelatedStudiesAsync() => ExecCustom("GetSelectedRadiologistFromRelatedStudies");
+        public Task<string?> GetSelectedReportDateTimeFromRelatedStudiesAsync() => ExecCustom("GetSelectedReportDateTimeFromRelatedStudies");
 
-        // NEW: Current patient number parsed from viewer banner (OCR/text) heuristics.
-        public Task<string?> GetCurrentPatientNumberAsync() => ExecCustomOrAsync("GetCurrentPatientNumber", () =>
-        {
-            try
-            {
-                var (_, banner) = TryAutoLocateBanner();
-                if (string.IsNullOrWhiteSpace(banner)) return null;
-                // Heuristic: patient number often first token / digits cluster before first comma
-                // Extract longest digit sequence of length >=5
-                var match = Regex.Matches(banner, "[0-9]{5,}").Cast<Match>().OrderByDescending(m => m.Value.Length).FirstOrDefault();
-                return match?.Value;
-            }
-            catch { return null; }
-        });
-
-        // NEW: Current study date time parsed from banner tokens (YYYY-MM-DD or with time)
-        public Task<string?> GetCurrentStudyDateTimeAsync() => ExecCustomOrAsync("GetCurrentStudyDateTime", () =>
-        {
-            try
-            {
-                var (_, banner) = TryAutoLocateBanner();
-                if (string.IsNullOrWhiteSpace(banner)) return null;
-                // Look for date pattern
-                var dateMatch = Regex.Match(banner, @"(20[0-9]{2}[-/][01][0-9][-/.][0-3][0-9])");
-                if (!dateMatch.Success) return null;
-                var date = dateMatch.Groups[1].Value.Replace('/', '-').Replace('.', '-');
-                // Optional time immediately after
-                var timeMatch = Regex.Match(banner.Substring(dateMatch.Index + dateMatch.Length), @"\s+([0-2][0-9]:[0-5][0-9](?::[0-5][0-9])?)");
-                return timeMatch.Success ? date + " " + timeMatch.Groups[1].Value : date;
-            }
-            catch { return null; }
-        });
-
-        private static string? GetValueFromListSelection(UiBookmarks.KnownControl control, string[] headerCandidates)
-        {
-            try
-            {
-                var (_, list) = UiBookmarks.Resolve(control);
-                if (list == null) return null;
-                var selection = list.Patterns.Selection.PatternOrDefault;
-                var selected = selection?.Selection?.Value ?? Array.Empty<UIAElement>();
-                if (selected.Length == 0)
-                {
-                    selected = list.FindAllDescendants().Where(a =>
-                    {
-                        try { return a.Patterns.SelectionItem.IsSupported && a.Patterns.SelectionItem.PatternOrDefault?.IsSelected == true; }
-                        catch { return false; }
-                    }).ToArray();
-                }
-                if (selected.Length == 0) return null;
-                var row = selected[0];
-                var headers = GetHeaderTexts(list);
-                var cells = GetRowCellValues(row);
-                if (headers.Count < cells.Count) for (int i = headers.Count; i < cells.Count; i++) headers.Add($"Col{i + 1}");
-                else if (headers.Count > cells.Count) for (int i = cells.Count; i < headers.Count; i++) cells.Add(string.Empty);
-                foreach (var wanted in headerCandidates)
-                {
-                    int idx = FindHeaderIndex(headers, wanted);
-                    if (idx >= 0 && idx < cells.Count)
-                    {
-                        var val = cells[idx]?.Trim();
-                        if (!string.IsNullOrWhiteSpace(val)) return val;
-                    }
-                }
-                return null;
-            }
-            catch { return null; }
-        }
-
-        private static int FindHeaderIndex(List<string> headers, string wanted)
-        {
-            for (int i = 0; i < headers.Count; i++)
-            {
-                var h = headers[i] ?? string.Empty;
-                if (string.Equals(h, wanted, StringComparison.OrdinalIgnoreCase)) return i;
-            }
-            for (int i = 0; i < headers.Count; i++)
-            {
-                var h = headers[i] ?? string.Empty;
-                if (h.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) >= 0) return i;
-            }
-            return -1;
-        }
-
-        private static string ReadCellText(UIAElement cell)
-        {
-            try
-            {
-                var vp = cell.Patterns.Value.PatternOrDefault;
-                if (vp != null)
-                {
-                    if (vp.Value.TryGetValue(out var pv) && !string.IsNullOrWhiteSpace(pv))
-                        return pv;
-                }
-            }
-            catch { }
-            try { var n = cell.Name; if (!string.IsNullOrWhiteSpace(n)) return n; } catch { }
-            try { var l = cell.Patterns.LegacyIAccessible.PatternOrDefault?.Name; if (!string.IsNullOrWhiteSpace(l)) return l; } catch { }
-            return string.Empty;
-        }
-
-        private static List<string> GetHeaderTexts(UIAElement list)
-        {
-            var result = new List<string>();
-            try
-            {
-                var kids = list.FindAllChildren();
-                if (kids.Length > 0)
-                {
-                    var headerRow = kids[0];
-                    var headerCells = headerRow.FindAllChildren();
-                    if (headerCells.Length > 0)
-                    {
-                        foreach (var hc in headerCells)
-                        {
-                            try
-                            {
-                                var t = ReadCellText(hc);
-                                if (string.IsNullOrWhiteSpace(t))
-                                {
-                                    foreach (var g in hc.FindAllChildren())
-                                    {
-                                        t = ReadCellText(g);
-                                        if (!string.IsNullOrWhiteSpace(t)) break;
-                                    }
-                                }
-                                if (!string.IsNullOrWhiteSpace(t)) result.Add(t.Trim());
-                            }
-                            catch { }
-                        }
-                        if (result.Count > 0) return result;
-                    }
-                }
-
-                // Fallback: look for any child that appears to be header-like
-                foreach (var ch in list.FindAllDescendants())
-                {
-                    try
-                    {
-                        var name = ReadCellText(ch);
-                        if (!string.IsNullOrWhiteSpace(name) && name.Length < 40)
-                        {
-                            // heuristic placeholder
-                        }
-                    }
-                    catch { }
-                }
-            }
-            catch { }
-            return result;
-        }
-
-        private static List<string> GetRowCellValues(UIAElement row)
-        {
-            var values = new List<string>();
-            try
-            {
-                var children = row.FindAllChildren();
-                if (children.Length > 0)
-                {
-                    foreach (var c in children)
-                    {
-                        try
-                        {
-                            var txt = ReadCellText(c).Trim();
-                            if (string.IsNullOrEmpty(txt))
-                            {
-                                foreach (var gc in c.FindAllChildren())
-                                {
-                                    var t = ReadCellText(gc).Trim();
-                                    if (!string.IsNullOrEmpty(t)) { txt = t; break; }
-                                }
-                            }
-                            values.Add(txt);
-                        }
-                        catch { values.Add(string.Empty); }
-                    }
-                }
-                else
-                {
-                    foreach (var d in row.FindAllDescendants())
-                    {
-                        try
-                        {
-                            var t = ReadCellText(d).Trim();
-                            values.Add(t);
-                            if (values.Count >= 20) break;
-                        }
-                        catch { }
-                    }
-                }
-            }
-            catch { }
-            return values;
-        }
+        // Procedure-only banner helpers
+        public Task<string?> GetCurrentPatientNumberAsync() => ExecCustom("GetCurrentPatientNumber");
+        public Task<string?> GetCurrentStudyDateTimeAsync() => ExecCustom("GetCurrentStudyDateTime");
 
         public async Task<bool> IsViewerWindowAsync(IntPtr hwnd)
         {
@@ -305,10 +98,8 @@ namespace Wysg.Musm.Radium.Services
             }
         }
 
-        // FlaUI-based robust discovery with caching
         public (IntPtr hwnd, string? text) TryAutoLocateBanner()
         {
-            // 0) If we have a cached hwnd, verify it is still valid and belongs to the process
             if (_cachedBannerHwnd != IntPtr.Zero && IsWindow(_cachedBannerHwnd))
             {
                 var txt = TryReadViewerBannerFromPane(_cachedBannerHwnd);
@@ -322,7 +113,6 @@ namespace Wysg.Musm.Radium.Services
                 var main = app.GetMainWindow(automation, TimeSpan.FromMilliseconds(500));
                 if (main == null) return (IntPtr.Zero, null);
 
-                // Search for a Pane with class AfxFrameOrView140u within top 140 px and wide enough
                 var panes = main.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Pane)
                                                           .And(cf.ByClassName("AfxFrameOrView140u")));
                 foreach (var p in panes)
@@ -339,7 +129,6 @@ namespace Wysg.Musm.Radium.Services
                     }
                 }
 
-                // fallback: any Pane with AfxWnd140u
                 var panes2 = main.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Pane)
                                                            .And(cf.ByClassName("AfxWnd140u")));
                 foreach (var p in panes2)
@@ -358,7 +147,6 @@ namespace Wysg.Musm.Radium.Services
             }
             catch { }
 
-            // MFC fallback
             try
             {
                 using var mfc = MfcUi.AttachByTopLevel(s => (!string.IsNullOrEmpty(s.Title) && s.Title.Contains("INFINITT", StringComparison.OrdinalIgnoreCase)) || (!string.IsNullOrEmpty(s.ClassName) && s.ClassName.Contains("Afx", StringComparison.OrdinalIgnoreCase)));
@@ -378,14 +166,9 @@ namespace Wysg.Musm.Radium.Services
 
         private static bool IsHwndAlive(IntPtr hwnd)
         {
-            try
-            {
-                return hwnd != IntPtr.Zero && IsWindow(hwnd);
-            }
-            catch { return false; }
+            try { return hwnd != IntPtr.Zero && IsWindow(hwnd); } catch { return false; }
         }
 
-        // Presets for OCR region (relative to window top-left)
         public enum OcrRegionPreset { TopThin, TopMedium, TopWideCenter }
         public (int L, int T, int W, int H) GetOcrRegionPreset(IntPtr hwnd, OcrRegionPreset preset)
         {
@@ -399,7 +182,6 @@ namespace Wysg.Musm.Radium.Services
             };
         }
 
-        // Quality/speed knobs
         public async Task<(bool engineAvailable, string? text)> OcrReadWithPresetAsync(IntPtr hwnd, OcrRegionPreset preset)
         {
             var (l,t,w,h) = GetOcrRegionPreset(hwnd, preset);

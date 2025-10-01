@@ -16,6 +16,30 @@ namespace Wysg.Musm.Radium.Services
     /// </summary>
     internal static class ProcedureExecutor
     {
+        // Cache for resolved known controls (avoid repeated expensive UIA crawls)
+        private static readonly Dictionary<UiBookmarks.KnownControl, AutomationElement> _controlCache = new();
+        private static AutomationElement? GetCached(UiBookmarks.KnownControl key)
+        {
+            if (_controlCache.TryGetValue(key, out var el))
+            {
+                try
+                {
+                    // Probe a cheap property to verify element still alive
+                    _ = el.Name; // access triggers exception if stale
+                    return el;
+                }
+                catch
+                {
+                    _controlCache.Remove(key);
+                }
+            }
+            return null;
+        }
+        private static void StoreCache(UiBookmarks.KnownControl key, AutomationElement el)
+        {
+            if (el == null) return;
+            _controlCache[key] = el;
+        }
         // --- Data contracts (shape must match SpyWindow serialization) ---
         private sealed class ProcStore { public Dictionary<string, List<ProcOpRow>> Methods { get; set; } = new(); }
         private sealed class ProcOpRow
@@ -210,7 +234,10 @@ namespace Wysg.Musm.Radium.Services
             if (ParseArgKind(arg.Type) != ArgKind.Element) return null;
             var tag = arg.Value ?? string.Empty;
             if (!Enum.TryParse<UiBookmarks.KnownControl>(tag, out var key)) return null;
+            var cached = GetCached(key);
+            if (cached != null) return cached;
             var tuple = UiBookmarks.Resolve(key);
+            if (tuple.element != null) StoreCache(key, tuple.element);
             return tuple.element;
         }
 

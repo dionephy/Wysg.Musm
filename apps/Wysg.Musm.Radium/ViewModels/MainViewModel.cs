@@ -18,10 +18,12 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly ITenantContext _tenant;
         private readonly IPhraseCache _cache;
         private readonly PacsService _pacs = new(); // PACS service instance for current study metadata
+        private readonly ICentralDataSourceProvider? _centralProvider; // placeholder not used currently
+        private readonly IRadStudyRepository? _studyRepo; // new
 
-        public MainViewModel(IPhraseService phrases, ITenantContext tenant, IPhraseCache cache)
+        public MainViewModel(IPhraseService phrases, ITenantContext tenant, IPhraseCache cache, IRadStudyRepository? studyRepo = null)
         {
-            _phrases = phrases; _tenant = tenant; _cache = cache;
+            _phrases = phrases; _tenant = tenant; _cache = cache; _studyRepo = studyRepo;
             PreviousStudies = new ObservableCollection<PreviousStudyTab>();
             NewStudyCommand = new DelegateCommand(_ => OnNewStudy());
             AddStudyCommand = new DelegateCommand(_ => OnAddStudy(), _ => PatientLocked);
@@ -43,24 +45,33 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _currentStudyLabel = "Current Study"; public string CurrentStudyLabel { get => _currentStudyLabel; private set => SetProperty(ref _currentStudyLabel, value); }
         private void UpdateCurrentStudyLabel()
         {
-            // Build a concise summary; use '?' for missing fields
             string fmt(string s) => string.IsNullOrWhiteSpace(s) ? "?" : s.Trim();
-            CurrentStudyLabel = $"{fmt(PatientName)} | {fmt(PatientNumber)} | {fmt(PatientSex)} | {fmt(PatientAge)} | {fmt(StudyName)} | {fmt(StudyDateTime)}";
+            // Normalize study datetime to desired format if parseable
+            string dt = StudyDateTime;
+            if (!string.IsNullOrWhiteSpace(dt))
+            {
+                if (DateTime.TryParse(dt, out var parsed)) dt = parsed.ToString("yyyy-MM-dd HH:mm:ss");
+            }
+            else dt = "?";
+            CurrentStudyLabel = $"({fmt(PatientNumber)}){fmt(PatientName)}({fmt(PatientSex)}/{fmt(PatientAge)})-{fmt(StudyName)}({dt})";
         }
 
         private async Task FetchCurrentStudyAsync()
         {
             try
             {
-                // Query PACS list selection in parallel
                 var nameTask = _pacs.GetSelectedNameFromSearchResultsAsync();
                 var numberTask = _pacs.GetSelectedIdFromSearchResultsAsync();
                 var sexTask = _pacs.GetSelectedSexFromSearchResultsAsync();
                 var ageTask = _pacs.GetSelectedAgeFromSearchResultsAsync();
                 var studyNameTask = _pacs.GetSelectedStudynameFromSearchResultsAsync();
                 var dtTask = _pacs.GetSelectedStudyDateTimeFromSearchResultsAsync();
+                var birthTask = _pacs.GetSelectedBirthDateFromSearchResultsAsync();
 
                 await Task.WhenAll(nameTask, numberTask, sexTask, ageTask, studyNameTask, dtTask);
+                await birthTask; // run after initial metadata to avoid breaking existing Task.WhenAll grouping
+
+                var birthDate = birthTask.Result; // may be null
 
                 PatientName = nameTask.Result ?? string.Empty;
                 PatientNumber = numberTask.Result ?? string.Empty;
@@ -68,11 +79,11 @@ namespace Wysg.Musm.Radium.ViewModels
                 PatientAge = ageTask.Result ?? string.Empty;
                 StudyName = studyNameTask.Result ?? string.Empty;
                 StudyDateTime = dtTask.Result ?? string.Empty;
+
+                await LoadPreviousStudiesForPatientAsync(PatientNumber);
+                await PersistCurrentStudyAsync(birthDate);
             }
-            catch
-            {
-                // Leave defaults; label will show '?' placeholders
-            }
+            catch { }
         }
 
         // Text bound to editors
@@ -167,10 +178,9 @@ namespace Wysg.Musm.Radium.ViewModels
             PreviousStudies.Clear();
             SelectedPreviousStudy = null;
             HeaderText = FindingsText = ConclusionText = string.Empty;
-            // Reset current study properties first (show placeholders until PACS data arrives)
             PatientName = PatientNumber = PatientSex = PatientAge = StudyName = StudyDateTime = string.Empty;
             UpdateCurrentStudyLabel();
-            _ = FetchCurrentStudyAsync(); // fire & forget
+            _ = FetchCurrentStudyAsync();
             _reportified = false; OnPropertyChanged(nameof(Reportified));
         }
 
@@ -357,6 +367,23 @@ namespace Wysg.Musm.Radium.ViewModels
             string f = Reportified ? DereportifyBlock(FindingsText, false) : FindingsText;
             string c = Reportified ? DereportifyBlock(ConclusionText, true) : ConclusionText;
             return (h, f, c);
+        }
+
+        private async Task LoadPreviousStudiesForPatientAsync(string patientId)
+        {
+            // Placeholder: implement DB fetch when repository/service is available
+            await Task.CompletedTask;
+        }
+
+        private async Task PersistCurrentStudyAsync(string? birthDate = null)
+        {
+            try
+            {
+                if (_studyRepo == null) return;
+                if (!DateTime.TryParse(StudyDateTime, out var dt)) dt = DateTime.MinValue;
+                await _studyRepo.EnsurePatientStudyAsync(PatientNumber, PatientName, PatientSex, birthDate, StudyName, dt == DateTime.MinValue ? null : dt);
+            }
+            catch { }
         }
     }
 }

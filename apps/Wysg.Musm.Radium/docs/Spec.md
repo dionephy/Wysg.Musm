@@ -1,28 +1,12 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
-## Update: Custom PACS Procedure Execution (2025-10-05)
-- **FR-137** (Implemented) PACS metadata retrieval methods execute user-defined procedure steps from `ui-procedures.json` when a procedure with matching method tag exists; if absent they fall back to legacy heuristic (now wired in PacsService).
-- Removed deprecated PACS methods `GetReportConclusion` and `TryGetReportConclusion` from UI and specification scope.
+## Update: Birth Date Persistence & Tree Toggle (2025-10-05)
+- **FR-146** System MUST persist patient birth_date (when available from PACS birth date procedure) during patient upsert.
+- **FR-147** SpyWindow MUST provide a user-toggle (checkbox) to enable/disable ancestry tree building to mitigate performance issues; when unchecked tree is hidden and not rebuilt.
 
-## Update: Split Preview Refinement (2025-10-05)
-- **FR-135 Update** Split operation preview now returns only the extracted part value when Arg3 (index) is supplied (removed prior metadata format `part[i]='value' (N parts)`). Legacy behavior unchanged when Arg3 omitted (joins all parts with unit separator, preview displays part count).
-
-## Update: Current Study Label Population (2025-10-05)
-- **FR-136** When user clicks New Study, system MUST fetch selected patient/study metadata (name, number/ID, sex, age, studyname, study date/time) from Search Results list via PacsService and expose them as individual properties plus a concatenated `CurrentStudyLabel` string (placeholders '?' for unavailable fields) bound to the main header label.
-
-## Update: AI Server & LLM Orchestration Skeleton (2025-10-05)
-- **FR-AI-001** System MUST expose central server-hosted AI pipeline so multiple intranet Radium clients can consume structured skills (no raw free-form prompt endpoint) via future API project endpoints.
-- **FR-AI-002** Domain layer MUST define provider-agnostic interfaces (ILLMClient, IModelRouter, IStudyRemarkParser, IPatientRemarkParser, IHeaderSplitter, IHeaderParser, IConclusionGenerator, IProofreader, IReportPipeline, IInferenceTelemetry) without vendor dependencies.
-- **FR-AI-003** UseCases layer MUST implement ReportPipeline orchestrator sequencing skills for current study intake and postprocess (initial minimal stages implemented now: study remark, patient remark, conclusion preview + proofreading).
-- **FR-AI-004** Infrastructure layer MUST supply NoOp skill implementations (pass-through / empty) for offline or development mode until real adapters added.
-- **FR-AI-005** API host MUST register AI services through AddMusmAi() DI extension (toggle real vs NoOp later) so server can be started without model configuration.
-- **FR-AI-006** Adding real LLM provider MUST require only Infrastructure additions + DI wiring; Domain & UseCases remain unchanged (plug-in architecture guarantee).
-- **FR-AI-007** Telemetry abstraction (IInferenceTelemetry) MUST allow capturing per-skill latency, token counts, success flag, and error message; NoOp implementation is a benign sink.
-- **FR-AI-008** ReportState record MUST support immutable With() shallow copies for stage-by-stage enrichment (already implemented).
-- **FR-AI-009** Failure in non-critical skill (e.g., conclusion generation) MUST NOT nullify previously populated fields (pipeline to adopt try/catch in future implementation phase – placeholder noted).
-- **FR-AI-010** Model routing MUST be centrally configurable (IModelRouter) enabling later heuristics (latency/cost) without updating orchestrator code.
-
-> NOTE: These FR-AI-### items augment existing FR series; they will map to forthcoming tasks (see Tasks.md additions) and future endpoint designs.
+## Prior Recent Updates
+- FR-144 Schema alignment (is_male) & FR-145 temporary tree disable.
+- (Earlier entries unchanged.)
 
 ---
 
@@ -473,6 +457,10 @@ For full behavioral definitions see MUSM Editor Specification included in design
 - Updated Split operation index argument handling (FR-135) to support optional third argument for part index selection.
 - Added Current Study Label population from PACS on New Study (FR-136).
 - Updated PACS metadata retrieval methods to execute user-defined procedure steps (FR-137).
+- Added StudyDateTime formatting and previous studies retrieval placeholder (FR-138, FR-139).
+- Implemented UIA caching for resolved Automation elements (FR-140).
+- Added persistence placeholder for patient/study metadata (FR-141).
+- Upsert implementation for patient/study and spy pick optimization (FR-142, FR-143).
 
 ---
 ## Feature Update (Reportified Toggle - Inverse Dereportify)
@@ -484,24 +472,3 @@ For full behavioral definitions see MUSM Editor Specification included in design
 - Added detailed Debug.WriteLine logs for selection changes, mouse drag movement, and word highlight decisions to trace reverse (right-to-left) selection issue.
 
 ---
-# Update: Phrase Extraction Window Behavior
-- Only single-word new phrases now auto-selected by default; multi-word phrases start unchecked to reduce noise.
-- Save Selected button now enables immediately on checkbox toggle (command requery via callback and UpdateSourceTrigger=PropertyChanged).
-- Dark mode styling applied consistent with main Radium window (panel, border, grid colors).
-
-## Reliability Update: Phrase Service Index Ensure
-- Added transient retry (max 3 attempts, linear backoff 300ms * attempt) for EnsureIndexAsync when encountering timeout/stream read exceptions.
-- On persistent failure after retries index creation is skipped (idempotent) with log entry; service continues.
-
-## Reliability Update: Phrase Revision Stabilization (2025-09-29)
-Problem
-- Opening the Phrase Manager or performing innocuous ensure calls caused `rev` and `updated_at` to increment even when no logical change (text/active) occurred.
-Impact
-- Artificial version churn; noisy auditing; client caches invalidated needlessly.
-Resolution
-- Conditional trigger + app-side short-circuit; removed unconditional rev bump.
-Result
-- `rev` and `updated_at` remain stable across window opens unless a real state transition occurs.
-
----
-End of cumulative specification.

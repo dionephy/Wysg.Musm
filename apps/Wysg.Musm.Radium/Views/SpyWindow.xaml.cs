@@ -56,6 +56,7 @@ namespace Wysg.Musm.Radium.Views
 
         private System.Windows.Controls.ComboBox CmbMethod => (System.Windows.Controls.ComboBox)FindName("cmbMethod");
         private System.Windows.Controls.DataGrid GridChain => (System.Windows.Controls.DataGrid)FindName("gridChain");
+        private System.Windows.Controls.CheckBox? _chkEnableTree => (System.Windows.Controls.CheckBox?)FindName("chkEnableTree");
 
         // Dark title bar (DWM)
         protected override void OnSourceInitialized(EventArgs e)
@@ -248,7 +249,7 @@ namespace Wysg.Musm.Radium.Views
                         case "Split":
                             // Arg1 = source var, Arg2 = separator, Arg3 = index (number)
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; // corrected property name
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; // enable second argument
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg3.Value)) row.Arg3.Value = "0";
                             break;
                         case "TakeLast":
@@ -484,7 +485,9 @@ namespace Wysg.Musm.Radium.Views
         // Rebuild and show a FlaUInspect-like subtree from the resolved root
         private void ShowAncestryTree(UiBookmarks.Bookmark b)
         {
-            RebuildAncestryFromRoot(b);
+            if (_chkEnableTree?.IsChecked != true) { tvAncestry.ItemsSource = Array.Empty<object>(); return; }
+            // (Optional future: re-enable rebuild logic here)
+            tvAncestry.ItemsSource = Array.Empty<object>();
         }
 
         private static void PopulateChildrenTree(TreeNode node, AutomationElement element, int maxDepth)
@@ -822,8 +825,7 @@ namespace Wysg.Musm.Radium.Views
         private void ShowBookmarkDetails(UiBookmarks.Bookmark b, string header)
         {
             LoadEditor(b);
-            // Build FlaUInspect-like subtree rather than only chain
-            RebuildAncestryFromRoot(b);
+            // Tree view disabled (performance)
             txtStatus.Text = header;
         }
 
@@ -857,46 +859,42 @@ namespace Wysg.Musm.Radium.Views
 
                 var walker = SWA.TreeWalker.ControlViewWalker;
                 var win = el; SWA.AutomationElement? last = null;
-                while (win != null) { last = win; win = walker.GetParent(win); }
+                int safety = 0;
+                while (win != null && safety++ < 50) { last = win; win = SafeParent(walker, win); }
                 var top = last ?? el;
 
                 var chain = new System.Collections.Generic.List<SWA.AutomationElement>();
                 var curEl = el;
-                while (curEl != null && curEl != top)
+                safety = 0;
+                while (curEl != null && curEl != top && safety++ < 50)
                 {
                     chain.Add(curEl);
-                    curEl = walker.GetParent(curEl);
+                    curEl = SafeParent(walker, curEl);
                 }
                 chain.Reverse();
 
                 var b = new UiBookmarks.Bookmark { Name = string.Empty, ProcessName = string.IsNullOrWhiteSpace(procName) ? "Unknown" : procName };
 
-                // NOTE: Do NOT add the Desktop/top element as a node; first node should be the app window under Desktop
-                // to match root discovery and the crawl editor behavior.
-
                 foreach (var nodeEl in chain)
                 {
-                    string? name = null, className = null, autoId = null; int? ctId = null;
-                    try { name = nodeEl.Current.Name; } catch { }
-                    try { className = nodeEl.Current.ClassName; } catch { }
-                    try { autoId = nodeEl.Current.AutomationId; } catch { }
-                    try { ctId = nodeEl.Current.ControlType?.Id; } catch { }
-
+                    string? name = Try(() => nodeEl.Current.Name);
+                    string? className = Try(() => nodeEl.Current.ClassName);
+                    string? autoId = Try(() => nodeEl.Current.AutomationId);
+                    int? ctId = Try(() => nodeEl.Current.ControlType?.Id);
                     int index = 0;
                     try
                     {
-                        var parent = walker.GetParent(nodeEl);
+                        var parent = SafeParent(walker, nodeEl);
                         if (parent != null)
                         {
-                            var siblings = parent.FindAll(SWA.TreeScope.Children, SWA.Condition.TrueCondition);
-                            for (int i = 0; i < siblings.Count; i++)
+                            var siblings = SafeChildren(parent);
+                            for (int i = 0; i < siblings.Length; i++)
                             {
                                 if (SWA.Automation.Compare(siblings[i], nodeEl)) { index = i; break; }
                             }
                         }
                     }
                     catch { }
-
                     b.Chain.Add(new UiBookmarks.Node
                     {
                         Name = name,
@@ -913,28 +911,19 @@ namespace Wysg.Musm.Radium.Views
                         Scope = UiBookmarks.SearchScope.Children
                     });
                 }
-
-                // Debug dump of captured chain for parity checks
-                try
-                {
-                    Debug.WriteLine($"[PP1][Pick] Proc='{b.ProcessName}', elements in chain={b.Chain.Count}");
-                    if (b.Chain.Count > 0)
-                    {
-                        var n0 = b.Chain[0];
-                        Debug.WriteLine($"[PP1][Pick] First node: Name='{n0.Name}', Class='{n0.ClassName}', AutoId='{n0.AutomationId}', CtId={n0.ControlTypeId}, Index={n0.IndexAmongMatches}");
-                    }
-                    for (int i = 0; i < b.Chain.Count; i++)
-                    {
-                        var n = b.Chain[i];
-                        Debug.WriteLine($"  [{i}] Include={n.Include} Scope={n.Scope} Use(Name={n.UseName},Class={n.UseClassName},Ct={n.UseControlTypeId},AutoId={n.UseAutomationId},Idx={n.UseIndex}) Name='{n.Name}' Class='{n.ClassName}' AutoId='{n.AutomationId}' CtId={n.ControlTypeId} Index={n.IndexAmongMatches}");
-                    }
-                }
-                catch { }
-
                 var cls = classNameSafe(el) ?? "?";
                 var ctid = controlTypeIdSafe(el);
                 return (b, procName, $"Captured element: {cls} ({ctid}) in {procName}");
 
+                static SWA.AutomationElement? SafeParent(SWA.TreeWalker walker, SWA.AutomationElement e)
+                {
+                    try { return walker.GetParent(e); } catch { return null; }
+                }
+                static SWA.AutomationElement[] SafeChildren(SWA.AutomationElement e)
+                {
+                    try { return e.FindAll(SWA.TreeScope.Children, SWA.Condition.TrueCondition).Cast<SWA.AutomationElement>().ToArray(); } catch { return Array.Empty<SWA.AutomationElement>(); }
+                }
+                static T? Try<T>(Func<T?> f) { try { return f(); } catch { return default; } }
                 static string? classNameSafe(SWA.AutomationElement e) { try { return e.Current.ClassName; } catch { return null; } }
                 static int? controlTypeIdSafe(SWA.AutomationElement e) { try { return e.Current.ControlType?.Id; } catch { return null; } }
             }
@@ -993,8 +982,6 @@ namespace Wysg.Musm.Radium.Views
             { txtStatus.Text = "Invalid known control"; return; }
             var mapping = UiBookmarks.GetMapping(key);
             if (mapping == null) { txtStatus.Text = "No mapping saved"; return; }
-            // Show tree from root for better inspection
-            RebuildAncestryFromRoot(mapping);
             var (hwnd, el) = UiBookmarks.Resolve(key);
             if (el == null) { txtStatus.Text += " | Resolve failed"; return; }
             var r = el.BoundingRectangle;
@@ -1711,7 +1698,7 @@ namespace Wysg.Musm.Radium.Views
                     }
                 }
             }
-            catch (Exception ex) { Debug.WriteLine("[PP2] OpCombo MouseDown error: " + ex); }
+            catch (Exception ex) { Debug.WriteLine ("[PP2] OpCombo MouseDown error: " + ex); }
         }
 
         private void OnOpComboPreviewKeyDown(object sender, KeyEventArgs e)

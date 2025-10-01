@@ -47,6 +47,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "db", "db", "{FBDA37CE-3C65-
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "schema", "schema", "{B9D2745B-BAF8-4A14-9033-06A38F14458A}"
 	ProjectSection(SolutionItems) = preProject
+		central_db(postgres)_20250928.sql = central_db(postgres)_20250928.sql
+		local_db(wysg_dev)_20250928.sql = local_db(wysg_dev)_20250928.sql
 		wysg_dev_loinc_20250921.sql = wysg_dev_loinc_20250921.sql
 		wysg_dev_med_20250921.sql = wysg_dev_med_20250921.sql
 		db\schema\wysg_dev_schema_20250915_home.sql = db\schema\wysg_dev_schema_20250915_home.sql

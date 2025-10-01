@@ -93,6 +93,7 @@ namespace Wysg.Musm.Radium
             services.AddSingleton<ICentralDataSourceProvider, CentralDataSourceProvider>();
             services.AddSingleton<IPhraseService, PhraseService>();
             services.AddSingleton<IStudynameLoincRepository, StudynameLoincRepository>();
+            services.AddSingleton<IRadStudyRepository, RadStudyRepository>();
 
             services.AddTransient<SplashLoginViewModel>();
             services.AddTransient<SignUpViewModel>();

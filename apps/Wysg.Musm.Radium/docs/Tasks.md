@@ -1,6 +1,13 @@
-﻿# Tasks: Radium Cumulative (Reporting Pipeline + Editor + Mapping + PACS)
+﻿# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Added
+- [X] T251 Implement patient/study/studyname persistence on New Study (FR-142) via IRadStudyRepository.
+- [X] T252 Optimize SpyWindow pick (limit traversal, suppress property exceptions) (FR-143).
+- [X] T249 Cache resolved UIA elements in ProcedureExecutor for known controls (FR-140).
+- [X] T250 Add persistence stub to insert patient/study/studyname after New Study fetch (FR-141 placeholder).
+- [X] T247 Format StudyDateTime in current study label to yyyy-MM-dd HH:mm:ss (FR-138).
+- [X] T248 Add placeholder previous studies load hook on New Study (FR-139) – implement once data provider method available.
+- [X] T246 Remove heuristic fallbacks from PACS metadata getters (procedure-only FR-137 finalization).
 - [X] T245 Wire custom ProcedureExecutor into PacsService getters (FR-137 implementation complete).
 - [X] T244 Remove deprecated GetReportConclusion/TryGetReportConclusion PACS methods from UI and spec.
 - [X] T243 Implement ProcedureExecutor for data-driven PACS methods (FR-137) and wire future replacement of hard-coded PacsService lookups.
@@ -53,6 +60,10 @@
 - [X] T236 Update Spec/Plan/Tasks with FR-133 documentation (FR-133).
 - [X] T237 Implement adaptive measured height (exact height ≤8 items, clamp >8) (FR-134).
 - [X] T238 Update Spec/Plan/Tasks with FR-134 documentation (FR-134).
+- [X] T253 Align patient persistence with schema (use is_male instead of sex column) (FR-144).
+- [X] T254 Temporarily disable SpyWindow ancestry tree to improve pick speed (FR-145).
+- [X] T255 Persist patient birth_date via RadStudyRepository (FR-146).
+- [X] T256 Add SpyWindow tree enable/disable checkbox (FR-147).
 
 **Input**: Spec.md & Plan.md (cumulative)  
 **Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  
@@ -78,7 +89,7 @@ Legend:
 - [ ] T111 [P] Create contracts/ICurrentStudyProvider.md (interface & semantics)  
 - [ ] T112 [P] Create contracts/IPreviousStudyProvider.md  
 - [ ] T113 [P] Create contracts/IStudynameMappingService.md (mapping & cache invalidation)  
-- [ ] T114 [P] Create contracts/ILlmClient.md (methods: ParseRemarks, SplitHeaderFindings, ParseHeader, ProofreadBatch, GenerateConclusion)  
+- [ ] T114 [P] Create contracts/ILlmClient.md (methods: ParseRemarks, SplitHeader Findings, ParseHeader, ProofreadBatch, GenerateConclusion)  
 - [ ] T115 [P] Create contracts/IReportifier.md & INumberer.md  
 - [ ] T116 [P] Create contracts/IPacsSubmissionService.md (ValidateAsync, SubmitAsync)  
 - [ ] T117 [P] Create contracts/IReportPipeline.cs (RunStageAsync, composite state)  
