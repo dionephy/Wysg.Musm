@@ -341,7 +341,32 @@ namespace Wysg.Musm.Radium.ViewModels
             public string OriginalConclusion { get; set; } = string.Empty;
             public bool ReportifiedApplied { get; set; }
             private bool _isSelected; public bool IsSelected { get => _isSelected; set => SetProperty(ref _isSelected, value); }
+            // Reports available for this study (multiple report rows per study)
+            public ObservableCollection<PreviousReportChoice> Reports { get; } = new();
+            private PreviousReportChoice? _selectedReport; public PreviousReportChoice? SelectedReport { get => _selectedReport; set { if (SetProperty(ref _selectedReport, value)) ApplyReportSelection(value); } }
+            public void ApplyReportSelection(PreviousReportChoice? rep)
+            {
+                if (rep == null) return;
+                OriginalFindings = rep.Findings;
+                OriginalConclusion = rep.Conclusion;
+                Findings = rep.Findings;
+                Conclusion = rep.Conclusion;
+            }
             public override string ToString() => Title;
+        }
+
+        public sealed class PreviousReportChoice : BaseViewModel
+        {
+            public DateTime? ReportDateTime { get; set; }
+            public string CreatedBy { get; set; } = string.Empty;
+            public string Studyname { get; set; } = string.Empty;
+            public string Findings { get; set; } = string.Empty;
+            public string Conclusion { get; set; } = string.Empty;
+            public string Display => $"{Studyname} ({StudyDateTimeFmt}) - {ReportDateTimeFmt} by {CreatedBy}";
+            private string StudyDateTimeFmt => _studyDateTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "?";
+            private string ReportDateTimeFmt => ReportDateTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "(no report dt)";
+            internal DateTime? _studyDateTime; // for formatting (assigned during creation)
+            public override string ToString() => Display;
         }
 
         private PreviousStudyTab? _selectedPreviousStudy; public PreviousStudyTab? SelectedPreviousStudy
@@ -375,7 +400,6 @@ namespace Wysg.Musm.Radium.ViewModels
             }
             else
             {
-                // Line-by-line dereportify preserving exact newline sequence.
                 tab.Header = DereportifyPreserveLines(tab.OriginalHeader);
                 tab.Findings = DereportifyPreserveLines(tab.OriginalFindings);
                 tab.Conclusion = DereportifyPreserveLines(tab.OriginalConclusion);
@@ -595,36 +619,53 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 var rows = await _studyRepo.GetReportsForPatientAsync(patientId);
                 PreviousStudies.Clear();
-                foreach (var r in rows)
+                // Group rows by StudyId/StudyDateTime (a study can have multiple reports)
+                var groups = rows.GroupBy(r => new { r.StudyId, r.StudyDateTime, r.Studyname });
+                foreach (var g in groups.OrderByDescending(g => g.Key.StudyDateTime))
                 {
-                    string headerFind = string.Empty; string f = string.Empty; string c = string.Empty;
-                    try
-                    {
-                        using var doc = JsonDocument.Parse(r.ReportJson);
-                        var root = doc.RootElement;
-                        if (root.TryGetProperty("header_and_findings", out var hf)) headerFind = hf.GetString() ?? string.Empty;
-                        if (root.TryGetProperty("findings", out var ff)) f = ff.GetString() ?? headerFind;
-                        if (root.TryGetProperty("conclusion", out var cc)) c = cc.GetString() ?? string.Empty;
-                    }
-                    catch (Exception ex) { Debug.WriteLine("[PrevLoad] JSON parse error: " + ex.Message); }
                     string modality = ExtractModality(StudyName);
-                    if (PreviousStudies.Any(t => t.StudyDateTime == r.StudyDateTime && string.Equals(t.Modality, modality, StringComparison.OrdinalIgnoreCase)))
-                        continue;
+                    if (PreviousStudies.Any(t => t.StudyDateTime == g.Key.StudyDateTime && string.Equals(t.Modality, modality, StringComparison.OrdinalIgnoreCase)))
+                        continue; // keep uniqueness rule
                     var tab = new PreviousStudyTab
                     {
                         Id = Guid.NewGuid(),
-                        StudyDateTime = r.StudyDateTime,
+                        StudyDateTime = g.Key.StudyDateTime,
                         Modality = modality,
-                        Title = $"{r.StudyDateTime:yyyy-MM-dd} {modality}",
-                        OriginalHeader = string.Empty,
-                        OriginalFindings = string.IsNullOrWhiteSpace(f) ? headerFind : f,
-                        OriginalConclusion = c,
-                        Header = string.Empty,
-                        Findings = string.IsNullOrWhiteSpace(f) ? headerFind : f,
-                        Conclusion = c,
-                        RawJson = r.ReportJson,
-                        ReportifiedApplied = true
+                        Title = $"{g.Key.StudyDateTime:yyyy-MM-dd} {modality}",
+                        OriginalHeader = string.Empty // not currently used for previous header portion
                     };
+                    foreach (var row in g.OrderByDescending(r => r.ReportDateTime))
+                    {
+                        string findings = string.Empty; string conclusion = string.Empty; string headerFind = string.Empty;
+                        try
+                        {
+                            using var doc = JsonDocument.Parse(row.ReportJson);
+                            var root = doc.RootElement;
+                            if (root.TryGetProperty("header_and_findings", out var hf)) headerFind = hf.GetString() ?? string.Empty;
+                            if (root.TryGetProperty("findings", out var ff)) findings = ff.GetString() ?? headerFind; else findings = headerFind;
+                            if (root.TryGetProperty("conclusion", out var cc)) conclusion = cc.GetString() ?? string.Empty;
+                        }
+                        catch (Exception ex) { Debug.WriteLine("[PrevLoad] JSON parse error: " + ex.Message); }
+                        var choice = new PreviousReportChoice
+                        {
+                            ReportDateTime = row.ReportDateTime,
+                            CreatedBy = row.CreatedBy ?? string.Empty,
+                            Studyname = row.Studyname,
+                            Findings = string.IsNullOrWhiteSpace(findings) ? headerFind : findings,
+                            Conclusion = conclusion,
+                            _studyDateTime = row.StudyDateTime
+                        };
+                        tab.Reports.Add(choice);
+                    }
+                    // select most recent report
+                    tab.SelectedReport = tab.Reports.FirstOrDefault();
+                    if (tab.SelectedReport != null)
+                    {
+                        tab.OriginalFindings = tab.SelectedReport.Findings;
+                        tab.OriginalConclusion = tab.SelectedReport.Conclusion;
+                        tab.Findings = tab.SelectedReport.Findings;
+                        tab.Conclusion = tab.SelectedReport.Conclusion;
+                    }
                     PreviousStudies.Add(tab);
                 }
                 if (PreviousStudies.Count > 0)

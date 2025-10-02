@@ -1,5 +1,18 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Reportify settings skeleton (2025-10-02)
+- **FR-219** Settings window MUST include a "Reportify" tab (skeleton) containing configurable placeholders for reportify behavior (non-functional initially).
+- **FR-220** Reportify tab MUST list four option checkboxes: remove excessive blanks; remove excessive blank lines; capitalize first letter of sentence; add period at end of sentence.
+- **FR-221** Reportify tab MUST include three text inputs with labels: Default arrow, Default conclusion numbering, Default detailing prefix (pre-filled example values). 
+- **FR-222** Reportify tab MUST display a note indicating the tab is non-functional (skeleton) until implementation phase.
+
+## Update: Previous study multi-report selection (2025-10-02)
+- **FR-214** Previous study tab MUST support multiple report rows per study; a ComboBox lists all reports for the selected study ordered by report_datetime DESC (nulls last) defaulting to the most recent.
+- **FR-215** Previous study report selector ComboBox item display MUST be formatted "{Studyname} ({study datetime}) - {report datetime} by {created_by}" with (no report dt) when null.
+- **FR-216** Selecting a different previous report MUST immediately swap Findings & Conclusion (and reapply reportified/dereportified transformation according to toggle state) without altering other tabs.
+- **FR-217** Previous report selector MUST use dark theme styling consistent with other dark controls and a compact 11px monospace font.
+- **FR-218** Previous report selector MUST provide a disabled dummy first item (design-time sizing sentinel) when bound list is empty to guarantee consistent measured width; real items render after the dummy.
+
 ## Update: Previous study baseline & automation drag skeleton (2025-10-02)
 - **FR-165** Previous study initial text MUST be treated as already reportified baseline; toggle OFF performs dereportify transform shown in editors; toggle ON restores original baseline text without reprocessing.
 - **FR-166** Automation settings MUST present two reorderable lists (New Study, Add Study) and one library list via drag & drop skeleton; duplicates prevented per pane (preview, non-persistent).
@@ -188,6 +201,11 @@ User or automation needs quick extraction of patient number or study date/time f
 24. **Given the application settings window is opened, when Automation (Preview) tab is viewed, then placeholder checkboxes for New Study and Add Study actions are visible.**
 25. **Given a previous study, when Reportified toggle is enabled, then text is restored to original baseline state without reprocessing.**
 26. **Given automation settings, when viewed, then two reorderable lists and one library list are present via drag & drop skeleton.**
+27. **Given a previous study with multiple reports, when the study is selected, then the report selector ComboBox is populated with all reports for the study.**
+28. **Given the report selector ComboBox, when a report is selected, then Findings & Conclusion are updated to reflect the selected report.**
+29. **Given the previous report selector, when the selected report's date/time is null, then the ComboBox item displays without a report date.**
+30. **Given the previous report selector, when a report is selected, then the report is shown in the Findings & Conclusion editors with the correct transformations applied.**
+31. **Given the previous report selector ComboBox, when displayed, then it uses dark theme styling with a compact monospace font.**
 
 ### Edge Cases
 - What happens when studyname mapping window is closed without selection? → [NEEDS CLARIFICATION: fallback behavior – skip, force retry, or mark as unmapped?]

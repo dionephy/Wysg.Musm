@@ -14,7 +14,7 @@ namespace Wysg.Musm.Radium.Services
         Task<List<PatientReportRow>> GetReportsForPatientAsync(string patientNumber);
     }
 
-    public sealed record PatientReportRow(long StudyId, DateTime StudyDateTime, string ReportJson);
+    public sealed record PatientReportRow(long StudyId, DateTime StudyDateTime, string Studyname, DateTime? ReportDateTime, string? CreatedBy, string ReportJson);
 
     public sealed class RadStudyRepository : IRadStudyRepository
     {
@@ -110,18 +110,24 @@ RETURNING id;", cn);
             await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
             try
             {
-                await using var cmd = new NpgsqlCommand(@"SELECT rs.id, rs.study_datetime, rr.report
+                await using var cmd = new NpgsqlCommand(@"SELECT rs.id, rs.study_datetime, sn.studyname, rr.report_datetime, rr.created_by, rr.report
 FROM med.rad_study rs
 JOIN med.patient p ON p.id = rs.patient_id AND p.patient_number = @num
+JOIN med.rad_studyname sn ON sn.id = rs.studyname_id
 JOIN med.rad_report rr ON rr.study_id = rs.id
 WHERE (rr.report ->> 'header_and_findings') IS NOT NULL OR (rr.report ->> 'conclusion') IS NOT NULL
-ORDER BY rs.study_datetime DESC;", cn);
+ORDER BY rs.study_datetime DESC, rr.report_datetime DESC NULLS LAST;", cn);
                 cmd.Parameters.AddWithValue("@num", patientNumber);
                 await using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
-                    long sid = reader.GetInt64(0); DateTime dt = reader.GetDateTime(1); string json = reader.IsDBNull(2) ? "{}" : reader.GetString(2);
-                    list.Add(new PatientReportRow(sid, dt, json));
+                    long sid = reader.GetInt64(0);
+                    DateTime studyDt = reader.GetDateTime(1);
+                    string studyname = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
+                    DateTime? reportDt = reader.IsDBNull(3) ? null : reader.GetDateTime(3);
+                    string? createdBy = reader.IsDBNull(4) ? null : reader.GetString(4);
+                    string json = reader.IsDBNull(5) ? "{}" : reader.GetString(5);
+                    list.Add(new PatientReportRow(sid, studyDt, studyname, reportDt, createdBy, json));
                 }
             }
             catch (Exception ex) { Debug.WriteLine("[RadStudyRepo] GetReportsForPatient error: " + ex.Message); }

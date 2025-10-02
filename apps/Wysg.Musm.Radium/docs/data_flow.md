@@ -84,7 +84,8 @@ Report json components:
 - conclusion_preview (string)
 
 to add
-- study_remark (string)_
+- study_remark (string)
+- patient_remark (string)
 
 
 Abbreviations
