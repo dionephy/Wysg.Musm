@@ -83,6 +83,8 @@ Report json components:
 - findings (string)
 - conclusion_preview (string)
 
+to add
+- study_remark (string)_
 
 
 Abbreviations

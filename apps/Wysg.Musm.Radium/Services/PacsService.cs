@@ -26,14 +26,32 @@ namespace Wysg.Musm.Radium.Services
         public PacsService(string processName = "INFINITT") => _proc = processName;
 
         // Execute custom procedure only (caller must define it in ui-procedures.json)
-        private static Task<string?> ExecCustom(string methodTag) => ProcedureExecutor.ExecuteAsync(methodTag);
+        private static async Task<string?> ExecCustom(string methodTag)
+        {
+            try { return await ProcedureExecutor.ExecuteAsync(methodTag); }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PacsService] Procedure '{methodTag}' failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        private static async Task<string?> ExecWithRetry(string tag, int attempts = 5, int delayMs = 140)
+        {
+            for (int i = 0; i < attempts; i++)
+            {
+                var val = await ExecCustom(tag);
+                if (!string.IsNullOrWhiteSpace(val)) return val;
+                await Task.Delay(delayMs + i * 40);
+            }
+            return null;
+        }
 
         public async Task OpenWorklistAsync()
         {
             using var mfc = MfcUi.Attach(_proc);
             _ = mfc.Command(1106).Invoke();
-            await Task.Delay(200);
-            await Task.Delay(200);
+            await Task.Delay(400);
         }
 
         public async Task<string[]> GetSelectedStudyAsync()
@@ -41,34 +59,36 @@ namespace Wysg.Musm.Radium.Services
             using var mfc = MfcUi.Attach(_proc);
             var list = mfc.Find(By.ClassNth("SysListView32", 0)).AsListView();
             var items = list.GetSelectedRow(3, 4, 7, 2, 9, 12, 15, 17, 13, 16);
-            return items;
+            return await Task.FromResult(items);
         }
 
-        // Procedure-only metadata getters (Search Results list)
-        public Task<string?> GetSelectedIdFromSearchResultsAsync() => ExecCustom("GetSelectedIdFromSearchResults");
-        public Task<string?> GetSelectedNameFromSearchResultsAsync() => ExecCustom("GetSelectedNameFromSearchResults");
-        public Task<string?> GetSelectedSexFromSearchResultsAsync() => ExecCustom("GetSelectedSexFromSearchResults");
-        public Task<string?> GetSelectedBirthDateFromSearchResultsAsync() => ExecCustom("GetSelectedBirthDateFromSearchResults");
-        public Task<string?> GetSelectedAgeFromSearchResultsAsync() => ExecCustom("GetSelectedAgeFromSearchResults");
-        public Task<string?> GetSelectedStudynameFromSearchResultsAsync() => ExecCustom("GetSelectedStudynameFromSearchResults");
-        public Task<string?> GetSelectedStudyDateTimeFromSearchResultsAsync() => ExecCustom("GetSelectedStudyDateTimeFromSearchResults");
-        public Task<string?> GetSelectedRadiologistFromSearchResultsAsync() => ExecCustom("GetSelectedRadiologistFromSearchResults");
-        public Task<string?> GetSelectedStudyRemarkFromSearchResultsAsync() => ExecCustom("GetSelectedStudyRemarkFromSearchResults");
-        public Task<string?> GetSelectedReportDateTimeFromSearchResultsAsync() => ExecCustom("GetSelectedReportDateTimeFromSearchResults");
+        // Procedure-only metadata getters (Search Results list) with retry
+        public Task<string?> GetSelectedIdFromSearchResultsAsync() => ExecWithRetry("GetSelectedIdFromSearchResults");
+        public Task<string?> GetSelectedNameFromSearchResultsAsync() => ExecWithRetry("GetSelectedNameFromSearchResults");
+        public Task<string?> GetSelectedSexFromSearchResultsAsync() => ExecWithRetry("GetSelectedSexFromSearchResults");
+        public Task<string?> GetSelectedBirthDateFromSearchResultsAsync() => ExecWithRetry("GetSelectedBirthDateFromSearchResults");
+        public Task<string?> GetSelectedAgeFromSearchResultsAsync() => ExecWithRetry("GetSelectedAgeFromSearchResults");
+        public Task<string?> GetSelectedStudynameFromSearchResultsAsync() => ExecWithRetry("GetSelectedStudynameFromSearchResults");
+        public Task<string?> GetSelectedStudyDateTimeFromSearchResultsAsync() => ExecWithRetry("GetSelectedStudyDateTimeFromSearchResults");
+        public Task<string?> GetSelectedRadiologistFromSearchResultsAsync() => ExecWithRetry("GetSelectedRadiologistFromSearchResults");
+        public Task<string?> GetSelectedStudyRemarkFromSearchResultsAsync() => ExecWithRetry("GetSelectedStudyRemarkFromSearchResults");
+        public Task<string?> GetSelectedReportDateTimeFromSearchResultsAsync() => ExecWithRetry("GetSelectedReportDateTimeFromSearchResults");
 
-        // Procedure-only metadata getters (Related Studies list)
-        public Task<string?> GetSelectedStudynameFromRelatedStudiesAsync() => ExecCustom("GetSelectedStudynameFromRelatedStudies");
-        public Task<string?> GetSelectedStudyDateTimeFromRelatedStudiesAsync() => ExecCustom("GetSelectedStudyDateTimeFromRelatedStudies");
-        public Task<string?> GetSelectedRadiologistFromRelatedStudiesAsync() => ExecCustom("GetSelectedRadiologistFromRelatedStudies");
-        public Task<string?> GetSelectedReportDateTimeFromRelatedStudiesAsync() => ExecCustom("GetSelectedReportDateTimeFromRelatedStudies");
+        // Procedure-only metadata getters (Related Studies list) with retry
+        public Task<string?> GetSelectedIdFromRelatedStudiesAsync() => ExecWithRetry("GetSelectedIdFromRelatedStudies");
+        public Task<string?> GetSelectedStudynameFromRelatedStudiesAsync() => ExecWithRetry("GetSelectedStudynameFromRelatedStudies");
+        public Task<string?> GetSelectedStudyDateTimeFromRelatedStudiesAsync() => ExecWithRetry("GetSelectedStudyDateTimeFromRelatedStudies");
+        public Task<string?> GetSelectedRadiologistFromRelatedStudiesAsync() => ExecWithRetry("GetSelectedRadiologistFromRelatedStudies");
+        public Task<string?> GetSelectedReportDateTimeFromRelatedStudiesAsync() => ExecWithRetry("GetSelectedReportDateTimeFromRelatedStudies");
 
-        // Procedure-only banner helpers
-        public Task<string?> GetCurrentPatientNumberAsync() => ExecCustom("GetCurrentPatientNumber");
-        public Task<string?> GetCurrentStudyDateTimeAsync() => ExecCustom("GetCurrentStudyDateTime");
-        public Task<string?> GetCurrentFindingsAsync() => ExecCustom("GetCurrentFindings");
-        public Task<string?> GetCurrentConclusionAsync() => ExecCustom("GetCurrentConclusion");
-        public Task<string?> GetCurrentFindings2Async() => ExecCustom("GetCurrentFindings2");
-        public Task<string?> GetCurrentConclusion2Async() => ExecCustom("GetCurrentConclusion2");
+        // Procedure-only banner helpers with retry
+        public Task<string?> GetCurrentPatientNumberAsync() => ExecWithRetry("GetCurrentPatientNumber");
+        public Task<string?> GetCurrentStudyDateTimeAsync() => ExecWithRetry("GetCurrentStudyDateTime");
+        public Task<string?> GetCurrentFindingsAsync() => ExecWithRetry("GetCurrentFindings");
+        public Task<string?> GetCurrentConclusionAsync() => ExecWithRetry("GetCurrentConclusion");
+        public Task<string?> GetCurrentFindings2Async() => ExecWithRetry("GetCurrentFindings2");
+        public Task<string?> GetCurrentConclusion2Async() => ExecWithRetry("GetCurrentConclusion2");
+        public Task<string?> GetCurrentStudyRemarkAsync() => ExecWithRetry("GetCurrentStudyRemark");
 
         public async Task<bool> IsViewerWindowAsync(IntPtr hwnd)
         {

@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:editor="clr-namespace:Wysg.Musm.Editor.Controls;assembly=Wysg.Musm.Editor"
         xmlns:rad="clr-namespace:Wysg.Musm.Radium.Controls"
+        xmlns:conv="clr-namespace:Wysg.Musm.Radium.ViewModels.Converters"
         xmlns:local="clr-namespace:Wysg.Musm.Radium.Converters"
         mc:Ignorable="d"
         Title="Radium"
@@ -142,6 +143,7 @@
         </Style>
 
         <local:LockEmojiConverter x:Key="LockEmojiConverter"/>
+        <conv:BoolToBrushConverter x:Key="BoolToBrushConverter" TrueBrush="#FF5A5A" FalseBrush="#d0d0d0"/>
     </Window.Resources>
 
     <Grid>
@@ -164,7 +166,7 @@
         </Grid>
 
         <Grid Grid.Row="1" Grid.Column="1" Name="gridBottom" VerticalAlignment="Bottom" Width="{Binding ElementName=gridCenter, Path=Width}" >
-            <TextBox Text="Sidebar (future)" Background="#181818" Foreground="#808080" FontFamily="{StaticResource UiMonospaceFont}" Padding="6" Margin="0" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"/>
+            <TextBox x:Name="txtJson"  Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="#181818" Foreground="#808080" FontFamily="{StaticResource UiMonospaceFont}" Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
         </Grid>
 
         <!-- Central editing area -->
@@ -201,6 +203,7 @@
                         <Button Content="Send Report Preview" Command="{Binding SendReportPreviewCommand}" Margin="2,2,0,2"/>
                         <Button Content="Send Report" Command="{Binding SendReportCommand}"   Margin="2,2,0,2"/>
                         <Button Content="Extract Phrases" Click="OnExtractPhrases"  Margin="2,2,0,2"/>
+                        <Button Content="Test NewStudy Proc" Command="{Binding TestNewStudyProcedureCommand}" Margin="2,2,0,2"/>
                     </StackPanel>
 
                     <!-- Lower row: toggles and label -->
@@ -252,16 +255,17 @@
                                       Visibility="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}, Converter={StaticResource BoolToVis}}"/>
                             </Grid>
                         </ToggleButton>
-                        <TextBlock Text="{Binding CurrentStudyLabel}" Foreground="#5A9FD6" VerticalAlignment="Center" FontFamily="./Fonts/#D2Coding" Margin="3,0,0,0"/>
+                        <!-- Selectable Current Study Label (read-only TextBox) -->
+                        <TextBox Text="{Binding CurrentStudyLabel, Mode=OneWay}" Margin="6,0,0,0" FontFamily="{StaticResource UiMonospaceFont}" Foreground="#5A9FD6" Background="Transparent" BorderThickness="0" IsReadOnly="True" IsReadOnlyCaretVisible="False" VerticalAlignment="Center" TextWrapping="Wrap" MinWidth="260"/>
                     </StackPanel>
                 </Grid>
 
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="4"/>
                 <editor:EditorControl x:Name="EditorHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding HeaderText, Mode=TwoWay}"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorFindings" Grid.Row="4" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" DocumentText="{Binding FindingsText, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorFindings" Grid.Row="4" DocumentText="{Binding FindingsText, Mode=TwoWay}"/>
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorConclusion" Grid.Row="6" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" DocumentText="{Binding ConclusionText, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorConclusion" Grid.Row="6" DocumentText="{Binding ConclusionText, Mode=TwoWay}"/>
             </Grid>
 
             <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Width="4" Background="#2D2D30"/>
@@ -331,11 +335,11 @@
                 
 
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" DocumentText="{Binding SelectedPreviousStudy.Header, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding SelectedPreviousStudy.Header, Mode=TwoWay}"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="4" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" DocumentText="{Binding SelectedPreviousStudy.Findings, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="4" DocumentText="{Binding SelectedPreviousStudy.Findings, Mode=TwoWay}"/>
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="6" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" DocumentText="{Binding SelectedPreviousStudy.Conclusion, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="6" DocumentText="{Binding SelectedPreviousStudy.Conclusion, Mode=TwoWay}"/>
             </Grid>
         </Grid>
 
@@ -376,7 +380,6 @@
                      Margin="6,0,6,6"
                      IsReadOnly="True"
                      Background="#1E1E1E"
-                     Foreground="#d0d0d0"
                      BorderBrush="#2D2D30"
                      BorderThickness="1"
                      TextWrapping="Wrap"
@@ -384,7 +387,8 @@
                      Height="60"
                      VerticalScrollBarVisibility="Auto"
                      HorizontalScrollBarVisibility="Disabled"
-                     Text="Ready"/>
+                     Text="{Binding StatusText}"
+                     Foreground="{Binding StatusIsError, Converter={StaticResource BoolToBrushConverter}}"/>
         </Grid>
     </Grid>
 </Window>

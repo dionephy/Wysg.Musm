@@ -37,6 +37,10 @@ namespace Wysg.Musm.Radium.Services
             set => LocalConnectionString = value;
         }
 
+        // Add keys for automation sequences
+        public string? AutomationNewStudySequence { get => ReadSecret("auto_newstudy"); set => WriteSecret("auto_newstudy", value ?? string.Empty); }
+        public string? AutomationAddStudySequence { get => ReadSecret("auto_addstudy"); set => WriteSecret("auto_addstudy", value ?? string.Empty); }
+
         private static string? ReadSecret(string key)
         {
             try

@@ -238,39 +238,38 @@ namespace Wysg.Musm.Radium.Views
                         case "GetText":
                         case "GetTextOCR":
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
-                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3.Value = string.Empty; row.Arg3Enabled = false;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
                         case "Invoke":
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
-                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3.Value = string.Empty; row.Arg3Enabled = false;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
                         case "Split":
-                            // Arg1 = source var, Arg2 = separator, Arg3 = index (number)
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; // enable second argument
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg2.Value)) row.Arg2.Value = ",";
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg3.Value)) row.Arg3.Value = "0";
                             break;
                         case "TakeLast":
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
-                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3.Value = string.Empty; row.Arg3Enabled = false;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
                         case "Trim":
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
-                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3.Value = string.Empty; row.Arg3Enabled = false;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
                         case "GetValueFromSelection":
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg2.Value)) row.Arg2.Value = "ID";
-                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3.Value = string.Empty; row.Arg3Enabled = false;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
                         case "ToDateTime":
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2.Value = string.Empty; row.Arg2Enabled = false;
-                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3.Value = string.Empty; row.Arg3Enabled = false;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
                         default:
                             row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
@@ -942,7 +941,8 @@ namespace Wysg.Musm.Radium.Views
                     var (_, _, trace) = UiBookmarks.TryResolveWithTrace(b);
                     Debug.WriteLine("[PP1][ResolveTrace]\r\n" + trace);
                 } catch { }
-                txtStatus.Text += " | Resolve failed"; return; }
+                txtStatus.Text += " | Resolve failed"; return;
+            }
             var r = el.BoundingRectangle;
             var rect = new System.Drawing.Rectangle((int)r.Left, (int)r.Top, (int)r.Width, (int)r.Height);
             _overlay.ShowForRect(rect);
@@ -991,143 +991,42 @@ namespace Wysg.Musm.Radium.Views
             txtStatus.Text = $"Resolved {key}";
         }
 
+        private void ForceCommitGridEdits()
+        {
+            try
+            {
+                gridChain.CommitEdit(DataGridEditingUnit.Cell, true);
+                gridChain.CommitEdit(DataGridEditingUnit.Row, true);
+            }
+            catch { }
+        }
+
         private void OnValidateChain(object sender, RoutedEventArgs e)
         {
+            ForceCommitGridEdits();
             if (!BuildBookmarkFromUi(out var copy)) return;
+            var diag = BuildChainDiagnostic(copy);
             var sw = Stopwatch.StartNew();
-            var (hwnd, el, trace) = UiBookmarks.TryResolveWithTrace(copy);
+            var (_, el, trace) = UiBookmarks.TryResolveWithTrace(copy);
             sw.Stop();
             _lastResolved = el;
             if (el == null)
             {
-                txtStatus.Text = $"Validate: not found ({sw.ElapsedMilliseconds} ms)\r\n" + trace;
+                txtStatus.Text = diag + $"Validate: not found ({sw.ElapsedMilliseconds} ms)\r\n" + trace;
                 return;
             }
             var r = el.BoundingRectangle;
             var rect = new System.Drawing.Rectangle((int)r.Left, (int)r.Top, (int)r.Width, (int)r.Height);
             _overlay.ShowForRect(rect);
-            txtStatus.Text = $"Validate: found and highlighted ({sw.ElapsedMilliseconds} ms)\r\n" + trace;
-        }
-
-        private void OnInvoke(object sender, RoutedEventArgs e)
-        {
-            if (_lastResolved == null)
-            {
-                if (!BuildBookmarkFromUi(out var copy)) return;
-                var (_, el, _) = UiBookmarks.TryResolveWithTrace(copy);
-                _lastResolved = el;
-                if (el == null) { txtStatus.Text = "Invoke: not found"; return; }
-            }
-            try
-            {
-                using var automation = new UIA3Automation();
-                var inv = _lastResolved.Patterns.Invoke.PatternOrDefault;
-                if (inv != null)
-                {
-                    inv.Invoke();
-                    txtStatus.Text = "Invoke: done";
-                    return;
-                }
-                var toggle = _lastResolved.Patterns.Toggle.PatternOrDefault;
-                if (toggle != null)
-                {
-                    toggle.Toggle();
-                    txtStatus.Text = "Toggle: done";
-                    return;
-                }
-                txtStatus.Text = "Invoke: pattern not supported";
-            }
-            catch (Exception ex)
-            {
-                txtStatus.Text = "Invoke error: " + ex.Message;
-            }
-        }
-
-        private void OnGetText(object sender, RoutedEventArgs e)
-        {
-            if (_lastResolved == null)
-            {
-                if (!BuildBookmarkFromUi(out var copy)) return;
-                var (_, el, _) = UiBookmarks.TryResolveWithTrace(copy);
-                _lastResolved = el;
-                if (el == null) { txtStatus.Text = "Get Text: not found"; return; }
-            }
-            try
-            {
-                var name = _lastResolved.Name;
-                var value = _lastResolved.Patterns.Value.PatternOrDefault?.Value ?? string.Empty;
-                var legacy = _lastResolved.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty;
-                var txt = !string.IsNullOrEmpty(value) ? value : (!string.IsNullOrEmpty(name) ? name : legacy);
-                txtStatus.Text = string.IsNullOrEmpty(txt) ? "Get Text: empty" : $"Get Text: {txt}";
-            }
-            catch (Exception ex)
-            {
-                txtStatus.Text = "Get Text error: " + ex.Message;
-            }
-        }
-
-        private bool BuildBookmarkFromUi(out UiBookmarks.Bookmark copy)
-        {
-            copy = new UiBookmarks.Bookmark();
-            if (_editing == null) { txtStatus.Text = "No chain to validate"; return false; }
-
-            try
-            {
-                GridChain.CommitEdit(DataGridEditingUnit.Cell, true);
-                GridChain.CommitEdit(DataGridEditingUnit.Row, true);
-                FocusManager.SetFocusedElement(this, this);
-                GridChain.UpdateLayout();
-                CollectionViewSource.GetDefaultView(GridChain.ItemsSource)?.Refresh();
-            }
-            catch { }
-
-            copy = new UiBookmarks.Bookmark
-            {
-                Name = _editing.Name,
-                ProcessName = _editing.ProcessName,
-                Method = CmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly,
-                DirectAutomationId = null,
-                Chain = (_editing.Chain ?? new List<UiBookmarks.Node>()).Select(n => new UiBookmarks.Node
-                {
-                    Name = n.Name,
-                    ClassName = n.ClassName,
-                    ControlTypeId = n.ControlTypeId,
-                    AutomationId = n.AutomationId,
-                    IndexAmongMatches = n.IndexAmongMatches,
-                    Include = n.Include,
-                    UseName = n.UseName,
-                    UseClassName = n.UseClassName,
-                    UseControlTypeId = n.UseControlTypeId,
-                    UseAutomationId = n.UseAutomationId,
-                    UseIndex = n.UseIndex,
-                    Scope = n.Scope,
-                    Order = n.Order
-                }).ToList()
-            };
-            if (copy.Method == UiBookmarks.MapMethod.AutomationIdOnly)
-            {
-                copy.DirectAutomationId = copy.Chain.LastOrDefault()?.AutomationId;
-                if (string.IsNullOrWhiteSpace(copy.DirectAutomationId)) copy.DirectAutomationId = null;
-            }
-            if (!string.IsNullOrWhiteSpace(txtProcess.Text)) copy.ProcessName = txtProcess.Text.Trim();
-            _lastResolved = null;
-            return true;
+            txtStatus.Text = diag + $"Validate: found and highlighted ({sw.ElapsedMilliseconds} ms)";
         }
 
         private void OnSaveEdited(object sender, RoutedEventArgs e)
         {
+            ForceCommitGridEdits();
             UiBookmarks.Bookmark toSave;
             if (_editing == null) { txtStatus.Text = "Nothing to save"; return; }
-
-            try
-            {
-                GridChain.CommitEdit(DataGridEditingUnit.Cell, true);
-                GridChain.CommitEdit(DataGridEditingUnit.Row, true);
-            }
-            catch { }
-
             SaveEditorInto(_editing);
-
             UiBookmarks.KnownControl key;
             var knownItem = cmbKnown?.SelectedItem as System.Windows.Controls.ComboBoxItem;
             var tagStr = knownItem?.Tag as string;
@@ -1146,7 +1045,6 @@ namespace Wysg.Musm.Radium.Views
                 txtStatus.Text = $"Saved mapping for {key}";
                 return;
             }
-
             var store = UiBookmarks.Load();
             var name = string.IsNullOrWhiteSpace(_editing.Name) ? "Bookmark" : _editing.Name;
             var existing = store.Bookmarks.FirstOrDefault(b => string.Equals(b.Name, name, StringComparison.OrdinalIgnoreCase));
@@ -1164,159 +1062,7 @@ namespace Wysg.Musm.Radium.Views
             txtStatus.Text = $"Saved bookmark '{name}'";
         }
 
-        private void OnPreviewMouseDownForQuickMap(object sender, MouseButtonEventArgs e)
-        {
-            if (!Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl)) return;
-            if (!Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift)) return;
-            var item = cmbKnown.SelectedItem as System.Windows.Controls.ComboBoxItem;
-            var keyStr = item?.Tag as string;
-            if (string.IsNullOrWhiteSpace(keyStr)) { txtStatus.Text = "Select a known control"; return; }
-            var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: true);
-            txtStatus.Text = msg;
-            if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName;
-            if (b == null) return;
-            if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key))
-            { txtStatus.Text = "Invalid known control"; return; }
-
-            var method = CmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly;
-            b.Method = method;
-            if (method == UiBookmarks.MapMethod.AutomationIdOnly)
-            {
-                var directId = b.Chain.LastOrDefault()?.AutomationId;
-                b.DirectAutomationId = string.IsNullOrWhiteSpace(directId) ? null : directId;
-            }
-
-            UiBookmarks.SaveMapping(key, b);
-            LoadEditor(b);
-            HighlightBookmark(b);
-            txtStatus.Text = $"Quick-mapped {key}";
-        }
-
-        private void OnMoveUp(object sender, RoutedEventArgs e)
-        {
-            var items = GridChain.ItemsSource as IList<UiBookmarks.Node> ?? GridChain.Items.OfType<UiBookmarks.Node>().ToList();
-            var sel = GridChain.SelectedItem as UiBookmarks.Node;
-            if (sel == null) return;
-            int idx = items.IndexOf(sel);
-            if (idx > 0)
-            {
-                items.RemoveAt(idx);
-                items.Insert(idx - 1, sel);
-                GridChain.ItemsSource = null; GridChain.ItemsSource = items; GridChain.SelectedItem = sel;
-            }
-        }
-        private void OnMoveDown(object sender, RoutedEventArgs e)
-        {
-            var items = GridChain.ItemsSource as IList<UiBookmarks.Node> ?? GridChain.Items.OfType<UiBookmarks.Node>().ToList();
-            var sel = GridChain.SelectedItem as UiBookmarks.Node;
-            if (sel == null) return;
-            int idx = items.IndexOf(sel);
-            if (idx >= 0 && idx < items.Count - 1)
-            {
-                items.RemoveAt(idx);
-                items.Insert(idx + 1, sel);
-                GridChain.ItemsSource = null; GridChain.ItemsSource = items; GridChain.SelectedItem = sel;
-            }
-        }
-        private void OnInsertAbove(object sender, RoutedEventArgs e)
-        {
-            var items = GridChain.ItemsSource as IList<UiBookmarks.Node> ?? GridChain.Items.OfType<UiBookmarks.Node>().ToList();
-            var sel = GridChain.SelectedItem as UiBookmarks.Node;
-            int idx = sel != null ? items.IndexOf(sel) : items.Count;
-            var n = new UiBookmarks.Node { Include = true };
-            items.Insert(Math.Max(0, idx), n);
-            GridChain.ItemsSource = null; GridChain.ItemsSource = items; GridChain.SelectedItem = n;
-        }
-        private void OnDeleteNode(object sender, RoutedEventArgs e)
-        {
-            var items = GridChain.ItemsSource as IList<UiBookmarks.Node> ?? GridChain.Items.OfType<UiBookmarks.Node>().ToList();
-            var sel = GridChain.SelectedItem as UiBookmarks.Node;
-            if (sel == null) return;
-            items.Remove(sel);
-            GridChain.ItemsSource = null; GridChain.ItemsSource = items;
-        }
-
-        private void OnAncestrySelected(object sender, RoutedPropertyChangedEventArgs<object> e)
-        {
-            if (e.NewValue is not TreeNode n)
-            {
-                txtNodeProps.Text = string.Empty;
-                return;
-            }
-            var sb = new StringBuilder();
-            sb.AppendLine($"Name: {n.Name}");
-            sb.AppendLine($"ClassName: {n.ClassName}");
-            sb.AppendLine($"ControlTypeId: {n.ControlTypeId}");
-            sb.AppendLine($"AutomationId: {n.AutomationId}");
-            txtNodeProps.Text = sb.ToString();
-        }
-
-        private void OnGetSelectedRow(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                EnsureResolved();
-                if (_lastResolved == null) { txtStatus.Text = "Row Data: not found"; return; }
-
-                var list = _lastResolved;
-                var selection = list.Patterns.Selection.PatternOrDefault;
-                var selected = selection?.Selection?.Value ?? Array.Empty<AutomationElement>();
-                if (selected.Length == 0)
-                {
-                    selected = list.FindAllDescendants()
-                        .Where(a =>
-                        {
-                            try { return a.Patterns.SelectionItem.IsSupported && a.Patterns.SelectionItem.PatternOrDefault?.IsSelected == true; }
-                            catch { return false; }
-                        })
-                        .ToArray();
-                }
-                if (selected.Length == 0) { txtStatus.Text = "Row Data: no selection"; return; }
-                var row = selected[0];
-
-                var headers = GetHeaderTexts(list);
-                var cellValues = GetRowCellValues(row);
-
-                if (headers.Count == 0 && cellValues.Count == 0)
-                {
-                    txtStatus.Text = "Row Data: empty";
-                    return;
-                }
-
-                if (headers.Count < cellValues.Count)
-                {
-                    for (int i = headers.Count; i < cellValues.Count; i++) headers.Add($"Col{i + 1}");
-                }
-                else if (headers.Count > cellValues.Count)
-                {
-                    for (int i = cellValues.Count; i < headers.Count; i++) cellValues.Add(string.Empty);
-                }
-
-                var pairs = new List<(string Header, string Value)>();
-                int count = Math.Max(headers.Count, cellValues.Count);
-                for (int i = 0; i < count; i++)
-                {
-                    var h = NormalizeHeader(i < headers.Count ? headers[i] : $"Col{i + 1}");
-                    var v = i < cellValues.Count ? cellValues[i] : string.Empty;
-                    pairs.Add((h, v));
-                }
-
-                var line = string.Join(" | ", pairs
-                    .Where(p => !string.IsNullOrWhiteSpace(p.Header) || !string.IsNullOrWhiteSpace(p.Value))
-                    .Select(p =>
-                    {
-                        if (string.IsNullOrWhiteSpace(p.Header)) return p.Value; // header blank, value present -> value only
-                        return $"{p.Header}: {p.Value}";
-                    })
-                );
-                txtStatus.Text = string.IsNullOrWhiteSpace(line) ? "Row Data: empty" : line;
-            }
-            catch (Exception ex)
-            {
-                txtStatus.Text = "Row Data error: " + ex.Message;
-            }
-        }
-
+        // === Re-added helper methods lost during prior patch ===
         private static List<string> GetHeaderTexts(AutomationElement list)
         {
             var result = new List<string>();
@@ -1336,13 +1082,8 @@ namespace Wysg.Musm.Radium.Views
                                 var t = ReadCellText(hc);
                                 if (string.IsNullOrWhiteSpace(t))
                                 {
-                                    foreach (var g in hc.FindAllChildren())
-                                    {
-                                        t = ReadCellText(g);
-                                        if (!string.IsNullOrWhiteSpace(t)) break;
-                                    }
+                                    foreach (var g in hc.FindAllChildren()) { t = ReadCellText(g); if (!string.IsNullOrWhiteSpace(t)) break; }
                                 }
-                                // Preserve positional placeholder even if blank
                                 result.Add(string.IsNullOrWhiteSpace(t) ? string.Empty : t.Trim());
                             }
                             catch { result.Add(string.Empty); }
@@ -1350,25 +1091,14 @@ namespace Wysg.Musm.Radium.Views
                         if (result.Count > 0) return result;
                     }
                 }
-
-                var header = kids.FirstOrDefault(c =>
-                {
-                    try { return (int)c.ControlType == UIA_Header; } catch { return false; }
-                });
-
+                var header = kids.FirstOrDefault(c => { try { return (int)c.ControlType == UIA_Header; } catch { return false; } });
                 if (header == null)
                 {
                     foreach (var ch in kids)
                     {
-                        try
-                        {
-                            var h = ch.FindAllChildren().FirstOrDefault(cc => (int)cc.ControlType == UIA_Header);
-                            if (h != null) { header = h; break; }
-                        }
-                        catch { }
+                        try { var h = ch.FindAllChildren().FirstOrDefault(cc => (int)cc.ControlType == UIA_Header); if (h != null) { header = h; break; } } catch { }
                     }
                 }
-
                 if (header != null)
                 {
                     foreach (var hi in header.FindAllChildren())
@@ -1376,17 +1106,10 @@ namespace Wysg.Musm.Radium.Views
                         try
                         {
                             string txt = string.Empty;
-                            if ((int)hi.ControlType == UIA_HeaderItem || (int)hi.ControlType == UIA_Text)
-                            {
-                                txt = ReadCellText(hi);
-                            }
+                            if ((int)hi.ControlType == UIA_HeaderItem || (int)hi.ControlType == UIA_Text) txt = ReadCellText(hi);
                             if (string.IsNullOrWhiteSpace(txt))
                             {
-                                foreach (var g in hi.FindAllChildren())
-                                {
-                                    txt = ReadCellText(g);
-                                    if (!string.IsNullOrWhiteSpace(txt)) break;
-                                }
+                                foreach (var g in hi.FindAllChildren()) { txt = ReadCellText(g); if (!string.IsNullOrWhiteSpace(txt)) break; }
                             }
                             result.Add(string.IsNullOrWhiteSpace(txt) ? string.Empty : txt.Trim());
                         }
@@ -1413,14 +1136,8 @@ namespace Wysg.Musm.Radium.Views
                             string cellText = ReadCellText(c).Trim();
                             if (string.IsNullOrEmpty(cellText))
                             {
-                                // Probe grandchildren for a first non-empty text, otherwise keep empty placeholder
-                                foreach (var gc in c.FindAllChildren())
-                                {
-                                    var t = ReadCellText(gc).Trim();
-                                    if (!string.IsNullOrEmpty(t)) { cellText = t; break; }
-                                }
+                                foreach (var gc in c.FindAllChildren()) { var t = ReadCellText(gc).Trim(); if (!string.IsNullOrEmpty(t)) { cellText = t; break; } }
                             }
-                            // Always add a value (even if empty) to preserve column alignment
                             values.Add(cellText);
                         }
                         catch { values.Add(string.Empty); }
@@ -1428,7 +1145,6 @@ namespace Wysg.Musm.Radium.Views
                 }
                 else
                 {
-                    // Fallback: collect up to 20 textual descendants; cannot guarantee alignment here
                     foreach (var d in row.FindAllDescendants())
                     {
                         try
@@ -1436,7 +1152,7 @@ namespace Wysg.Musm.Radium.Views
                             if ((int)d.ControlType == UIA_Text || (int)d.ControlType == UIA_DataItem)
                             {
                                 var t = ReadCellText(d).Trim();
-                                values.Add(t); // Add even if empty (rare)
+                                values.Add(t);
                                 if (values.Count >= 20) break;
                             }
                         }
@@ -1448,290 +1164,336 @@ namespace Wysg.Musm.Radium.Views
             return values;
         }
 
-        private static int TryGetSelectedRowIndex(AutomationElement list, AutomationElement[] selected)
-        {
-            var children = list.FindAllChildren();
-            var listItems = new List<AutomationElement>();
-            foreach (var ch in children)
-            {
-                try { if ((int)ch.ControlType == UIA_ListItem) listItems.Add(ch); } catch { }
-            }
-
-            int rowIndex = -1;
-            for (int i = 0; i < listItems.Count; i++)
-            {
-                try { if (listItems[i].Patterns.SelectionItem.IsSupported && listItems[i].Patterns.SelectionItem.PatternOrDefault?.IsSelected == true) { rowIndex = i; break; } } catch { }
-            }
-            if (rowIndex < 0 && selected.Length > 0)
-            {
-                var rowEl = selected[0];
-                for (int i = 0; i < listItems.Count; i++)
-                {
-                    try
-                    {
-                        if (listItems[i].Equals(rowEl)) { rowIndex = i; break; }
-                    }
-                    catch { }
-                }
-            }
-            if (rowIndex < 0 && selected.Length > 0)
-            {
-                try { var gi = selected[0].Patterns.GridItem.PatternOrDefault; if (gi != null) rowIndex = gi.Row; } catch { }
-            }
-            return rowIndex;
-        }
-
-        private static Dictionary<int, string> TryGetHeaders(FlaUI.Core.Patterns.ITablePattern? table)
-        {
-            var headers = new Dictionary<int, string>();
-            try
-            {
-                var columnHeaders = table?.ColumnHeaders?.Value;
-                if (columnHeaders != null)
-                {
-                    for (int i = 0; i < columnHeaders.Length; i++) headers[i] = columnHeaders[i]?.Name ?? string.Empty;
-                }
-            }
-            catch { }
-            return headers;
-        }
-
-        private static string FormatPairs(List<(string Header, string Value)> pairs)
-        {
-            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var p in pairs)
-            {
-                if (!string.IsNullOrWhiteSpace(p.Header) && !dict.ContainsKey(p.Header)) dict[p.Header] = p.Value;
-            }
-            var sb = new StringBuilder();
-            foreach (var h in PreferredHeaderOrder) if (dict.TryGetValue(h, out var v)) sb.AppendLine($"{h}: {v}");
-            foreach (var p in pairs) if (!string.IsNullOrWhiteSpace(p.Header) && !PreferredHeaderOrder.Contains(p.Header, StringComparer.OrdinalIgnoreCase)) sb.AppendLine($"{p.Header}: {p.Value}");
-            return sb.ToString().TrimEnd();
-        }
-
         private static bool TryParseYmdOrYmdHms(string s, out DateTime dt)
         {
             dt = default;
-            if (DateTime.TryParseExact(s, new[] { "yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss" }, System.Globalization.CultureInfo.InvariantCulture,
-                System.Globalization.DateTimeStyles.AssumeLocal, out var parsed))
-            {
-                dt = parsed;
-                return true;
-            }
+            if (DateTime.TryParseExact(s, new[] { "yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss" }, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeLocal, out var parsed)) { dt = parsed; return true; }
             return false;
         }
 
-        // FlaUInspect-like tree: rebuild using resolved element path to ensure parity with crawl editor
-        private void RebuildAncestryFromRoot(UiBookmarks.Bookmark b)
+        private void OnInvoke(object sender, RoutedEventArgs e)
         {
+            if (_lastResolved == null)
+            {
+                if (!BuildBookmarkFromUi(out var copy)) return;
+                var (_, el, _) = UiBookmarks.TryResolveWithTrace(copy);
+                _lastResolved = el;
+                if (el == null) { txtStatus.Text = "Invoke: not found"; return; }
+            }
             try
             {
-                var (final, path) = UiBookmarks.ResolvePath(b);
-                if (final != null && path.Count > 0)
-                {
-                    // Build chain from actual chosen path.
-                    // path[0] is top root, last is final. We display chain to level 4 (or last available), then children of that node.
-                    int focusIndex = Math.Min(FocusChainDepth - 1, path.Count - 1);
-
-                    TreeNode rootNode = ToNode(path[0], level: 1);
-                    SetHighlight(rootNode); // L1 colored
-                    var chainNode = rootNode;
-                    for (int i = 1; i <= focusIndex; i++)
-                    {
-                        var next = ToNode(path[i], level: i + 1);
-                        SetHighlight(next); // L2-L4 colored
-                        chainNode.Children.Clear();
-                        chainNode.Children.Add(next);
-                        chainNode = next;
-                    }
-
-                    // Expand from level-4 element
-                    var focusEl = path[focusIndex];
-                    Debug.WriteLine($"[PP1] Using ResolvePath: pathCount={path.Count}, focusIndex={focusIndex}, focusClass={focusEl.ClassName}, focusName={focusEl.Name}");
-                    PopulateChildrenTree(chainNode, focusEl, maxDepth: FocusSubtreeMaxDepth);
-
-                    // Mark element-of-interest at each deeper level along the remaining path
-                    for (int i = focusIndex + 1; i < path.Count; i++)
-                    {
-                        var level = i + 1; // 1-based
-                        var target = path[i];
-                        var match = chainNode.Children.FirstOrDefault(c => string.Equals(c.AutomationId, Safe(target, e => e.AutomationId))
-                                                                           && string.Equals(c.ClassName, Safe(target, e => e.ClassName))
-                                                                           && c.ControlTypeId == Safe(target, e => (int?)e.Properties.ControlType.Value));
-                        if (match == null)
-                        {
-                            // if not found among immediate children (due to caps or structure), stop tagging further
-                            break;
-                        }
-                        chainNode = match;
-                        chainNode.Level = level;
-                        SetDeepHighlight(chainNode); // from level 5 and deeper
-                    }
-
-                    tvAncestry.ItemsSource = new[] { rootNode };
-                    return;
-                }
-
-                // Fallback to previous behavior when path cannot be built
-                var (_, el, _) = UiBookmarks.TryResolveWithTrace(b);
-                if (el != null)
-                {
-                    using var automation = new UIA3Automation();
-                    var walker = automation.TreeWalkerFactory.GetControlViewWalker();
-                    var ancestors = new List<AutomationElement>();
-                    var cur = el;
-                    while (cur != null)
-                    {
-                        ancestors.Add(cur);
-                        var p = walker.GetParent(cur);
-                        cur = p;
-                    }
-                    ancestors.Reverse();
-
-                    var focusIndex = Math.Min(Math.Max(FocusChainDepth - 1, 0), ancestors.Count - 1);
-                    var rootNode = ToNode(ancestors[0], level: 1); SetHighlight(rootNode);
-                    var chainNode = rootNode;
-                    for (int i = 1; i <= focusIndex; i++)
-                    {
-                        var next = ToNode(ancestors[i], level: i + 1); SetHighlight(next);
-                        chainNode.Children.Clear(); chainNode.Children.Add(next); chainNode = next;
-                    }
-                    PopulateChildrenTree(chainNode, ancestors[focusIndex], maxDepth: FocusSubtreeMaxDepth);
-                    tvAncestry.ItemsSource = new[] { rootNode };
-                    return;
-                }
-
-                // Heuristic fallback unchanged
-                using (var automation2 = new UIA3Automation())
-                {
-                    var desktop = automation2.GetDesktop();
-                    try
-                    {
-                        var cf = automation2.ConditionFactory;
-                        var typeCond = cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window)
-                                         .Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Pane));
-                        var proc = b.ProcessName;
-                        FlaUI.Core.AutomationElements.AutomationElement[] roots;
-                        if (!string.IsNullOrWhiteSpace(proc))
-                        {
-                            var pids = new List<int>();
-                            try { pids.AddRange(Process.GetProcessesByName(proc).Select(p => p.Id)); } catch { }
-                            if (pids.Count > 0)
-                            {
-                                FlaUI.Core.Conditions.ConditionBase pidCond = cf.ByProcessId(pids[0]);
-                                for (int i = 1; i < pids.Count; i++) pidCond = pidCond.Or(cf.ByProcessId(pids[i]));
-                                roots = desktop.FindAllChildren(pidCond.And(typeCond));
-                            }
-                            else roots = desktop.FindAllChildren(typeCond);
-                        }
-                        else roots = desktop.FindAllChildren(typeCond);
-
-                        var rootCandidate = roots.FirstOrDefault();
-                        if (rootCandidate == null) { tvAncestry.ItemsSource = Array.Empty<TreeNode>(); return; }
-
-                        var rootNode = ToNode(rootCandidate, level: 1); SetHighlight(rootNode);
-                        var chainNode = rootNode; var curEl2 = rootCandidate;
-                        for (int level = 2; level <= FocusChainDepth; level++)
-                        {
-                            var children = curEl2.FindAllChildren(); if (children.Length == 0) break;
-                            var first = children[0]; var next = ToNode(first, level: level); SetHighlight(next);
-                            chainNode.Children.Clear(); chainNode.Children.Add(next); chainNode = next; curEl2 = first;
-                        }
-                        PopulateChildrenTree(chainNode, curEl2, maxDepth: FocusSubtreeMaxDepth);
-                        tvAncestry.ItemsSource = new[] { rootNode };
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine("[PP1] Fallback error: " + ex);
-                        tvAncestry.ItemsSource = null;
-                    }
-                }
+                var inv = _lastResolved.Patterns.Invoke.PatternOrDefault;
+                if (inv != null) { inv.Invoke(); txtStatus.Text = "Invoke: done"; return; }
+                var toggle = _lastResolved.Patterns.Toggle.PatternOrDefault;
+                if (toggle != null) { toggle.Toggle(); txtStatus.Text = "Toggle: done"; return; }
+                txtStatus.Text = "Invoke: pattern not supported";
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("[PP1] Rebuild error: " + ex);
-                tvAncestry.ItemsSource = null;
-            }
-
-            static TreeNode ToNode(AutomationElement e, int level) => new TreeNode
-            {
-                Name = Safe(e, x => x.Name),
-                ClassName = Safe(e, x => x.ClassName),
-                ControlTypeId = Safe(e, x => (int?)x.Properties.ControlType.Value),
-                AutomationId = Safe(e, x => x.AutomationId),
-                Level = level
-            };
-            static T? Safe<T>(AutomationElement e, Func<AutomationElement, T?> f) { try { return f(e); } catch { return default; } }
-            void SetHighlight(TreeNode n)
-            {
-                try
-                {
-                    if (n.Level == 1) n.Highlight = (Brush)FindResource("Path.Level1");
-                    else if (n.Level == 2) n.Highlight = (Brush)FindResource("Path.Level2");
-                    else if (n.Level == 3) n.Highlight = (Brush)FindResource("Path.Level3");
-                    else if (n.Level == 4) n.Highlight = (Brush)FindResource("Path.Level4");
-                }
-                catch { }
-            }
-            void SetDeepHighlight(TreeNode n)
-            {
-                try { n.Highlight = (Brush)FindResource("Path.Level4"); } catch { }
-            }
+            catch (Exception ex) { txtStatus.Text = "Invoke error: " + ex.Message; }
         }
 
-        // PP2: Force dropdown to open for Operation ComboBox inside DataGrid
+        private void OnGetText(object sender, RoutedEventArgs e)
+        {
+            if (_lastResolved == null)
+            {
+                if (!BuildBookmarkFromUi(out var copy)) return;
+                var (_, el, _) = UiBookmarks.TryResolveWithTrace(copy);
+                _lastResolved = el;
+                if (el == null) { txtStatus.Text = "Get Text: not found"; return; }
+            }
+            try
+            {
+                var name = _lastResolved.Name;
+                var value = _lastResolved.Patterns.Value.PatternOrDefault?.Value ?? string.Empty;
+                var legacy = _lastResolved.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty;
+                var txt = !string.IsNullOrEmpty(value) ? value : (!string.IsNullOrEmpty(name) ? name : legacy);
+                txtStatus.Text = string.IsNullOrEmpty(txt) ? "Get Text: empty" : $"Get Text: {txt}";
+            }
+            catch (Exception ex) { txtStatus.Text = "Get Text error: " + ex.Message; }
+        }
+
         private void OnOpComboPreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
             try
             {
-                if (sender is System.Windows.Controls.ComboBox cb)
+                if (sender is System.Windows.Controls.ComboBox cb && !cb.IsDropDownOpen)
                 {
-                    Debug.WriteLine("[PP2] OpCombo MouseDown: IsDropDownOpen=" + cb.IsDropDownOpen);
-                    if (!cb.IsDropDownOpen)
-                    {
-                        e.Handled = true;
-                        var cell = FindParent<DataGridCell>(cb);
-                        var grid = FindParent<DataGrid>(cell) ?? (DataGrid?)FindName("gridProcSteps");
-                        try { grid?.BeginEdit(); } catch { }
-                        cb.Focus();
-                        cb.IsDropDownOpen = true;
-                        Debug.WriteLine("[PP2] OpCombo opened via mouse.");
-                    }
+                    e.Handled = true;
+                    var cell = FindParent<DataGridCell>(cb);
+                    var grid = FindParent<DataGrid>(cell) ?? (DataGrid?)FindName("gridProcSteps");
+                    try { grid?.BeginEdit(); } catch { }
+                    cb.Focus(); cb.IsDropDownOpen = true;
                 }
             }
-            catch (Exception ex) { Debug.WriteLine ("[PP2] OpCombo MouseDown error: " + ex); }
+            catch { }
         }
-
         private void OnOpComboPreviewKeyDown(object sender, KeyEventArgs e)
         {
             try
             {
                 if (sender is System.Windows.Controls.ComboBox cb)
                 {
-                    if ((e.Key == Key.F4) || (e.Key == Key.Down && (Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt) || e.Key == Key.Space)
+                    if (e.Key == Key.F4 || (e.Key == Key.Down && (Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt) || e.Key == Key.Space)
                     {
                         var cell = FindParent<DataGridCell>(cb);
                         var grid = FindParent<DataGrid>(cell) ?? (DataGrid?)FindName("gridProcSteps");
                         try { grid?.BeginEdit(); } catch { }
-                        cb.Focus();
-                        cb.IsDropDownOpen = !cb.IsDropDownOpen;
-                        e.Handled = true;
-                        Debug.WriteLine("[PP2] OpCombo toggled via keyboard. Now open? " + cb.IsDropDownOpen);
+                        cb.Focus(); cb.IsDropDownOpen = !cb.IsDropDownOpen; e.Handled = true;
                     }
                 }
             }
-            catch (Exception ex) { Debug.WriteLine("[PP2] OpCombo KeyDown error: " + ex); }
+            catch { }
         }
 
-        private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
+        private static TParent? FindParent<TParent>(DependencyObject? child) where TParent : DependencyObject
         {
             while (child != null)
             {
                 var parent = VisualTreeHelper.GetParent(child);
-                if (parent is T t) return t;
+                if (parent is TParent tp) return tp;
                 child = parent;
             }
             return null;
+        }
+
+        private void FlushGridEdits()
+        {
+            try
+            {
+                gridChain.CommitEdit(DataGridEditingUnit.Cell, true);
+                gridChain.CommitEdit(DataGridEditingUnit.Row, true);
+                foreach (var item in gridChain.Items)
+                {
+                    if (gridChain.ItemContainerGenerator.ContainerFromItem(item) is not DataGridRow row) continue;
+                    foreach (var cb in FindVisualChildren<System.Windows.Controls.CheckBox>(row))
+                        cb.GetBindingExpression(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty)?.UpdateSource();
+                    foreach (var tb in FindVisualChildren<System.Windows.Controls.TextBox>(row))
+                        tb.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
+                    foreach (var combo in FindVisualChildren<System.Windows.Controls.ComboBox>(row))
+                    {
+                        combo.GetBindingExpression(System.Windows.Controls.Primitives.Selector.SelectedIndexProperty)?.UpdateSource();
+                        combo.GetBindingExpression(System.Windows.Controls.Primitives.Selector.SelectedValueProperty)?.UpdateSource();
+                    }
+                }
+            }
+            catch { }
+        }
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject d) where T : DependencyObject
+        {
+            if (d == null) yield break;
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(d); i++)
+            {
+                var c = VisualTreeHelper.GetChild(d, i);
+                if (c is T t) yield return t;
+                foreach (var cc in FindVisualChildren<T>(c)) yield return cc;
+            }
+        }
+
+        private bool BuildBookmarkFromUi(out UiBookmarks.Bookmark copy)
+        {
+            copy = new UiBookmarks.Bookmark();
+            if (_editing == null) { txtStatus.Text = "No chain to validate"; return false; }
+            FlushGridEdits();
+            try
+            {
+                gridChain.CommitEdit(DataGridEditingUnit.Cell, true);
+                gridChain.CommitEdit(DataGridEditingUnit.Row, true);
+            }
+            catch { }
+
+            // Take the live nodes from the grid (authoritative) instead of _editing.Chain
+            var liveNodes = gridChain.Items.OfType<UiBookmarks.Node>().ToList();
+            // Persist them back into the editing bookmark so later Save uses the modified values
+            _editing.Chain = liveNodes;
+
+            copy = new UiBookmarks.Bookmark
+            {
+                Name = _editing.Name,
+                ProcessName = _editing.ProcessName,
+                Method = cmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly,
+                CrawlFromRoot = _editing.CrawlFromRoot,
+                DirectAutomationId = null,
+                Chain = liveNodes.Select(n => new UiBookmarks.Node
+                {
+                    Name = n.Name,
+                    ClassName = n.ClassName,
+                    ControlTypeId = n.ControlTypeId,
+                    AutomationId = n.AutomationId,
+                    IndexAmongMatches = n.IndexAmongMatches,
+                    Include = n.Include,
+                    UseName = n.UseName,
+                    UseClassName = n.UseClassName,
+                    UseControlTypeId = n.UseControlTypeId,
+                    UseAutomationId = n.UseAutomationId,
+                    UseIndex = n.UseIndex,
+                    Scope = n.Scope,
+                    Order = n.Order
+                }).ToList()
+            };
+            if (copy.Method == UiBookmarks.MapMethod.AutomationIdOnly)
+            {
+                copy.DirectAutomationId = copy.Chain.LastOrDefault()?.AutomationId;
+                if (string.IsNullOrWhiteSpace(copy.DirectAutomationId)) copy.DirectAutomationId = null;
+            }
+            if (!string.IsNullOrWhiteSpace(txtProcess.Text)) copy.ProcessName = txtProcess.Text.Trim();
+            _lastResolved = null;
+            return true;
+        }
+
+        private string BuildChainDiagnostic(UiBookmarks.Bookmark b)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("Idx Inc Nm Cls Ctl Auto Idx Scope | Name / Class / Ctrl / AutoId");
+            for (int i = 0; i < b.Chain.Count; i++)
+            {
+                var n = b.Chain[i];
+                sb.AppendFormat("{0,2}  {1}   {2}{3}{4}{5}{6}  {7} | {8} / {9} / {10} / {11}\r\n",
+                    i,
+                    n.Include ? 'Y' : 'N',
+                    n.UseName ? 'N' : '-',
+                    n.UseClassName ? 'C' : '-',
+                    n.UseControlTypeId ? 'T' : '-',
+                    n.UseAutomationId ? 'A' : '-',
+                    n.UseIndex ? 'I' : '-',
+                    n.Scope,
+                    n.Name ?? "",
+                    n.ClassName ?? "",
+                    n.ControlTypeId?.ToString() ?? "",
+                    n.AutomationId ?? "");
+            }
+            return sb.ToString();
+        }
+
+        // Restored missing handlers
+        private void OnPreviewMouseDownForQuickMap(object? sender, MouseButtonEventArgs e)
+        {
+            if (!Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl)) return;
+            if (!Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift)) return;
+            var item = cmbKnown.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            var keyStr = item?.Tag as string;
+            if (string.IsNullOrWhiteSpace(keyStr)) { txtStatus.Text = "Select a known control"; return; }
+            var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: true);
+            txtStatus.Text = msg;
+            if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName;
+            if (b == null) return;
+            if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key)) { txtStatus.Text = "Invalid known control"; return; }
+            var method = CmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly;
+            b.Method = method;
+            if (method == UiBookmarks.MapMethod.AutomationIdOnly)
+            {
+                var directId = b.Chain.LastOrDefault()?.AutomationId;
+                b.DirectAutomationId = string.IsNullOrWhiteSpace(directId) ? null : directId;
+            }
+            UiBookmarks.SaveMapping(key, b);
+            LoadEditor(b);
+            HighlightBookmark(b);
+            txtStatus.Text = $"Quick-mapped {key}";
+        }
+
+        private void OnAncestrySelected(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            if (e.NewValue is null) { txtNodeProps.Text = string.Empty; return; }
+            if (e.NewValue is not object) { txtNodeProps.Text = string.Empty; return; }
+        }
+
+        private void OnGetSelectedRow(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                EnsureResolved();
+                if (_lastResolved == null) { txtStatus.Text = "Row Data: not found"; return; }
+                var list = _lastResolved;
+                var selection = list.Patterns.Selection.PatternOrDefault;
+                var selected = selection?.Selection?.Value ?? Array.Empty<AutomationElement>();
+                if (selected.Length == 0)
+                {
+                    selected = list.FindAllDescendants().Where(a =>
+                    {
+                        try { return a.Patterns.SelectionItem.IsSupported && a.Patterns.SelectionItem.PatternOrDefault?.IsSelected == true; }
+                        catch { return false; }
+                    }).ToArray();
+                }
+                if (selected.Length == 0) { txtStatus.Text = "Row Data: no selection"; return; }
+                var row = selected[0];
+                var headers = GetHeaderTexts(list);
+                var cellValues = GetRowCellValues(row);
+                if (headers.Count < cellValues.Count)
+                    for (int i = headers.Count; i < cellValues.Count; i++) headers.Add($"Col{i + 1}");
+                else if (cellValues.Count < headers.Count)
+                    for (int i = cellValues.Count; i < headers.Count; i++) cellValues.Add(string.Empty);
+                var pairs = headers.Zip(cellValues, (h, v) => (Header: NormalizeHeader(h), Value: v)).ToList();
+                var line = string.Join(" | ", pairs.Select(p => string.IsNullOrWhiteSpace(p.Header) ? p.Value : $"{p.Header}: {p.Value}"));
+                txtStatus.Text = string.IsNullOrWhiteSpace(line) ? "Row Data: empty" : line;
+            }
+            catch (Exception ex) { txtStatus.Text = "Row Data error: " + ex.Message; }
+        }
+
+        private void OnMoveUp(object sender, RoutedEventArgs e)
+        {
+            var items = GridChain.ItemsSource as IList<UiBookmarks.Node> ?? GridChain.Items.OfType<UiBookmarks.Node>().ToList();
+            var sel = GridChain.SelectedItem as UiBookmarks.Node; if (sel == null) return; int idx = items.IndexOf(sel); if (idx > 0) { items.RemoveAt(idx); items.Insert(idx - 1, sel); GridChain.ItemsSource = null; GridChain.ItemsSource = items; GridChain.SelectedItem = sel; }
+        }
+        private void OnMoveDown(object sender, RoutedEventArgs e)
+        {
+            var items = GridChain.ItemsSource as IList<UiBookmarks.Node> ?? GridChain.Items.OfType<UiBookmarks.Node>().ToList();
+            var sel = GridChain.SelectedItem as UiBookmarks.Node; if (sel == null) return; int idx = items.IndexOf(sel); if (idx >= 0 && idx < items.Count - 1) { items.RemoveAt(idx); items.Insert(idx + 1, sel); GridChain.ItemsSource = null; GridChain.ItemsSource = items; GridChain.SelectedItem = sel; }
+        }
+        private void OnInsertAbove(object sender, RoutedEventArgs e)
+        {
+            var items = GridChain.ItemsSource as IList<UiBookmarks.Node> ?? GridChain.Items.OfType<UiBookmarks.Node>().ToList();
+            var sel = GridChain.SelectedItem as UiBookmarks.Node; int idx = sel != null ? items.IndexOf(sel) : items.Count; var n = new UiBookmarks.Node { Include = true }; items.Insert(Math.Max(0, idx), n); GridChain.ItemsSource = null; GridChain.ItemsSource = items; GridChain.SelectedItem = n;
+        }
+        private void OnDeleteNode(object sender, RoutedEventArgs e)
+        {
+            var items = GridChain.ItemsSource as IList<UiBookmarks.Node> ?? GridChain.Items.OfType<UiBookmarks.Node>().ToList();
+            var sel = GridChain.SelectedItem as UiBookmarks.Node; if (sel == null) return; items.Remove(sel); GridChain.ItemsSource = null; GridChain.ItemsSource = items;
+        }
+        private void OnTemplateCheckBoxClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is System.Windows.Controls.CheckBox cb)
+                {
+                    var cell = FindParent<DataGridCell>(cb);
+                    var grid = FindParent<DataGrid>(cell) ?? gridChain;
+                    grid.CommitEdit(DataGridEditingUnit.Cell, true);
+                    grid.CommitEdit(DataGridEditingUnit.Row, true);
+                }
+            }
+            catch { }
+        }
+        private void OnTemplateComboSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (sender is System.Windows.Controls.ComboBox combo && combo.IsDropDownOpen == false)
+                {
+                    var cell = FindParent<DataGridCell>(combo);
+                    var grid = FindParent<DataGrid>(cell) ?? gridChain;
+                    grid.CommitEdit(DataGridEditingUnit.Cell, true);
+                    grid.CommitEdit(DataGridEditingUnit.Row, true);
+                }
+            }
+            catch { }
+        }
+        private void OnGridCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    gridChain.CommitEdit(DataGridEditingUnit.Cell, true);
+                    gridChain.CommitEdit(DataGridEditingUnit.Row, true);
+                }
+                catch { }
+            }), DispatcherPriority.Background);
+        }
+        protected override void OnPreviewKeyDown(KeyEventArgs e)
+        {
+            base.OnPreviewKeyDown(e);
+            if (e.Key == Key.Enter || e.Key == Key.Tab)
+            {
+                try { gridChain.CommitEdit(DataGridEditingUnit.Cell, true); gridChain.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
+            }
         }
     }
 }

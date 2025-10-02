@@ -34,11 +34,10 @@
                     <DataTemplate>
                         <ToggleButton Content="{Binding Title}"
                                       IsThreeState="False"
-                                      IsChecked="{Binding IsSelected, Mode=OneWay}"
-                                      Command="{Binding SelectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                      CommandParameter="{Binding}"
+                                      IsChecked="{Binding IsSelected, Mode=TwoWay}"
                                       Margin="4,0,0,0"
-                                      Style="{DynamicResource DarkToggleButtonStyle}"/>
+                                      Style="{DynamicResource DarkToggleButtonStyle}"
+                                      PreviewMouseDown="OnTabPreviewMouseDown"/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

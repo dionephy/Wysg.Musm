@@ -9,6 +9,8 @@ using System.Text.Json.Serialization;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace Wysg.Musm.Radium.Services;
 
@@ -35,7 +37,8 @@ public sealed class UiBookmarks
         ViewerWindow,
         ViewerToolbar,
         OpenWorklistButton,
-        ReportCommitButton
+        ReportCommitButton,
+        StudyRemark // new
     }
 
     public enum MapMethod { Chain = 0, AutomationIdOnly = 1 }
@@ -51,21 +54,23 @@ public sealed class UiBookmarks
         public bool CrawlFromRoot { get; set; } = true;
     }
 
-    public sealed class Node
+    public sealed class Node : INotifyPropertyChanged
     {
-        public string? Name { get; set; }
-        public string? ClassName { get; set; }
-        public int? ControlTypeId { get; set; }
-        public string? AutomationId { get; set; }
-        public int IndexAmongMatches { get; set; } = 0;
-        public bool Include { get; set; } = true;
-        public bool UseName { get; set; } = false;
-        public bool UseClassName { get; set; } = true;
-        public bool UseControlTypeId { get; set; } = true;
-        public bool UseAutomationId { get; set; } = true;
-        public bool UseIndex { get; set; } = true;
-        public SearchScope Scope { get; set; } = SearchScope.Children;
-        public int? Order { get; set; }
+        private string? _name; private string? _className; private int? _controlTypeId; private string? _automationId; private int _indexAmongMatches = 0; private bool _include = true; private bool _useName = false; private bool _useClassName = true; private bool _useControlTypeId = true; private bool _useAutomationId = true; private bool _useIndex = true; private SearchScope _scope = SearchScope.Children; private int? _order;
+
+        public string? Name { get => _name; set => SetProperty(ref _name, value); }
+        public string? ClassName { get => _className; set => SetProperty(ref _className, value); }
+        public int? ControlTypeId { get => _controlTypeId; set => SetProperty(ref _controlTypeId, value); }
+        public string? AutomationId { get => _automationId; set => SetProperty(ref _automationId, value); }
+        public int IndexAmongMatches { get => _indexAmongMatches; set => SetProperty(ref _indexAmongMatches, value); }
+        public bool Include { get => _include; set { if (SetProperty(ref _include, value)) OnPropertyChanged(nameof(LocateIndex)); } }
+        public bool UseName { get => _useName; set => SetProperty(ref _useName, value); }
+        public bool UseClassName { get => _useClassName; set => SetProperty(ref _useClassName, value); }
+        public bool UseControlTypeId { get => _useControlTypeId; set => SetProperty(ref _useControlTypeId, value); }
+        public bool UseAutomationId { get => _useAutomationId; set => SetProperty(ref _useAutomationId, value); }
+        public bool UseIndex { get => _useIndex; set => SetProperty(ref _useIndex, value); }
+        public SearchScope Scope { get => _scope; set { if (SetProperty(ref _scope, value)) { OnPropertyChanged(nameof(ScopeIndex)); OnPropertyChanged(nameof(LocateIndex)); } } }
+        public int? Order { get => _order; set => SetProperty(ref _order, value); }
 
         [JsonIgnore]
         public int LocateIndex
@@ -77,22 +82,27 @@ public sealed class UiBookmarks
                 {
                     Include = false;
                     Scope = SearchScope.Children;
-                    UseName = false;
-                    UseClassName = false;
-                    UseControlTypeId = false;
-                    UseAutomationId = false;
-                    UseIndex = false;
+                    UseName = false; UseClassName = false; UseControlTypeId = false; UseAutomationId = false; UseIndex = false;
                 }
                 else
                 {
                     Include = true;
                     Scope = value == 1 ? SearchScope.Children : SearchScope.Descendants;
                 }
+                OnPropertyChanged(); OnPropertyChanged(nameof(ScopeIndex));
             }
         }
 
         [JsonIgnore]
-        public int ScopeIndex { get => (int)Scope; set => Scope = (SearchScope)value; }
+        public int ScopeIndex { get => (int)Scope; set { Scope = (SearchScope)value; OnPropertyChanged(); OnPropertyChanged(nameof(LocateIndex)); } }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? name = null)
+        {
+            if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+            field = value; OnPropertyChanged(name); return true;
+        }
     }
 
     public sealed class Store

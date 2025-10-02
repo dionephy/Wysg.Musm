@@ -101,6 +101,8 @@ namespace Wysg.Musm.Radium
             services.AddTransient<StudynameLoincViewModel>();
             services.AddTransient<PhrasesViewModel>();
             services.AddTransient<PhraseExtractionViewModel>();
+            services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.INewStudyProcedure, Wysg.Musm.Radium.Services.Procedures.NewStudyProcedure>();
+            services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.ILockStudyProcedure, Wysg.Musm.Radium.Services.Procedures.LockStudyProcedure>();
         }
 
         public async Task ShowSplashLoginAsync()

@@ -1,136 +1,29 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
-## Change Log Addition
-- **2025-10-05**: Implemented patient/study/studyname upsert logic via `IRadStudyRepository` (FR-142).
-- **2025-10-05**: Optimized SpyWindow pick (bounded traversal + guarded property access) reducing UIA property exceptions (FR-143).
-- **2025-10-05**: Adjusted RadStudyRepository to use is_male column (schema alignment) (FR-144).
-- **2025-10-05**: Disabled SpyWindow tree reconstruction to improve pick performance (FR-145).
-- **2025-10-05**: Added birth_date capture and persistence if PACS provides birth date (FR-146).
-- **2025-10-05**: Added SpyWindow checkbox to enable/disable UI tree (FR-147).
-- **2025-10-05**: FR-148 TreeView default disabled (SpyWindow checkbox starts unchecked).
-- **2025-10-05**: FR-149 Auto-clear UseIndex after Pick capture.
-- **2025-10-05**: FR-150 Added ReportText2 KnownControl + XAML combo item.
-- **2025-10-05**: FR-151 Added PACS getters (findings/conclusion variants) + procedure combo entries + PacsService wrappers.
-- **2025-10-05**: FR-152 AddStudy now ingests previous report: ensures study, validates banner, fetches findings/conclusion variants, inserts partial rad_report, refreshes PreviousStudies via repository.
-- **2025-10-05**: FR-152a Always attempt findings/conclusion retrieval and filter PreviousStudies to only those with reports containing either field.
+## Change Log Addition (2025-10-05 - Retry & Drag Indicator)
+- Implement UIA retry loop for patient number (FR-169).
+- Apply line-by-line dereportify for previous study toggle OFF (FR-170).
+- Add drag drop insertion indicator line (FR-171).
+- Enforce patient mismatch block with status message (FR-172).
+- Auto-select newly added previous study tab (FR-173).
 
-(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection)
+## Change Log Addition (2025-10-02 - Validation & Automation Skeleton)
+- Added patient match validation before AddStudy ingestion (FR-162).
+- Set default PreviousReportified true after AddStudy and intended default true logic (FR-163).
+- Added Automation (Preview) tab in Settings with placeholder checkboxes (FR-164).
 
-**Branch**: `[radium-cumulative]` | **Date**: 2025-01-01 | **Spec**: Spec.md (same folder)
-**Input**: Cumulative feature specification (Spec.md)
+## Change Log Addition (2025-10-02 - UX/Upsert)
+- Implement selectable current study label using read-only TextBox (FR-158, replaces earlier FR-154 interim label solution).
+- Prevent deselection of active previous study tab (guard in `PreviousStudiesStrip`) (FR-159).
+- Replace partial report insert with Upsert (ON CONFLICT) for rad_report (FR-160).
+- Auto-load prior patient studies with reports after new study metadata fetch (FR-161).
 
----
-## Summary
-Primary goal: Unify automated radiology reporting pipeline (current + previous study parsing, LOINC mapping, technique acquisition), enhanced editor assistance (completion, snippets, ghost suggestions), reliable PACS submission with structured persistence, plus OCR-based banner extraction utilities (GetTextOCR op and patient/study banner helpers).
-
----
-## Technical Context
-**Language/Version**: .NET 9 (WPF desktop)  
-**Primary Dependencies**: WPF, AvalonEdit, Npgsql, Serilog, (LLM provider abstraction) [NEEDS CLARIFICATION: actual provider], internal RuleEngine, Windows OCR API (indirect via OcrReader)  
-**Storage**: Postgres (phrase & mapping), local persistence (file or DB) [NEEDS CLARIFICATION: local DB type], in-memory caches  
-**Testing**: xUnit (present) + golden text fixtures + OCR op unit test with engine-availability mock (future)  
-**Target Platform**: Windows 10+ desktop  
-**Performance Goals**: <1s metadata acquisition; <300ms completion popup open; ghost dispatch <100ms post idle; postprocess pipeline <5s; GetTextOCR typical <1.2s; banner heuristics <150ms; completion cache refresh <50ms; keyboard navigation <50ms; selection guard event handling <10ms; multiple event processing <5ms; navigation state tracking <1ms; recursive guard handling <1ms.  
-**Constraints**: Graceful degradation if OCR engine disabled; no UI thread blocking for network / OCR heavy operations; prevent selection guard recursion loops; handle multiple SelectionChanged events gracefully; maintain accurate navigation state tracking with focus-aware reset when list loses keyboard focus; ensure editor-owned Up/Down handling remains deterministic without relying on ListBox focus state; prevent infinite loops during programmatic selection changes.
-
----
-## Constitution Check
-No architecture deviations: OCR op implemented in procedure executor. Banner helpers encapsulated inside PacsService. Low coupling maintained. Completion cache invalidation follows existing service patterns. Bug fixes maintain existing architectural patterns. Selection guard improvements preserve existing event handling architecture. Multiple event handling maintains WPF event model compliance. Navigation state tracking uses simple boolean flag pattern. Recursive guard protection uses standard guard pattern without architectural changes.
-
----
-## Project Structure (Affected)
-- apps/Wysg.Musm.Radium/Views/SpyWindow.* (procedure op + menu entries)
-- apps/Wysg.Musm.Radium/Services/PacsService.cs (banner parsing)
-- apps/Wysg.Musm.Radium/Services/PhraseService.cs (cache invalidation)
-- apps/Wysg.Musm.Radium/Services/IPhraseCache.cs (Clear method)
-- apps/Wysg.Musm.Radium/Views/MainWindow.xaml.cs (phrase extraction DI fix)
-- apps/Wysg.Musm.Radium/App.xaml.cs (DI registration for PhraseExtractionViewModel)
-- src/Wysg.Musm.Editor/Completion/MusmCompletionWindow.cs (selection guard + keyboard navigation + multiple event handling + enter/home/end handling + silent selection helper + recursive guard protection)
-- src/Wysg.Musm.Editor/Controls/EditorControl.Popup.cs (navigation event handling + focus management + navigation state tracking + manual editor-driven Up/Down handling)
-- tests/Wysg.Musm.Tests/CompletionNavigationTests.cs (unit tests for completion navigation)
-- docs (Spec/Plan/Tasks updated cumulatively)
-
----
-## Phase 0: Outline & Research
-Pending clarifications extended to OCR (engine availability, fallback heuristics) and reliability markers.
-
----
-## Phase 1: Design & Contracts
-(UNCHANGED baseline) – Add note: ProcedureOp set extended with GetTextOCR (Arg1=Element, Arg2 disabled). PacsService contract implicitly extended (non-interface) with `GetCurrentPatientNumberAsync` & `GetCurrentStudyDateTimeAsync`. IPhraseCache extended with Clear method for cache invalidation. DI container configured for proper service resolution. Selection guard enhanced to prevent recursion and handle multiple events. Navigation state tracking added for accurate first/subsequent navigation detection with focus-aware reset so first navigation after typing hits the boundary item, and editor now owns Up/Down handling to keep behaviour deterministic without relying on ListBox focus. Recursive guard protection added to prevent infinite loops during programmatic changes.
-
----
-## Phase 2: Task Planning Extension
-Added incremental tasks (see Tasks.md T205..T208) covering implementation & spec alignment for FR-098..FR-099, FR-123. Added T209-T211 for completion improvements FR-124..FR-125. Added T214-T217 for bug fixes FR-126..FR-127. Added T218-T219 for selection guard recursion fix FR-128. Added T220-T221 for multiple event handling FR-129. Added T222-T223 for navigation state tracking FR-130. Added T224-T225 for focus-aware first navigation guard FR-131. Added T226-T229 for manual editor-driven navigation handling FR-131. Added T232-T233 for recursive guard protection FR-132. Added T234-T235 for completion popup bounded height FR-133. Added T236-T237 for adaptive completion popup height FR-134. Added T238-T239 for split operation Arg3 support FR-135. Added T240-T241 for current study label metadata fetch FR-136.
-
----
-## Phase 3+: Future
-Add tests later for OCR op fallbacks (engine missing) & banner regex accuracy (digit vs mixed token collision). Consider performance testing for completion cache refresh latency, keyboard navigation responsiveness, selection guard event handling efficiency, multiple event processing performance, navigation state tracking accuracy, and recursive guard protection effectiveness.
-
----
-## Complexity Tracking
-No new complexity exceptions.
-
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|--------------------------------------|
-| (none) | | |
-
----
-## Progress Tracking
-Split Arg3 index support implemented (status: Done, FR-135).
-GetTextOCR + banner helpers implemented (status: Done). Editor completion improvements implemented (status: Done). Bug fixes implemented (status: Done). Selection guard recursion fix implemented (status: Done). Multiple event handling improvement implemented (status: Done). Navigation state tracking implemented (status: Done). Focus-aware first navigation guard implemented (status: Done). Manual editor-driven navigation implemented (status: Done). Guard-silent selection helper implemented (status: Done). Recursive guard protection implemented (status: Done). Completion popup bounded height implemented (status: Done). Adaptive completion popup height implemented (status: Done). Current study label metadata fetch implemented (status: Done). Unit tests added (status: Done). Documentation updated.
-
----
-- **Bug Fix: Recursive guard protection**: MusmCompletionWindow now uses _handlingSelectionChange flag to prevent infinite loops during programmatic selection changes while preserving legitimate keyboard navigation.
-- **Bug Fix: Focus-aware navigation guard**: EditorControl now resets `_hasUserNavigated` whenever completions refresh and handles boundary detection entirely in-editor so the first Down/Up key selects index 0/last without relying on ListBox focus.
-- **Bug Fix: Manual editor navigation**: EditorControl consumes all Up/Down keys, mutating the completion list selection directly so the very next key advances to the adjacent item with scroll-into-view support.
-- **Bug Fix: Guard-silent selection helper**: MusmCompletionWindow exposes a helper to adjust ListBox selection without firing the guard, preventing automatic clear-outs after editor-driven navigation.
-
-## Recent Adjustments (New - 2025-01-01)
-- **Bug Fix: Navigation State Tracking**: Added _hasUserNavigated flag to EditorControl to properly track whether user has used keyboard navigation, ensuring first Down key always selects first item (index 0) regardless of existing selections from exact matching. Flag is reset when creating new completion window and when closing, providing accurate first vs subsequent navigation detection.
-
-## Previous Adjustments (2025-01-01)
-- **Bug Fix: Multiple Event Handling**: Enhanced MusmCompletionWindow selection guard to detect and preserve selections that are added via keyboard navigation by analyzing SelectionChanged event patterns (added vs removed items). Added logic to prevent immediate clearing of new selections that don't have corresponding removals.
-- **Keyboard Focus Management Enhancement**: Improved EditorControl keyboard navigation to ensure ListBox gets proper focus during navigation, which enhances the keyboard focus detection in the selection guard and improves overall navigation reliability.
-
-## Previous Adjustments (2025-01-01)
-- **Bug Fix: Selection Guard Recursion Prevention**: Enhanced MusmCompletionWindow selection guard to prevent recursive clearing by temporarily disabling SelectionChanged event handler during programmatic selection changes. Added detection logic for programmatic clearing operations and improved event flow to handle multiple selection events from single user actions.
-- **Navigation Event Handling Enhancement**: Improved EditorControl keyboard navigation with enhanced debugging and better flow control to ensure AllowSelectionByKeyboardOnce is called at the appropriate time before selection changes occur.
-
-## Previous Adjustments (2025-01-01)
-- **Bug Fix: Phrase Extraction Service Injection**: Modified OnExtractPhrases in MainWindow.xaml.cs to use GetService<PhraseExtractionViewModel>() instead of manual instantiation, and registered PhraseExtractionViewModel in DI container. This resolves runtime errors during phrase save operations by ensuring all dependencies are properly injected.
-- **Bug Fix: Completion Navigation Reliability**: Enhanced Up/Down key handling in EditorControl.Popup.cs by explicitly managing selection state changes and proper event handling. Improved selection guard logic in MusmCompletionWindow.cs to be more permissive for keyboard navigation while preventing unwanted programmatic selection changes.
-
-## Previous Adjustments (2025-01-01)
-- **Completion Cache Invalidation**: Added IPhraseCache.Clear() method and implemented cache invalidation in PhraseService.UpsertPhraseAsync() and ToggleActiveAsync(). This ensures completion list refreshes immediately when phrases are added via phrase extractor or phrase manager without requiring application restart.
-- **Keyboard Navigation Fix**: Modified MusmCompletionWindow selection guard mechanism to allow keyboard navigation (Down/Up keys) while maintaining exact-match-only selection for non-keyboard events. Selection changes are now permitted when ListBox has keyboard focus.
-
-## Recent Adjustments (2025-09-29)
-- Added GetTextOCR operation (SpyWindow) with OCR region = element bounds (naive bounding; future improvement: clamp inside visible window rect).
-- Added PacsService methods extracting patient number (longest 5+ digit sequence) and study date time (YYYY-MM-DD + optional HH:mm[:ss]).
-- Updated App shutdown mode to OnMainWindowClose after successful login for expected desktop behavior.
-
----
-(Existing historical adjustments retained below)
-
-## Recent Adjustments
-- Central phrase service now loads per-account snapshot (AccountPhraseState) and serves editor completions from in-memory data.
-- All future references use account_id (legacy tenant_id alias retained at boundaries).
-- Added non-blocking retry prefetch for phrase snapshot.
-- PhraseCache supports Clear.
-
-## Recent Adjustment (Editor Idle Behavior)
-- Removed legacy idle auto-close of completion popup.
-
-## Recent Adjustment (Completion Navigation)
-- Initial Up/Down selects boundary item immediately.
-
-## Recent UI Adjustment
-- Dark theme styling extended.
-
-## Added Implementation (Reportified Toggle)
-- Toggle handlers and reversible dereportify algorithm (see Spec) simplified by inversion logic.
-
-# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
+## Change Log Addition (2025-10-02)
+- Implement reversible previous-study Reportified toggle with original snapshots (FR-153).
+- Replace CurrentStudyLabel TextBlock with Label (interim selectable UI) (FR-154).
+- Add modality extraction heuristic and tab title format `YYYY-MM-DD MOD` (FR-155).
+- Enforce uniqueness of previous study tabs by (StudyDateTime, Modality) (FR-156).
+- Wrap PacsService procedure executions with resilience (try/catch + debug log) (FR-157).
 
 ## Change Log Addition (2025-10-05)
 - Added UIA element caching in ProcedureExecutor (FR-140) to reduce remapping overhead.
@@ -160,6 +53,42 @@ GetTextOCR + banner helpers implemented (status: Done). Editor completion improv
 - **2025-10-05**: FR-151 Added PACS getters (findings/conclusion variants) + procedure combo entries + PacsService wrappers.
 - **2025-10-05**: FR-152 AddStudy now ingests previous report: ensures study, validates banner, fetches findings/conclusion variants, inserts partial rad_report, refreshes PreviousStudies via repository.
 - **2025-10-05**: FR-152a Always attempt findings/conclusion retrieval and filter PreviousStudies to only those with reports containing either field.
+- **2025-10-02**: Treat previous study original fields as baseline reportified content; dereportify only when toggle off (FR-165).
+- **2025-10-02**: Add drag & drop skeleton lists (Library/New Study/Add Study) in settings automation tab (FR-166).
+- **2025-10-02**: Add debug output for previous study toggle (FR-167).
+- **2025-10-02**: Introduce floating drag ghost skeleton for automation procedure items (FR-168).
+- Added line-by-line previous study dereportify preserving newline tokens (FR-174).
+- Enforced normalized patient number comparison (strip non-alphanum, uppercase) blocking AddStudy on mismatch (FR-175).
+- Added modular `INewStudyProcedure` with implementation `NewStudyProcedure` and temporary test button (FR-176).
+- Persist automation module sequences in local settings and use for New Study invocation (FR-177).
+- Dark mode styling applied to SettingsWindow (FR-178).
+- Added retry wrapper for all PACS procedure getters (FR-179).
+- Adjusted New Study command to check configured sequence before procedure invocation (FR-180).
+- Brightened SettingsWindow foreground / dark theme unified (FR-181).
+- Drop indicator now cleared on mouse up (FR-182).
+- New Study no-op when automation list saved but empty (FR-183).
+- Added Save Automation command/button (FR-184).
+- Library drop removes from other lists and ensures single instance (FR-185).
+- Dark title bar for SettingsWindow (FR-186).
+- Drop indicator + ghost cleared on mouse up (FR-187).
+- New Study explicit no-op when automation list null/empty (FR-188).
+- Neutral gray tab header foreground applied (FR-189).
+- Library drop logic enforces single-instance relocation (FR-190).
+- Enabled duplicate module insertion in automation panes (FR-191).
+- Added remove (X) button per module instance (FR-192).
+- Library now persistent source; drag copies not moves (FR-193).
+- Simplified live JSON to findings + conclusion only (FR-201).
+- Implemented `ILockStudyProcedure` + `LockStudyProcedure` (FR-202).
+- Updated automation to process NewStudy and LockStudy modules sequentially (FR-203).
+- Removed locking from NewStudyProcedure (FR-204).
+- Implemented auto-unreportify on edit (FR-205).
+- Raw-only JSON generation (findings/conclusion) regardless of reportify (FR-206).
+- Simplified conclusion reportify logic (FR-207).
+- Simplified reportify to per-line capitalization + trailing period (FR-208).
+- Raw capture moved before JSON update eliminating off-by-one lag (FR-209).
+- Implement two-way JSON editing with guarded synchronization (FR-210).
+- Added KnownControl.StudyRemark and SpyWindow combo alphabetized (FR-211, FR-212).
+- Added PACS custom getter GetCurrentStudyRemark (FR-213).
 
 (Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection)
 

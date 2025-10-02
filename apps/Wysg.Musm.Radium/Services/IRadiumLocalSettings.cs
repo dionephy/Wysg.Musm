@@ -9,5 +9,9 @@ namespace Wysg.Musm.Radium.Services
 
         // Backward compat: map to LocalConnectionString
         string? ConnectionString { get; set; }
+
+        // Automation sequences (semicolon or comma delimited list of module names)
+        string? AutomationNewStudySequence { get; set; }
+        string? AutomationAddStudySequence { get; set; }
     }
 }

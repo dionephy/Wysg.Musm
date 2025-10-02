@@ -222,6 +222,7 @@ CREATE TABLE IF NOT EXISTS med.rad_report
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     report jsonb NOT NULL DEFAULT '{}'::jsonb,
     CONSTRAINT rad_report_pkey PRIMARY KEY (id),
+    CONSTRAINT uq_rad_report__studyid_reportdt UNIQUE (study_id, report_datetime),
     CONSTRAINT rad_report_study_id_fkey FOREIGN KEY (study_id)
         REFERENCES med.rad_study (id) MATCH SIMPLE
         ON UPDATE NO ACTION
@@ -238,7 +239,6 @@ CREATE INDEX IF NOT EXISTS idx_rad_report_report_gin
     ON med.rad_report USING gin
     (report)
     TABLESPACE pg_default;
-
 
 
 

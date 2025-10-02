@@ -1,5 +1,66 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Previous study baseline & automation drag skeleton (2025-10-02)
+- **FR-165** Previous study initial text MUST be treated as already reportified baseline; toggle OFF performs dereportify transform shown in editors; toggle ON restores original baseline text without reprocessing.
+- **FR-166** Automation settings MUST present two reorderable lists (New Study, Add Study) and one library list via drag & drop skeleton; duplicates prevented per pane (preview, non-persistent).
+
+## Update: Add Study validation & automation settings skeleton (2025-10-02)
+- **FR-162** AddStudy MUST validate that selected related study patient number/id matches current patient; on mismatch no ingestion occurs and a status message in red is shown.
+- **FR-163** Previous report Reportified toggle MUST default to ON when application starts a new study and after each successful AddStudy ingestion.
+- **FR-164** Settings window MUST expose an "Automation (Preview)" tab with placeholder checkboxes for configuring actions on New Study and Add Study (non-functional skeleton).
+
+## Update: Previous studies UX + Report Upsert (2025-10-02)
+- **FR-158** Current study label MUST be displayed in a selectable read-only text control (read-only TextBox) instead of non-selectable label (PP2 fix).
+- **FR-159** Previous study tab buttons MUST not toggle off the active tab when clicked again (except when a different overflow item is selected) – at least one tab remains visually active.
+- **FR-160** Adding a previous study MUST perform an UPSERT into `med.rad_report` keyed by (study_id, report_datetime) updating existing row instead of inserting duplicate (constraint: uq_rad_report__studyid_reportdt).
+- **FR-161** On New Study load completion, system MUST automatically load all existing prior studies (with reports) for the patient into previous study tabs (unique by StudyDateTime+Modality rule still applies).
+
+## Update: Automation UX refinements (2025-10-05)
+- **FR-183** New Study button MUST be a no-op when automation settings exist but contain zero modules.
+- **FR-184** Settings window MUST provide dedicated Save Automation action persisting only automation sequences.
+- **FR-185** Dropping module onto Available Modules pane MUST remove it from ordered panes and appear once in library.
+- **FR-186** Settings window title bar MUST use dark immersive mode (when OS supports) matching main window.
+- **FR-187** Automation drop indicator MUST clear on mouse up (even failed drop) and ghost removed.
+
+## Update: Automation duplicate modules & live report JSON (2025-10-05)
+- **FR-191** Automation panes MUST allow duplicate module entries (same module can appear multiple times in same or different panes).
+- **FR-192** Each ordered module entry MUST expose a remove (X) control that removes only that instance from its pane.
+- **FR-193** Available Modules pane MUST retain modules regardless of drag (modules are copied, not moved).
+- **FR-194** Main window MUST display live JSON preview of current report (header+findings+conclusion) in txtJson updating on each edit.
+- **FR-195** Findings editor MUST bind two-way to ReportFindings alias property feeding live JSON generation.
+- **FR-196** Automation drag drop indicator MUST clear when cursor leaves list bounds or drag data invalid.
+
+## Update: Automation move/copy semantics & DB tab restore (2025-10-05)
+- **FR-197** Drag from library MUST copy; drag between ordered panes MUST move (reordering within same pane keeps only one instance).
+- **FR-198** Remove (X) button MUST display literal 'X' and remove only the clicked instance.
+- **FR-199** Database settings tab MUST remain visible alongside Automation tab.
+- **FR-200** Drop indicator MUST always clear on drag leaving any list or invalid target (with debug logging for diagnostics).
+
+## Update: Lock Study module & JSON simplification (2025-10-05)
+- **FR-201** Report JSON preview MUST include only findings and conclusion (header removed from combined field).
+- **FR-202** A modular `LockStudy` procedure MUST exist to only set PatientLocked and status without clearing fields.
+- **FR-203** Automation sequences may include `LockStudy` alongside `NewStudy` executing both in defined order.
+
+## Update: Reportify behavior & locking decoupling (2025-10-05)
+- **FR-204** NewStudyProcedure MUST not perform locking; locking handled solely by LockStudy module.
+- **FR-205** When reportified is ON, any edit to current header/findings/conclusion auto-disables reportified and restores raw text.
+- **FR-206** Live JSON preview MUST always reflect raw (un-reportified) findings/conclusion regardless of reportified toggle state.
+- **FR-207** Conclusion reportify MUST only capitalize first letter per line and append trailing period if alphanumeric ending (no numbering/indent injection).
+
+## Update: Reportify formatting & immediate JSON (2025-10-05)
+- **FR-208** Toggling reportified MUST not alter text with regex artifacts; only sentence capitalization + trailing period per line.
+- **FR-209** Live JSON preview MUST reflect the latest keystroke (no character lag) by capturing raw text before serialization.
+
+## Update: Two-way JSON editing (2025-10-05)
+- **FR-210** JSON preview panel MUST support two-way editing; valid JSON edits update Findings/Conclusion (raw); invalid JSON ignored without breaking existing text.
+
+## Update: Study Remark mapping & PACS getter (2025-10-05)
+- **FR-211** UI Spy KnownControl list MUST include a mappable `Study remark` entry enabling bookmark capture.
+- **FR-212** Known control ComboBox in SpyWindow MUST list items in case-insensitive alphabetical order by display text.
+- **FR-213** PACS service MUST expose custom procedure method tag `GetCurrentStudyRemark` retrievable via `PacsService.GetCurrentStudyRemarkAsync()` and selectable in custom procedure method list.
+
+## Prior Updates
+<!-- cumulative prior content retained below -->
 ## Update: Previous report ingestion refinements (2025-10-05)
 - **FR-152a** Ensure AddStudy always populates `header_and_findings` and `conclusion` (attempt retrieval regardless of banner validity) and only display studies with at least one report row containing either field.
 
@@ -9,6 +70,13 @@
 - **FR-150** Add new bookmark target `ReportText2` for alternate report text control mapping.
 - **FR-151** Add PACS procedure method tags & service accessors: GetCurrentFindings, GetCurrentConclusion, GetCurrentFindings2, GetCurrentConclusion2.
 - **FR-152** When AddStudy command invoked: gather selected related study metadata, ensure rad_study, verify banner matches patient/study date; pull findings/conclusion (choose longer variant); build partial report JSON with only `header_and_findings` and `conclusion` populated plus duplication in `findings`; insert med.rad_report row (is_created=false, is_mine=false, created_by=radiologist, report_datetime=report date); refresh PreviousStudies from DB.
+
+## Update: Previous study tab modality & toggle reliability (2025-10-02)
+- **FR-153** Previous report Reportified toggle MUST apply reversible formatting using preserved original previous study text (no cumulative transformation loss).
+- **FR-154** Current study label visual element changed from TextBlock to selectable-style Label as interim (final selectable requirement may require read-only TextBox) – MUST still bind `CurrentStudyLabel`.
+- **FR-155** Previous study tab title MUST be formatted `YYYY-MM-DD MOD` where MOD is derived modality (LOINC-derived when available; fallback regex heuristic on studyname).
+- **FR-156** Previous study tabs MUST be unique by the composite (StudyDateTime, Modality). Duplicate combinations are ignored during load/ingest.
+- **FR-157** PACS procedure metadata getter failures MUST NOT propagate exceptions (return null + debug log entry).
 
 ## Prior Recent Updates
 - FR-146 Birth date persistence.
@@ -111,6 +179,15 @@ User or automation needs quick extraction of patient number or study date/time f
 15. **Given multiple SelectionChanged events fire from a single keyboard navigation action, when selection is added via Down/Up keys, then the selection is preserved and not immediately cleared by subsequent events.**
 16. **Given completion popup is displayed with 3 items and user has not yet navigated, when user presses Down key for the first time, then selection moves to first item (index 0), and subsequent Down keys navigate normally through remaining items.**
 17. **Given completion popup navigation guard prevents recursive events, when programmatic selection changes occur, then the guard prevents infinite loops while preserving legitimate navigation.**
+18. **Given a previous study with reportified text, when Reportified toggle is changed, then the corresponding previous study text displays with applied reversible formatting.**
+19. **Given the current study label, when viewed, then label displays as selectable-style text and remains bound to `CurrentStudyLabel`.**
+20. **Given a previous study tab with duplicate StudyDateTime and Modality, when loaded, then only one tab is created and others are ignored.**
+21. **Given PACS procedure metadata getters, when invoked, then any failures do not propagate exceptions and are silently logged.**
+22. **Given a new study is started, when related studies are ingested, then Reportified toggle for previous reports is ON by default.**
+23. **Given Add Study command is executed, when patient number/id does not match, then ingestion is halted and a red status message is displayed.**
+24. **Given the application settings window is opened, when Automation (Preview) tab is viewed, then placeholder checkboxes for New Study and Add Study actions are visible.**
+25. **Given a previous study, when Reportified toggle is enabled, then text is restored to original baseline state without reprocessing.**
+26. **Given automation settings, when viewed, then two reorderable lists and one library list are present via drag & drop skeleton.**
 
 ### Edge Cases
 - What happens when studyname mapping window is closed without selection? → [NEEDS CLARIFICATION: fallback behavior – skip, force retry, or mark as unmapped?]
@@ -172,6 +249,24 @@ User or automation needs quick extraction of patient number or study date/time f
 - **FR-132** Completion popup selection guard MUST prevent recursive event handling by using a guard flag to stop infinite loops during programmatic changes while preserving legitimate keyboard navigation.
 - **FR-133** Completion popup MUST: (a) never skip intermediate items during sequential Up/Down navigation (one keypress → move exactly one item), and (b) cap visible item height to at most 8 items (dynamic ListBox MaxHeight) while allowing scroll for overflow.
 - **FR-134** Completion popup MUST auto-size its height exactly to (items_count * measured_item_height + padding) when item_count ≤ 8, and clamp to 8-items height when item_count > 8, updating after list rebuilds and after selection-induced layout changes.
+- **FR-153** Previous report Reportified toggle MUST apply reversible formatting using preserved original previous study text (no cumulative transformation loss).
+- **FR-154** Current study label visual element changed from TextBlock to selectable-style Label as interim (final selectable requirement may require read-only TextBox) – MUST still bind `CurrentStudyLabel`.
+- **FR-155** Previous study tab title MUST be formatted `YYYY-MM-DD MOD` where MOD is derived modality (LOINC-derived when available; fallback regex heuristic on studyname).
+- **FR-156** Previous study tabs MUST be unique by the composite (StudyDateTime, Modality). Duplicate combinations are ignored during load/ingest.
+- **FR-157** PACS procedure metadata getter failures MUST NOT propagate exceptions (return null + debug log entry).
+- **FR-158** Current study label MUST be displayed in a selectable read-only text control (read-only TextBox) instead of non-selectable label (PP2 fix).
+- **FR-159** Previous study tab buttons MUST not toggle off the active tab when clicked again (except when a different overflow item is selected) – at least one tab remains visually active.
+- **FR-160** Adding a previous study MUST perform an UPSERT into `med.rad_report` keyed by (study_id, report_datetime) updating existing row instead of inserting duplicate (constraint: uq_rad_report__studyid_reportdt).
+- **FR-161** On New Study load completion, system MUST automatically load all existing prior studies (with reports) for the patient into previous study tabs (unique by StudyDateTime+Modality rule still applies).
+- **FR-162** AddStudy MUST validate that selected related study patient number/id matches current patient; on mismatch no ingestion occurs and a status message in red is shown.
+- **FR-163** Previous report Reportified toggle MUST default to ON when application starts a new study and after each successful AddStudy ingestion.
+- **FR-164** Settings window MUST expose an "Automation (Preview)" tab with placeholder checkboxes for configuring actions on New Study and Add Study (non-functional skeleton).
+- **FR-165** Previous study initial text MUST be treated as already reportified baseline; toggle OFF performs dereportify transform shown in editors; toggle ON restores original baseline text without reprocessing.
+- **FR-166** Automation settings MUST present two reorderable lists (New Study, Add Study) and one library list via drag & drop skeleton; duplicates prevented per pane (preview, non-persistent).
+- **FR-174** Previous study dereportify (toggle OFF) MUST preserve original newline boundaries; each line independently inverse-transformed (no paragraph reflow).
+- **FR-175** AddStudy MUST normalize patient identifiers (alphanumeric uppercase, stripping punctuation) prior to comparison; mismatch blocks ingestion with explicit status message.
+- **FR-177** Automation module sequences (New Study, Add Study) MUST be persisted locally and drive behavior of New Study command.
+- **FR-178** Settings window MUST use dark theme consistent with main window styling.
 
 ### Functional Requirements (Mapping & Procedures)
 - **FR-090** Studyname→LOINC mapping UI MUST allow multi-part selection, ordering (sequence letters), and duplicate part numbers with distinct sequence order (pair uniqueness rule).
@@ -474,9 +569,3 @@ For full behavioral definitions see MUSM Editor Specification included in design
 ## Feature Update (Reportified Toggle - Inverse Dereportify)
 - Dereportify now performs inverse transformation: removes numeric prefixes, strips trailing single periods, collapses leading numbering indentation, and decapitalizes first token unless token appears capitalized in phrase dictionary snapshot.
 - Arrow prefix spaces removed back to canonical compact form (e.g., `-->Finding` instead of `--> Finding`).
-
----
-## Instrumentation (Reverse Selection Debug)
-- Added detailed Debug.WriteLine logs for selection changes, mouse drag movement, and word highlight decisions to trace reverse (right-to-left) selection issue.
-
----

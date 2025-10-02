@@ -217,26 +217,27 @@
             <Button Content="Pick" Margin="8,0,0,0" Click="OnPick"/>
             <TextBlock Text="Map to:" Margin="12,0,6,0" VerticalAlignment="Center"/>
             <ComboBox x:Name="cmbKnown" Width="300" SelectionChanged="OnKnownSelectionChanged" SelectedValuePath="Tag">
-                <ComboBoxItem Tag="StudyInfoBanner">Study info banner</ComboBoxItem>
-                <ComboBoxItem Tag="RelatedStudyList">Related studies list</ComboBoxItem>
-                <ComboBoxItem Tag="SelectedStudyInSearchResult">Selected study in search result</ComboBoxItem>
-                <ComboBoxItem Tag="SelectedStudyInRelated">Selected study in related studies</ComboBoxItem>
                 <ComboBoxItem Tag="CloseWorklistButton">Close worklist button</ComboBoxItem>
-                <ComboBoxItem Tag="WorklistWindow">Worklist window</ComboBoxItem>
+                <ComboBoxItem Tag="OpenWorklistButton">Open worklist button</ComboBoxItem>
+                <ComboBoxItem Tag="RelatedStudyList">Related studies list</ComboBoxItem>
+                <ComboBoxItem Tag="ReportCommitButton">Report commit button</ComboBoxItem>
+                <ComboBoxItem Tag="ReportInput">Report input</ComboBoxItem>
+                <ComboBoxItem Tag="ReportPane">Report pane</ComboBoxItem>
+                <ComboBoxItem Tag="ReportText">Report text</ComboBoxItem>
+                <ComboBoxItem Tag="ReportText2">Report text 2</ComboBoxItem>
+                <ComboBoxItem Tag="SearchResultsList">Search results list</ComboBoxItem>
+                <ComboBoxItem Tag="SelectedStudyInRelated">Selected study in related studies</ComboBoxItem>
+                <ComboBoxItem Tag="SelectedStudyInSearch">Selected study in search</ComboBoxItem>
+                <ComboBoxItem Tag="StudyInfoBanner">Study info banner</ComboBoxItem>
+                <ComboBoxItem Tag="StudyList">Study list</ComboBoxItem>
+                <ComboBoxItem Tag="StudyRemark">Study remark</ComboBoxItem>
+                <ComboBoxItem Tag="ViewerToolbar">Viewer toolbar</ComboBoxItem>
+                <ComboBoxItem Tag="ViewerWindow">Viewer window</ComboBoxItem>
+                <ComboBoxItem Tag="WorklistListsPane">Worklist lists pane</ComboBoxItem>
+                <ComboBoxItem Tag="WorklistPane">Worklist pane</ComboBoxItem>
                 <ComboBoxItem Tag="WorklistToolbar">Worklist toolbar</ComboBoxItem>
                 <ComboBoxItem Tag="WorklistViewButton">Worklist view button</ComboBoxItem>
-                <ComboBoxItem Tag="WorklistPane">Worklist pane</ComboBoxItem>
-                <ComboBoxItem Tag="WorklistListsPane">Worklist lists pane</ComboBoxItem>
-                <ComboBoxItem Tag="SearchResultsList">Search results list</ComboBoxItem>
-                <ComboBoxItem Tag="ReportPane">Report pane</ComboBoxItem>
-                <ComboBoxItem Tag="StudyList">Study list</ComboBoxItem>
-                <ComboBoxItem Tag="ReportText">Report text</ComboBoxItem>
-                <ComboBoxItem Tag="ReportInput">Report input</ComboBoxItem>
-                <ComboBoxItem Tag="ViewerWindow">Viewer window</ComboBoxItem>
-                <ComboBoxItem Tag="ViewerToolbar">Viewer toolbar</ComboBoxItem>
-                <ComboBoxItem Tag="OpenWorklistButton">Open worklist button</ComboBoxItem>
-                <ComboBoxItem Tag="ReportCommitButton">Report commit button</ComboBoxItem>
-                <ComboBoxItem Tag="ReportText2">Report text 2</ComboBoxItem>
+                <ComboBoxItem Tag="WorklistWindow">Worklist window</ComboBoxItem>
             </ComboBox>
             <Button Content="Map" Margin="6,0,0,0" Click="OnMapSelected"/>
             <Button Content="Resolve" Margin="6,0,0,0" Click="OnResolveSelected"/>
@@ -315,7 +316,15 @@
                         <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteNode"/>
                     </StackPanel>
 
-                    <DataGrid x:Name="gridChain" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="True" CanUserDeleteRows="True" IsReadOnly="False">
+                    <DataGrid x:Name="gridChain" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="True" CanUserDeleteRows="True" IsReadOnly="False" CellEditEnding="OnGridCellEditEnding">
+                        <DataGrid.Resources>
+                            <Style TargetType="CheckBox" BasedOn="{StaticResource DarkCheckBox}">
+                                <EventSetter Event="Click" Handler="OnTemplateCheckBoxClick"/>
+                            </Style>
+                            <Style TargetType="ComboBox">
+                                <EventSetter Event="SelectionChanged" Handler="OnTemplateComboSelectionChanged"/>
+                            </Style>
+                        </DataGrid.Resources>
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="Scope" Width="105">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -407,6 +416,7 @@
                         <!-- New PACS methods -->
                         <ComboBoxItem Tag="GetCurrentPatientNumber">Get current patient number</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentStudyDateTime">Get current study date time</ComboBoxItem>
+                        <ComboBoxItem Tag="GetCurrentStudyRemark">Get current study remark</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentFindings">Get current findings</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentConclusion">Get current conclusion</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentFindings2">Get current findings 2</ComboBoxItem>

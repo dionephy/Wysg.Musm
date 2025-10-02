@@ -1,20 +1,227 @@
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using Wysg.Musm.Radium.ViewModels;
 
 namespace Wysg.Musm.Radium.Views
 {
     public partial class SettingsWindow : Window
     {
-        public SettingsWindow()
+        private Border? _dragGhost; private string? _dragItem; private ListBox? _dragSource; private Border? _dropIndicator;
+
+        public SettingsWindow() { InitializeComponent(); DataContext = new SettingsViewModel(); InitializeAutomationLists(); }
+        public SettingsWindow(SettingsViewModel vm) { InitializeComponent(); DataContext = vm; InitializeAutomationLists(); }
+
+        // After DataContext set, call LoadAutomation and bind ListBoxes to VM collections
+        private void InitializeAutomationLists()
         {
-            InitializeComponent();
-            DataContext = new SettingsViewModel();
+            if (DataContext is not SettingsViewModel vm) return;
+            if (FindName("lstLibrary") is ListBox lib) lib.ItemsSource = vm.AvailableModules;
+            if (FindName("lstNewStudy") is ListBox ns) ns.ItemsSource = vm.NewStudyModules;
+            if (FindName("lstAddStudy") is ListBox add) add.ItemsSource = vm.AddStudyModules;
+            vm.LoadAutomation();
         }
 
-        public SettingsWindow(SettingsViewModel vm)
+        private Point _dragStart;
+        // Modify OnProcDrag to record source index
+        private int _dragSourceIndex = -1;
+        private void OnProcDrag(object sender, MouseEventArgs e)
         {
-            InitializeComponent();
-            DataContext = vm;
+            if (e.LeftButton != MouseButtonState.Pressed) return;
+            if (sender is ListBox lb && lb.SelectedItem is string item)
+            {
+                if ((e.GetPosition(lb) - _dragStart).Length < 6) return;
+                _dragItem = item; _dragSource = lb; _dragSourceIndex = lb.SelectedIndex;
+                Debug.WriteLine($"[AutoDrag] start item='{item}' src={_dragSource?.Name} idx={_dragSourceIndex}");
+                CreateGhost(item, e.GetPosition(this));
+                DragDrop.DoDragDrop(lb, new DataObject("musm-proc", item), DragDropEffects.Move | DragDropEffects.Copy);
+                RemoveGhost();
+            }
+        }
+        protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e) { base.OnPreviewMouseLeftButtonDown(e); _dragStart = e.GetPosition(this); }
+
+        // Update OnProcDrop implementation for proper library behavior and indicator clearing
+        private void OnProcDrop(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent("musm-proc")) { Debug.WriteLine("[AutoDrop] no data"); ClearDropIndicator(); RemoveGhost(); return; }
+            if (sender is not ListBox target) { Debug.WriteLine("[AutoDrop] target not list"); ClearDropIndicator(); RemoveGhost(); return; }
+            string item = (string)e.Data.GetData("musm-proc")!;
+            var targetList = GetListForListBox(target);
+            if (targetList == null) { Debug.WriteLine("[AutoDrop] target list null"); ClearDropIndicator(); RemoveGhost(); return; }
+
+            bool fromLibrary = _dragSource?.Name == "lstLibrary";
+            bool sameList = _dragSource == target;
+            Debug.WriteLine($"[AutoDrop] item='{item}' fromLib={fromLibrary} sameList={sameList} target={target.Name}");
+
+            if (target.Name == "lstLibrary")
+            {
+                // Always keep library copy; do not remove from source (copy semantics)
+                if (!targetList.Contains(item)) targetList.Add(item);
+                ClearDropIndicator(); RemoveGhost(); return;
+            }
+
+            int insertIndex = GetItemInsertIndex(target, e.GetPosition(target));
+            if (insertIndex < 0 || insertIndex > targetList.Count) insertIndex = targetList.Count;
+
+            if (sameList && !fromLibrary)
+            {
+                // Move inside same list (reorder)
+                if (_dragSourceIndex >= 0 && _dragSourceIndex < targetList.Count)
+                {
+                    if (insertIndex > _dragSourceIndex) insertIndex--; // account for removal
+                    targetList.RemoveAt(_dragSourceIndex);
+                }
+                targetList.Insert(insertIndex, item);
+            }
+            else if (fromLibrary)
+            {
+                // Copy from library (allow duplicates)
+                targetList.Insert(insertIndex, item);
+            }
+            else
+            {
+                // Move from other ordered list
+                var srcList = GetListForListBox(_dragSource!);
+                if (srcList != null && _dragSourceIndex >= 0 && _dragSourceIndex < srcList.Count)
+                {
+                    // remove the specific source instance at index (even if duplicates exist)
+                    srcList.RemoveAt(_dragSourceIndex);
+                }
+                targetList.Insert(insertIndex, item);
+            }
+            ClearDropIndicator(); RemoveGhost();
+        }
+
+        private void CreateGhost(string text, Point pos)
+        {
+            RemoveGhost(); _dragGhost = new Border { Background = new SolidColorBrush(Color.FromArgb(180, 60, 120, 255)), BorderBrush = Brushes.DodgerBlue, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3), Padding = new Thickness(6,2,6,2), Child = new TextBlock { Text = text, Foreground = Brushes.White }, IsHitTestVisible = false };
+            AddChildToOverlay(_dragGhost, pos);
+        }
+        private void AddChildToOverlay(FrameworkElement fe, Point pos)
+        { if (Content is not Grid root) return; if (root.Children.OfType<Canvas>().FirstOrDefault(c => c.Name == "GhostCanvas") is not Canvas canvas) { canvas = new Canvas { Name = "GhostCanvas", IsHitTestVisible = false }; root.Children.Add(canvas); } canvas.Children.Add(fe); Canvas.SetLeft(fe, pos.X + 8); Canvas.SetTop(fe, pos.Y + 8); }
+        private void RemoveGhost() { if (Content is not Grid root) return; if (_dragGhost == null) return; var canvas = root.Children.OfType<Canvas>().FirstOrDefault(c => c.Name == "GhostCanvas"); canvas?.Children.Remove(_dragGhost); _dragGhost = null; _dragItem = null; _dragSource = null; }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        { base.OnMouseMove(e); if (_dragGhost != null && Content is Grid root) { var pos = e.GetPosition(root); Canvas.SetLeft(_dragGhost, pos.X + 8); Canvas.SetTop(_dragGhost, pos.Y + 8); } }
+
+        protected override void OnDragOver(DragEventArgs e)
+        {
+            base.OnDragOver(e); if (!e.Data.GetDataPresent("musm-proc")) { ClearDropIndicator(); return; } if (_dragGhost != null && Content is Grid root) { var pos = e.GetPosition(root); Canvas.SetLeft(_dragGhost, pos.X + 8); Canvas.SetTop(_dragGhost, pos.Y + 8); }
+            if (e.OriginalSource is DependencyObject d)
+            {
+                var lb = FindAncestor<ListBox>(d); if (lb != null && (lb.Name == "lstNewStudy" || lb.Name == "lstAddStudy")) { EnsureDropIndicator(lb); var p = e.GetPosition(lb); int idx = GetItemInsertIndex(lb, p); PositionDropIndicator(lb, idx); }
+                else ClearDropIndicator();
+            }
+        }
+        protected override void OnDragLeave(DragEventArgs e) { base.OnDragLeave(e); }
+        protected override void OnDrop(DragEventArgs e)
+        { base.OnDrop(e); ClearDropIndicator(); RemoveGhost(); }
+
+        private static T? FindAncestor<T>(DependencyObject current) where T : DependencyObject
+        { while (current != null) { if (current is T t) return t; current = VisualTreeHelper.GetParent(current); } return null; }
+        private ObservableCollection<string>? GetListForListBox(ListBox lb)
+        {
+            if (DataContext is not SettingsViewModel vm) return null;
+            return lb.Name switch
+            {
+                "lstLibrary" => vm.AvailableModules,
+                "lstNewStudy" => vm.NewStudyModules,
+                "lstAddStudy" => vm.AddStudyModules,
+                _ => null
+            };
+        }
+
+        private ObservableCollection<string>? GetListForItem(string item)
+        {
+            if (DataContext is not SettingsViewModel vm) return null;
+            if (vm.NewStudyModules.Contains(item)) return vm.NewStudyModules;
+            if (vm.AddStudyModules.Contains(item)) return vm.AddStudyModules;
+            if (vm.AvailableModules.Contains(item)) return vm.AvailableModules;
+            return null;
+        }
+
+        private int GetItemInsertIndex(ListBox lb, Point pos) { for (int i = 0; i < lb.Items.Count; i++) { if (lb.ItemContainerGenerator.ContainerFromIndex(i) is FrameworkElement fe) { var r = fe.TransformToAncestor(lb).TransformBounds(new Rect(0,0,fe.ActualWidth,fe.ActualHeight)); if (pos.Y < r.Top + r.Height/2) return i; } } return lb.Items.Count; }
+
+        private void EnsureDropIndicator(ListBox host)
+        {
+            if (_dropIndicator != null) return; if (Content is not Grid root) return; if (root.Children.OfType<Canvas>().FirstOrDefault(c => c.Name == "GhostCanvas") is not Canvas canvas) { canvas = new Canvas { Name = "GhostCanvas", IsHitTestVisible = false }; root.Children.Add(canvas); }
+            _dropIndicator = new Border { Height = 2, Background = Brushes.OrangeRed, IsHitTestVisible = false, Opacity = 0.85 }; canvas.Children.Add(_dropIndicator);
+        }
+        private void PositionDropIndicator(ListBox lb, int index)
+        {
+            if (_dropIndicator == null) return; if (Content is not Grid root) return; var canvas = root.Children.OfType<Canvas>().FirstOrDefault(c => c.Name == "GhostCanvas"); if (canvas == null) return; double y = 0; if (index >= lb.Items.Count) { if (lb.Items.Count > 0) { if (lb.ItemContainerGenerator.ContainerFromIndex(lb.Items.Count -1) is FrameworkElement last) { var b = last.TransformToAncestor(lb).TransformBounds(new Rect(0,0,last.ActualWidth,last.ActualHeight)); y = b.Bottom + 1; } } } else { if (lb.ItemContainerGenerator.ContainerFromIndex(index) is FrameworkElement item) { var b = item.TransformToAncestor(lb).TransformBounds(new Rect(0,0,item.ActualWidth,item.ActualHeight)); y = b.Top - 1; } }
+            var lbPos = lb.TransformToAncestor(root).Transform(new Point(0,0)); Canvas.SetLeft(_dropIndicator, lbPos.X + 4); Canvas.SetTop(_dropIndicator, lbPos.Y + y); _dropIndicator.Width = lb.ActualWidth - 8;
+        }
+        private void ClearDropIndicator()
+        {
+            if (_dropIndicator == null) return;
+            if (Content is not Grid root) return;
+            var canvas = root.Children.OfType<Canvas>().FirstOrDefault(c => c.Name == "GhostCanvas");
+            canvas?.Children.Remove(_dropIndicator); _dropIndicator = null;
+            Debug.WriteLine("[AutoDrag] drop indicator cleared");
+        }
+
+        protected override void OnPreviewMouseLeftButtonUp(MouseButtonEventArgs e)
+        {
+            base.OnPreviewMouseLeftButtonUp(e);
+            ClearDropIndicator();
+            RemoveGhost();
+        }
+
+        protected override void OnSourceInitialized(System.EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            TryEnableDarkTitleBar();
+        }
+
+        private void TryEnableDarkTitleBar()
+        {
+            try
+            {
+                var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+                if (hwnd == System.IntPtr.Zero) return;
+                int useImmersiveDarkMode = 1;
+                const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
+                const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+                if (DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useImmersiveDarkMode, sizeof(int)) != 0)
+                {
+                    DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref useImmersiveDarkMode, sizeof(int));
+                }
+            }
+            catch { }
+        }
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(System.IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        // Add handler for remove button click
+        private void OnRemoveModuleClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is not Button btn) return;
+                var listBoxItem = FindAncestor<ListBoxItem>(btn);
+                if (listBoxItem?.DataContext is not string module) return;
+                var parentListBox = FindAncestor<ListBox>(btn);
+                if (parentListBox == null) return;
+                var list = GetListForListBox(parentListBox);
+                if (list == null) return;
+                int idx = parentListBox.ItemContainerGenerator.IndexFromContainer(listBoxItem);
+                if (idx >= 0 && idx < list.Count) list.RemoveAt(idx);
+                Debug.WriteLine($"[AutoRemove] removed '{module}' idx={idx} from {parentListBox.Name}");
+            }
+            catch (Exception ex) { Debug.WriteLine("[AutoRemove] error " + ex.Message); }
+        }
+
+        // Clear indicator when leaving list area
+        private void OnListDragLeave(object sender, DragEventArgs e)
+        {
+            // When pointer leaves a list's visual tree, clear indicator.
+            ClearDropIndicator();
         }
     }
 }
