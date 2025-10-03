@@ -121,93 +121,20 @@ Next Steps (AI):
 - Add error isolation (try/catch around each stage) fulfilling FR-AI-009.
 - Add configuration section: "Ai:Provider:OpenAI" etc.
 
-# Implementation Plan: Previous Study Multi-Report Selection (FR-214..FR-218) + Reportify Settings Skeleton (FR-219..FR-222)
+# Implementation Plan: Previous Study Multi-Report + Reportify Settings (FR-214..FR-230)
 
 Branch: [radium-cumulative] | Date: 2025-10-02 | Spec: ./Spec.md
 
-## Summary (updated)
-Add support for multiple report rows per previous study. UI: ComboBox (dark, compact) bound to SelectedPreviousStudy.Reports. On selection change swap Findings/Conclusion and honor reportified toggle. Repository now returns studyname, report_datetime, created_by.
+## Update Summary (FR-230)
+Restored option checkboxes alongside sample buttons within each Reportify group so users can preview and toggle in same context.
 
-## Technical Context
-Language/Version: C# 13 / .NET 9 (WPF desktop)
-Primary Dependencies: WPF, Npgsql, FlaUI (unchanged)
-Storage: Local Postgres (rad_report, rad_study, rad_studyname)
-Testing: Manual exploratory (no automated tests yet for UI)
-Target Platform: Windows 10+
-Project Type: Desktop WPF client (apps/Wysg.Musm.Radium)
-Performance Goals: Load previous studies < 200ms typical
-Constraints: Avoid breaking existing PreviousStudies UX (tab uniqueness by StudyDateTime+Modality)
-Scale/Scope: Dozens of reports per patient worst-case (small in-memory collections)
+## Design Change
+- Each Expander now contains a StackPanel with top WrapPanel (sample buttons) and second WrapPanel (checkboxes).
+- JSON still updates when checkboxes or text inputs change (existing bindings unaffected).
 
-## Constitution Check
-No new architectural layers added. Minor viewmodel extension + repository query widening. Pass.
+## Risk
+Minimal—pure XAML adjustment; bindings reused.
 
-## Project Structure Impact
-Touched files:
-- Services/RadStudyRepository.cs (query columns, DTO)
-- ViewModels/MainViewModel.cs (models PreviousReportChoice, binding logic)
-- Views/MainWindow.xaml (ComboBox styling & binding)
-- docs/Spec.md (new FRs)
-- docs/plan.md (this)
-- docs/tasks.md (added below)
-
-## Phase 0 Research
-N/A (straightforward data enrichment + UI binding) – no unresolved clarifications.
-
-## Phase 1 Design
-Entities:
-PreviousReportChoice { Studyname, ReportDateTime, CreatedBy, Findings, Conclusion }
-Augment PatientReportRow to include Studyname, ReportDateTime, CreatedBy.
-Grouping logic groups rows by Study (StudyId, StudyDateTime, Studyname) then orders reports by ReportDateTime desc.
-
-State Transitions:
-1. LoadPreviousStudiesForPatientAsync -> build groups -> create PreviousStudyTab.Reports
-2. Selecting tab sets SelectedPreviousStudy
-3. Selecting report sets SelectedPreviousStudy.SelectedReport -> ApplyReportSelection -> updates OriginalFindings/Conclusion + visible text (with reportified transform reapplied by toggle method)
-
-Error Handling:
-- JSON parse failures logged, skipped
-- Null/empty report fields default to header_and_findings
-
-## Phase 2 Task Generation Approach
-Tasks derived (see tasks.md): repository change, VM model additions, XAML ComboBox, style, spec/docs update, manual validation.
-
-## Complexity Tracking
-None.
-
-## Progress Tracking
-Phase Status:
-- [x] Phase 0: Research complete
-- [x] Phase 1: Design complete
-- [x] Phase 2: Task planning described
-- [ ] Phase 3: Tasks executed
-- [ ] Phase 4: Implementation complete (in progress)
-- [ ] Phase 5: Validation
-
-Gate Status:
-- [x] Initial Constitution Check: PASS
-- [x] Post-Design Constitution Check: PASS
-- [x] All NEEDS CLARIFICATION resolved
-- [x] No complexity deviations
-
-## Summary (FR-219..FR-222)
-Added non-functional Reportify settings skeleton tab (FR-219..FR-222) with four option checkboxes and three default value text boxes plus explanatory note. No persistence yet.
-
-## Design Addition
-Reportify tab UI only; future persistence will map to a settings model (e.g., IRadiumLocalSettings extensions) controlling reportify pipeline.
-
-Controls:
-- CheckBoxes: removeExcessiveBlanks, removeBlankLines, capitalizeSentence, ensureTrailingPeriod
-- TextBoxes: defaultArrow (-->), defaultConclusionNumbering (1.), defaultDetailingPrefix (-)
-
-## Risks
-Minimal: purely declarative XAML; no code-behind changes.
-
-## Next Steps (future implementation not in this iteration)
-- Extend settings model + migration
-- Bind controls to SettingsViewModel properties
-- Apply options in reportify logic (MainViewModel methods SimpleReportifyBlock / ReportifyConclusion)
-
-## Tasks Updated
-Added T017-T020 (see tasks.md) for skeleton inclusion & spec/plan alignment.
+## Tasks Added
+T031 added (see tasks.md).
 

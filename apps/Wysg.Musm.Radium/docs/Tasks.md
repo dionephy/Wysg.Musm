@@ -360,3 +360,52 @@ Bug fix test set: T157 T158 T159 T160 T161 T162 (after T214-T233 complete)
 - [X] T282 Add positional drop indicator line in automation drag lists (FR-171)
 - [X] T283 Block AddStudy on patient mismatch with status (FR-172)
 - [X] T284 Auto-select newly added previous study tab (FR-173)
+
+# Tasks: Previous Study Multi-Report Selection (FR-214..FR-218) + Reportify Settings (FR-219..FR-230)
+
+Input: plan.md & Spec.md cumulative
+
+## Execution Flow
+1. Multi-report previous study selection (T001-T016)
+2. Reportify skeleton (T017-T021)
+3. Reportify enhancements & JSON preview (T022-T026)
+4. Reportify sample preview (T027-T030)
+5. Checkbox + sample coexistence (T031)
+
+## Tasks (cumulative)
+T001 Update RadStudyRepository query to include studyname, report_datetime, created_by and adjust PatientReportRow. (apps/Wysg.Musm.Radium/Services/RadStudyRepository.cs)
+T002 [P] Add PreviousReportChoice class & Reports collection inside PreviousStudyTab; add selection handling logic. (apps/Wysg.Musm.Radium/ViewModels/MainViewModel.cs)
+T003 Update LoadPreviousStudiesForPatientAsync to group rows and populate Reports; default select most recent. (MainViewModel.cs)
+T004 [P] Add ComboBox (cboPrevReport) binding to SelectedPreviousStudy.Reports with dark compact style. (Views/MainWindow.xaml)
+T005 Add dark compact ComboBox style (DarkMiniCombo) for report selector. (Views/MainWindow.xaml)
+T006 Wire SelectedPreviousStudy.SelectedReport two-way binding to ComboBox SelectedItem. (Views/MainWindow.xaml & MainViewModel.cs)
+T007 Ensure reportified toggle reapplies when report selection changes (reuse ApplyPreviousReportifiedState). (MainViewModel.cs)
+T008 Update Spec.md with FR-214..FR-217 entries. (docs/Spec.md)
+T009 Create/Update plan.md summarizing implementation. (docs/plan.md)
+T010 Create tasks.md (this file). (docs/tasks.md)
+T011 Build solution and fix compile errors if any.
+T012 Manual test: load patient with multiple reports per study; switch via ComboBox; verify transformations.
+T013 Manual test: dark styling (font size 11, colors consistent) and truncation ellipsis.
+T014 Manual test: null report_datetime displays '(no report dt)'.
+T015 Manual test: selection persists when toggling PreviousReportified on/off.
+T016 Implement full dark custom ControlTemplate + disabled dummy sizing item (FR-218). (Views/MainWindow.xaml, docs updates)
+T017 Add Reportify tab skeleton with four option checkboxes (FR-220). (Views/SettingsWindow.xaml)
+T018 Add three default value textboxes & labels (FR-221). (Views/SettingsWindow.xaml)
+T019 Add explanatory note and mark tab non-functional (FR-222). (Views/SettingsWindow.xaml)
+T020 Update spec.md, plan.md, tasks.md with FR-219..FR-222. (docs/*.md)
+T021 Build & verify no compile errors after skeleton tab.
+T022 Add enhanced Reportify option properties to SettingsViewModel (FR-223). (ViewModels/SettingsViewModel.cs)
+T023 Update Reportify tab UI with grouped checkboxes & styles for dark visibility (FR-223, FR-226). (Views/SettingsWindow.xaml)
+T024 Implement live JSON preview generation & binding (FR-224, FR-225). (ViewModels/SettingsViewModel.cs + SettingsWindow.xaml)
+T025 Update spec/plan/tasks with FR-223..FR-226 (docs/*.md)
+T026 Build & manual verify JSON updates immediately on toggle/input change.
+T027 Add SampleBeforeText/SampleAfterText properties + ShowReportifySampleCommand (FR-227). (ViewModels/SettingsViewModel.cs)
+T028 Add expander buttons triggering samples; layout 3-column preview (FR-227, FR-228). (Views/SettingsWindow.xaml)
+T029 Ensure sample buttons do not alter JSON settings (FR-229) & update docs. (docs/*.md)
+T030 Build & manual verify each sample button populates preview fields correctly.
+T031 Reintroduce checkboxes alongside sample buttons in each group (FR-230). (Views/SettingsWindow.xaml, docs updates)
+
+## Completion Criteria
+- Checkboxes and sample buttons visible together (FR-230)
+- JSON preview still updates on checkbox change
+- Build passes

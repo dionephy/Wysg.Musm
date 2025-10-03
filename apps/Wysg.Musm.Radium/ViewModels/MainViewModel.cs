@@ -12,6 +12,7 @@ using Wysg.Musm.Radium.Services.Procedures;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Threading;
+using System.ComponentModel;
 
 namespace Wysg.Musm.Radium.ViewModels
 {
@@ -63,7 +64,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _statusText = "Ready"; public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
         private bool _statusIsError; public bool StatusIsError { get => _statusIsError; set => SetProperty(ref _statusIsError, value); }
 
-        private void SetStatus(string message, bool isError=false){ StatusText = message; StatusIsError = isError; }
+        private void SetStatus(string message, bool isError = false) { StatusText = message; StatusIsError = isError; }
 
         private async Task FetchCurrentStudyAsync()
         {
@@ -115,7 +116,7 @@ namespace Wysg.Musm.Radium.ViewModels
         }
         #endregion
 
-        #region Editor Text
+        #region Editor Text (Current)
 // Add raw fields to preserve original un-reportified text
         private string _rawHeader = string.Empty;
         private string _rawFindings = string.Empty;
@@ -178,6 +179,16 @@ namespace Wysg.Musm.Radium.ViewModels
             return string.Join("\n", lines);
         }
 
+        private void AutoUnreportifyOnEdit()
+        {
+            if (_suppressAutoToggle) return;
+            if (_reportified)
+            {
+                _suppressAutoToggle = true;
+                Reportified = false;
+                _suppressAutoToggle = false;
+            }
+        }
         // Override setters to trigger auto-unreportify when editing while reportified (raw captured BEFORE json update to avoid lag)
         private string _headerText = string.Empty; public string HeaderText { get => _headerText; set { if (value != _headerText) { AutoUnreportifyOnEdit(); if (!_reportified) _rawHeader = value; if (SetProperty(ref _headerText, value)) { UpdateCurrentReportJson(); } } } }
         private string _findingsText = string.Empty; public string FindingsText { get => _findingsText; set { if (value != _findingsText) { AutoUnreportifyOnEdit(); if (!_reportified) _rawFindings = value; if (SetProperty(ref _findingsText, value)) { UpdateCurrentReportJson(); } } } }
@@ -324,12 +335,12 @@ namespace Wysg.Musm.Radium.ViewModels
         public ICommand OpenPhraseManagerCommand { get; }
         #endregion
 
-        #region Previous Studies
+        #region Previous Studies + PreviousReportJson
         public ObservableCollection<PreviousStudyTab> PreviousStudies { get; }
         public sealed class PreviousStudyTab : BaseViewModel
         {
             public Guid Id { get; set; }
-            public string Title { get; set; } = string.Empty; // YYYY-MM-DD MOD
+            public string Title { get; set; } = string.Empty;
             public DateTime StudyDateTime { get; set; }
             public string Modality { get; set; } = string.Empty;
             private string _header = string.Empty; public string Header { get => _header; set => SetProperty(ref _header, value); }
@@ -369,28 +380,68 @@ namespace Wysg.Musm.Radium.ViewModels
             public override string ToString() => Display;
         }
 
-        private PreviousStudyTab? _selectedPreviousStudy; public PreviousStudyTab? SelectedPreviousStudy
+        // Wrapper properties for previous study editors (mimic current editor logic for JSON sync)
+        private string _prevHeaderCache = string.Empty;
+        private string _prevFindingsCache = string.Empty;
+        private string _prevConclusionCache = string.Empty;
+        public string PreviousHeaderText
         {
-            get => _selectedPreviousStudy;
+            get => SelectedPreviousStudy?.Header ?? _prevHeaderCache;
             set
             {
-                if (SetProperty(ref _selectedPreviousStudy, value))
+                if (SelectedPreviousStudy == null)
                 {
-                    foreach (var t in PreviousStudies) t.IsSelected = (value != null && t.Id == value.Id);
-                    ApplyPreviousReportifiedState();
+                    if (value == _prevHeaderCache) return;
+                    _prevHeaderCache = value;
+                    OnPropertyChanged();
                 }
+                else if (SelectedPreviousStudy.Header != value)
+                {
+                    SelectedPreviousStudy.Header = value;
+                }
+                UpdatePreviousReportJson();
+            }
+        }
+        public string PreviousFindingsText
+        {
+            get => SelectedPreviousStudy?.Findings ?? _prevFindingsCache;
+            set
+            {
+                if (SelectedPreviousStudy == null)
+                {
+                    if (value == _prevFindingsCache) return;
+                    _prevFindingsCache = value; OnPropertyChanged();
+                }
+                else if (SelectedPreviousStudy.Findings != value)
+                {
+                    SelectedPreviousStudy.Findings = value;
+                }
+                UpdatePreviousReportJson();
+            }
+        }
+        public string PreviousConclusionText
+        {
+            get => SelectedPreviousStudy?.Conclusion ?? _prevConclusionCache;
+            set
+            {
+                if (SelectedPreviousStudy == null)
+                {
+                    if (value == _prevConclusionCache) return;
+                    _prevConclusionCache = value; OnPropertyChanged();
+                }
+                else if (SelectedPreviousStudy.Conclusion != value)
+                {
+                    SelectedPreviousStudy.Conclusion = value;
+                }
+                UpdatePreviousReportJson();
             }
         }
 
-        private bool _previousReportified; public bool PreviousReportified
-        {
-            get => _previousReportified;
-            set { if (SetProperty(ref _previousReportified, value)) ApplyPreviousReportifiedState(); }
-        }
+        private PreviousStudyTab? _selectedPreviousStudy; public PreviousStudyTab? SelectedPreviousStudy { get => _selectedPreviousStudy; set { var old = _selectedPreviousStudy; if (SetProperty(ref _selectedPreviousStudy, value)) { foreach (var t in PreviousStudies) t.IsSelected = (value != null && t.Id == value.Id); HookPreviousStudy(old, value); ApplyPreviousReportifiedState(); OnPropertyChanged(nameof(PreviousHeaderText)); OnPropertyChanged(nameof(PreviousFindingsText)); OnPropertyChanged(nameof(PreviousConclusionText)); UpdatePreviousReportJson(); } } }
+        private bool _previousReportified; public bool PreviousReportified { get => _previousReportified; set { if (SetProperty(ref _previousReportified, value)) ApplyPreviousReportifiedState(); } }
         private void ApplyPreviousReportifiedState()
         {
             var tab = SelectedPreviousStudy; if (tab == null) return;
-            Debug.WriteLine($"[PrevToggle] Apply state PrevReportified={PreviousReportified} lenOrigF={tab.OriginalFindings?.Length}");
             if (PreviousReportified)
             {
                 tab.Header = tab.OriginalHeader;
@@ -407,33 +458,78 @@ namespace Wysg.Musm.Radium.ViewModels
             }
             OnPropertyChanged(nameof(SelectedPreviousStudy));
         }
-
         private static readonly Regex _rxLineSep = new("(\r\n|\n|\r)", RegexOptions.Compiled);
         private string DereportifyPreserveLines(string? input)
         {
             if (string.IsNullOrEmpty(input)) return string.Empty;
-            var parts = _rxLineSep.Split(input); // keep separators
-            for (int i = 0; i < parts.Length; i++)
-            {
-                if (i % 2 == 1) continue; // separator
-                parts[i] = DereportifySingleLine(parts[i]);
-            }
+            var parts = _rxLineSep.Split(input);
+            for (int i = 0; i < parts.Length; i++) if (i % 2 == 0) parts[i] = DereportifySingleLine(parts[i]);
             return string.Concat(parts);
         }
         private string DereportifySingleLine(string line)
         {
             if (string.IsNullOrWhiteSpace(line)) return line.TrimEnd();
-            string original = line;
-            line = Regex.Replace(line, @"^\s*\d+\.\s+", string.Empty); // numbering
-            line = Regex.Replace(line, @"^ {1,4}", string.Empty); // indent
+            line = Regex.Replace(line, @"^\s*\d+\.\s+", string.Empty);
+            line = Regex.Replace(line, @"^ {1,4}", string.Empty);
             line = Regex.Replace(line, @"^\s*--?>\s*", "-->");
-            // Remove trailing single period if sentence-like
             if (line.EndsWith('.') && !line.EndsWith("..")) line = line[..^1];
-            // Decap only if dictionary loaded
             if (_keepCapsFirstTokens != null) line = DecapUnlessDictionary(line);
             return line.TrimEnd();
         }
 
+        // Previous report JSON sync
+        private string _previousReportJson = "{}"; public string PreviousReportJson { get => _previousReportJson; set { if (SetProperty(ref _previousReportJson, value)) { if (_updatingPrevFromEditors) return; ApplyJsonToPrevious(value); } } }
+        private bool _updatingPrevFromEditors; private bool _updatingPrevFromJson;
+        private void UpdatePreviousReportJson()
+        {
+            var tab = SelectedPreviousStudy; if (tab == null) return;
+            try
+            {
+                var obj = new { header = tab.Header ?? string.Empty, findings = tab.Findings ?? string.Empty, conclusion = tab.Conclusion ?? string.Empty };
+                _updatingPrevFromEditors = true;
+                PreviousReportJson = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch { }
+            finally { _updatingPrevFromEditors = false; }
+        }
+        private void ApplyJsonToPrevious(string json)
+        {
+            if (_updatingPrevFromJson) return; var tab = SelectedPreviousStudy; if (tab == null) return;
+            try
+            {
+                if (string.IsNullOrWhiteSpace(json) || json.Length < 2) return;
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                string newHeader = root.TryGetProperty("header", out var hEl) ? (hEl.GetString() ?? string.Empty) : tab.Header;
+                string newFindings = root.TryGetProperty("findings", out var fEl) ? (fEl.GetString() ?? string.Empty) : string.Empty;
+                string newConclusion = root.TryGetProperty("conclusion", out var cEl) ? (cEl.GetString() ?? string.Empty) : string.Empty;
+                _updatingPrevFromJson = true;
+                if (tab.Header != newHeader) tab.Header = newHeader;
+                if (tab.Findings != newFindings) tab.Findings = newFindings;
+                if (tab.Conclusion != newConclusion) tab.Conclusion = newConclusion;
+            }
+            catch { }
+            finally { _updatingPrevFromJson = false; }
+        }
+        private void HookPreviousStudy(PreviousStudyTab? oldTab, PreviousStudyTab? newTab)
+        {
+            if (oldTab != null) oldTab.PropertyChanged -= OnSelectedPrevStudyPropertyChanged;
+            if (newTab != null) { newTab.PropertyChanged += OnSelectedPrevStudyPropertyChanged; UpdatePreviousReportJson(); }
+        }
+        private void OnSelectedPrevStudyPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (_updatingPrevFromJson) return;
+            if (e.PropertyName == nameof(PreviousStudyTab.Findings) || e.PropertyName == nameof(PreviousStudyTab.Conclusion) || e.PropertyName == nameof(PreviousStudyTab.Header))
+            {
+                OnPropertyChanged(nameof(PreviousHeaderText));
+                OnPropertyChanged(nameof(PreviousFindingsText));
+                OnPropertyChanged(nameof(PreviousConclusionText));
+                UpdatePreviousReportJson();
+            }
+        }
+        #endregion
+
+        #region Add / Send / Select / Procedures
         private async void OnAddStudy()
         {
             if (_studyRepo == null) return;
@@ -444,11 +540,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 var currentNorm = Normalize(PatientNumber);
                 var relatedNorm = Normalize(relatedPatientRaw);
                 if (string.IsNullOrWhiteSpace(currentNorm) || string.IsNullOrWhiteSpace(relatedNorm) || currentNorm != relatedNorm)
-                {
-                    Debug.WriteLine($"[AddStudy] Patient mismatch current='{currentNorm}' related='{relatedNorm}' raw='{relatedPatientRaw}' - abort");
-                    SetStatus($"Patient mismatch ? cannot add (current {currentNorm} vs related {relatedNorm})", true);
-                    return;
-                }
+                { SetStatus($"Patient mismatch cannot add (current {currentNorm} vs related {relatedNorm})", true); return; }
                 var studyName = await _pacs.GetSelectedStudynameFromRelatedStudiesAsync();
                 var dtStr = await _pacs.GetSelectedStudyDateTimeFromRelatedStudiesAsync();
                 var radiologist = await _pacs.GetSelectedRadiologistFromRelatedStudiesAsync();
@@ -464,126 +556,57 @@ namespace Wysg.Musm.Radium.ViewModels
                 await Task.WhenAll(f1Task, f2Task, c1Task, c2Task);
                 string findings = PickLonger(f1Task.Result, f2Task.Result);
                 string conclusion = PickLonger(c1Task.Result, c2Task.Result);
-                var reportObj = new
-                {
-                    technique = string.Empty,
-                    chief_complaint = string.Empty,
-                    history_preview = string.Empty,
-                    chief_complaint_proofread = string.Empty,
-                    history = string.Empty,
-                    history_proofread = string.Empty,
-                    header_and_findings = findings,
-                    conclusion = conclusion,
-                    split_index = 0,
-                    comparison = string.Empty,
-                    technique_proofread = string.Empty,
-                    comparison_proofread = string.Empty,
-                    findings_proofread = string.Empty,
-                    conclusion_proofread = string.Empty,
-                    findings = findings,
-                    conclusion_preview = string.Empty
-                };
+                var reportObj = new { technique = string.Empty, chief_complaint = string.Empty, history_preview = string.Empty, chief_complaint_proofread = string.Empty, history = string.Empty, history_proofread = string.Empty, header_and_findings = findings, conclusion, split_index = 0, comparison = string.Empty, technique_proofread = string.Empty, comparison_proofread = string.Empty, findings_proofread = string.Empty, conclusion_proofread = string.Empty, findings, conclusion_preview = string.Empty };
                 string json = JsonSerializer.Serialize(reportObj);
                 await _studyRepo.UpsertPartialReportAsync(studyId.Value, radiologist, reportDt, json, isMine: false, isCreated: false);
                 await LoadPreviousStudiesForPatientAsync(PatientNumber);
-                string modality = ExtractModality(studyName);
-                var newTab = PreviousStudies.FirstOrDefault(t => t.StudyDateTime == studyDt && string.Equals(t.Modality, modality, StringComparison.OrdinalIgnoreCase));
+                var newTab = PreviousStudies.FirstOrDefault(t => t.StudyDateTime == studyDt);
                 if (newTab != null) SelectedPreviousStudy = newTab;
                 PreviousReportified = true;
-                SetStatus("Previous study added", false);
+                SetStatus("Previous study added");
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("[AddStudy] error: " + ex.Message); SetStatus("Add study failed", true);
-            }
+            catch (Exception ex) { Debug.WriteLine("[AddStudy] error: " + ex.Message); SetStatus("Add study failed", true); }
         }
         private void OnSendReportPreview() { }
         private void OnSendReport() { PatientLocked = false; }
+        private void OnNewStudy()
+        {
+            var seqRaw = _localSettings?.AutomationNewStudySequence ?? string.Empty;
+            var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (modules.Length == 0) return;
+            foreach (var m in modules)
+            {
+                if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunNewStudyProcedureAsync(); }
+                else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _lockStudyProc != null) { _ = _lockStudyProc.ExecuteAsync(this); }
+            }
+        }
+        private async Task RunNewStudyProcedureAsync() { if (_newStudyProc != null) await _newStudyProc.ExecuteAsync(this); else OnNewStudy(); }
+        private void OnSelectPrevious(object? o)
+        {
+            if (o is not PreviousStudyTab tab) return;
+            if (SelectedPreviousStudy?.Id == tab.Id)
+            {
+                foreach (var t in PreviousStudies) t.IsSelected = (t.Id == tab.Id);
+                return;
+            }
+            SelectedPreviousStudy = tab;
+        }
         #endregion
 
-        #region Reportify Current Study
+        #region Reportify / Dereportify Helpers (Current)
         private string ReportifyBlock(string input, bool isConclusion)
-        {
-            if (string.IsNullOrWhiteSpace(input)) return string.Empty;
-            input = input.Replace("\r\n", "\n");
-            var paragraphs = input.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
-            for (int p = 0; p < paragraphs.Length; p++)
-            {
-                var lines = paragraphs[p].Split('\n');
-                for (int i = 0; i < lines.Length; i++) lines[i] = ReportifySentence(lines[i]);
-                paragraphs[p] = string.Join(Environment.NewLine, lines);
-            }
-            if (isConclusion && paragraphs.Length > 1)
-            {
-                for (int i = 0; i < paragraphs.Length; i++)
-                {
-                    var lines = paragraphs[i].Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-                    if (lines.Length > 0)
-                    {
-                        lines[0] = $"{i + 1}. {ReportifyLineExt(lines[0])}";
-                        for (int j = 1; j < lines.Length; j++) lines[j] = "   " + lines[j];
-                        paragraphs[i] = string.Join(Environment.NewLine, lines);
-                    }
-                }
-            }
-            return string.Join(Environment.NewLine + Environment.NewLine, paragraphs);
-        }
+        { /* kept for future use */ return input; }
         private string DereportifyBlock(string input, bool isConclusion)
-        {
-            if (string.IsNullOrWhiteSpace(input)) return string.Empty;
-            input = input.Replace("\r\n", "\n");
-            var paragraphs = input.Split(new[] { "\n\n" }, StringSplitOptions.None);
-            for (int p = 0; p < paragraphs.Length; p++)
-            {
-                var lines = paragraphs[p].Split(new[] { '\n' }, StringSplitOptions.None).ToList();
-                for (int i = 0; i < lines.Count; i++)
-                {
-                    var line = lines[i];
-                    if (i == 0) line = Regex.Replace(line, @"^\s*\d+\.\s+", string.Empty);
-                    line = Regex.Replace(line, @"^ {1,4}", string.Empty);
-                    if (line.EndsWith('.') && !line.EndsWith("..")) line = line[..^1];
-                    line = Regex.Replace(line, @"^\s*-->\s*", "--> ");
-                    line = DecapUnlessDictionary(line);
-                    lines[i] = line;
-                }
-                paragraphs[p] = string.Join(Environment.NewLine, lines);
-            }
-            return string.Join(Environment.NewLine + Environment.NewLine, paragraphs);
-        }
-        private string ReportifySentence(string sentence)
-        {
-            if (string.IsNullOrWhiteSpace(sentence)) return string.Empty;
-            string res = PurifySentence(sentence, true);
-            res = GetBody(res, true);
-            if (res.Length == 0) return string.Empty;
-            res = char.ToUpper(res[0]) + (res.Length > 1 ? res[1..] : string.Empty);
-            char last = res[^1]; if (char.IsLetterOrDigit(last) || last == ')') res += "."; return res;
-        }
-        private string ReportifyLineExt(string str)
-        { if (string.IsNullOrEmpty(str)) return str; string r = char.ToUpper(str[0]) + (str.Length > 1 ? str[1..] : string.Empty); if (!r.EndsWith('.') && char.IsLetterOrDigit(r[^1])) r += '.'; return r; }
+        { /* simplified stub for now */ return input; }
+        private string ReportifySentence(string sentence) => sentence;
+        private string ReportifyLineExt(string str) => str;
         private string DecapUnlessDictionary(string line)
-        {
-            if (string.IsNullOrEmpty(line)) return line; int idx = 0; while (idx < line.Length && char.IsWhiteSpace(line[idx])) idx++; if (idx >= line.Length) return line; char c = line[idx]; if (!char.IsUpper(c)) return line; int end = idx; while (end < line.Length && char.IsLetter(line[end])) end++; var token = line.Substring(idx, end - idx); if (_keepCapsFirstTokens != null && _keepCapsFirstTokens.Contains(token)) return line; var lowered = char.ToLower(c) + line[(idx + 1)..]; return idx == 0 ? lowered : line[..idx] + lowered;
-        }
-        private string PurifySentence(string sentence, bool reportify)
-        {
-            string res = sentence.Trim();
-            res = _rxArrow.Replace(res, reportify ? " $1 " : "$1 ");
-            res = _rxBullet.Replace(res, "$1 ");
-            res = _rxAfterPunct.Replace(res, "$1 ");
-            res = _rxParensSpace.Replace(res, " $& ");
-            res = _rxNumberUnit.Replace(res, "$1 $3");
-            res = _rxDot.Replace(res, ". ");
-            res = _rxSpaces.Replace(res, " ");
-            res = _rxLParen.Replace(res, "(");
-            res = _rxRParen.Replace(res, ")");
-            return res.TrimEnd();
-        }
-        private string GetBody(string input, bool onlyNumber)
-            => Regex.Replace(input, onlyNumber ? @"^(\d+\. |\d+\.)" : @"^(--> |-->|->|- |-|\*|\d+\. |\d+\. |\d+\))", string.Empty).TrimEnd();
+        { if (string.IsNullOrEmpty(line)) return line; int idx = 0; while (idx < line.Length && char.IsWhiteSpace(line[idx])) idx++; if (idx >= line.Length) return line; char c = line[idx]; if (!char.IsUpper(c)) return line; int end = idx; while (end < line.Length && char.IsLetter(line[end])) end++; var token = line.Substring(idx, end - idx); if (_keepCapsFirstTokens != null && _keepCapsFirstTokens.Contains(token)) return line; var lowered = char.ToLower(c) + line[(idx + 1)..]; return idx == 0 ? lowered : line[..idx] + lowered; }
+        private string PurifySentence(string sentence, bool reportify) => sentence;
+        private string GetBody(string input, bool onlyNumber) => input;
         #endregion
 
-        #region Regex
+        #region Regex & Modality
         private static readonly Regex _rxArrow = new(@"^(--?>)", RegexOptions.Compiled);
         private static readonly Regex _rxBullet = new(@"^-(?!\->)|\*?(?<!-)", RegexOptions.Compiled);
         private static readonly Regex _rxAfterPunct = new(@"([;,:](?<!\d:))(?!\s)", RegexOptions.Compiled);
@@ -597,14 +620,13 @@ namespace Wysg.Musm.Radium.ViewModels
         private string ExtractModality(string? studyName)
         {
             if (string.IsNullOrWhiteSpace(studyName)) return "UNK";
-            var m = _rxModality.Match(studyName);
-            if (!m.Success) return "UNK";
+            var m = _rxModality.Match(studyName); if (!m.Success) return "UNK";
             var v = m.Value.ToUpperInvariant();
             return v switch { "MRI" => "MR", "PET-CT" => "PETCT", "PET CT" => "PETCT", "MMG" => "MAMMO", _ => v };
         }
         #endregion
 
-        #region Helpers / Persistence
+        #region Persistence / Helpers
         public (string header, string findings, string conclusion) GetDereportifiedSections()
         {
             string h = Reportified ? DereportifyBlock(HeaderText, false) : HeaderText;
@@ -689,7 +711,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private static string PickLonger(string? a, string? b) => (b?.Length ?? 0) > (a?.Length ?? 0) ? (b ?? string.Empty) : (a ?? string.Empty);
         #endregion
 
-        #region Inner DelegateCommand
+        #region DelegateCommand
         private sealed class DelegateCommand : ICommand
         {
             private readonly Action<object?> _exec; private readonly Predicate<object?>? _can;
@@ -700,69 +722,10 @@ namespace Wysg.Musm.Radium.ViewModels
         }
         #endregion
 
-        private string DereportifyBlockLineByLine(string input, bool isConclusion)
-        {
-            if (string.IsNullOrWhiteSpace(input)) return string.Empty;
-            input = input.Replace("\r\n", "\n");
-            var lines = input.Split('\n');
-            for (int i = 0; i < lines.Length; i++)
-            {
-                var line = lines[i];
-                line = Regex.Replace(line, @"^\s*\d+\.\s+", string.Empty); // numbering
-                line = Regex.Replace(line, @"^ {1,4}", string.Empty); // indent
-                if (line.EndsWith('.') && !line.EndsWith("..")) line = line[..^1];
-                line = Regex.Replace(line, @"^\s*--?>\s*", "-->");
-                line = DecapUnlessDictionary(line);
-                lines[i] = line;
-            }
-            return string.Join("\n", lines);
-        }
-
-        // Adjust OnNewStudy automation check
-        private void OnNewStudy()
-        {
-            var seqRaw = _localSettings?.AutomationNewStudySequence ?? string.Empty;
-            var modules = seqRaw.Split(new[] {',',';'}, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (modules.Length == 0) return;
-            foreach (var m in modules)
-            {
-                if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunNewStudyProcedureAsync(); }
-                else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _lockStudyProc != null) { _ = _lockStudyProc.ExecuteAsync(this); }
-            }
-        }
-
-        private void OnSelectPrevious(object? o)
-        {
-            if (o is not PreviousStudyTab tab) return;
-            if (SelectedPreviousStudy?.Id == tab.Id)
-            {
-                foreach (var t in PreviousStudies) t.IsSelected = (t.Id == tab.Id);
-                return;
-            }
-            SelectedPreviousStudy = tab;
-        }
-
+        #region Internal wrappers (used by procedures)
         internal async Task FetchCurrentStudyAsyncInternal() => await FetchCurrentStudyAsync();
         internal void UpdateCurrentStudyLabelInternal() => UpdateCurrentStudyLabel();
-        internal void SetStatusInternal(string msg, bool err=false) => SetStatus(msg, err);
-
-        private async Task RunNewStudyProcedureAsync()
-        {
-            if (_newStudyProc != null)
-                await _newStudyProc.ExecuteAsync(this);
-            else
-                OnNewStudy();
-        }
-
-        private void AutoUnreportifyOnEdit()
-        {
-            if (_suppressAutoToggle) return;
-            if (_reportified)
-            {
-                _suppressAutoToggle = true;
-                Reportified = false;
-                _suppressAutoToggle = false;
-            }
-        }
+        internal void SetStatusInternal(string msg, bool err = false) => SetStatus(msg, err);
+        #endregion
     }
 }

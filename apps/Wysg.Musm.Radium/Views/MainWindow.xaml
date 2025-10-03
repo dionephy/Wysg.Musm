@@ -255,7 +255,7 @@
         </Grid>
 
         <Grid Grid.Row="1" Grid.Column="1" Name="gridTop" VerticalAlignment="Top" Width="{Binding ElementName=gridCenter, Path=Width}" >
-            <TextBox x:Name="txtPrevJson" Text="Sidebar (future)" Background="#181818" Foreground="#808080" FontFamily="{StaticResource UiMonospaceFont}" Padding="6" Margin="0" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"/>
+            <TextBox x:Name="txtPrevJson" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="#181818" Foreground="#808080" FontFamily="{StaticResource UiMonospaceFont}" Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
         </Grid>
 
         <Grid Grid.Row="1" Grid.Column="1" Name="gridBottom" VerticalAlignment="Bottom" Width="{Binding ElementName=gridCenter, Path=Width}" >
@@ -449,11 +449,11 @@
                 
 
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding SelectedPreviousStudy.Header, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding PreviousHeaderText, Mode=TwoWay}"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="4" DocumentText="{Binding SelectedPreviousStudy.Findings, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="4" DocumentText="{Binding PreviousFindingsText, Mode=TwoWay}"/>
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="4"/>
-                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="6" DocumentText="{Binding SelectedPreviousStudy.Conclusion, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="6" DocumentText="{Binding PreviousConclusionText, Mode=TwoWay}"/>
             </Grid>
         </Grid>
 

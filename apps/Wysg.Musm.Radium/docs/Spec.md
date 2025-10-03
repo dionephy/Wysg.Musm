@@ -1,5 +1,19 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Reportify sample + checkbox coexistence (2025-10-02)
+- **FR-230** Reportify tab MUST display both option checkboxes and sample buttons within each group simultaneously so users can toggle settings while previewing individual transformations.
+
+## Update: Reportify sample preview (2025-10-02)
+- **FR-227** Reportify tab MUST provide buttons (one per option group) that when clicked populate a Sample Before textbox with a predefined raw snippet and Sample After textbox with the transformed example for that single option.
+- **FR-228** Reportify tab MUST expose two multi-line text boxes `Sample Before` and `Sample After` plus existing JSON preview simultaneously (three-column layout on wide screens).
+- **FR-229** Sample buttons MUST not mutate the underlying JSON settings (pure preview only).
+
+## Update: Reportify settings enhancement (2025-10-02)
+- **FR-223** Reportify settings tab MUST expose additional non-functional placeholder options: normalize arrows, normalize bullets, space after punctuation, normalize parentheses, space number-unit, collapse whitespace, number conclusion paragraphs, indent continuation lines, remove duplicate lines, preserve known tokens.
+- **FR-224** Changing any Reportify settings checkbox or default text field MUST update a read-only JSON preview textbox instantly (no button required).
+- **FR-225** Reportify JSON preview MUST include a nested `defaults` object for arrow, conclusion numbering, and detailing prefix; field names use snake_case.
+- **FR-226** All Reportify tab checkboxes MUST be clearly visible in dark mode using light foreground (#E0E0E0 baseline).
+
 ## Update: Reportify settings skeleton (2025-10-02)
 - **FR-219** Settings window MUST include a "Reportify" tab (skeleton) containing configurable placeholders for reportify behavior (non-functional initially).
 - **FR-220** Reportify tab MUST list four option checkboxes: remove excessive blanks; remove excessive blank lines; capitalize first letter of sentence; add period at end of sentence.

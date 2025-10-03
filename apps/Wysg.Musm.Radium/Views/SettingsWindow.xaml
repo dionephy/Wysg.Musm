@@ -1,51 +1,109 @@
 <Window x:Class="Wysg.Musm.Radium.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Settings" Height="520" Width="880" WindowStartupLocation="CenterOwner" Background="#1E1E1E" Foreground="#E8E8E8">
+        Title="Settings" Height="780" Width="1020" WindowStartupLocation="CenterOwner" Background="#1E1E1E" Foreground="#E8E8E8">
     <Grid Margin="12">
         <Grid.Resources>
-            <Style TargetType="TabItem">
-                <Setter Property="Foreground" Value="#C0C0C0"/>
-                <Setter Property="Background" Value="#1E1E1E"/>
-            </Style>
+            <!-- Neutral palette constants (for higher contrast) -->
+            <Color x:Key="ClrSurface">#262A30</Color>
+            <Color x:Key="ClrSurfaceAlt">#30353D</Color>
+            <Color x:Key="ClrAccent">#4C8DFF</Color>
+            <Color x:Key="ClrAccentAlt">#2F6DD0</Color>
+            <SolidColorBrush x:Key="BrushSurface" Color="{StaticResource ClrSurface}"/>
+            <SolidColorBrush x:Key="BrushSurfaceAlt" Color="{StaticResource ClrSurfaceAlt}"/>
+            <SolidColorBrush x:Key="BrushAccent" Color="{StaticResource ClrAccent}"/>
+            <SolidColorBrush x:Key="BrushAccentAlt" Color="{StaticResource ClrAccentAlt}"/>
+            <SolidColorBrush x:Key="BrushBorder" Color="#454A52"/>
+            <SolidColorBrush x:Key="BrushBorderLight" Color="#5A616B"/>
+            <SolidColorBrush x:Key="BrushTextPrimary" Color="#F5F6F7"/>
+            <SolidColorBrush x:Key="BrushTextSecondary" Color="#C8C8C8"/>
+            <SolidColorBrush x:Key="BrushTabHeader" Color="#FFE4E4E4"/>
+            <SolidColorBrush x:Key="BrushTabHeaderSelected" Color="#FF3E3E3E"/>
+
+            <!-- Button / TextBox styles (brightened) -->
             <Style TargetType="Button">
-                <Setter Property="Background" Value="#2D2D30"/>
-                <Setter Property="Foreground" Value="#F0F0F0"/>
-                <Setter Property="BorderBrush" Value="#3D3D40"/>
+                <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+                <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Padding" Value="8,4"/>
-                <Setter Property="Margin" Value="4,2,0,2"/>
+                <Setter Property="Margin" Value="6,0,0,2"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource BrushAccent}"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource BrushAccentAlt}"/>
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" Value="{StaticResource BrushAccentAlt}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.45"/>
+                    </Trigger>
+                </Style.Triggers>
             </Style>
             <Style TargetType="TextBox">
-                <Setter Property="Background" Value="#252526"/>
-                <Setter Property="Foreground" Value="#F0F0F0"/>
-                <Setter Property="BorderBrush" Value="#3D3D40"/>
+                <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+                <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BrushBorderLight}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="4"/>
             </Style>
             <Style TargetType="ListBox">
-                <Setter Property="Background" Value="#1E1E1E"/>
-                <Setter Property="BorderBrush" Value="#2D2D30"/>
-                <Setter Property="Foreground" Value="#F0F0F0"/>
+                <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
+                <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}"/>
             </Style>
             <Style TargetType="TextBlock">
-                <Setter Property="Foreground" Value="#C8C8C8"/>
+                <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}"/>
             </Style>
-            <!-- DataTemplate for ordered panels (New/Add) with remove button -->
+            <Style TargetType="Expander">
+                <Setter Property="Background" Value="{StaticResource BrushSurface}"/>
+                <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Margin" Value="0,4,0,0"/>
+            </Style>
+            <Style TargetType="CheckBox">
+                <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}"/>
+                <Setter Property="Margin" Value="0,0,0,2"/>
+            </Style>
+            <Style TargetType="TabControl">
+                <Setter Property="Foreground" Value="{StaticResource BrushTabHeader}"/>
+            </Style>
+            <Style TargetType="TabItem">
+                <Setter Property="Foreground" Value="{StaticResource BrushTabHeader}"/>
+                <Setter Property="Padding" Value="14,6"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
+                <Setter Property="Background" Value="#24282E"/>
+                <Style.Triggers>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Foreground" Value="{StaticResource BrushTabHeaderSelected}"/>
+                        <Setter Property="Background" Value="#2E333A"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource BrushAccent}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+            <!-- DataTemplates required by Automation tab -->
             <DataTemplate x:Key="OrderedModuleTemplate">
-                <Border BorderBrush="#3D3D40" BorderThickness="1" CornerRadius="2" Padding="4" Margin="0,2,0,2" Background="#252526">
+                <Border BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="2" Padding="4" Margin="0,2,0,2" Background="{StaticResource BrushSurfaceAlt}">
                     <DockPanel>
-                        <Button Content="&#10006;" DockPanel.Dock="Right" Width="20" Height="20" Margin="4,0,0,0" Padding="0" CommandParameter="{Binding}" Tag="removeBtn" ToolTip="Remove module" Click="OnRemoveModuleClick"/>
+                        <Button Content="X" DockPanel.Dock="Right" Width="22" Height="22" Margin="4,0,0,0" Padding="0" CommandParameter="{Binding}" Tag="removeBtn" ToolTip="Remove module" Click="OnRemoveModuleClick"/>
                         <TextBlock Text="{Binding}"/>
                     </DockPanel>
                 </Border>
             </DataTemplate>
             <DataTemplate x:Key="LibraryModuleTemplate">
-                <Border BorderBrush="#3D3D40" BorderThickness="1" CornerRadius="2" Padding="4" Margin="0,2,0,2" Background="#2A2A2A">
+                <Border BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="2" Padding="4" Margin="0,2,0,2" Background="{StaticResource BrushSurface}">
                     <TextBlock Text="{Binding}"/>
                 </Border>
             </DataTemplate>
         </Grid.Resources>
+
         <TabControl Background="#1E1E1E">
-            <TabItem Header="Database" Background="#1E1E1E">
+            <!-- Database -->
+            <TabItem Header="Database">
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -63,38 +121,40 @@
                         <Button Content="Save" Width="90" Margin="0,0,8,0" Command="{Binding SaveCommand}"/>
                         <Button Content="Close" Width="90" IsCancel="True"/>
                     </StackPanel>
-                    <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="Tip: Password is stored encrypted for current Windows user." Foreground="Gray"/>
+                    <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="Tip: Password is stored encrypted for current Windows user." Foreground="#9AA0A6"/>
                 </Grid>
             </TabItem>
-            <TabItem Header="Automation" Background="#1E1E1E">
+
+            <!-- Automation -->
+            <TabItem Header="Automation">
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Text="Drag modules between panes to configure execution order (duplicates allowed)." FontWeight="Bold"/>
+                    <TextBlock Text="Drag modules between panes to configure execution order (duplicates allowed)." FontWeight="Bold" Foreground="{StaticResource BrushTextPrimary}"/>
                     <Grid Grid.Row="1" Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" BorderBrush="#2D2D30" BorderThickness="1" CornerRadius="4" Padding="6" Background="#1E1E1E" Margin="0,0,8,0">
+                        <Border Grid.Column="0" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{StaticResource BrushSurface}" Margin="0,0,8,0">
                             <DockPanel>
-                                <TextBlock DockPanel.Dock="Top" Text="New Study" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock DockPanel.Dock="Top" Text="New Study" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{StaticResource BrushTextPrimary}"/>
                                 <ListBox x:Name="lstNewStudy" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="NewStudy" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
                             </DockPanel>
                         </Border>
-                        <Border Grid.Column="1" BorderBrush="#2D2D30" BorderThickness="1" CornerRadius="4" Padding="6" Background="#1E1E1E" Margin="0,0,8,0">
+                        <Border Grid.Column="1" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{StaticResource BrushSurface}" Margin="0,0,8,0">
                             <DockPanel>
-                                <TextBlock DockPanel.Dock="Top" Text="Add Study" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock DockPanel.Dock="Top" Text="Add Study" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{StaticResource BrushTextPrimary}"/>
                                 <ListBox x:Name="lstAddStudy" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="AddStudy" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
                             </DockPanel>
                         </Border>
-                        <Border Grid.Column="2" BorderBrush="#2D2D30" BorderThickness="1" CornerRadius="4" Padding="6" Background="#1E1E1E">
+                        <Border Grid.Column="2" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{StaticResource BrushSurface}">
                             <DockPanel>
-                                <TextBlock DockPanel.Dock="Top" Text="Available Modules" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock DockPanel.Dock="Top" Text="Available Modules" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{StaticResource BrushTextPrimary}"/>
                                 <ListBox x:Name="lstLibrary" PreviewMouseMove="OnProcDrag" DragLeave="OnListDragLeave" Tag="Library" ItemTemplate="{StaticResource LibraryModuleTemplate}"/>
                             </DockPanel>
                         </Border>
@@ -105,58 +165,142 @@
                     </StackPanel>
                 </Grid>
             </TabItem>
-            <TabItem Header="Reportify" Background="#1E1E1E">
+
+            <!-- Reportify -->
+            <TabItem Header="Reportify">
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
+                        <RowDefinition Height="240"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Text="Reportify Formatting (Preview Skeleton)" FontWeight="Bold"/>
-                    <StackPanel Grid.Row="1" Orientation="Vertical" Margin="0,8,0,0">
-                        <WrapPanel Margin="0,0,0,4" Orientation="Horizontal">
-                            <CheckBox Content="Remove excessive blanks." Margin="0,0,24,4"/>
-                            <CheckBox Content="Remove excessive blank lines." Margin="0,0,24,4"/>
-                        </WrapPanel>
-                        <WrapPanel Margin="0,0,0,8" Orientation="Horizontal">
-                            <CheckBox Content="Capitalize first letter of sentence." Margin="0,0,24,4"/>
-                            <CheckBox Content="Add period at the end of the sentence" Margin="0,0,24,4"/>
-                        </WrapPanel>
-                        <Grid Margin="0,4,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="220"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Default arrow:"/>
-                            <TextBox Grid.Column="1" Margin="4,0,0,0" Text="-->"/>
-                        </Grid>
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="220"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Default conclusion numbering:"/>
-                            <TextBox Grid.Column="1" Margin="4,0,0,0" Text="1."/>
-                        </Grid>
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="220"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Default detailing prefix:"/>
-                            <TextBox Grid.Column="1" Margin="4,0,0,0" Text="-"/>
-                        </Grid>
-                        <Border Margin="0,12,0,0" Padding="8" Background="#252526" BorderBrush="#2D2D30" BorderThickness="1" CornerRadius="4">
-                            <TextBlock Text="Note: This tab is a non-functional skeleton. Future implementation will persist and apply these options to reportify logic." TextWrapping="Wrap" Foreground="#C8C8C8"/>
-                        </Border>
-                    </StackPanel>
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-                        <Button Content="Save (Future)" Width="120" IsEnabled="False"/>
-                        <Button Content="Close" Width="90" IsCancel="True" Margin="8,0,0,0"/>
+                    <TextBlock Text="Reportify Formatting (Preview Skeleton)" FontWeight="Bold" Foreground="{StaticResource BrushTextPrimary}"/>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="{StaticResource BrushSurface}">
+                        <StackPanel Orientation="Vertical" Margin="0,8,0,0">
+                            <!-- Core Normalization -->
+                            <Expander Header="Core Normalization" IsExpanded="True">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Remove excessive blanks" IsChecked="{Binding RemoveExcessiveBlanks}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="remove_excessive_blanks"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Remove excessive blank lines" IsChecked="{Binding RemoveExcessiveBlankLines}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="remove_excessive_blank_lines"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Collapse whitespace" IsChecked="{Binding CollapseWhitespace}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="collapse_whitespace"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Expander>
+                            <!-- Sentence Formatting -->
+                            <Expander Header="Sentence Formatting" IsExpanded="True">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Capitalize first letter" IsChecked="{Binding CapitalizeSentence}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="capitalize_sentence"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Ensure trailing period" IsChecked="{Binding EnsureTrailingPeriod}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="ensure_trailing_period"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Preserve known tokens" IsChecked="{Binding PreserveKnownTokens}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="preserve_known_tokens"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Expander>
+                            <!-- Symbols & Punctuation -->
+                            <Expander Header="Symbols &amp; Punctuation">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Normalize arrows" IsChecked="{Binding NormalizeArrows}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="normalize_arrows"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Normalize bullets" IsChecked="{Binding NormalizeBullets}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="normalize_bullets"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Space after punctuation" IsChecked="{Binding SpaceAfterPunctuation}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="space_after_punctuation"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Normalize parentheses" IsChecked="{Binding NormalizeParentheses}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="normalize_parentheses"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Space number + unit" IsChecked="{Binding SpaceNumberUnit}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="space_number_unit"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Expander>
+                            <!-- Conclusion Numbering -->
+                            <Expander Header="Conclusion Numbering">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Number conclusion paragraphs" IsChecked="{Binding NumberConclusionParagraphs}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="number_conclusion_paragraphs"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="Indent continuation lines" IsChecked="{Binding IndentContinuationLines}"/>
+                                        <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="indent_continuation_lines"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Expander>
+                            <!-- Defaults -->
+                            <Expander Header="Defaults">
+                                <Grid Margin="0,4,0,0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="240"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Default arrow" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" Margin="4,2,0,2" Text="{Binding DefaultArrow}"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Default conclusion numbering" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Margin="4,2,0,2" Text="{Binding DefaultConclusionNumbering}"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Default detailing prefix" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" Margin="4,2,0,2" Text="{Binding DefaultDetailingPrefix}"/>
+                                </Grid>
+                            </Expander>
+                            <Border Margin="0,12,0,0" Padding="10" Background="{StaticResource BrushSurfaceAlt}" BorderBrush="{StaticResource BrushBorderLight}" BorderThickness="1" CornerRadius="4">
+                                <TextBlock Text="Use checkboxes to toggle options; click hint buttons to preview single-option transformations. Non-functional skeleton." TextWrapping="Wrap" Foreground="{StaticResource BrushTextSecondary}"/>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Preview area -->
+                    <Grid Grid.Row="2" Margin="0,8,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Sample Before" FontWeight="SemiBold" Foreground="{StaticResource BrushTextPrimary}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="Sample After" FontWeight="SemiBold" Foreground="{StaticResource BrushTextPrimary}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Settings JSON" FontWeight="SemiBold" Foreground="{StaticResource BrushTextPrimary}"/>
+                        <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding SampleBeforeText}" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="#202429" Foreground="#F0F0F0" FontFamily="Consolas"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SampleAfterText}" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="#202429" Foreground="#8FFFA8" FontFamily="Consolas"/>
+                        <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding ReportifySettingsJson, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="#202429" Foreground="#F0F0F0" FontFamily="Consolas"/>
+                    </Grid>
+
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <Button Content="Save (Future)" Width="140" IsEnabled="False"/>
+                        <Button Content="Close" Width="100" IsCancel="True" Margin="8,0,0,0"/>
                     </StackPanel>
                 </Grid>
             </TabItem>
         </TabControl>
-        <Canvas x:Name="AdornerCanvas" IsHitTestVisible="False" Background="Transparent"/>
     </Grid>
 </Window>
