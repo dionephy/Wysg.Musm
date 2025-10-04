@@ -1,6 +1,8 @@
 ﻿# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Added
+- [X] T325 Add SpyWindow Crawl Editor "Get Name" button + handler (FR-231) (SpyWindow.xaml / SpyWindow.xaml.cs).
+- [X] T326 Add `GetName` custom procedure operation (preset, execution switch, docs) (FR-232).
 - [X] T251 Implement patient/study/studyname persistence on New Study (FR-142) via IRadStudyRepository.
 - [X] T252 Optimize SpyWindow pick (limit traversal, suppress property exceptions) (FR-143).
 - [X] T249 Cache resolved UIA elements in ProcedureExecutor for known controls (FR-140).
@@ -355,11 +357,6 @@ Bug fix test set: T157 T158 T159 T160 T161 T162 (after T214-T233 complete)
 - [ ] T316 Add unit tests for ReportPipeline minimal path (intake + postprocess) (FR-AI-003)
 - [ ] T317 Add integration test using NoOp implementations (baseline) (FR-AI-001)
 - [ ] T318 Add performance timing decorator for skills (FR-AI-007)
-- [X] T280 Implement patient number retry on New Study (FR-169)
-- [X] T281 Line-by-line dereportify for previous study toggle OFF (FR-170)
-- [X] T282 Add positional drop indicator line in automation drag lists (FR-171)
-- [X] T283 Block AddStudy on patient mismatch with status (FR-172)
-- [X] T284 Auto-select newly added previous study tab (FR-173)
 
 # Tasks: Previous Study Multi-Report Selection (FR-214..FR-218) + Reportify Settings (FR-219..FR-230)
 

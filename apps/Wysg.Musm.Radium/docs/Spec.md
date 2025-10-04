@@ -1,7 +1,11 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Get Name element support (2025-10-04)
+- **FR-231** SpyWindow Crawl Editor MUST provide a "Get Name" button next to "Get Text" which resolves the currently validated element and outputs only its UIA Name property (no Value/Legacy fallback).
+- **FR-232** Custom Procedures MUST include a `GetName` operation (Arg1: Element, others disabled) storing the element's Name (empty when null) into the output variable; preview shows `(empty)` when Name blank and `(no element)` when target cannot be resolved.
+
 ## Update: Reportify sample + checkbox coexistence (2025-10-02)
-- **FR-230** Reportify tab MUST display both option checkboxes and sample buttons within each group simultaneously so users can toggle settings while previewing individual transformations.
+- **FR-230** Reportify tab MUST display sample buttons and option checkboxes together inside each option group.
 
 ## Update: Reportify sample preview (2025-10-02)
 - **FR-227** Reportify tab MUST provide buttons (one per option group) that when clicked populate a Sample Before textbox with a predefined raw snippet and Sample After textbox with the transformed example for that single option.

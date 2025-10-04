@@ -307,6 +307,7 @@
                         <Button Content="Validate" Click="OnValidateChain"/>
                         <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke"/>
                         <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText"/>
+                        <Button Content="Get Name" Margin="6,0,0,0" Click="OnGetName"/>
                         <Button Content="Row Data" Margin="6,0,0,0" Click="OnGetSelectedRow"/>
                         <Button Content="Save" Margin="6,0,0,0" Click="OnSaveEdited"/>
                         <Separator Margin="12,0" Width="10"/>
@@ -441,6 +442,7 @@
                                               PreviewKeyDown="OnOpComboPreviewKeyDown"
                                               SelectionChanged="OnProcOpChanged">
                                         <ComboBoxItem Content="GetText"/>
+                                        <ComboBoxItem Content="GetName"/>
                                         <ComboBoxItem Content="GetTextOCR"/>
                                         <ComboBoxItem Content="Split"/>
                                         <ComboBoxItem Content="TakeLast"/>

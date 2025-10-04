@@ -237,6 +237,7 @@ namespace Wysg.Musm.Radium.Views
                     {
                         case "GetText":
                         case "GetTextOCR":
+                        case "GetName":
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
@@ -325,6 +326,18 @@ namespace Wysg.Musm.Radium.Views
                         var legacy = el.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty;
                         valueToStore = !string.IsNullOrEmpty(val) ? val : (!string.IsNullOrEmpty(name) ? name : legacy);
                         preview = valueToStore ?? "(null)";
+                    }
+                    catch { valueToStore = null; preview = "(error)"; }
+                    break;
+                }
+                case "GetName":
+                {
+                    var el = ResolveElement(row.Arg1);
+                    if (el == null) { valueToStore = null; preview = "(no element)"; break; }
+                    try
+                    {
+                        valueToStore = el.Name;
+                        preview = string.IsNullOrEmpty(valueToStore) ? "(empty)" : valueToStore;
                     }
                     catch { valueToStore = null; preview = "(error)"; }
                     break;
@@ -1209,6 +1222,23 @@ namespace Wysg.Musm.Radium.Views
                 txtStatus.Text = string.IsNullOrEmpty(txt) ? "Get Text: empty" : $"Get Text: {txt}";
             }
             catch (Exception ex) { txtStatus.Text = "Get Text error: " + ex.Message; }
+        }
+
+        private void OnGetName(object sender, RoutedEventArgs e)
+        {
+            if (_lastResolved == null)
+            {
+                if (!BuildBookmarkFromUi(out var copy)) return;
+                var (_, el, _) = UiBookmarks.TryResolveWithTrace(copy);
+                _lastResolved = el;
+                if (el == null) { txtStatus.Text = "Get Name: not found"; return; }
+            }
+            try
+            {
+                var name = _lastResolved.Name;
+                txtStatus.Text = string.IsNullOrEmpty(name) ? "Get Name: empty" : $"Get Name: {name}";
+            }
+            catch (Exception ex) { txtStatus.Text = "Get Name error: " + ex.Message; }
         }
 
         private void OnOpComboPreviewMouseDown(object sender, MouseButtonEventArgs e)

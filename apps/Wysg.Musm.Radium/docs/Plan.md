@@ -1,5 +1,11 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
+## Change Log Addition (2025-10-04 - Get Name element support)
+- Implement SpyWindow Crawl Editor "Get Name" button (FR-231) calling new handler OnGetName to resolve last element and display only UIA Name.
+- Extend Custom Procedures operations list with `GetName` (FR-232) sharing presets with GetText (Arg1=Element, others disabled) but storing only the Name property (no fallback chain) and previewing `(empty)` when blank.
+- Update ExecuteSingle switch to handle `GetName` and OnProcOpChanged presets.
+- Added documentation entries & tasks (T325, T326).
+
 ## Change Log Addition (2025-10-05 - Retry & Drag Indicator)
 - Implement UIA retry loop for patient number (FR-169).
 - Apply line-by-line dereportify for previous study toggle OFF (FR-170).
