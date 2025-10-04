@@ -1,6 +1,7 @@
 ﻿# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Added
+- [X] T327 Harden SettingsWindow module removal (null DataContext guard & ItemsSource fallback) (FR-234).
 - [X] T325 Add SpyWindow Crawl Editor "Get Name" button + handler (FR-231) (SpyWindow.xaml / SpyWindow.xaml.cs).
 - [X] T326 Add `GetName` custom procedure operation (preset, execution switch, docs) (FR-232).
 - [X] T251 Implement patient/study/studyname persistence on New Study (FR-142) via IRadStudyRepository.

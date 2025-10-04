@@ -1,5 +1,8 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
+## Change Log Addition (2025-10-05 - Settings Automation Remove NullRef Fix)
+- Hardened SettingsWindow automation list helpers against null DataContext / unexpected list names (FR-234). Added guarded GetListForListBox with ItemsSource fallback + debug logging. Prevents NullReferenceException when clicking module remove (X) before DataContext fully initialized or during transient re-template.
+
 ## Change Log Addition (2025-10-04 - Get Name element support)
 - Implement SpyWindow Crawl Editor "Get Name" button (FR-231) calling new handler OnGetName to resolve last element and display only UIA Name.
 - Extend Custom Procedures operations list with `GetName` (FR-232) sharing presets with GetText (Arg1=Element, others disabled) but storing only the Name property (no fallback chain) and previewing `(empty)` when blank.

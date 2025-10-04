@@ -123,16 +123,37 @@ namespace Wysg.Musm.Radium.Views
 
         private static T? FindAncestor<T>(DependencyObject current) where T : DependencyObject
         { while (current != null) { if (current is T t) return t; current = VisualTreeHelper.GetParent(current); } return null; }
+
         private ObservableCollection<string>? GetListForListBox(ListBox lb)
         {
-            if (DataContext is not SettingsViewModel vm) return null;
-            return lb.Name switch
+            // Harden against null DataContext or unexpected types (bug fix FR-234)
+            try
             {
-                "lstLibrary" => vm.AvailableModules,
-                "lstNewStudy" => vm.NewStudyModules,
-                "lstAddStudy" => vm.AddStudyModules,
-                _ => null
-            };
+                if (lb == null) return null;
+                if (DataContext is not SettingsViewModel vm)
+                {
+                    Debug.WriteLine("[AutoGetList] DataContext not SettingsViewModel; fallback to ItemsSource");
+                    return lb.ItemsSource as ObservableCollection<string>;
+                }
+                var list = lb.Name switch
+                {
+                    "lstLibrary" => vm.AvailableModules,
+                    "lstNewStudy" => vm.NewStudyModules,
+                    "lstAddStudy" => vm.AddStudyModules,
+                    _ => null
+                };
+                if (list == null)
+                {
+                    Debug.WriteLine($"[AutoGetList] Unknown list name '{lb.Name}', using ItemsSource fallback");
+                    list = lb.ItemsSource as ObservableCollection<string>;
+                }
+                return list;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.WriteLine("[AutoGetList] error: " + ex.Message);
+                return lb?.ItemsSource as ObservableCollection<string>;
+            }
         }
 
         private ObservableCollection<string>? GetListForItem(string item)
@@ -207,14 +228,22 @@ namespace Wysg.Musm.Radium.Views
                 var listBoxItem = FindAncestor<ListBoxItem>(btn);
                 if (listBoxItem?.DataContext is not string module) return;
                 var parentListBox = FindAncestor<ListBox>(btn);
-                if (parentListBox == null) return;
-                var list = GetListForListBox(parentListBox);
-                if (list == null) return;
+                if (parentListBox == null) { Debug.WriteLine("[AutoRemove] parent listbox not found"); return; }
+                var list = GetListForListBox(parentListBox) ?? parentListBox.ItemsSource as ObservableCollection<string>;
+                if (list == null) { Debug.WriteLine("[AutoRemove] backing list null"); return; }
                 int idx = parentListBox.ItemContainerGenerator.IndexFromContainer(listBoxItem);
-                if (idx >= 0 && idx < list.Count) list.RemoveAt(idx);
-                Debug.WriteLine($"[AutoRemove] removed '{module}' idx={idx} from {parentListBox.Name}");
+                if (idx >= 0 && idx < list.Count)
+                {
+                    list.RemoveAt(idx);
+                    Debug.WriteLine($"[AutoRemove] removed '{module}' idx={idx} from {parentListBox.Name}");
+                }
+                else
+                {
+                    // fallback: remove first matching instance
+                    if (list.Remove(module)) Debug.WriteLine($"[AutoRemove] removed '{module}' by value from {parentListBox.Name}");
+                }
             }
-            catch (Exception ex) { Debug.WriteLine("[AutoRemove] error " + ex.Message); }
+            catch (System.Exception ex) { Debug.WriteLine("[AutoRemove] error " + ex.Message); }
         }
 
         // Clear indicator when leaving list area

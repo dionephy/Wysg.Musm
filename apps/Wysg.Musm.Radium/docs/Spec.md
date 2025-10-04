@@ -1,5 +1,8 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Automation list deletion robustness (2025-10-05)
+- **FR-234** Settings Automation tab MUST allow removing a module instance via X button without throwing even if DataContext rebinds or control template re-applies; method MUST gracefully fallback to ListBox.ItemsSource when underlying ViewModel not yet available and ignore unknown list names.
+
 ## Update: Get Name element support (2025-10-04)
 - **FR-231** SpyWindow Crawl Editor MUST provide a "Get Name" button next to "Get Text" which resolves the currently validated element and outputs only its UIA Name property (no Value/Legacy fallback).
 - **FR-232** Custom Procedures MUST include a `GetName` operation (Arg1: Element, others disabled) storing the element's Name (empty when null) into the output variable; preview shows `(empty)` when Name blank and `(no element)` when target cannot be resolved.
