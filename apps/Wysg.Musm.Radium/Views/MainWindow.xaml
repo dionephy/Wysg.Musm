@@ -250,13 +250,15 @@
             <ColumnDefinition x:Name="colSecond" Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Grid Grid.Row="1" Grid.Column="1" Name="gridSide" >
-            <TextBox Text="Sidebar (future)" Background="#181818" Foreground="#808080" FontFamily="{StaticResource UiMonospaceFont}" Padding="6" Margin="0" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"/>
-        </Grid>
 
         <Grid Grid.Row="1" Grid.Column="1" Name="gridTop" VerticalAlignment="Top" Width="{Binding ElementName=gridCenter, Path=Width}" >
             <TextBox x:Name="txtPrevJson" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="#181818" Foreground="#808080" FontFamily="{StaticResource UiMonospaceFont}" Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
         </Grid>
+
+        <Grid Grid.Row="1" Grid.Column="1" Name="gridSide" >
+            <TextBox Text="Sidebar (future)" Background="#181818" Foreground="#808080" FontFamily="{StaticResource UiMonospaceFont}" Padding="6" Margin="0" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"/>
+        </Grid>
+
 
         <Grid Grid.Row="1" Grid.Column="1" Name="gridBottom" VerticalAlignment="Bottom" Width="{Binding ElementName=gridCenter, Path=Width}" >
             <TextBox x:Name="txtJson"  Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="#181818" Foreground="#808080" FontFamily="{StaticResource UiMonospaceFont}" Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>

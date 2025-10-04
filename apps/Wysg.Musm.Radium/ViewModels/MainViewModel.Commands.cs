@@ -1,0 +1,158 @@
+using System;
+using System.Linq;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using System.Diagnostics;
+
+namespace Wysg.Musm.Radium.ViewModels
+{
+    /// <summary>
+    /// Partial: ICommand definitions & handlers (New Study, Add, Send, Select, Procedure execution).
+    /// Keeps UI action logic compact and discoverable.
+    /// </summary>
+    public partial class MainViewModel
+    {
+        // ------------- Command properties (initialized in InitializeCommands) -------------
+        public ICommand NewStudyCommand { get; private set; } = null!;
+        public ICommand TestNewStudyProcedureCommand { get; private set; } = null!;
+        public ICommand AddStudyCommand { get; private set; } = null!;
+        public ICommand SendReportPreviewCommand { get; private set; } = null!;
+        public ICommand SendReportCommand { get; private set; } = null!;
+        public ICommand SelectPreviousStudyCommand { get; private set; } = null!;
+        public ICommand OpenStudynameMapCommand { get; private set; } = null!;
+        public ICommand OpenPhraseManagerCommand { get; private set; } = null!;
+
+        // Patient locked state influences several command CanExecute states
+        private bool _patientLocked; public bool PatientLocked
+        {
+            get => _patientLocked;
+            set
+            {
+                if (SetProperty(ref _patientLocked, value))
+                {
+                    (AddStudyCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (SendReportPreviewCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (SendReportCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (SelectPreviousStudyCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        private void InitializeCommands()
+        {
+            NewStudyCommand = new DelegateCommand(_ => OnNewStudy());
+            TestNewStudyProcedureCommand = new DelegateCommand(async _ => await RunNewStudyProcedureAsync());
+            AddStudyCommand = new DelegateCommand(_ => OnAddStudy(), _ => PatientLocked);
+            SendReportPreviewCommand = new DelegateCommand(_ => OnSendReportPreview(), _ => PatientLocked);
+            SendReportCommand = new DelegateCommand(_ => OnSendReport(), _ => PatientLocked);
+            SelectPreviousStudyCommand = new DelegateCommand(o => OnSelectPrevious(o), _ => PatientLocked);
+            OpenStudynameMapCommand = new DelegateCommand(_ => Views.StudynameLoincWindow.Open());
+            OpenPhraseManagerCommand = new DelegateCommand(_ => Views.PhrasesWindow.Open());
+        }
+
+        // ------------- Handlers -------------
+        private void OnSendReportPreview() { /* TODO: implement preview send logic */ }
+        private void OnSendReport() { PatientLocked = false; }
+
+        private async Task RunNewStudyProcedureAsync() => await (_newStudyProc != null ? _newStudyProc.ExecuteAsync(this) : Task.Run(OnNewStudy));
+
+        private void OnNewStudy()
+        {
+            var seqRaw = _localSettings?.AutomationNewStudySequence ?? string.Empty;
+            var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (modules.Length == 0) return;
+            foreach (var m in modules)
+            {
+                if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunNewStudyProcedureAsync(); }
+                else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _lockStudyProc != null) { _ = _lockStudyProc.ExecuteAsync(this); }
+            }
+        }
+        private void OnSelectPrevious(object? o)
+        {
+            if (o is not PreviousStudyTab tab) return;
+            if (SelectedPreviousStudy?.Id == tab.Id)
+            {
+                foreach (var t in PreviousStudies) t.IsSelected = (t.Id == tab.Id);
+                return;
+            }
+            SelectedPreviousStudy = tab;
+        }
+
+        private async void OnAddStudy()
+        {
+            if (_studyRepo == null) return;
+            try
+            {
+                var relatedPatientRaw = await _pacs.GetSelectedIdFromRelatedStudiesAsync();
+                string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : Regex.Replace(s, "[^A-Za-z0-9]", "").ToUpperInvariant();
+                var currentNorm = Normalize(PatientNumber);
+                var relatedNorm = Normalize(relatedPatientRaw);
+                if (string.IsNullOrWhiteSpace(currentNorm) || string.IsNullOrWhiteSpace(relatedNorm) || currentNorm != relatedNorm)
+                { SetStatus($"Patient mismatch cannot add (current {currentNorm} vs related {relatedNorm})", true); return; }
+
+                var studyName = await _pacs.GetSelectedStudynameFromRelatedStudiesAsync();
+                var dtStr = await _pacs.GetSelectedStudyDateTimeFromRelatedStudiesAsync();
+                var radiologist = await _pacs.GetSelectedRadiologistFromRelatedStudiesAsync();
+                var reportDateStr = await _pacs.GetSelectedReportDateTimeFromRelatedStudiesAsync();
+                if (!DateTime.TryParse(dtStr, out var studyDt)) { SetStatus("Related study datetime invalid", true); return; }
+                DateTime? reportDt = DateTime.TryParse(reportDateStr, out var rdt) ? rdt : null;
+                var studyId = await _studyRepo.EnsureStudyAsync(PatientNumber, PatientName, PatientSex, null, studyName, studyDt);
+                if (studyId == null) { SetStatus("Study save failed", true); return; }
+
+                // Acquire findings / conclusion (choose longer version of dual-field variants)
+                var f1Task = _pacs.GetCurrentFindingsAsync();
+                var f2Task = _pacs.GetCurrentFindings2Async();
+                var c1Task = _pacs.GetCurrentConclusionAsync();
+                var c2Task = _pacs.GetCurrentConclusion2Async();
+                await Task.WhenAll(f1Task, f2Task, c1Task, c2Task);
+                string PickLonger(string? a, string? b) => (b?.Length ?? 0) > (a?.Length ?? 0) ? (b ?? string.Empty) : (a ?? string.Empty);
+                string findings = PickLonger(f1Task.Result, f2Task.Result);
+                string conclusion = PickLonger(c1Task.Result, c2Task.Result);
+
+                var reportObj = new
+                {
+                    technique = string.Empty,
+                    chief_complaint = string.Empty,
+                    history_preview = string.Empty,
+                    chief_complaint_proofread = string.Empty,
+                    history = string.Empty,
+                    history_proofread = string.Empty,
+                    header_and_findings = findings,
+                    conclusion,
+                    split_index = 0,
+                    comparison = string.Empty,
+                    technique_proofread = string.Empty,
+                    comparison_proofread = string.Empty,
+                    findings_proofread = string.Empty,
+                    conclusion_proofread = string.Empty,
+                    findings,
+                    conclusion_preview = string.Empty
+                };
+                string json = JsonSerializer.Serialize(reportObj);
+                await _studyRepo.UpsertPartialReportAsync(studyId.Value, radiologist, reportDt, json, isMine: false, isCreated: false);
+                await LoadPreviousStudiesForPatientAsync(PatientNumber);
+                var newTab = PreviousStudies.FirstOrDefault(t => t.StudyDateTime == studyDt);
+                if (newTab != null) SelectedPreviousStudy = newTab;
+                PreviousReportified = true;
+                SetStatus("Previous study added");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[AddStudy] error: " + ex.Message);
+                SetStatus("Add study failed", true);
+            }
+        }
+
+        // DelegateCommand implementation kept local for simplicity
+        private sealed class DelegateCommand : ICommand
+        {
+            private readonly Action<object?> _exec; private readonly Predicate<object?>? _can;
+            public DelegateCommand(Action<object?> exec, Predicate<object?>? can = null) { _exec = exec; _can = can; }
+            public bool CanExecute(object? parameter) => _can?.Invoke(parameter) ?? true;
+            public void Execute(object? parameter) => _exec(parameter);
+            public event EventHandler? CanExecuteChanged; public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+}
