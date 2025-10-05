@@ -93,6 +93,35 @@
 - **FR-212** Known control ComboBox in SpyWindow MUST list items in case-insensitive alphabetical order by display text.
 - **FR-213** PACS service MUST expose custom procedure method tag `GetCurrentStudyRemark` retrievable via `PacsService.GetCurrentStudyRemarkAsync()` and selectable in custom procedure method list.
 
+## Update: Integrated Phrases Management Tab (2025-10-05)
+- **FR-235** Settings window MUST include a "Phrases" tab consolidating phrase add/activate/refresh and listing (Id, Text, Active, Updated, Rev) replacing standalone PhrasesWindow; bindings reuse existing PhrasesViewModel commands and collections.
+
+## Update: Phrase toggle resilience (2025-10-05)
+- **FR-236** Toggling a phrase Active flag MUST tolerate transient connection/read timeouts on preliminary SET LOCAL statement_timeout without failing the toggle; the toggle retry logic (≤4 attempts) must proceed even if SET LOCAL fails.
+
+## Update: Phrase toggle adaptive retry (2025-10-05)
+- **FR-237** Phrase Active toggle MUST implement adaptive retry (≥4 attempts with exponential-ish backoff) clearing pooled connections on transient timeouts and must not surface Npgsql timeout errors caused by repeated rapid toggling; SET LOCAL failures are ignored.
+
+## Update: Phrase toggle roundtrip removal (2025-10-05)
+- **FR-238** Phrase Active toggle MUST avoid auxiliary SET LOCAL commands; a single UPDATE statement with reduced CommandTimeout (≤12s) and cancellation token (≤6s) is used to minimize stream read timeouts on rapid successive toggles.
+
+## Update: Integrated Phrases dark theme (2025-10-05)
+- **FR-239** Settings Phrases tab MUST use unified dark theme (panel #262A30, alt #2F343A, headers #30363D, selection #0E4D7A) and the standalone PhrasesWindow MUST be removed along with its launch button.
+
+## Update: Integrated Spy tab (2025-10-05)
+- **FR-240** Settings window MUST include a Spy tab exposing process pick, bookmark chain editing, minimal custom procedures grid, and quick resolve actions duplicating SpyWindow core controls for consolidated tooling.
+
+## Update: Global Dark Theme + Spy PACS Combo (2025-10-05)
+- **FR-241** Introduce global DarkTheme.xaml merged in App.xaml to centralize brushes & control styles (Window, Button, TextBox, ComboBox, TabControl, DataGrid, TreeView, GroupBox, CheckBox, ScrollBar, TextBlock). All windows (including Settings/Spy) should rely on these implicit styles instead of local duplicates.
+- **FR-242** Populate PACS Method ComboBox in Settings Spy tab with same items as standalone SpyWindow (procedure authoring) including new current-context getters.
+- **FR-243** Enhance implicit ComboBox style with full custom template (toggle button + popup) to ensure consistent dark styling across MainWindow and SettingsWindow; remove discrepancy where Settings combo used default light chrome.
+
+## Update: Click-Anywhere ComboBox Drop (2025-10-05)
+- **FR-244** Modify global ComboBox template to allow opening dropdown when clicking anywhere in text/content area (overlay transparent ToggleButton bound to IsDropDownOpen). Improves UX parity with custom editors.
+
+## Update: MainWindow ComboBox + Hover Tuning (2025-10-05)
+- **FR-245** Apply global click-anywhere ComboBox template to MainWindow by removing legacy DarkMiniCombo style; adjust hover to darker tone (AccentAlt border, PanelAlt background) for reduced brightness.
+
 ## Prior Updates
 <!-- cumulative prior content retained below -->
 ## Update: Previous report ingestion refinements (2025-10-05)
@@ -107,7 +136,7 @@
 
 ## Update: Previous study tab modality & toggle reliability (2025-10-02)
 - **FR-153** Previous report Reportified toggle MUST apply reversible formatting using preserved original previous study text (no cumulative transformation loss).
-- **FR-154** Current study label visual element changed from TextBlock to selectable-style Label as interim (final selectable requirement may require read-only TextBox) – MUST still bind `CurrentStudyLabel`.
+- **FR-154** Current study label visual element changed from TextBlock toSelectable as interim (final selectable requirement may require read-only TextBox) – MUST still bind `CurrentStudyLabel`.
 - **FR-155** Previous study tab title MUST be formatted `YYYY-MM-DD MOD` where MOD is derived modality (LOINC-derived when available; fallback regex heuristic on studyname).
 - **FR-156** Previous study tabs MUST be unique by the composite (StudyDateTime, Modality). Duplicate combinations are ignored during load/ingest.
 - **FR-157** PACS procedure metadata getter failures MUST NOT propagate exceptions (return null + debug log entry).
@@ -210,23 +239,20 @@ User or automation needs quick extraction of patient number or study date/time f
 12. **Given user clicks "Extract Phrases" button, when phrase extraction window opens, then all services are properly injected and phrase saving works without errors.**
 13. **Given completion popup with multiple items is displayed and user presses Down key repeatedly, then selection moves through all items sequentially without skipping or stopping.**
 14. **Given completion popup selection guard is active, when legitimate keyboard navigation occurs, then selection changes are preserved without being cleared by the guard mechanism.**
-15. **Given multiple SelectionChanged events fire from a single keyboard navigation action, when selection is added via Down/Up keys, then the selection is preserved and not immediately cleared by subsequent events.**
-16. **Given completion popup is displayed with 3 items and user has not yet navigated, when user presses Down key for the first time, then selection moves to first item (index 0), and subsequent Down keys navigate normally through remaining items.**
-17. **Given completion popup navigation guard prevents recursive events, when programmatic selection changes occur, then the guard prevents infinite loops while preserving legitimate navigation.**
-18. **Given a previous study with reportified text, when Reportified toggle is changed, then the corresponding previous study text displays with applied reversible formatting.**
-19. **Given the current study label, when viewed, then label displays as selectable-style text and remains bound to `CurrentStudyLabel`.**
-20. **Given a previous study tab with duplicate StudyDateTime and Modality, when loaded, then only one tab is created and others are ignored.**
-21. **Given PACS procedure metadata getters, when invoked, then any failures do not propagate exceptions and are silently logged.**
-22. **Given a new study is started, when related studies are ingested, then Reportified toggle for previous reports is ON by default.**
-23. **Given Add Study command is executed, when patient number/id does not match, then ingestion is halted and a red status message is displayed.**
-24. **Given the application settings window is opened, when Automation (Preview) tab is viewed, then placeholder checkboxes for New Study and Add Study actions are visible.**
-25. **Given a previous study, when Reportified toggle is enabled, then text is restored to original baseline state without reprocessing.**
-26. **Given automation settings, when viewed, then two reorderable lists and one library list are present via drag & drop skeleton.**
-27. **Given a previous study with multiple reports, when the study is selected, then the report selector ComboBox is populated with all reports for the study.**
-28. **Given the report selector ComboBox, when a report is selected, then Findings & Conclusion are updated to reflect the selected report.**
-29. **Given the previous report selector, when the selected report's date/time is null, then the ComboBox item displays without a report date.**
-30. **Given the previous report selector, when a report is selected, then the report is shown in the Findings & Conclusion editors with the correct transformations applied.**
-31. **Given the previous report selector ComboBox, when displayed, then it uses dark theme styling with a compact monospace font.**
+15. **Given a previous study with reportified text, when Reportified toggle is changed, then the corresponding previous study text displays with applied reversible formatting.**
+16. **Given the current study label, when viewed, then label displays as selectable text and remains bound to `CurrentStudyLabel`.**
+17. **Given a previous study tab with duplicate StudyDateTime and Modality, when loaded, then only one tab is created and others are ignored.**
+18. **Given PACS procedure metadata getters, when invoked, then any failures do not propagate exceptions and are silently logged.**
+19. **Given a new study is started, when related studies are ingested, then Reportified toggle for previous reports is ON by default.**
+20. **Given Add Study command is executed, when patient number/id does not match, then ingestion is halted and a red status message is displayed.**
+21. **Given the application settings window is opened, when Automation (Preview) tab is viewed, then placeholder checkboxes for New Study and Add Study actions are visible.**
+22. **Given a previous study, when Reportified toggle is enabled, then text is restored to original baseline state without reprocessing.**
+23. **Given automation settings, when viewed, then two reorderable lists and one library list are present via drag & drop skeleton.**
+24. **Given a previous study with multiple reports, when the study is selected, then the report selector ComboBox is populated with all reports for the study.**
+25. **Given the report selector ComboBox, when a report is selected, then Findings & Conclusion are updated to reflect the selected report.**
+26. **Given the previous report selector, when the selected report's date/time is null, then the ComboBox item displays without a report date.**
+27. **Given the previous report selector, when a report is selected, then the report is shown in the Findings & Conclusion editors with the correct transformations applied.**
+28. **Given the previous report selector ComboBox, when displayed, then it uses dark theme styling with a compact monospace font.**
 
 ### Edge Cases
 - What happens when studyname mapping window is closed without selection? → [NEEDS CLARIFICATION: fallback behavior – skip, force retry, or mark as unmapped?]
@@ -289,7 +315,7 @@ User or automation needs quick extraction of patient number or study date/time f
 - **FR-133** Completion popup MUST: (a) never skip intermediate items during sequential Up/Down navigation (one keypress → move exactly one item), and (b) cap visible item height to at most 8 items (dynamic ListBox MaxHeight) while allowing scroll for overflow.
 - **FR-134** Completion popup MUST auto-size its height exactly to (items_count * measured_item_height + padding) when item_count ≤ 8, and clamp to 8-items height when item_count > 8, updating after list rebuilds and after selection-induced layout changes.
 - **FR-153** Previous report Reportified toggle MUST apply reversible formatting using preserved original previous study text (no cumulative transformation loss).
-- **FR-154** Current study label visual element changed from TextBlock to selectable-style Label as interim (final selectable requirement may require read-only TextBox) – MUST still bind `CurrentStudyLabel`.
+- **FR-154** Current study label visual element changed from TextBlock toSelectable as interim (final selectable requirement may require read-only TextBox) – MUST still bind `CurrentStudyLabel`.
 - **FR-155** Previous study tab title MUST be formatted `YYYY-MM-DD MOD` where MOD is derived modality (LOINC-derived when available; fallback regex heuristic on studyname).
 - **FR-156** Previous study tabs MUST be unique by the composite (StudyDateTime, Modality). Duplicate combinations are ignored during load/ingest.
 - **FR-157** PACS procedure metadata getter failures MUST NOT propagate exceptions (return null + debug log entry).
@@ -608,3 +634,8 @@ For full behavioral definitions see MUSM Editor Specification included in design
 ## Feature Update (Reportified Toggle - Inverse Dereportify)
 - Dereportify now performs inverse transformation: removes numeric prefixes, strips trailing single periods, collapses leading numbering indentation, and decapitalizes first token unless token appears capitalized in phrase dictionary snapshot.
 - Arrow prefix spaces removed back to canonical compact form (e.g., `-->Finding` instead of `--> Finding`).
+
+## Update: Global Mono Font + ComboBox Size + Study Label (2025-10-05)
+- **FR-246** DarkTheme applies D2Coding (Dark.MonoFont) as default Window FontFamily + size 13 for unified look.
+- **FR-247** Decrease global ComboBox FontSize to 11 and enforce monospace font for compact UI in all windows.
+- **FR-248** Replace editable TextBox for CurrentStudyLabel with non-editable Label control in MainWindow header.

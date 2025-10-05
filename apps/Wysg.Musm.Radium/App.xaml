@@ -3,6 +3,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Wysg.Musm.Radium.Converters">
     <Application.Resources>
-        <conv:CountToVisibilityConverter x:Key="CountToVisibilityConverter" Minimum="2"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Wysg.Musm.Radium;component/Themes/DarkTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:CountToVisibilityConverter x:Key="CountToVisibilityConverter" Minimum="2"/>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

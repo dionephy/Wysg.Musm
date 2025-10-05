@@ -351,7 +351,7 @@
                             </Grid>
                         </ToggleButton>
                         <!-- Selectable Current Study Label (read-only TextBox) -->
-                        <TextBox Text="{Binding CurrentStudyLabel, Mode=OneWay}" Margin="2,0,0,0" FontFamily="{StaticResource UiMonospaceFont}" Foreground="#5A9FD6" Background="Transparent" BorderThickness="0" IsReadOnly="True" IsReadOnlyCaretVisible="False" VerticalAlignment="Center" TextWrapping="Wrap" MinWidth="260"/>
+                        <TextBox Text="{Binding CurrentStudyLabel, Mode=OneWay}" Margin="2,0,0,0" FontFamily="{StaticResource UiMonospaceFont}" Foreground="#5A9FD6" Background="Transparent" BorderThickness="0" IsReadOnly="True" IsReadOnlyCaretVisible="False" TextWrapping="Wrap" MinWidth="260" Cursor="" Padding="0,0,0,0"/>
                     </StackPanel>
                 </Grid>
 
@@ -423,8 +423,6 @@
 
 
                             <ComboBox x:Name="cboPrevReport" Margin="2,0,0,0"
-                                      Style="{StaticResource DarkMiniCombo}"
-                                      ItemContainerStyle="{StaticResource DarkMiniComboItem}"
                                       SelectedItem="{Binding SelectedPreviousStudy.SelectedReport, Mode=TwoWay}">
                                 <ComboBox.ItemsSource>
                                     <CompositeCollection>
@@ -475,7 +473,6 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" Grid.Column="0">
                         <Button Content="Manage studyname" Command="{Binding OpenStudynameMapCommand}"/>
-                        <Button Content="Manage Phrases" Command="{Binding OpenPhraseManagerCommand}"/>
                         <Separator Width="10"/>
                         <Button Content="Force Ghost" Click="OnForceGhost"/>
                         <Button Content="Settings" Click="OnOpenSettings"/>

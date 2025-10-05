@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows;
@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Wysg.Musm.Radium.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Wysg.Musm.Radium.Views
 {
@@ -252,5 +253,49 @@ namespace Wysg.Musm.Radium.Views
             // When pointer leaves a list's visual tree, clear indicator.
             ClearDropIndicator();
         }
+
+        private void OnPhrasesTabLoaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is SettingsViewModel) // already set; we attach phrases VM via DataContextProxy pattern not required – we rely on merged viewmodel composition externally if needed
+            {
+                // If phrases properties not present, attempt to resolve and set a composite DataContext (simple override for now)
+                if (!(DataContext is PhrasesViewModel) && Application.Current is App app)
+                {
+                    try
+                    {
+                        var phrasesVm = app.Services.GetService<PhrasesViewModel>();
+                        if (phrasesVm != null)
+                        {
+                            // Simple approach: create an object holding both; for binding we expect phrases properties only inside Phrases tab so temporarily swap
+                            phrasesRoot.DataContext = phrasesVm;
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+
+        // ---- Integrated Spy Tab Handlers (minimal reuse) ----
+        private Views.SpyWindow? _spyDelegate; // lazy delegate instance to reuse existing logic
+        private SpyWindow EnsureSpyDelegate()
+        {
+            if (_spyDelegate == null) { _spyDelegate = new SpyWindow(); _spyDelegate.Hide(); }
+            return _spyDelegate;
+        }
+        private void Spy_OnPick(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnPick", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnKnownSelectionChanged(object sender, SelectionChangedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnKnownSelectionChanged", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnMapSelected(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnMapSelected", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnResolveSelected(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnResolveSelected", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnReload(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnReload", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnAncestrySelected(object sender, RoutedPropertyChangedEventArgs<object> e) => EnsureSpyDelegate().GetType().GetMethod("OnAncestrySelected", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnValidateChain(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnValidateChain", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnInvoke(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnInvoke", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnGetText(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnGetText", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnGetName(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnGetName", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnGetSelectedRow(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnGetSelectedRow", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnSaveEdited(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnSaveEdited", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnAddProcRow(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnAddProcRow", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnSaveProcedure(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnSaveProcedure", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+        private void Spy_OnRunProcedure(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnRunProcedure", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
     }
 }

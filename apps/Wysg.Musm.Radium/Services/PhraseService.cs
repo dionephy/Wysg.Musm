@@ -78,6 +78,9 @@ namespace Wysg.Musm.Radium.Services
                 if (!b.ContainsKey("Cancellation Timeout")) b["Cancellation Timeout"] = 4000; // ms for faster cancel cleanup
                 if (b.Timeout < 8) b.Timeout = 8;
                 if (b.CommandTimeout < 30) b.CommandTimeout = 30;
+                // Immediate Fix (FR-239): increase pool headroom to reduce max pool exhaustion under rapid toggles
+                if (b.MaxPoolSize < 200) b.MaxPoolSize = 200;
+                if (b.MinPoolSize < 0) b.MinPoolSize = 0;
                 return b.ConnectionString;
             }
             catch { return raw; }
@@ -510,7 +513,6 @@ namespace Wysg.Musm.Radium.Services
             // This method therefore only produces rev increments for real state transitions.
             await EnsureBackendAsync().ConfigureAwait(false);
             if (!_radiumAvailable) throw new InvalidOperationException("radium.phrase not available");
-
             const string selectExistingSql = @"SELECT id, account_id, text, active, created_at, updated_at, rev
                                                 FROM radium.phrase
                                                 WHERE account_id=@aid AND text=@text";
@@ -519,7 +521,6 @@ namespace Wysg.Musm.Radium.Services
             const string updateSql = @"UPDATE radium.phrase SET active=@active
                                       WHERE account_id=@aid AND text=@text
                                       RETURNING id, account_id, text, active, created_at, updated_at, rev";
-
             int attempts = 0;
             while (true)
             {
@@ -528,18 +529,17 @@ namespace Wysg.Musm.Radium.Services
                 try
                 {
                     con = CreateConnection();
-                    try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false); }
-                    catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][Upsert][CANCEL-Open] " + oce.Message); if (attempts >= 4) throw; else continue; }
-                    catch (Exception ex) when (IsTransientTimeout(ex) && attempts < 4)
+                    await con.OpenAsync().ConfigureAwait(false); // deterministic open (connection disposed in finally)
+                    // Attempt SET LOCAL (best-effort)
+                    try
                     {
-                        Debug.WriteLine($"[PhraseService][Upsert][RETRY {attempts}] Open transient: {ex.GetType().Name} {ex.Message}");
-                        await Task.Delay(150 * attempts).ConfigureAwait(false);
-                        continue;
-                    }
-                    await using (var stCmd = new NpgsqlCommand("SET LOCAL statement_timeout TO 10000", con))
+                        await using var stCmd = new NpgsqlCommand("SET LOCAL statement_timeout TO 10000", con);
                         await stCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-
-                    // 1. Pre-check existing to avoid unnecessary UPDATE (rev bump)
+                    }
+                    catch (Exception ex) when (IsTransient(ex) || IsTransientTimeout(ex))
+                    { Debug.WriteLine($"[PhraseService][Upsert] Ignoring transient SET LOCAL failure: {ex.Message}"); }
+                    catch (Exception ex) { Debug.WriteLine($"[PhraseService][Upsert] Non-fatal SET LOCAL error (proceed): {ex.GetType().Name} {ex.Message}"); }
+                    // Pre-check existing
                     PhraseInfo? existing = null;
                     await using (var sel = new NpgsqlCommand(selectExistingSql, con) { CommandTimeout = 20 })
                     {
@@ -548,21 +548,16 @@ namespace Wysg.Musm.Radium.Services
                         using var ctsSel = new CancellationTokenSource(TimeSpan.FromSeconds(8));
                         await using var rdSel = await sel.ExecuteReaderAsync(ctsSel.Token).ConfigureAwait(false);
                         if (await rdSel.ReadAsync(ctsSel.Token).ConfigureAwait(false))
-                        {
                             existing = new PhraseInfo(rdSel.GetInt64(0), rdSel.GetInt64(1), rdSel.GetString(2), rdSel.GetBoolean(3), rdSel.GetDateTime(5), rdSel.GetInt64(6));
-                        }
                     }
-
                     if (existing != null)
                     {
-                        // If no logical change, return as-is (no rev / updated_at change)
                         if (existing.Active == active)
                         {
                             Debug.WriteLine($"[PhraseService][Upsert] SKIP(no-change) text='{text}' rev={existing.Rev}");
                             CacheAfterUpsert(existing);
                             return existing;
                         }
-                        // Perform targeted update only when active differs
                         PhraseInfo? updated = null;
                         await using (var upd = new NpgsqlCommand(updateSql, con) { CommandTimeout = 30 })
                         {
@@ -572,18 +567,14 @@ namespace Wysg.Musm.Radium.Services
                             using var ctsUpd = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                             await using var rdUpd = await upd.ExecuteReaderAsync(ctsUpd.Token).ConfigureAwait(false);
                             if (await rdUpd.ReadAsync(ctsUpd.Token).ConfigureAwait(false))
-                            {
                                 updated = new PhraseInfo(rdUpd.GetInt64(0), rdUpd.GetInt64(1), rdUpd.GetString(2), rdUpd.GetBoolean(3), rdUpd.GetDateTime(5), rdUpd.GetInt64(6));
-                            }
                         }
                         if (updated == null) throw new InvalidOperationException("Upsert update failed");
                         Debug.WriteLine($"[PhraseService][Upsert] UPDATE text='{text}' oldRev={existing.Rev} newRev={updated.Rev}");
-                        CacheAfterUpsert(updated);
-                        return updated;
+                        CacheAfterUpsert(updated); return updated;
                     }
                     else
                     {
-                        // Insert new
                         PhraseInfo? inserted = null;
                         await using (var ins = new NpgsqlCommand(insertSql, con) { CommandTimeout = 30 })
                         {
@@ -593,27 +584,28 @@ namespace Wysg.Musm.Radium.Services
                             using var ctsIns = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                             await using var rdIns = await ins.ExecuteReaderAsync(ctsIns.Token).ConfigureAwait(false);
                             if (await rdIns.ReadAsync(ctsIns.Token).ConfigureAwait(false))
-                            {
                                 inserted = new PhraseInfo(rdIns.GetInt64(0), rdIns.GetInt64(1), rdIns.GetString(2), rdIns.GetBoolean(3), rdIns.GetDateTime(5), rdIns.GetInt64(6));
-                            }
                         }
                         if (inserted == null) throw new InvalidOperationException("Upsert insert failed");
                         Debug.WriteLine($"[PhraseService][Upsert] INSERT text='{text}' rev={inserted.Rev}");
-                        CacheAfterUpsert(inserted);
-                        return inserted;
+                        CacheAfterUpsert(inserted); return inserted;
                     }
                 }
                 catch (OperationCanceledException oce)
                 {
                     Debug.WriteLine($"[PhraseService][Upsert][CANCEL] attempt={attempts} text='{text}' {oce.Message}");
-                    if (attempts < 4) { await Task.Delay(150 * attempts).ConfigureAwait(false); continue; }
+                    if (attempts < 4) { if (con != null) try { NpgsqlConnection.ClearPool(con); } catch { } await Task.Delay(150 * attempts); continue; }
                     throw;
                 }
                 catch (Exception ex) when ((IsTransient(ex) || IsTransientTimeout(ex)) && attempts < 4)
                 {
                     Debug.WriteLine($"[PhraseService][RETRY] Upsert attempt={attempts} text='{text}' transient: {ex.Message}");
                     if (con != null) try { NpgsqlConnection.ClearPool(con); } catch { }
-                    await Task.Delay(150 * attempts).ConfigureAwait(false); continue;
+                    await Task.Delay(150 * attempts); continue;
+                }
+                finally
+                {
+                    if (con != null) await con.DisposeAsync();
                 }
             }
         }
@@ -654,14 +646,12 @@ namespace Wysg.Musm.Radium.Services
 
         public async Task<PhraseInfo?> ToggleActiveAsync(long accountId, long phraseId)
         {
-            // ToggleActive deliberately sends a minimal UPDATE (no manual updated_at/rev) letting the trigger bump only when Active flips.
-            // If UI race causes mismatch (user double-click), we re-check and optionally re-toggle (see PhrasesViewModel).
             await EnsureBackendAsync().ConfigureAwait(false);
             if (!_radiumAvailable) return null;
             const string sql = @"UPDATE radium.phrase SET active = NOT active
                                  WHERE account_id=@aid AND id=@pid
                                  RETURNING id, account_id, text, active, created_at, updated_at, rev";
-            int attempts = 0;
+            int attempts = 0; int baseDelay = 120;
             while (true)
             {
                 attempts++;
@@ -669,33 +659,19 @@ namespace Wysg.Musm.Radium.Services
                 try
                 {
                     con = CreateConnection();
-                    try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false); }
-                    catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][Toggle][CANCEL-Open] " + oce.Message); if (attempts < 4) { await Task.Delay(150 * attempts); continue; } else return null; }
-                    catch (Exception ex) when (IsTransientTimeout(ex) && attempts < 4)
-                    {
-                        Debug.WriteLine($"[PhraseService][Toggle][RETRY {attempts}] Open transient: {ex.GetType().Name} {ex.Message}");
-                        await Task.Delay(150 * attempts);
-                        continue;
-                    }
-                    await using (var stCmd = new NpgsqlCommand("SET LOCAL statement_timeout TO 8000", con))
-                        await stCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-                    await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 30 };
+                    await con.OpenAsync().ConfigureAwait(false);
+                    await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 12 };
                     cmd.Parameters.AddWithValue("aid", accountId);
                     cmd.Parameters.AddWithValue("pid", phraseId);
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(6));
                     await using var rd = await cmd.ExecuteReaderAsync(cts.Token).ConfigureAwait(false);
                     if (await rd.ReadAsync(cts.Token).ConfigureAwait(false))
                     {
                         var info = new PhraseInfo(rd.GetInt64(0), rd.GetInt64(1), rd.GetString(2), rd.GetBoolean(3), rd.GetDateTime(5), rd.GetInt64(6));
                         if (_states.TryGetValue(accountId, out var st) && st.ById.TryGetValue(info.Id, out var row))
-                        {
-                            row.Active = info.Active; row.UpdatedAt = info.UpdatedAt; row.Rev = info.Rev; if (info.Rev > st.MaxRev) st.MaxRev = info.Rev;
-                        }
-                        
-                        // Clear completion cache when active state changes
+                        { row.Active = info.Active; row.UpdatedAt = info.UpdatedAt; row.Rev = info.Rev; if (info.Rev > st.MaxRev) st.MaxRev = info.Rev; }
                         _cache.Clear(accountId);
-                        Debug.WriteLine($"[PhraseService] Cleared completion cache for account={accountId} after toggle");
-                        
+                        Debug.WriteLine($"[PhraseService] Toggle success id={phraseId} active={info.Active} rev={info.Rev}");
                         return info;
                     }
                     return null;
@@ -703,14 +679,24 @@ namespace Wysg.Musm.Radium.Services
                 catch (OperationCanceledException oce)
                 {
                     Debug.WriteLine($"[PhraseService][Toggle][CANCEL] attempt={attempts} id={phraseId} {oce.Message}");
-                    if (attempts < 4) { await Task.Delay(150 * attempts); continue; }
+                    if (attempts < 5) { if (con != null) try { NpgsqlConnection.ClearPool(con); } catch { } await Task.Delay(baseDelay * attempts); continue; }
                     return null;
                 }
-                catch (Exception ex) when ((IsTransient(ex) || IsTransientTimeout(ex)) && attempts < 4)
+                catch (Exception ex) when ((IsTransient(ex) || IsTransientTimeout(ex)) && attempts < 5)
                 {
-                    Debug.WriteLine($"[PhraseService][RETRY] Toggle attempt={attempts} id={phraseId} transient: {ex.Message}");
+                    Debug.WriteLine($"[PhraseService][Toggle][RETRY {attempts}] transient: {ex.GetType().Name} {ex.Message}");
                     if (con != null) try { NpgsqlConnection.ClearPool(con); } catch { }
-                    await Task.Delay(150 * attempts).ConfigureAwait(false); continue;
+                    await Task.Delay(baseDelay * attempts); continue;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[PhraseService][Toggle][FAIL] attempt={attempts} id={phraseId} {ex.GetType().Name} {ex.Message}");
+                    if (con != null) try { NpgsqlConnection.ClearPool(con); } catch { }
+                    return null;
+                }
+                finally
+                {
+                    if (con != null) await con.DisposeAsync();
                 }
             }
         }

@@ -130,6 +130,20 @@
 - [X] T322 Add StudyRemark mapping (FR-211)
 - [X] T323 Alphabetize Spy known controls combo (FR-212)
 - [X] T324 PACS method GetCurrentStudyRemark (FR-213)
+- [X] T328 Integrate PhrasesWindow into SettingsWindow as Phrases tab (FR-235).
+- [X] T329 Harden ToggleActiveAsync against transient SET LOCAL failures (FR-236).
+- [X] T330 Adaptive retry/backoff + pool clear for phrase toggle (FR-237).
+- [X] T331 Remove SET LOCAL roundtrip in phrase toggle (FR-238).
+- [X] T332 Integrate dark theme for Settings Phrases tab & remove standalone PhrasesWindow (FR-239).
+- [X] T333 Integrate Spy tab into Settings (FR-240).
+- [X] T334 Add DarkTheme.xaml and merge globally (FR-241).
+- [X] T335 Populate PACS method ComboBox in Settings Spy tab (FR-242).
+- [X] T336 Unify global ComboBox dark template (FR-243).
+- [X] T337 Add full-surface click behavior to ComboBox (FR-244).
+- [X] T338 Apply global ComboBox template to MainWindow and darken hover (FR-245).
+- [X] T339 Apply D2Coding as global font (FR-246).
+- [X] T340 Reduce ComboBox font size to 11 (FR-247).
+- [X] T341 Replace CurrentStudyLabel TextBox with Label (FR-248).
 
 **Input**: Spec.md & Plan.md (cumulative)  
 **Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  

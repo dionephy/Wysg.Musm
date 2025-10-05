@@ -147,3 +147,39 @@ Minimal—pure XAML adjustment; bindings reused.
 ## Tasks Added
 T031 added (see tasks.md).
 
+## Change Log Addition (2025-10-05 - Integrated Phrases Tab)
+- Added Phrases tab inside SettingsWindow (FR-235) migrating UI from standalone PhrasesWindow (DataGrid + Add/Activate + Refresh). Injects PhrasesViewModel lazily on tab load to avoid impacting settings load path. Standalone window can be deprecated in future cleanup.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Resilience)
+- Hardened PhraseService.ToggleActiveAsync to ignore transient failures executing SET LOCAL and added retry path (FR-236). Prevents NpgsqlException (Timeout during reading attempt) surfacing when user unchecks Active in phrases grid.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Adaptive Retry)
+- Implemented adaptive retry/backoff + pool clear for PhraseService.ToggleActiveAsync; resilient SET LOCAL handling for upsert & toggle (FR-237).
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Roundtrip Removal)
+- Removed SET LOCAL pre-command in ToggleActiveAsync; rely solely on UPDATE + tighter timeouts (FR-238) to mitigate stream read timeouts on rapid toggles.
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Dark Theme)
+- Applied dark styling to SettingsWindow Phrases tab (DataGrid + controls) and removed legacy standalone PhrasesWindow + Manage Phrases button (FR-239).
+
+## Change Log Addition (2025-10-05 - Integrated Spy Tab)
+- Added Spy tab to Settings consolidating UI spy functionality (process pick, mapping, chain editor, basic procedure ops) (FR-240).
+
+## Plan Addition (2025-10-05 - FR-241 / FR-242)
+- FR-241: Create Themes/DarkTheme.xaml consolidating dark palette + implicit control styles; merge into App.xaml. Remove reliance on scattered per-window styles progressively (initial application to Settings Spy tab).
+- FR-242: Mirror SpyWindow PACS procedure methods in integrated Spy tab (adds 21 ComboBoxItem entries) enabling immediate procedure selection without opening standalone window.
+
+## Plan Addition (2025-10-05 - FR-243)
+- FR-243: Replace minimal implicit ComboBox style with full template (border, toggle glyph, popup) applied globally so integrated Spy tab inherits identical dark appearance without per-window style duplication.
+
+## Plan Addition (2025-10-05 - FR-244)
+- FR-244: Enhance ComboBox template by inserting full-surface transparent ToggleButton over content (excluding arrow cell) to toggle IsDropDownOpen, ensuring click on label opens list without needing small arrow target.
+
+## Plan Addition (2025-10-05 - FR-245)
+- FR-245: Retire per-window DarkMiniCombo usage; rely on global template. Modify hover visuals to be slightly darker (PanelAlt + AccentAlt border) to reduce visual noise.
+
+## Plan Addition (2025-10-05 - FR-246 / FR-247 / FR-248)
+- FR-246: Introduce Dark.MonoFont resource referencing packaged D2Coding; set as implicit Window FontFamily.
+- FR-247: Adjust implicit ComboBox style (font size 11) for denser layout; rely on existing global template for click-anywhere behavior.
+- FR-248: Swap TextBox -> Label for CurrentStudyLabel to avoid user confusion about editability and reduce visual chrome.
+

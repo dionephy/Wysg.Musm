@@ -22,7 +22,6 @@ namespace Wysg.Musm.Radium.ViewModels
         public ICommand SendReportCommand { get; private set; } = null!;
         public ICommand SelectPreviousStudyCommand { get; private set; } = null!;
         public ICommand OpenStudynameMapCommand { get; private set; } = null!;
-        public ICommand OpenPhraseManagerCommand { get; private set; } = null!;
 
         // Patient locked state influences several command CanExecute states
         private bool _patientLocked; public bool PatientLocked
@@ -49,7 +48,6 @@ namespace Wysg.Musm.Radium.ViewModels
             SendReportCommand = new DelegateCommand(_ => OnSendReport(), _ => PatientLocked);
             SelectPreviousStudyCommand = new DelegateCommand(o => OnSelectPrevious(o), _ => PatientLocked);
             OpenStudynameMapCommand = new DelegateCommand(_ => Views.StudynameLoincWindow.Open());
-            OpenPhraseManagerCommand = new DelegateCommand(_ => Views.PhrasesWindow.Open());
         }
 
         // ------------- Handlers -------------
