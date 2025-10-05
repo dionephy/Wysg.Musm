@@ -81,6 +81,19 @@ namespace Wysg.Musm.Radium.ViewModels
                             Debug.WriteLine("[Splash][Init] EnsureAccountAsync start for user=" + refreshed.UserId);
                             long accountId = await _supabase.EnsureAccountAsync(refreshed.UserId, _storage.Email ?? string.Empty, _storage.DisplayName ?? string.Empty);
 
+                            // Load reportify settings (central)
+                            try
+                            {
+                                var rptSvc = ((App)Application.Current).Services.GetService(typeof(IReportifySettingsService)) as IReportifySettingsService;
+                                if (rptSvc != null)
+                                {
+                                    var json = await rptSvc.GetSettingsJsonAsync(accountId);
+                                    _tenantContext.ReportifySettingsJson = json;
+                                    Debug.WriteLine("[Splash][Init] Loaded reportify settings len=" + (json?.Length ?? 0));
+                                }
+                            }
+                            catch { }
+
                             // Set tenant + signal success BEFORE last-login update
                             _tenantContext.TenantId = accountId;
                             _tenantContext.TenantCode = refreshed.UserId;
@@ -145,6 +158,19 @@ namespace Wysg.Musm.Radium.ViewModels
                 _tenantContext.TenantId = accountId;
                 _tenantContext.TenantCode = auth.UserId;
 
+                // Load reportify settings after login
+                try
+                {
+                    var rptSvc = ((App)Application.Current).Services.GetService(typeof(IReportifySettingsService)) as IReportifySettingsService;
+                    if (rptSvc != null)
+                    {
+                        var json = await rptSvc.GetSettingsJsonAsync(accountId);
+                        _tenantContext.ReportifySettingsJson = json;
+                        Debug.WriteLine("[Splash][Login] Loaded reportify settings len=" + (json?.Length ?? 0));
+                    }
+                }
+                catch { }
+
                 PersistAuth(auth);
                 Debug.WriteLine("[Splash][Login] Success account=" + accountId);
                 LoginSuccess?.Invoke();
@@ -181,6 +207,19 @@ namespace Wysg.Musm.Radium.ViewModels
                 await _supabase.UpdateLastLoginAsync(accountId); // interactive login keep errors visible
                 _tenantContext.TenantId = accountId;
                 _tenantContext.TenantCode = auth.UserId;
+
+                // Load reportify settings after login
+                try
+                {
+                    var rptSvc = ((App)Application.Current).Services.GetService(typeof(IReportifySettingsService)) as IReportifySettingsService;
+                    if (rptSvc != null)
+                    {
+                        var json = await rptSvc.GetSettingsJsonAsync(accountId);
+                        _tenantContext.ReportifySettingsJson = json;
+                        Debug.WriteLine("[Splash][Login] Loaded reportify settings len=" + (json?.Length ?? 0));
+                    }
+                }
+                catch { }
 
                 PersistAuth(auth);
                 Debug.WriteLine("[Splash][Google] Success account=" + accountId);

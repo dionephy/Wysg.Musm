@@ -78,3 +78,26 @@ NEW.updated_at := OLD.updated_at; NEW.rev := OLD.rev; END IF; RETURN NEW; END $B
 ALTER FUNCTION radium.touch_phrase()
     OWNER TO postgres;
 
+-- =============================================
+-- Reportify Settings (per account)
+-- FR-249: Persist one JSON settings document per account
+-- =============================================
+CREATE TABLE IF NOT EXISTS radium.reportify_setting
+(
+    account_id   bigint PRIMARY KEY REFERENCES app.account(account_id) ON DELETE CASCADE,
+    settings_json jsonb NOT NULL,
+    updated_at   timestamptz NOT NULL DEFAULT now(),
+    rev          bigint NOT NULL DEFAULT 1
+);
+
+-- Upsert helper note:
+-- INSERT INTO radium.reportify_setting(account_id, settings_json)
+-- VALUES($1, CAST($2 AS jsonb))
+-- ON CONFLICT (account_id) DO UPDATE
+--   SET settings_json = EXCLUDED.settings_json,
+--       updated_at = now(),
+--       rev = radium.reportify_setting.rev + 1
+-- RETURNING settings_json, updated_at, rev;
+
+CREATE INDEX IF NOT EXISTS ix_reportify_setting_updated_at ON radium.reportify_setting(updated_at DESC);
+

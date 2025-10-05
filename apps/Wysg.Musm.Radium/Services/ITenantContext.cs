@@ -4,7 +4,9 @@ namespace Wysg.Musm.Radium.Services
     {
         long TenantId { get; set; }
         string TenantCode { get; set; }
-        // New: central DB now uses account_id; keep backward compatibility
         long AccountId { get; set; }
+        string? ReportifySettingsJson { get; set; }
+        // Event raised whenever AccountId (TenantId) changes: (oldId,newId)
+        event System.Action<long,long>? AccountIdChanged;
     }
 }

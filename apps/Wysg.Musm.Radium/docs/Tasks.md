@@ -144,6 +144,22 @@
 - [X] T339 Apply D2Coding as global font (FR-246).
 - [X] T340 Reduce ComboBox font size to 11 (FR-247).
 - [X] T341 Replace CurrentStudyLabel TextBox with Label (FR-248).
+- [X] T342 DDL radium.reportify_setting (FR-249).
+- [X] T343 Implement IReportifySettingsService + ReportifySettingsService (FR-249).
+- [X] T344 Integrate Save/Load buttons & commands into SettingsViewModel/Reportify tab (FR-250).
+- [X] T345 Add spec/plan/task entries for FR-249..FR-251.
+- [X] T346 Add ReportifySettingsJson to ITenantContext/TenantContext (FR-252).
+- [X] T347 Auto-load reportify settings on login (SplashLoginViewModel) storing in tenant context (FR-252).
+- [X] T348 Remove Load button; SettingsViewModel applies tenant JSON on construct (FR-252).
+- [X] T349 Implement config-driven reportify transformations (ApplyReportifyBlock/Conclusion) (FR-253).
+- [X] T350 Wire editor toggle to new reportify implementation (FR-253).
+- [X] T351 Ensure Save Settings button persists JSON and affects subsequent toggles (FR-253).
+- [X] T352 Add AccountIdChanged event to TenantContext (FR-255).
+- [X] T353 Guard PhraseService methods for accountId<=0 (FR-254).
+- [X] T354 Update PhrasesViewModel to listen for AccountIdChanged and clear/reload (FR-255).
+- [X] T355 DI-resolve SettingsViewModel with tenant/reportify/phrases services (FR-256).
+- [X] T356 Add IsAccountValid + Save Settings enable binding (FR-256).
+- [X] T357 Compose PhrasesViewModel inside SettingsViewModel and fix bindings (FR-257).
 
 **Input**: Spec.md & Plan.md (cumulative)  
 **Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  

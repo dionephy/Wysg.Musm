@@ -94,6 +94,7 @@ namespace Wysg.Musm.Radium
             services.AddSingleton<IPhraseService, PhraseService>();
             services.AddSingleton<IStudynameLoincRepository, StudynameLoincRepository>();
             services.AddSingleton<IRadStudyRepository, RadStudyRepository>();
+            services.AddSingleton<IReportifySettingsService, ReportifySettingsService>();
 
             services.AddTransient<SplashLoginViewModel>();
             services.AddTransient<SignUpViewModel>();
@@ -101,6 +102,12 @@ namespace Wysg.Musm.Radium
             services.AddTransient<StudynameLoincViewModel>();
             services.AddTransient<PhrasesViewModel>();
             services.AddTransient<PhraseExtractionViewModel>();
+            services.AddTransient<SettingsViewModel>(sp => new SettingsViewModel(
+                sp.GetRequiredService<IRadiumLocalSettings>(),
+                sp.GetService<IReportifySettingsService>(),
+                sp.GetService<ITenantContext>(),
+                sp.GetService<PhrasesViewModel>()
+            ));
             services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.INewStudyProcedure, Wysg.Musm.Radium.Services.Procedures.NewStudyProcedure>();
             services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.ILockStudyProcedure, Wysg.Musm.Radium.Services.Procedures.LockStudyProcedure>();
         }

@@ -18,9 +18,8 @@ namespace Wysg.Musm.Radium.Services
 
         public CentralDataSourceProvider(IRadiumLocalSettings settings)
         {
-            var raw = settings.CentralConnectionString
-                      ?? settings.LocalConnectionString
-                      ?? "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas;Timeout=5";
+            var raw = settings.CentralConnectionString;
+                      
 
             var tracePg = Environment.GetEnvironmentVariable("RAD_TRACE_PG") == "1";
 

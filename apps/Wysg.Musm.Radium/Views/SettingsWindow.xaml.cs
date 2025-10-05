@@ -14,7 +14,7 @@ namespace Wysg.Musm.Radium.Views
     {
         private Border? _dragGhost; private string? _dragItem; private ListBox? _dragSource; private Border? _dropIndicator;
 
-        public SettingsWindow() { InitializeComponent(); DataContext = new SettingsViewModel(); InitializeAutomationLists(); }
+        public SettingsWindow() { InitializeComponent(); if (Application.Current is App app) { var vm = app.Services.GetRequiredService<SettingsViewModel>(); DataContext = vm; } else DataContext = new SettingsViewModel(); InitializeAutomationLists(); }
         public SettingsWindow(SettingsViewModel vm) { InitializeComponent(); DataContext = vm; InitializeAutomationLists(); }
 
         // After DataContext set, call LoadAutomation and bind ListBoxes to VM collections
@@ -256,19 +256,18 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnPhrasesTabLoaded(object sender, RoutedEventArgs e)
         {
-            if (DataContext is SettingsViewModel) // already set; we attach phrases VM via DataContextProxy pattern not required – we rely on merged viewmodel composition externally if needed
+            if (DataContext is SettingsViewModel svm)
             {
-                // If phrases properties not present, attempt to resolve and set a composite DataContext (simple override for now)
-                if (!(DataContext is PhrasesViewModel) && Application.Current is App app)
+                if (svm.Phrases != null)
+                {
+                    phrasesRoot.DataContext = svm.Phrases;
+                }
+                else if (Application.Current is App app)
                 {
                     try
                     {
                         var phrasesVm = app.Services.GetService<PhrasesViewModel>();
-                        if (phrasesVm != null)
-                        {
-                            // Simple approach: create an object holding both; for binding we expect phrases properties only inside Phrases tab so temporarily swap
-                            phrasesRoot.DataContext = phrasesVm;
-                        }
+                        if (phrasesVm != null) phrasesRoot.DataContext = phrasesVm;
                     }
                     catch { }
                 }

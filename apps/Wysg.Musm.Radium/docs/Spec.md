@@ -122,6 +122,25 @@
 ## Update: MainWindow ComboBox + Hover Tuning (2025-10-05)
 - **FR-245** Apply global click-anywhere ComboBox template to MainWindow by removing legacy DarkMiniCombo style; adjust hover to darker tone (AccentAlt border, PanelAlt background) for reduced brightness.
 
+## Update: Reportify Settings Persistence (2025-10-05)
+- **FR-249** System MUST persist per-account reportify settings JSON in central table radium.reportify_setting with columns (account_id PK/FK, settings_json jsonb, updated_at, rev).
+- **FR-250** Settings window Reportify tab MUST provide Load Settings and Save Settings buttons which load existing JSON into individual option checkboxes/text fields and persist current in-memory configuration respectively.
+- **FR-251** Saving reportify settings MUST perform an upsert (INSERT .. ON CONFLICT) incrementing rev and updating updated_at only when settings_json changes; client ignores transient DB errors silently.
+
+## Update: Reportify Settings Auto-Load (2025-10-05)
+- **FR-252** Application MUST automatically load per-account reportify settings JSON during successful login (silent refresh or explicit) storing it in tenant context; Reportify tab shows only Save and Close (no manual Load) and Save performs create/update upsert accordingly.
+
+## Update: Reportify Functional Implementation (2025-10-05)
+- **FR-253** Reportify toggle MUST apply all enabled transformations from persisted per-account settings (arrows, bullets, spacing, parentheses, number-unit spacing, whitespace collapse, capitalization, trailing period, paragraph numbering for conclusions, indentation of continuation lines) and reflect changes immediately upon toggling; settings JSON changes after login take effect on next toggle.
+
+## Update: Phrase Loading Guard & Account Change Events (2025-10-05)
+- **FR-254** Phrase loading MUST return empty (and never query DB) when AccountId <= 0; Add/Toggles throw or no-op until a valid AccountId is set.
+- **FR-255** Application MUST raise an AccountIdChanged event (oldId,newId) on tenant context; phrase UI MUST clear on logout (newId<=0) and auto reload on first valid login (transition 0->>0).
+
+## Update: Settings Window Composition (2025-10-05)
+- **FR-256** Settings window MUST resolve SettingsViewModel via DI including tenant + reportify services; Save Settings button enabled only when AccountId > 0 and services present.
+- **FR-257** Phrases tab within Settings MUST bind to shared PhrasesViewModel instance (no duplicate loads); bindings NewText/AddCommand/Items/RefreshCommand must resolve without binding errors.
+
 ## Prior Updates
 <!-- cumulative prior content retained below -->
 ## Update: Previous report ingestion refinements (2025-10-05)

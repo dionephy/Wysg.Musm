@@ -64,7 +64,7 @@ namespace Wysg.Musm.Radium.Services
 
         private string BuildConnectionString()
         {
-            var raw = _settings.CentralConnectionString ?? _settings.LocalConnectionString ?? _fallback;
+            var raw = _settings.CentralConnectionString;
             try
             {
                 var b = new NpgsqlConnectionStringBuilder(raw)
@@ -458,6 +458,7 @@ namespace Wysg.Musm.Radium.Services
 
         public async Task<IReadOnlyList<string>> GetPhrasesForAccountAsync(long accountId)
         {
+            if (accountId <= 0) return Array.Empty<string>();
             try { await EnsureUpToDateAsync(accountId).ConfigureAwait(false); }
             catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][GetPhrases][CANCEL] " + oce.Message); }
             if (_states.TryGetValue(accountId, out var state))
@@ -467,6 +468,7 @@ namespace Wysg.Musm.Radium.Services
 
         public async Task<IReadOnlyList<string>> GetPhrasesByPrefixAccountAsync(long accountId, string prefix, int limit = 50)
         {
+            if (accountId <= 0) return Array.Empty<string>();
             if (string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
             try { await EnsureUpToDateAsync(accountId).ConfigureAwait(false); }
             catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][GetPrefix][CANCEL] " + oce.Message); }
@@ -485,6 +487,7 @@ namespace Wysg.Musm.Radium.Services
 
         public async Task<IReadOnlyList<PhraseInfo>> GetAllPhraseMetaAsync(long accountId)
         {
+            if (accountId <= 0) return Array.Empty<PhraseInfo>();
             try { await EnsureUpToDateAsync(accountId).ConfigureAwait(false); }
             catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][GetMeta][CANCEL] " + oce.Message); }
             if (_states.TryGetValue(accountId, out var state) && state.ById.Count > 0)
@@ -501,6 +504,7 @@ namespace Wysg.Musm.Radium.Services
 
         public async Task<PhraseInfo> UpsertPhraseAsync(long accountId, string text, bool active = true)
         {
+            if (accountId <= 0) throw new System.ArgumentOutOfRangeException(nameof(accountId), "AccountId must be > 0");
             // NOTE (Rev Stabilization):
             // Originally the UPSERT logic always executed an UPDATE branch (ON CONFLICT) that set updated_at=now() and rev=nextval(...)
             // even when neither 'text' nor 'active' changed. In the database a BEFORE UPDATE trigger (radium.touch_phrase)
@@ -646,6 +650,7 @@ namespace Wysg.Musm.Radium.Services
 
         public async Task<PhraseInfo?> ToggleActiveAsync(long accountId, long phraseId)
         {
+            if (accountId <= 0) return null;
             await EnsureBackendAsync().ConfigureAwait(false);
             if (!_radiumAvailable) return null;
             const string sql = @"UPDATE radium.phrase SET active = NOT active

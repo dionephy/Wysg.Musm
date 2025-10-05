@@ -183,3 +183,35 @@ T031 added (see tasks.md).
 - FR-247: Adjust implicit ComboBox style (font size 11) for denser layout; rely on existing global template for click-anywhere behavior.
 - FR-248: Swap TextBox -> Label for CurrentStudyLabel to avoid user confusion about editability and reduce visual chrome.
 
+## Plan Addition (2025-10-05 - FR-249..FR-251)
+- Add radium.reportify_setting table (account-scoped singleton) storing JSON & rev.
+- Implement IReportifySettingsService (Get, Upsert, Delete) using central data source provider.
+- Extend SettingsViewModel with Save/Load commands guarded by presence of tenant/account id & service.
+- Upsert increments rev server-side via UPDATE expression; client does not diff JSON (server revision bump acceptable per write request).
+- Add UI buttons to Reportify tab for Load/Save; disabled only when service unavailable.
+
+## Plan Addition (2025-10-05 - FR-252)
+- On login (silent or interactive) after EnsureAccountAsync succeeds: resolve IReportifySettingsService, fetch JSON, store in ITenantContext.ReportifySettingsJson.
+- SettingsViewModel constructor checks tenant context for existing JSON and applies it (ApplyReportifyJson) removing need for manual Load.
+- Reportify tab buttons reduced to Save + Close.
+
+## Plan Addition (2025-10-05 - FR-253)
+- Implement ReportifyConfig loader parsing tenant ReportifySettingsJson once per change.
+- Integrate ApplyReportifyBlock / ApplyReportifyConclusion using regex passes per line with conditional steps keyed off config flags.
+- Conclusion paragraph numbering executed pre line splitting; indentation applied post transformations for continuation lines.
+- Editor toggle now calls ApplyReportifyBlock / ApplyReportifyConclusion replacing SimpleReportifyBlock usage.
+- Config reloaded automatically when tenant.ReportifySettingsJson differs from last applied before next transformation.
+
+## Plan Addition (2025-10-05 - FR-254, FR-255)
+- Add AccountIdChanged event to ITenantContext/TenantContext (invoke when TenantId changes).
+- Modify PhraseService methods to early-return empty (or throw for mutation) when accountId <= 0.
+- Update PhrasesViewModel: subscribe to AccountIdChanged; clear Items on logout; trigger RefreshAsync on first valid >0 id.
+- Remove legacy fallback adoption logic where possible (retain ResolveAccountIdAsync only for backward compatibility; new guards prefer tenant.AccountId).
+- Update Spec/Tasks docs accordingly.
+
+## Plan Addition (2025-10-05 - FR-256, FR-257)
+- Replace parameterless SettingsWindow DataContext with DI-resolved SettingsViewModel (inject tenant, reportify svc, phrases VM).
+- Add IsAccountValid property and bind Save Settings button IsEnabled.
+- Inject PhrasesViewModel into SettingsViewModel (composition) to eliminate binding errors.
+- Bind phrases tab root DataContext to SettingsViewModel.Phrases; fall back to service resolve if null.
+

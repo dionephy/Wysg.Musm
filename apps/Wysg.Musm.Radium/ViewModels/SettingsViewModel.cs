@@ -56,20 +56,84 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _sampleAfterText = string.Empty; public string SampleAfterText { get => _sampleAfterText; set => SetProperty(ref _sampleAfterText, value); }
         public IRelayCommand SaveCommand { get; }
         public IRelayCommand TestLocalCommand { get; }
+        public IRelayCommand TestCentralCommand { get; } // new
         public IRelayCommand SaveAutomationCommand { get; }
         public IRelayCommand ShowReportifySampleCommand { get; }
+        public IRelayCommand SaveReportifySettingsCommand { get; }
+
+        private readonly IReportifySettingsService? _reportifySvc;
+        private readonly ITenantContext? _tenant;
+        public PhrasesViewModel? Phrases { get; }
+        public bool IsAccountValid => _tenant?.AccountId > 0;
 
         public SettingsViewModel() : this(new RadiumLocalSettings()) { }
 
-        public SettingsViewModel(IRadiumLocalSettings local)
+        public SettingsViewModel(IRadiumLocalSettings local, IReportifySettingsService? reportifySvc = null, ITenantContext? tenant = null, PhrasesViewModel? phrases = null)
         {
             _local = local;
+            _reportifySvc = reportifySvc; _tenant = tenant; Phrases = phrases;
             LocalConnectionString = _local.LocalConnectionString ?? "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas";
             SaveCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(Save);
             TestLocalCommand = new AsyncRelayCommand(TestLocalAsync);
+            TestCentralCommand = new AsyncRelayCommand(TestCentralAsync); // new
             SaveAutomationCommand = new RelayCommand(SaveAutomation);
             ShowReportifySampleCommand = new RelayCommand<string?>(ShowSample);
+            SaveReportifySettingsCommand = new AsyncRelayCommand(SaveReportifySettingsAsync, CanPersistSettings);
             UpdateReportifyJson();
+            if (_tenant != null)
+            {
+                _tenant.AccountIdChanged += (_, _) =>
+                {
+                    SaveReportifySettingsCommand.NotifyCanExecuteChanged();
+                    OnPropertyChanged(nameof(IsAccountValid));
+                };
+            }
+            if (_tenant?.ReportifySettingsJson != null)
+            {
+                ApplyReportifyJson(_tenant.ReportifySettingsJson);
+            }
+        }
+
+        private bool CanPersistSettings() => _reportifySvc != null && _tenant != null && _tenant.AccountId > 0;
+
+        private async Task SaveReportifySettingsAsync()
+        {
+            if (!CanPersistSettings()) return;
+            try { var res = await _reportifySvc!.UpsertAsync(_tenant!.AccountId, ReportifySettingsJson); _tenant.ReportifySettingsJson = res.settingsJson; }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[SettingsVM] Save reportify error: " + ex.Message); }
+        }
+
+        private void ApplyReportifyJson(string json)
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                bool GetBool(string name, bool def) => root.TryGetProperty(name, out var el) && el.ValueKind == System.Text.Json.JsonValueKind.True ? true : (el.ValueKind == System.Text.Json.JsonValueKind.False ? false : def);
+                string GetDef(string prop, string def)
+                {
+                    if (root.TryGetProperty("defaults", out var d) && d.TryGetProperty(prop, out var el) && el.ValueKind == System.Text.Json.JsonValueKind.String) return el.GetString() ?? def;
+                    return def;
+                }
+                RemoveExcessiveBlanks = GetBool("remove_excessive_blanks", RemoveExcessiveBlanks);
+                RemoveExcessiveBlankLines = GetBool("remove_excessive_blank_lines", RemoveExcessiveBlankLines);
+                CapitalizeSentence = GetBool("capitalize_sentence", CapitalizeSentence);
+                EnsureTrailingPeriod = GetBool("ensure_trailing_period", EnsureTrailingPeriod);
+                NormalizeArrows = GetBool("normalize_arrows", NormalizeArrows);
+                NormalizeBullets = GetBool("normalize_bullets", NormalizeBullets);
+                SpaceAfterPunctuation = GetBool("space_after_punctuation", SpaceAfterPunctuation);
+                NormalizeParentheses = GetBool("normalize_parentheses", NormalizeParentheses);
+                SpaceNumberUnit = GetBool("space_number_unit", SpaceNumberUnit);
+                CollapseWhitespace = GetBool("collapse_whitespace", CollapseWhitespace);
+                NumberConclusionParagraphs = GetBool("number_conclusion_paragraphs", NumberConclusionParagraphs);
+                IndentContinuationLines = GetBool("indent_continuation_lines", IndentContinuationLines);
+                PreserveKnownTokens = GetBool("preserve_known_tokens", PreserveKnownTokens);
+                DefaultArrow = GetDef("arrow", DefaultArrow);
+                DefaultConclusionNumbering = GetDef("conclusion_numbering", DefaultConclusionNumbering);
+                DefaultDetailingPrefix = GetDef("detailing_prefix", DefaultDetailingPrefix);
+                UpdateReportifyJson();
+            }
+            catch { }
         }
 
         public void LoadAutomation()
@@ -97,6 +161,11 @@ namespace Wysg.Musm.Radium.ViewModels
         private async Task TestLocalAsync()
         {
             await TestAsync(LocalConnectionString, "Local");
+        }
+
+        private async Task TestCentralAsync()
+        {
+            await TestAsync(_local.CentralConnectionString, "Central");
         }
 
         private static async Task TestAsync(string? cs, string label)

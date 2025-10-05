@@ -22,7 +22,22 @@ namespace Wysg.Musm.Radium.ViewModels
             _phrases = phrases; _tenant = tenant;
             RefreshCommand = new DelegateCommand(async _ => await RefreshAsync());
             AddCommand = new DelegateCommand(async _ => await AddAsync(), _ => !string.IsNullOrWhiteSpace(NewText));
+            _tenant.AccountIdChanged += OnAccountIdChanged;
             _ = RefreshAsync();
+        }
+
+        private void OnAccountIdChanged(long oldId, long newId)
+        {
+            if (newId <= 0)
+            {
+                // logout -> clear
+                App.Current?.Dispatcher.Invoke(() => Items.Clear());
+            }
+            else if (oldId <= 0 && newId > 0)
+            {
+                // first valid login -> reload
+                _ = RefreshAsync();
+            }
         }
 
         private string _newText = string.Empty;
@@ -79,20 +94,8 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private async Task RefreshAsync()
         {
-            // Refresh repopulates the grid. For each row we call InitializeActive(...) so the first property set
-            // does not invoke ToggleActiveAsync (which would otherwise produce unnecessary UPDATE + trigger rev bump).
-            var accountId = await ResolveAccountIdAsync();
-            if (accountId == null)
-            {
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    Items.Clear();
-                    var row = new PhraseRow(this) { Id = 0, Text = "<no phrases yet>", Active = false, UpdatedAt = DateTime.UtcNow, Rev = 0 };
-                    Items.Add(row);
-                });
-                return;
-            }
-            var meta = await _phrases.GetAllPhraseMetaAsync(accountId.Value).ConfigureAwait(false);
+            var accountId = _tenant.AccountId; if (accountId <= 0) { Application.Current.Dispatcher.Invoke(() => Items.Clear()); return; }
+            var meta = await _phrases.GetAllPhraseMetaAsync(accountId).ConfigureAwait(false);
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Items.Clear();
@@ -107,30 +110,24 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private async Task AddAsync()
         {
-            var accountId = await ResolveAccountIdAsync();
-            if (accountId == null) return; // no account
+            var accountId = _tenant.AccountId; if (accountId <= 0) return;
             var text = NewText.Trim();
             if (text.Length == 0) return;
-            _ = await _phrases.UpsertPhraseAsync(accountId.Value, text, true);
+            _ = await _phrases.UpsertPhraseAsync(accountId, text, true);
             NewText = string.Empty;
             await RefreshAsync();
         }
 
         private async Task OnActiveChangedAsync(PhraseRow row)
         {
-            // Only invoked for genuine user interaction (checkbox edit). We still double-check server round-trip
-            // and, if the returned Active mismatches the user intent (possible race), we issue one corrective toggle.
-            // This preserves rev integrity while keeping UI consistent.
-            if (row.Id == 0) return; // placeholder row
-            var accountId = await ResolveAccountIdAsync();
-            if (accountId == null) return;
+            if (row.Id == 0) return; var accountId = _tenant.AccountId; if (accountId <= 0) return;
             // Toggle service simply flips; ensure desired end state matches
-            var updated = await _phrases.ToggleActiveAsync(accountId.Value, row.Id).ConfigureAwait(false);
+            var updated = await _phrases.ToggleActiveAsync(accountId, row.Id).ConfigureAwait(false);
             if (updated == null) return;
             // If flip mismatched user intention (because they clicked while stale), adjust again
             if (updated.Active != row.Active)
             {
-                updated = await _phrases.ToggleActiveAsync(accountId.Value, row.Id).ConfigureAwait(false);
+                updated = await _phrases.ToggleActiveAsync(accountId, row.Id).ConfigureAwait(false);
                 if (updated == null) return;
             }
             Application.Current.Dispatcher.Invoke(() =>

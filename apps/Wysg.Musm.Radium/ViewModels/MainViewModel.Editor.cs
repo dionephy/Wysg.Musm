@@ -27,9 +27,9 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 CaptureRawIfNeeded();
                 _suppressAutoToggle = true;
-                HeaderText = SimpleReportifyBlock(_rawHeader);
-                FindingsText = SimpleReportifyBlock(_rawFindings);
-                ConclusionText = ReportifyConclusion(_rawConclusion);
+                HeaderText = ApplyReportifyBlock(_rawHeader, false);
+                FindingsText = ApplyReportifyBlock(_rawFindings, false);
+                ConclusionText = ApplyReportifyConclusion(_rawConclusion);
                 _suppressAutoToggle = false;
             }
             else
@@ -126,8 +126,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 }
                 else
                 {
-                    FindingsText = SimpleReportifyBlock(newFindings);
-                    ConclusionText = ReportifyConclusion(newConclusion);
+                    FindingsText = ApplyReportifyBlock(newFindings, false);
+                    ConclusionText = ApplyReportifyConclusion(newConclusion);
                 }
             }
             catch { }
