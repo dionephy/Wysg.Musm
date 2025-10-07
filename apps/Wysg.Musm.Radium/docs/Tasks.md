@@ -1,6 +1,16 @@
 ﻿# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Added
+- [X] T366 Remove global semaphore serialization in PhraseService (per-account only) (FR-261).
+- [X] T367 Eliminate manual per-command CancellationTokenSource in toggle/upsert (FR-262).
+- [X] T368 Tune connection string (MaxPoolSize<=50, KeepAlive=30s) & simplify retry (FR-263).
+
+## Added (previous)
+- [X] T358 Implement synchronous phrase database interaction flow (FR-258) ensuring stability under rapid clicks and network latency.
+- [X] T359 Add per-account update locks to PhraseService to prevent UI state corruption during database operations (FR-259).
+- [X] T360 Enhance PhrasesViewModel to display snapshot state instead of optimistic UI state (FR-260).
+- [X] T361 Implement automatic consistency recovery via snapshot refresh when phrase operations fail (FR-260).
+- [X] T362 Add UI toggle prevention during active database operations to ensure atomicity (FR-259).
 - [X] T327 Harden SettingsWindow module removal (null DataContext guard & ItemsSource fallback) (FR-234).
 - [X] T325 Add SpyWindow Crawl Editor "Get Name" button + handler (FR-231) (SpyWindow.xaml / SpyWindow.xaml.cs).
 - [X] T326 Add `GetName` custom procedure operation (preset, execution switch, docs) (FR-232).
@@ -267,6 +277,9 @@ Legend:
 - [ ] T198 Performance test for multiple event processing (target <5ms) (FR-129)
 - [ ] T199 Performance test for navigation state tracking (target <1ms) (FR-130)
 - [ ] T200 Performance test for recursive guard protection (target <1ms) (FR-132)
+- [ ] T363 Performance test for phrase database operations (target <2s normal network) (FR-258)
+- [ ] T364 Performance test for phrase snapshot updates (target <100ms) (FR-258)
+- [ ] T365 Stress test for rapid phrase toggles under network latency (FR-259)
 
 ## Phase 5 ? Documentation & Finalization
 - [ ] T201 Update quickstart with actual commands & sample timeline  
@@ -295,6 +308,7 @@ Legend:
 - Navigation state tracking (T222-T231) complete before navigation state tests (T161)
 - Recursive guard protection (T232-T233) complete before recursive guard tests (T162)
 - Unit test implementation (T234) complete before comprehensive testing phase
+- Phrase database stability (T358-T362) complete before phrase stress testing (T363-T365)
 
 ---
 ## Parallel Execution Examples
@@ -302,6 +316,7 @@ Phase 1 parallel set: T111 T112 T113 T114 T115 T116 T117
 Contract test parallel set: T120 T121 T122 T123 T124 T125 T126
 Editor completion test set: T155 T156 (after T210-T213 complete)
 Bug fix test set: T157 T158 T159 T160 T161 T162 (after T214-T233 complete)
+Phrase stability test set: T363 T364 T365 (after T358-T362 complete)
 
 ---
 ## Validation Checklist
@@ -310,11 +325,12 @@ Bug fix test set: T157 T158 T159 T160 T161 T162 (after T214-T233 complete)
 - [X] All FR-050..FR-058 have editor test or impl task
 - [X] All FR-090..FR-099 mapping & procedure tasks enumerated
 - [X] All FR-120..FR-132 reliability, completion, and bug fix tasks covered
+- [X] All FR-258..FR-260 phrase database stability tasks implemented
 - [ ] No unresolved dependency loops
 - [X] Each task has concrete output (file(s) or behavior)
 
 ---
-## Added / Completed (Account Migration + Completion Improvements + Bug Fixes + Selection Guard Fix + Multiple Event Handling + Navigation State Tracking + Recursive Guard Protection)
+## Added / Completed (Account Migration + Completion Improvements + Bug Fixes + Selection Guard Fix + Multiple Event Handling + Navigation State Tracking + Recursive Guard Protection + Phrase Database Stability)
 - [X] TM01 Migrate phrase service to account_id terminology (snapshot-backed)
 - [X] TM02 Update PhraseCompletionProvider to use snapshot via account_id
 - [X] TM03 Update Spec/Plan with migration notes
@@ -367,73 +383,9 @@ Bug fix test set: T157 T158 T159 T160 T161 T162 (after T214-T233 complete)
 - [X] T236 Update Spec/Plan/Tasks with FR-133 documentation (FR-133).
 - [X] T237 Implement adaptive measured height (exact height ≤8 items, clamp >8) (FR-134).
 - [X] T238 Update Spec/Plan/Tasks with FR-134 documentation (FR-134).
-
-## Added (2025-10-05 AI Skeleton)
-- [X] T300 Create Domain AI interfaces & records (ILLMClient, skills, ReportState, routing, telemetry) (FR-AI-002, FR-AI-008)
-- [X] T301 Implement UseCases ReportPipeline minimal stages (study remark, patient remark, postprocess subset) (FR-AI-003)
-- [X] T302 Implement Infrastructure NoOp skill implementations + NoOp router + telemetry sink (FR-AI-004, FR-AI-007)
-- [X] T303 Add DI extension AddMusmAi with toggle flag (FR-AI-005, FR-AI-006)
-- [X] T304 Register AddMusmAi() in API Program.cs (FR-AI-001)
-- [ ] T305 Add try/catch per stage in ReportPipeline for resilient partial completion (FR-AI-009)
-- [ ] T306 Implement real telemetry recorder (Serilog + enrichment) (FR-AI-007)
-- [ ] T307 Implement real model router with heuristic selection (FR-AI-010)
-- [ ] T308 Add HeaderSplitter & HeaderParser interfaces implementation + integrate into pipeline (extends FR-008/FR-009 mapping) (FR-AI-003)
-- [ ] T309 Add Proofreader real implementation (LLM call + JSON validation) (FR-AI-003)
-- [ ] T310 Add ConclusionGenerator real implementation (LLM call) (FR-AI-003)
-- [ ] T311 Minimal API endpoints for intake & postprocess (FR-AI-001)
-- [ ] T312 Add structured error contract + exception mapping middleware (FR-AI-009)
-- [ ] T313 Configuration binding & provider selection (OpenAI/Ollama/Local) (FR-AI-006)
-- [ ] T314 Prompt template loader (.prompt files + cache hash) (supports all skills) (FR-AI-006)
-- [ ] T315 JSON schema validator & retry (validation guard) (FR-AI-009)
-- [ ] T316 Add unit tests for ReportPipeline minimal path (intake + postprocess) (FR-AI-003)
-- [ ] T317 Add integration test using NoOp implementations (baseline) (FR-AI-001)
-- [ ] T318 Add performance timing decorator for skills (FR-AI-007)
-
-# Tasks: Previous Study Multi-Report Selection (FR-214..FR-218) + Reportify Settings (FR-219..FR-230)
-
-Input: plan.md & Spec.md cumulative
-
-## Execution Flow
-1. Multi-report previous study selection (T001-T016)
-2. Reportify skeleton (T017-T021)
-3. Reportify enhancements & JSON preview (T022-T026)
-4. Reportify sample preview (T027-T030)
-5. Checkbox + sample coexistence (T031)
-
-## Tasks (cumulative)
-T001 Update RadStudyRepository query to include studyname, report_datetime, created_by and adjust PatientReportRow. (apps/Wysg.Musm.Radium/Services/RadStudyRepository.cs)
-T002 [P] Add PreviousReportChoice class & Reports collection inside PreviousStudyTab; add selection handling logic. (apps/Wysg.Musm.Radium/ViewModels/MainViewModel.cs)
-T003 Update LoadPreviousStudiesForPatientAsync to group rows and populate Reports; default select most recent. (MainViewModel.cs)
-T004 [P] Add ComboBox (cboPrevReport) binding to SelectedPreviousStudy.Reports with dark compact style. (Views/MainWindow.xaml)
-T005 Add dark compact ComboBox style (DarkMiniCombo) for report selector. (Views/MainWindow.xaml)
-T006 Wire SelectedPreviousStudy.SelectedReport two-way binding to ComboBox SelectedItem. (Views/MainWindow.xaml & MainViewModel.cs)
-T007 Ensure reportified toggle reapplies when report selection changes (reuse ApplyPreviousReportifiedState). (MainViewModel.cs)
-T008 Update Spec.md with FR-214..FR-217 entries. (docs/Spec.md)
-T009 Create/Update plan.md summarizing implementation. (docs/plan.md)
-T010 Create tasks.md (this file). (docs/tasks.md)
-T011 Build solution and fix compile errors if any.
-T012 Manual test: load patient with multiple reports per study; switch via ComboBox; verify transformations.
-T013 Manual test: dark styling (font size 11, colors consistent) and truncation ellipsis.
-T014 Manual test: null report_datetime displays '(no report dt)'.
-T015 Manual test: selection persists when toggling PreviousReportified on/off.
-T016 Implement full dark custom ControlTemplate + disabled dummy sizing item (FR-218). (Views/MainWindow.xaml, docs updates)
-T017 Add Reportify tab skeleton with four option checkboxes (FR-220). (Views/SettingsWindow.xaml)
-T018 Add three default value textboxes & labels (FR-221). (Views/SettingsWindow.xaml)
-T019 Add explanatory note and mark tab non-functional (FR-222). (Views/SettingsWindow.xaml)
-T020 Update spec.md, plan.md, tasks.md with FR-219..FR-222. (docs/*.md)
-T021 Build & verify no compile errors after skeleton tab.
-T022 Add enhanced Reportify option properties to SettingsViewModel (FR-223). (ViewModels/SettingsViewModel.cs)
-T023 Update Reportify tab UI with grouped checkboxes & styles for dark visibility (FR-223, FR-226). (Views/SettingsWindow.xaml)
-T024 Implement live JSON preview generation & binding (FR-224, FR-225). (ViewModels/SettingsViewModel.cs + SettingsWindow.xaml)
-T025 Update spec/plan/tasks with FR-223..FR-226 (docs/*.md)
-T026 Build & manual verify JSON updates immediately on toggle/input change.
-T027 Add SampleBeforeText/SampleAfterText properties + ShowReportifySampleCommand (FR-227). (ViewModels/SettingsViewModel.cs)
-T028 Add expander buttons triggering samples; layout 3-column preview (FR-227, FR-228). (Views/SettingsWindow.xaml)
-T029 Ensure sample buttons do not alter JSON settings (FR-229) & update docs. (docs/*.md)
-T030 Build & manual verify each sample button populates preview fields correctly.
-T031 Reintroduce checkboxes alongside sample buttons in each group (FR-230). (Views/SettingsWindow.xaml, docs updates)
-
-## Completion Criteria
-- Checkboxes and sample buttons visible together (FR-230)
-- JSON preview still updates on checkbox change
-- Build passes
+- [X] T358 Implement synchronous phrase database interaction flow (FR-258) ensuring stability under rapid clicks and network latency.
+- [X] T359 Add per-account update locks to PhraseService to prevent UI state corruption during database operations (FR-259).
+- [X] T360 Enhance PhrasesViewModel to display snapshot state instead of optimistic UI state (FR-260).
+- [X] T361 Implement automatic consistency recovery via snapshot refresh when phrase operations fail (FR-260).
+- [X] T362 Add UI toggle prevention during active database operations to ensure atomicity (FR-259).
+- [ ] T369 Add unit test verifying first completion item auto-selected on popup open with non-exact match (FR-264).

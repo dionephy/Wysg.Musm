@@ -7,6 +7,7 @@ using System.Windows;
 using Wysg.Musm.Radium.Services;
 using System.Text.Json;
 using System.Collections.Generic;
+using Microsoft.Data.SqlClient; // added for Azure SQL
 
 namespace Wysg.Musm.Radium.ViewModels
 {
@@ -14,10 +15,17 @@ namespace Wysg.Musm.Radium.ViewModels
     {
         private readonly IRadiumLocalSettings _local;
 
+        // User-requested default (note: quoted Authentication as provided)
+        private const string DefaultCentralAzureSqlConnection = "Server=tcp:musm-server.database.windows.net,1433;Initial Catalog=musmdb;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication=\"Active Directory Default\";";
+
         [ObservableProperty]
         private string? localConnectionString;
 
+        [ObservableProperty]
+        private string? centralConnectionString;
+
         // Back-compat binding
+        // New: editable central (Azure SQL) connection string (passwordless AAD)
         public string? ConnectionString
         {
             get => LocalConnectionString;
@@ -73,6 +81,8 @@ namespace Wysg.Musm.Radium.ViewModels
             _local = local;
             _reportifySvc = reportifySvc; _tenant = tenant; Phrases = phrases;
             LocalConnectionString = _local.LocalConnectionString ?? "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas";
+            // Initialize central connection string with provided default if none persisted
+            CentralConnectionString = string.IsNullOrWhiteSpace(_local.CentralConnectionString) ? DefaultCentralAzureSqlConnection: _local.CentralConnectionString;
             SaveCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(Save);
             TestLocalCommand = new AsyncRelayCommand(TestLocalAsync);
             TestCentralCommand = new AsyncRelayCommand(TestCentralAsync); // new
@@ -148,6 +158,8 @@ namespace Wysg.Musm.Radium.ViewModels
         private void Save()
         {
             _local.LocalConnectionString = LocalConnectionString ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(CentralConnectionString))
+                _local.CentralConnectionString = CentralConnectionString!.Trim();
             MessageBox.Show("Saved.", "Settings", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
@@ -158,26 +170,70 @@ namespace Wysg.Musm.Radium.ViewModels
             MessageBox.Show("Automation saved.", "Automation", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private async Task TestLocalAsync()
-        {
-            await TestAsync(LocalConnectionString, "Local");
-        }
-
+        private async Task TestLocalAsync() => await TestAsync(LocalConnectionString, "Local");
         private async Task TestCentralAsync()
         {
-            await TestAsync(_local.CentralConnectionString, "Central");
+            // Prefer unsaved typed value if present
+            var cs = !string.IsNullOrWhiteSpace(CentralConnectionString) ? CentralConnectionString : _local.CentralConnectionString;
+            await TestAsync(cs, "Central");
         }
 
         private static async Task TestAsync(string? cs, string label)
         {
+            if (string.IsNullOrWhiteSpace(cs))
+            {
+                MessageBox.Show($"{label} connection string empty.", "Test", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            bool isAzureSql = cs.IndexOf("database.windows.net", System.StringComparison.OrdinalIgnoreCase) >= 0 || cs.Contains("Initial Catalog=");
             try
             {
-                await using var con = new NpgsqlConnection(cs);
-                await con.OpenAsync();
-                MessageBox.Show($"{label} connection OK.", "Test", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (isAzureSql)
+                {
+                    await using var con = new SqlConnection(cs);
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    await con.OpenAsync();
+                    await using var cmd = new SqlCommand("SELECT TOP (1) name FROM sys.tables", con);
+                    await cmd.ExecuteScalarAsync();
+                    sw.Stop();
+                    MessageBox.Show($"{label} Azure SQL OK ({sw.ElapsedMilliseconds} ms).", "Test", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    await using var con = new NpgsqlConnection(cs);
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    await con.OpenAsync();
+                    await using var cmd = new NpgsqlCommand("SELECT 1", con);
+                    await cmd.ExecuteScalarAsync();
+                    sw.Stop();
+                    MessageBox.Show($"{label} Postgres OK ({sw.ElapsedMilliseconds} ms).", "Test", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (System.Exception ex)
             {
+                // Azure AD passwordless fallback: try interactive if default failed
+                if (isAzureSql && cs.Contains("Authentication=Active Directory Default", System.StringComparison.OrdinalIgnoreCase)
+                    && (ex.Message.IndexOf("DefaultAzureCredential", System.StringComparison.OrdinalIgnoreCase) >= 0
+                        || ex.Message.IndexOf("failed to retrieve a token", System.StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    try
+                    {
+                        var interactiveCs = cs.Replace("Authentication=Active Directory Default", "Authentication=Active Directory Interactive", System.StringComparison.OrdinalIgnoreCase);
+                        await using var conI = new SqlConnection(interactiveCs);
+                        var swI = System.Diagnostics.Stopwatch.StartNew();
+                        await conI.OpenAsync(); // will show interactive login dialog
+                        await using var cmdI = new SqlCommand("SELECT TOP (1) name FROM sys.tables", conI);
+                        await cmdI.ExecuteScalarAsync();
+                        swI.Stop();
+                        MessageBox.Show($"{label} Azure SQL OK via Interactive ({swI.ElapsedMilliseconds} ms). Revert to Default after successful token acquisition.", "Test", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+                    catch (System.Exception ex2)
+                    {
+                        MessageBox.Show($"{label} interactive fallback failed: {ex2.Message}", "Test", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
                 MessageBox.Show($"{label} failed: {ex.Message}", "Test", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }

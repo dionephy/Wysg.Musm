@@ -22,6 +22,7 @@ namespace Wysg.Musm.Radium.Services
         Task<IReadOnlyList<PhraseInfo>> GetAllPhraseMetaAsync(long accountId);
         Task<PhraseInfo> UpsertPhraseAsync(long accountId, string text, bool active = true);
         Task<PhraseInfo?> ToggleActiveAsync(long accountId, long phraseId);
+        Task RefreshPhrasesAsync(long accountId);
         Task<long?> GetAnyAccountIdAsync();
     }
 }

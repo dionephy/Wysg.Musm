@@ -1,5 +1,15 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Phrase Toggle Throughput Optimization (2025-10-07)
+- **FR-261** Phrase mutation pipeline MUST avoid cross-account global serialization; only per-account locking is permitted to reduce artificial contention.
+- **FR-262** Phrase toggle/upsert operations MUST NOT apply additional short client-side cancellation tokens (manual CTS) that preempt server execution; rely on CommandTimeout only for cancellation.
+- **FR-263** Phrase service connection strategy MUST cap pool size (≤50) and reuse natural pooling without excessive keepalive frequency (<30s) to reduce timeouts on constrained (free tier) backends.
+
+## Update: Phrase Database Interaction Stability (2025-10-05)
+- **FR-258** Phrase change operations (toggle active, add phrase) MUST follow strict synchronous flow: user action → synchronously update database → synchronously update in-memory snapshot → display snapshot state (never display database state directly).
+- **FR-259** Phrase toggle operations MUST prevent UI state corruption by blocking additional toggle requests during active toggle processing and ensuring all UI updates reflect final snapshot state.
+- **FR-260** Phrase add operations MUST complete database upsert and snapshot update before displaying new phrase in UI, with automatic consistency recovery via snapshot refresh on any operation failure.
+
 ## Update: Automation list deletion robustness (2025-10-05)
 - **FR-234** Settings Automation tab MUST allow removing a module instance via X button without throwing even if DataContext rebinds or control template re-applies; method MUST gracefully fallback to ListBox.ItemsSource when underlying ViewModel not yet available and ignore unknown list names.
 
@@ -141,6 +151,9 @@
 - **FR-256** Settings window MUST resolve SettingsViewModel via DI including tenant + reportify services; Save Settings button enabled only when AccountId > 0 and services present.
 - **FR-257** Phrases tab within Settings MUST bind to shared PhrasesViewModel instance (no duplicate loads); bindings NewText/AddCommand/Items/RefreshCommand must resolve without binding errors.
 
+## Update: Completion First Item Auto-Select (2025-10-07)
+- **FR-264** Completion popup MUST auto-select the first item by default whenever it opens or when no exact prefix match is found, ensuring immediate Enter commits the first suggestion without requiring initial Down key navigation.
+
 ## Prior Updates
 <!-- cumulative prior content retained below -->
 ## Update: Previous report ingestion refinements (2025-10-05)
@@ -243,6 +256,9 @@ On completion, user initiates "Send to PACS". System validates banner metadata m
 ### OCR & Live Banner Story
 User or automation needs quick extraction of patient number or study date/time from currently visible viewer banner (even if not mapped in UI tree). System provides lightweight OCR procedure operation and dedicated PACS methods to retrieve these values for chaining in custom procedures.
 
+### Phrase Management Stability Story
+User toggles phrase active status in Settings phrases tab. System synchronously updates database, then updates in-memory snapshot, then displays the snapshot state (not the optimistic UI state). If database update fails, UI reverts to snapshot state. This ensures stability and consistency under rapid clicking or network issues.
+
 ### Acceptance Scenarios
 1. Given a current study with unmapped studyname, when opened, then LOINC mapping window appears before editing proceeds (unless mapping already exists).
 2. Given modality = MR and missing technique mapping, when current study loads, then technique mapping capture window appears and upon confirmation Report.technique is populated.
@@ -272,6 +288,10 @@ User or automation needs quick extraction of patient number or study date/time f
 26. **Given the previous report selector, when the selected report's date/time is null, then the ComboBox item displays without a report date.**
 27. **Given the previous report selector, when a report is selected, then the report is shown in the Findings & Conclusion editors with the correct transformations applied.**
 28. **Given the previous report selector ComboBox, when displayed, then it uses dark theme styling with a compact monospace font.**
+29. **Given a phrase toggle request in Settings phrases tab, when user clicks Active checkbox, then system synchronously updates database, then snapshot, then displays final snapshot state regardless of optimistic UI state.**
+30. **Given a phrase add request, when user submits new phrase, then system synchronously updates database, updates snapshot, and displays new phrase exactly as stored in snapshot.**
+31. **Given rapid phrase toggle clicks under network latency, when database operations are in progress, then UI prevents additional toggle requests and ensures final display matches snapshot state.**
+32. **Given completion popup is opened, when no exact prefix match is found, then the first item is auto-selected by default.**
 
 ### Edge Cases
 - What happens when studyname mapping window is closed without selection? → [NEEDS CLARIFICATION: fallback behavior – skip, force retry, or mark as unmapped?]
@@ -282,6 +302,7 @@ User or automation needs quick extraction of patient number or study date/time f
 - OCR engine unavailable (Windows OCR not enabled) → Operation returns explicit "(ocr unavailable)" preview token without throwing.
 - Patient number regex finds multiple sequences → Longest sequence selected.
 - Completion popup navigation causes recursive events → Selection guard prevents infinite loops while allowing legitimate navigation.
+- Phrase database timeout during toggle → UI reverts to snapshot state and logs error; user can retry.
 
 ---
 ## Requirements (mandatory)
@@ -352,6 +373,11 @@ User or automation needs quick extraction of patient number or study date/time f
 - **FR-177** Automation module sequences (New Study, Add Study) MUST be persisted locally and drive behavior of New Study command.
 - **FR-178** Settings window MUST use dark theme consistent with main window styling.
 
+### Functional Requirements (Phrase Database Stability)
+- **FR-258** Phrase change operations (toggle active, add phrase) MUST follow strict synchronous flow: user action → synchronously update database → synchronously update in-memory snapshot → display snapshot state (never display database state directly).
+- **FR-259** Phrase toggle operations MUST prevent UI state corruption by blocking additional toggle requests during active toggle processing and ensuring all UI updates reflect final snapshot state.
+- **FR-260** Phrase add operations MUST complete database upsert and snapshot update before displaying new phrase in UI, with automatic consistency recovery via snapshot refresh on any operation failure.
+
 ### Functional Requirements (Mapping & Procedures)
 - **FR-090** Studyname→LOINC mapping UI MUST allow multi-part selection, ordering (sequence letters), and duplicate part numbers with distinct sequence order (pair uniqueness rule).
 - **FR-091** System MUST surface playbook suggestions once ≥2 distinct selected parts exist.
@@ -379,6 +405,7 @@ User or automation needs quick extraction of patient number or study date/time f
 - **GhostSuggestion**: list of alternative multi-line suggestions + selected index.
 - **Snippet**: template text with placeholder definitions & navigation order.
 - **ProcedureOperation**: name, Arg1/Arg2 types, output variable, preview.
+- **PhraseState**: in-memory snapshot tracking phrase id, text, active status, update timestamps, revision numbers per account with synchronous update semantics.
 
 ---
 ## Review & Acceptance Checklist
@@ -390,7 +417,7 @@ User or automation needs quick extraction of patient number or study date/time f
 ### Requirement Completeness
 - [ ] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements testable & numbered
-- [x] Scope boundaries: Reporting workflow (current + previous), mapping, editor assistance, PACS submission, OCR extraction, completion improvements, bug fixes
+- [x] Scope boundaries: Reporting workflow (current + previous), mapping, editor assistance, PACS submission, OCR extraction, completion improvements, bug fixes, phrase stability
 - [ ] Assumptions validated (pending clarifications)
 
 ---
@@ -414,10 +441,10 @@ User or automation needs quick extraction of patient number or study date/time f
 
 ---
 ## Non-Functional (Derived)
-- **Performance**: Header metadata render <1s (local). Ghost suggestion request dispatch ≤100ms after idle event. LOINC mapping UI list filtering <150ms on typical dataset. OCR element operation should return in <1.2s typical (depends on Windows OCR engine). Completion cache refresh <50ms after phrase add/modify. Keyboard navigation response <50ms. Selection guard event handling <10ms. Multiple event handling <5ms. Navigation state tracking <1ms. Recursive guard handling <1ms.
-- **Reliability**: Any single external (LLM) failure must not block manual editing or PACS send if mandatory fields filled. Dependency injection must resolve all required services to prevent runtime failures. Selection guard must prevent infinite recursion. Multiple SelectionChanged events must be handled gracefully. Navigation state must be tracked accurately. Recursive event handling must be prevented.
-- **Observability**: Structured logging for each pipeline stage (event type, duration, success/failure) [NEEDS CLARIFICATION: log schema].
-- **Local Persistence**: Final report write must be atomic (transaction or temp+rename) [detail for plan].
+- **Performance**: Header metadata render <1s (local). Ghost suggestion request dispatch ≤100ms after idle event. LOINC mapping UI list filtering <150ms on typical dataset. OCR element operation should return in <1.2s typical (depends on Windows OCR engine). Completion cache refresh <50ms after phrase add/modify. Keyboard navigation response <50ms. Selection guard event handling <10ms. Multiple event handling <5ms. Navigation state tracking <1ms. Recursive guard handling <1ms. Phrase database operations <2s under normal network conditions. Phrase snapshot updates <100ms.
+- **Reliability**: Any single external (LLM) failure must not block manual editing or PACS send if mandatory fields filled. Dependency injection must resolve all required services to prevent runtime failures. Selection guard must prevent infinite recursion. Multiple SelectionChanged events must be handled gracefully. Navigation state must be tracked accurately. Recursive event handling must be prevented. Phrase database operations must maintain consistency under network instability. Phrase UI must always display snapshot state, never optimistic state.
+- **Observability**: Structured logging for each pipeline stage (event type, duration, success/failure) [NEEDS CLARIFICATION: log schema]. Phrase operation logging (database operation, snapshot update, UI update timing).
+- **Local Persistence**: Final report write must be atomic (transaction or temp+rename) [detail for plan]. Phrase snapshot must maintain consistency across database operations.
 
 ---
 ## Risks
@@ -426,6 +453,7 @@ User or automation needs quick extraction of patient number or study date/time f
 - Mapping quality affecting downstream technique auto-fill accuracy.
 - OCR variability across workstation font/render settings impacting patient number extraction accuracy.
 - Completion popup navigation recursion causing UI freezes or instability.
+- Phrase database timeouts causing UI inconsistency (mitigated by synchronous snapshot updates).
 
 ---
 ## Appendix A: Implemented Feature Record (Traceability – Historical Notes)
@@ -454,20 +482,25 @@ User or automation needs quick extraction of patient number or study date/time f
 - **Immediate Cache Refresh**: Added IPhraseCache.Clear() method and cache invalidation in PhraseService.UpsertPhraseAsync() and ToggleActiveAsync() to ensure completion list updates immediately when phrases are added/modified.
 - **Fixed Down/Up Navigation**: Modified MusmCompletionWindow selection guard to allow keyboard navigation while maintaining exact-match-only behavior for non-keyboard selection events.
 
-## 6) Spy UI Tree focus behavior
+## 6) Phrase Database Stability Improvements (2025-10-05)
+- **Synchronous Database Flow**: Implemented strict synchronous flow for phrase operations: user action → database update → snapshot update → UI display from snapshot.
+- **UI State Protection**: Added toggle state protection to prevent UI corruption during database operations and ensure final display always matches snapshot state.
+- **Consistency Recovery**: Enhanced error handling to automatically refresh from snapshot when any phrase operation fails, ensuring UI consistency.
+
+## 7) Spy UI Tree focus behavior
 - Show a single chain down to level 4 (root → ... → level 4).
 - Expand the children of the level-4 element; depth bounded by `FocusSubtreeMaxDepth`.
 - Depths configurable via constants in `SpyWindow`.
 
-## 7) Procedures grid argument editors
+## 8) Procedures grid argument editors
 - Operation presets set Arg1/Arg2 types and enablement, with immediate editor switch.
 - Element/Var editors use dark ComboBoxes.
 
-## 8) PACS Methods (Custom Procedures): "Get selected ID from search results list"
+## 9) PACS Methods (Custom Procedures): "Get selected ID from search results list"
 - New method Tag="GetSelectedIdFromSearchResults".
 - Implements PacsService.GetSelectedIdFromSearchResultsAsync.
 
-## 9) Studyname → LOINC Parts window
+## 10) Studyname → LOINC Parts window
 Goal
 - Provide clear mapping UI from med.rad_studyname to LOINC Parts.
 
@@ -510,7 +543,7 @@ Notes / Future Enhancements
 - Virtualization and count badges
 - Import button (double-click now handles bulk import)
 
-## 10) Custom Procedure Operation: GetValueFromSelection
+## 11) Custom Procedure Operation: GetValueFromSelection
 Purpose
 - Allow a procedure step to extract the value of a specific column header from the currently selected row of a list (e.g., mapped SearchResultsList) reusing the Row Data parsing logic.
 
@@ -539,11 +572,11 @@ Implementation Notes
 - Execution implemented in both single-row Set (ExecuteSingle) and full Run (RunProcedure) flows.
 - Reuses `GetHeaderTexts` + `GetRowCellValues` + `NormalizeHeader` helpers already present in SpyWindow code-behind.
 
-## 11) Row Data & Selection Value Alignment Preservation
+## 12) Row Data & Selection Value Alignment Preservation
 Change (Earlier Iteration)
 - `GetRowCellValues` now always adds placeholders for blank cells (no skipping) to keep header/value alignment.
 
-## 12) Blank Header Column Preservation (Current Iteration)
+## 13) Blank Header Column Preservation (Current Iteration)
 Problem
 - Some lists contain a leading blank header cell (first column intentionally unlabeled). Previous logic skipped blank headers which then shifted all subsequent header/value associations (e.g. Status value appearing under ID header).
 
@@ -565,7 +598,7 @@ Testing Scenarios
 3. Internal blank header between populated headers → value-only token preserved in position.
 4. `GetValueFromSelection` unaffected; indexing uses parallel arrays including blank header placeholders.
 
-## 13) Operation: ToDateTime
+## 14) Operation: ToDateTime
 Purpose
 - Convert a string variable containing a date or date-time in formats `YYYY-MM-DD` or `YYYY-MM-DD HH:mm:ss` into a normalized DateTime ISO string stored in a new var.
 
@@ -579,7 +612,7 @@ Parse Rules
 - Exact match using `InvariantCulture` for the two patterns.
 - `AssumeLocal` style.
 
-## 14) New PACS Selection Methods
+## 15) New PACS Selection Methods
 Added Methods (Search Results list unless noted):
 - Get selected name from search results list
 - Get selected sex from search results list
@@ -604,12 +637,12 @@ Implementation
 Notes
 - All methods return raw string (no trimming beyond whitespace removal). Date/time values can be piped through `ToDateTime` in a procedure if normalization needed.
 
-## 15) Postgres First-Chance Exception Sampling
+## 16) Postgres First-Chance Exception Sampling
 - `PgDebug.Initialize()` registers a first-chance handler capturing `PostgresException` once per (SqlState|MessageText) pair and logs via Serilog at Warning level.
 - Added initialization in `App.OnStartup` before splash login.
 - Repository methods now log explicit PostgresException details with SqlState and server message for triage.
 
-## 16) PhraseService Connection Refactor
+## 17) PhraseService Connection Refactor
 Changes
 - PhraseService now consumes `IRadiumLocalSettings.LocalConnectionString` with legacy fallback.
 - Added debug logging of host/db/user when opening connections.
@@ -618,7 +651,7 @@ Changes
 Future
 - Planned migration to use `CentralConnectionString` (central phrases) once consolidation is ready; code comments note this.
 
-## 17) Editor Specification (Summary Reference)
+## 18) Editor Specification (Summary Reference)
 For full behavioral definitions see MUSM Editor Specification included in design docs (source: spec_editor.md). Key points mapped to FR-050..FR-058.
 
 ## Update Log (2025-09-28)
@@ -649,7 +682,11 @@ For full behavioral definitions see MUSM Editor Specification included in design
 - Added persistence placeholder for patient/study metadata (FR-141).
 - Upsert implementation for patient/study and spy pick optimization (FR-142, FR-143).
 
----
+## Update Log (2025-10-05)
+- Implemented synchronous phrase database interaction flow (FR-258, FR-259, FR-260) to ensure stability under rapid user interaction and network latency.
+- Enhanced phrase toggle operations to prevent UI state corruption and ensure consistent snapshot-based display.
+- Added automatic consistency recovery for phrase operations via snapshot refresh on operation failures.
+
 ## Feature Update (Reportified Toggle - Inverse Dereportify)
 - Dereportify now performs inverse transformation: removes numeric prefixes, strips trailing single periods, collapses leading numbering indentation, and decapitalizes first token unless token appears capitalized in phrase dictionary snapshot.
 - Arrow prefix spaces removed back to canonical compact form (e.g., `-->Finding` instead of `--> Finding`).

@@ -13,7 +13,7 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnOpenSettings(object sender, RoutedEventArgs e)
         {
-            var win = new SettingsWindow { Owner = this };
+            var win = new SettingsWindow(databaseOnly: true) { Owner = this };
             win.ShowDialog();
         }
 

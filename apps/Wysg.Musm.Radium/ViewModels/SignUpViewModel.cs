@@ -9,7 +9,7 @@ namespace Wysg.Musm.Radium.ViewModels
     public partial class SignUpViewModel : ObservableObject
     {
         private readonly IAuthService _auth;
-        private readonly ISupabaseService _supabase;
+        private readonly AzureSqlCentralService _central;
 
         private string _email = string.Empty;
         public string Email
@@ -34,10 +34,10 @@ namespace Wysg.Musm.Radium.ViewModels
 
         public IRelayCommand SignUpCommand { get; }
 
-        public SignUpViewModel(IAuthService auth, ISupabaseService supabase)
+        public SignUpViewModel(IAuthService auth, AzureSqlCentralService central)
         {
             _auth = auth;
-            _supabase = supabase;
+            _central = central;
             SignUpCommand = new AsyncRelayCommand<object?>(OnSignUpAsync);
         }
 
@@ -61,7 +61,7 @@ namespace Wysg.Musm.Radium.ViewModels
             }
 
             // Create account row centrally
-            await _supabase.EnsureAccountAsync(result.UserId, result.Email, result.DisplayName);
+            await _central.EnsureAccountAsync(result.UserId, result.Email, result.DisplayName);
 
             // Close the window on success
             System.Windows.Application.Current?.Dispatcher?.Invoke(() =>

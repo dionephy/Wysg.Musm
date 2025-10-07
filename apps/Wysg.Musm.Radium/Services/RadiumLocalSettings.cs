@@ -2,9 +2,26 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Diagnostics;
 
 namespace Wysg.Musm.Radium.Services
 {
+    /// <summary>
+    /// Concrete implementation of <see cref="IRadiumLocalSettings"/> storing values in an encrypted DPAPI blob.
+    ///
+    /// Storage format (simple KV):
+    ///   Plain text (before encryption) lines: key=value\n
+    ///   The whole concatenated UTF-8 buffer is encrypted via <see cref="ProtectedData.Protect"/> with CurrentUser scope.
+    ///   This keeps implementation compact while avoiding per-key encryption overhead / metadata complexity.
+    ///
+    /// Characteristics:
+    ///   * Atomic writes: entire file rewritten on each change; acceptable due to small key set.
+    ///   * Resilience: read errors fail silently returning null (callers treat as unset / default).
+    ///   * Environment override: CentralConnectionString can be injected via MUSM_CENTRAL_DB without touching disk.
+    ///
+    /// Performance: Suitable for infrequent updates (settings dialog). For high-frequency writes a journaled format would be preferable.
+    /// Thread-safety: No locking; concurrent writes could race but typical desktop usage avoids multi-thread mutation.
+    /// </summary>
     public sealed class RadiumLocalSettings : IRadiumLocalSettings
     {
         private static readonly string Dir = Path.Combine(
@@ -12,15 +29,10 @@ namespace Wysg.Musm.Radium.Services
             "Wysg.Musm", "Radium");
         private static readonly string MainPath = Path.Combine(Dir, "settings.dat");
 
+        // Central: now strictly local (env var MUSM_CENTRAL_DB override removed per request)
         public string? CentralConnectionString
         {
-            get
-            {
-                // Allow override via environment variable in production
-                var fromEnv = Environment.GetEnvironmentVariable("MUSM_CENTRAL_DB");
-                if (!string.IsNullOrWhiteSpace(fromEnv)) return fromEnv;
-                return ReadSecret("central");
-            }
+            get => ReadSecret("central");
             set => WriteSecret("central", value ?? string.Empty);
         }
 
@@ -30,17 +42,16 @@ namespace Wysg.Musm.Radium.Services
             set => WriteSecret("local", value ?? string.Empty);
         }
 
-        // Backward compat shim to current usage
-        public string? ConnectionString
-        {
-            get => LocalConnectionString;
-            set => LocalConnectionString = value;
-        }
+        [Obsolete("Use LocalConnectionString explicitly; this alias will be removed.")]
+        public string? ConnectionString { get => LocalConnectionString; set => LocalConnectionString = value; }
 
-        // Add keys for automation sequences
         public string? AutomationNewStudySequence { get => ReadSecret("auto_newstudy"); set => WriteSecret("auto_newstudy", value ?? string.Empty); }
         public string? AutomationAddStudySequence { get => ReadSecret("auto_addstudy"); set => WriteSecret("auto_addstudy", value ?? string.Empty); }
 
+        /// <summary>
+        /// Decrypts settings file (if present) and returns the value for a key. Failures are swallowed to avoid
+        /// disruptive UX (caller sees null and can prompt for settings).
+        /// </summary>
         private static string? ReadSecret(string key)
         {
             try
@@ -62,12 +73,16 @@ namespace Wysg.Musm.Radium.Services
             catch { return null; }
         }
 
+        /// <summary>
+        /// Writes or updates a key. Implementation loads existing data first to preserve other keys, then rewrites
+        /// the entire plaintext buffer and encrypts. Errors are swallowed (best effort) ? caller actions do not throw.
+        /// </summary>
         private static void WriteSecret(string key, string value)
         {
             try
             {
                 Directory.CreateDirectory(Dir);
-                var dict = new System.Collections.Generic.Dictionary<string, string>();
+                var dict = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 if (File.Exists(MainPath))
                 {
                     var enc = File.ReadAllBytes(MainPath);
@@ -90,7 +105,7 @@ namespace Wysg.Musm.Radium.Services
                 var encOut = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
                 File.WriteAllBytes(MainPath, encOut);
             }
-            catch { }
+            catch { /* Swallow write errors to avoid crashing settings UI */ }
         }
     }
 }

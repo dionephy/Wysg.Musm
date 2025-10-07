@@ -15,8 +15,8 @@ namespace Wysg.Musm.Radium.Services
     {
         private readonly IRadiumLocalSettings _settings;
         private readonly ICentralDataSourceProvider _dsProvider;
-        private readonly IPhraseCache _cache; // Add cache reference
-        private readonly string _fallback = "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas;Timeout=3"; // legacy fallback (dev only)
+        private readonly IPhraseCache _cache;
+        private readonly string _fallback = "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas;Timeout=3";
 
         // Backend detection (single-flight)
         private volatile bool _backendChecked;
@@ -43,23 +43,23 @@ namespace Wysg.Musm.Radium.Services
             public readonly Dictionary<long, PhraseRow> ById = new();
             public DateTime SnapshotLoadedAtUtc { get; set; }
             public volatile bool Loading;
-            // When true we already performed an eager snapshot and should not auto-trigger background paging anymore.
             public bool Preloaded { get; set; }
+            // Per-account lock used for all mutation (FR-261): removed global serialization.
+            public readonly SemaphoreSlim UpdateLock = new(1, 1);
+            public volatile bool UpdatingSnapshot;
             public AccountPhraseState(long id) { AccountId = id; }
         }
 
         private readonly ConcurrentDictionary<long, AccountPhraseState> _states = new();
         private readonly ConcurrentDictionary<long, SemaphoreSlim> _locks = new();
-        private volatile bool _indexEnsured;
-        private DateTime _lastIndexCheckUtc = DateTime.MinValue;
-        private int _indexCreateInFlight = 0;
+        // Removed legacy _globalSemaphore (FR-261) to avoid cross-account serialization / pool starvation.
 
         public PhraseService(IRadiumLocalSettings settings, ICentralDataSourceProvider dsProvider, IPhraseCache cache)
         {
             _settings = settings;
             _dsProvider = dsProvider;
-            _cache = cache; // Store cache reference
-            Debug.WriteLine("[PhraseService] Using central radium.phrase delta-sync backend.");
+            _cache = cache;
+            Debug.WriteLine("[PhraseService] Using central radium.phrase delta-sync backend with strict synchronous flow (optimized 2025-10-07).");
         }
 
         private string BuildConnectionString()
@@ -71,16 +71,14 @@ namespace Wysg.Musm.Radium.Services
                 {
                     IncludeErrorDetail = true,
                     Multiplexing = false,
-                    KeepAlive = 15,
-                    CommandTimeout = 60,
-                    NoResetOnClose = false // align with central data source policy
+                    KeepAlive = 30, // relaxed keepalive (less chatter on free tier)
+                    CommandTimeout = 30,
+                    NoResetOnClose = false
                 };
-                if (!b.ContainsKey("Cancellation Timeout")) b["Cancellation Timeout"] = 4000; // ms for faster cancel cleanup
+                if (!b.ContainsKey("Cancellation Timeout")) b["Cancellation Timeout"] = 8000; // allow server-side cancellation window
                 if (b.Timeout < 8) b.Timeout = 8;
                 if (b.CommandTimeout < 30) b.CommandTimeout = 30;
-                // Immediate Fix (FR-239): increase pool headroom to reduce max pool exhaustion under rapid toggles
-                if (b.MaxPoolSize < 200) b.MaxPoolSize = 200;
-                if (b.MinPoolSize < 0) b.MinPoolSize = 0;
+                if (b.MaxPoolSize > 50) b.MaxPoolSize = 50; // cap for free tier to reduce churn
                 return b.ConnectionString;
             }
             catch { return raw; }
@@ -88,7 +86,6 @@ namespace Wysg.Musm.Radium.Services
 
         private NpgsqlConnection CreateConnection()
         {
-            // All central opens go through shared data source
             var b = new NpgsqlConnectionStringBuilder(BuildConnectionString());
             Debug.WriteLine($"[PhraseService] Open DB Host={b.Host} Db={b.Database} User={b.Username} Multiplexing={b.Multiplexing} NoReset={b.NoResetOnClose}");
             return _dsProvider.Central.CreateConnection();
@@ -111,37 +108,12 @@ namespace Wysg.Musm.Radium.Services
             {
                 Debug.WriteLine("[PhraseService] Detecting backend (radium.phrase)...");
                 await using var con = _dsProvider.CentralMeta.CreateConnection();
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12)))
-                {
-                    var openTask = PgConnectionHelper.OpenWithLocalSslFallbackAsync(con);
-                    var completed = await Task.WhenAny(openTask, Task.Delay(Timeout.Infinite, cts.Token));
-                    if (completed != openTask)
-                    {
-                        Debug.WriteLine("[PhraseService][Detect][OPEN-CANCEL] open timeout");
-                        _radiumAvailable = false; _backendChecked = true; return;
-                    }
-                    await openTask.ConfigureAwait(false);
-                }
-
+                await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false);
                 const string sql = "SELECT 1 FROM information_schema.tables WHERE table_schema='radium' AND table_name='phrase'";
-                object? existsObj = null;
                 using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 8 };
-                using (var execCts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
-                {
-                    var execTask = cmd.ExecuteScalarAsync();
-                    var completed = await Task.WhenAny(execTask, Task.Delay(Timeout.Infinite, execCts.Token));
-                    if (completed != execTask)
-                    {
-                        Debug.WriteLine("[PhraseService][Detect][CMD-CANCEL] metadata timeout");
-                        _radiumAvailable = false; _backendChecked = true; return;
-                    }
-                    existsObj = await execTask.ConfigureAwait(false);
-                }
-                _radiumAvailable = existsObj != null;
+                _radiumAvailable = (await cmd.ExecuteScalarAsync().ConfigureAwait(false)) != null;
                 Debug.WriteLine($"[PhraseService] Detection complete radiumAvailable={_radiumAvailable}");
-                if (_radiumAvailable) _ = Task.Run(EnsureIndexAsync);
             }
-            catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][Detect][CANCEL-GEN] " + oce.Message); _radiumAvailable = false; }
             catch (Exception ex)
             {
                 _radiumAvailable = false;
@@ -152,7 +124,6 @@ namespace Wysg.Musm.Radium.Services
 
         private static bool IsTransientTimeout(Exception ex)
         {
-            // Enhanced logic matching SupabaseService
             if (ex is TimeoutException) return true;
             if (ex is NpgsqlException npg)
             {
@@ -164,120 +135,11 @@ namespace Wysg.Musm.Radium.Services
             if (ContainsSocketTimeout(ex)) return true;
             if (ex is IOException io && io.InnerException is TimeoutException) return true;
             return false;
-
             static bool ContainsSocketTimeout(Exception e)
             {
                 for (var cur = e; cur != null; cur = cur.InnerException)
                     if (cur is SocketException se && se.SocketErrorCode == SocketError.TimedOut) return true;
                 return false;
-            }
-        }
-
-        private async Task EnsureIndexAsync()
-        {
-            if (_indexEnsured) return;
-            if (Environment.GetEnvironmentVariable("RAD_SKIP_PHRASE_INDEX") == "1") { _indexEnsured = true; return; }
-            var now = DateTime.UtcNow;
-            if ((now - _lastIndexCheckUtc) < TimeSpan.FromHours(1) && _lastIndexCheckUtc != DateTime.MinValue) return;
-            _lastIndexCheckUtc = now;
-
-            if (Interlocked.CompareExchange(ref _indexCreateInFlight, 1, 0) != 1)
-            {
-                const int maxAttempts = 2; // retry transient failures
-                int attempt = 0;
-                while (attempt < maxAttempts)
-                {
-                    try
-                    {
-                        await using var con = CreateConnection();
-                        try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con); }
-                        catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][INDEX][CANCEL-Open] " + oce.Message); _indexEnsured = true; return; }
-                        catch (Exception ex) when (IsTransientTimeout(ex))
-                        {
-                            attempt++;
-                            if (attempt < maxAttempts)
-                            {
-                                Debug.WriteLine($"[PhraseService][INDEX][RETRY {attempt}] Open transient: {ex.GetType().Name} {ex.Message}");
-                                await Task.Delay(200 * attempt);
-                                continue;
-                            }
-                            Debug.WriteLine($"[PhraseService][INDEX] Max retries exceeded for open: {ex.Message}");
-                            _indexEnsured = true; return;
-                        }
-
-                        const string existsSql = "SELECT 1 FROM pg_indexes WHERE schemaname='radium' AND indexname='ix_phrase_account_id'";
-                        try
-                        {
-                            await using (var existsCmd = new NpgsqlCommand(existsSql, con) { CommandTimeout = 8 })
-                            {
-                                var exists = await existsCmd.ExecuteScalarAsync() != null;
-                                if (exists) { _indexEnsured = true; return; }
-                            }
-                        }
-                        catch (OperationCanceledException oce)
-                        {
-                            Debug.WriteLine("[PhraseService][INDEX][CANCEL-Exists] " + oce.Message);
-                            _indexEnsured = true; return;
-                        }
-                        catch (Exception ex) when (IsTransientTimeout(ex))
-                        {
-                            attempt++;
-                            if (attempt < maxAttempts)
-                            {
-                                Debug.WriteLine($"[PhraseService][INDEX][RETRY {attempt}] Exists check transient: {ex.GetType().Name} {ex.Message}");
-                                await Task.Delay(200 * attempt);
-                                continue; // retry entire method
-                            }
-                            Debug.WriteLine($"[PhraseService][INDEX] Max retries exceeded for exists check: {ex.Message}");
-                            _indexEnsured = true; return;
-                        }
-
-                        const string createSql = "CREATE INDEX IF NOT EXISTS ix_phrase_account_id ON radium.phrase (account_id, id)";
-                        try
-                        {
-                            await using (var st = new NpgsqlCommand("SET LOCAL statement_timeout TO 30000", con))
-                                await st.ExecuteNonQueryAsync();
-                            await using var cmd = new NpgsqlCommand(createSql, con) { CommandTimeout = 40 };
-                            await cmd.ExecuteNonQueryAsync();
-                            Debug.WriteLine("[PhraseService][INDEX] Created / verified index.");
-                            _indexEnsured = true;
-                            return;
-                        }
-                        catch (OperationCanceledException oce)
-                        {
-                            Debug.WriteLine("[PhraseService][INDEX][CANCEL-Build] " + oce.Message);
-                            _indexEnsured = true; return;
-                        }
-                        catch (Exception ex) when (IsTransientTimeout(ex))
-                        {
-                            attempt++;
-                            if (attempt < maxAttempts)
-                            {
-                                Debug.WriteLine($"[PhraseService][INDEX][RETRY {attempt}] Build transient: {ex.GetType().Name} {ex.Message}");
-                                await Task.Delay(200 * attempt);
-                                continue;
-                            }
-                            Debug.WriteLine($"[PhraseService][INDEX] Max retries exceeded for build: {ex.Message}");
-                            _indexEnsured = true; return;
-                        }
-                        catch (Exception ex) when (IsTransient(ex))
-                        {
-                            Debug.WriteLine($"[PhraseService][INDEX] Transient during build: {ex.Message} (skip)");
-                            _indexEnsured = true; return;
-                        }
-                    }
-                    catch (Exception ex) when (IsTransient(ex))
-                    {
-                        Debug.WriteLine($"[PhraseService][INDEX] Transient open: {ex.Message} (skip this round)");
-                        _indexEnsured = true; return;
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[PhraseService][INDEX] Unrecoverable: {ex.Message} (skip)");
-                        _indexEnsured = true; return;
-                    }
-                }
-                Interlocked.Exchange(ref _indexCreateInFlight, 0);
             }
         }
 
@@ -292,12 +154,11 @@ namespace Wysg.Musm.Radium.Services
             try
             {
                 var state = _states.GetOrAdd(accountId, id => new AccountPhraseState(id));
-                if (state.Preloaded) return; // eager snapshot already loaded
+                if (state.Preloaded) return;
                 if (state.ById.Count == 0 && !state.Loading)
                 {
                     state.Loading = true;
-                    _ = Task.Run(() => LoadSnapshotPagedAsync(state));
-                    return;
+                    _ = Task.Run(() => EagerLoadAllAsync(state));
                 }
             }
             finally { lck.Release(); }
@@ -313,101 +174,58 @@ namespace Wysg.Musm.Radium.Services
             try
             {
                 var state = _states.GetOrAdd(accountId, id => new AccountPhraseState(id));
-                if (state.Preloaded) return; // already done
-                if (state.Loading)
-                {
-                    // Another preload / background load running, wait briefly until it completes.
-                    lck.Release();
-                    for (int i = 0; i < 40; i++)
-                    {
-                        await Task.Delay(50).ConfigureAwait(false);
-                        if (!state.Loading) return;
-                    }
-                    return;
-                }
+                if (state.Preloaded || state.Loading) return;
                 state.Loading = true;
                 try
                 {
                     await EagerLoadAllAsync(state).ConfigureAwait(false);
                     state.Preloaded = true;
                 }
-                catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][Preload][CANCEL] " + oce.Message); }
-                finally
-                {
-                    state.Loading = false;
-                }
+                finally { state.Loading = false; }
             }
-            finally
-            {
-                if (lck.CurrentCount == 0) lck.Release();
-            }
+            finally { if (lck.CurrentCount == 0) lck.Release(); }
         }
 
         private async Task EagerLoadAllAsync(AccountPhraseState state)
         {
             try
             {
-                Debug.WriteLine($"[PhraseService][PreloadFull] BEGIN account={state.AccountId} at={DateTime.UtcNow:O}");
-                const int Batch = 2000; // large batches ok for single pass
-                long lastId = 0;
-                while (true)
-                {
-                    var rows = await LoadPageAsync(state.AccountId, lastId, Batch).ConfigureAwait(false);
-                    if (rows.Count == 0) break;
-                    foreach (var r in rows)
-                    {
-                        state.ById[r.Id] = r;
-                        if (r.Rev > state.MaxRev) state.MaxRev = r.Rev;
-                        if (r.Id > lastId) lastId = r.Id;
-                    }
-                    state.MaxIdLoaded = lastId;
-                    if (rows.Count < Batch) break;
-                }
+                Debug.WriteLine($"[PhraseService][PreloadFull] BEGIN account={state.AccountId}");
+                // Intentionally minimal (on-demand loads). No full scan for free tier stability.
                 state.SnapshotLoadedAtUtc = DateTime.UtcNow;
-                Debug.WriteLine($"[PhraseService][PreloadFull] END account={state.AccountId} rows={state.ById.Count} at={DateTime.UtcNow:O}");
+                Debug.WriteLine($"[PhraseService][PreloadFull] END account={state.AccountId} rows=0");
             }
-            catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][PreloadFull][CANCEL] " + oce.Message); }
             catch (Exception ex) { Debug.WriteLine($"[PhraseService] Preload error account={state.AccountId}: {ex.Message}"); }
         }
 
-        private async Task LoadSnapshotPagedAsync(AccountPhraseState state)
+        // Reused single-connection page loader (no per-page open / SET LOCAL)
+        private static async Task<List<PhraseRow>> LoadPageOnConnectionAsync(NpgsqlConnection con, long accountId, long afterId, int take)
         {
-            try
+            var list = new List<PhraseRow>(take);
+            const string sql = @"SELECT id, account_id, text, active, created_at, updated_at, rev
+                                   FROM radium.phrase
+                                   WHERE account_id=@aid AND id > @after
+                                   ORDER BY id
+                                   LIMIT @lim";
+            await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 12 };
+            cmd.Parameters.AddWithValue("aid", accountId);
+            cmd.Parameters.AddWithValue("after", afterId);
+            cmd.Parameters.AddWithValue("lim", take);
+            await using var rd = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess).ConfigureAwait(false);
+            while (await rd.ReadAsync().ConfigureAwait(false))
             {
-                Debug.WriteLine($"[PhraseService][Snapshot] BEGIN account={state.AccountId} at={DateTime.UtcNow:O}");
-                int pageSize = 300;
-                const int HardCap = 15000;
-                long lastId = state.MaxIdLoaded;
-                int attempt = 0;
-                while (state.ById.Count < HardCap)
+                list.Add(new PhraseRow
                 {
-                    attempt++; var sw = Stopwatch.StartNew();
-                    List<PhraseRow> rows;
-                    try { rows = await LoadPageAsync(state.AccountId, lastId, pageSize).ConfigureAwait(false); }
-                    catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][Page][CANCEL] " + oce.Message); break; }
-                    catch (TimeoutException tex) { Debug.WriteLine($"[PhraseService][WARN] Page timeout size={pageSize} afterId={lastId}: {tex.Message}"); pageSize = Math.Max(50, pageSize / 2); continue; }
-                    catch (NpgsqlException nex) when (nex.InnerException is TimeoutException) { pageSize = Math.Max(50, pageSize / 2); Debug.WriteLine($"[PhraseService][WARN] Npgsql timeout size->{pageSize}"); continue; }
-                    catch (Exception ex) when (IsTransientTimeout(ex)) { pageSize = Math.Max(50, pageSize / 2); Debug.WriteLine($"[PhraseService][WARN] Transient timeout size->{pageSize}: {ex.Message}"); continue; }
-                    sw.Stop();
-                    if (rows.Count == 0) break;
-                    foreach (var r in rows)
-                    {
-                        state.ById[r.Id] = r;
-                        if (r.Rev > state.MaxRev) state.MaxRev = r.Rev;
-                        if (r.Id > lastId) lastId = r.Id;
-                    }
-                    state.MaxIdLoaded = lastId;
-                    Debug.WriteLine($"[PhraseService] Loaded page rows={rows.Count} total={state.ById.Count} size={pageSize} ms={sw.ElapsedMilliseconds}");
-                    if (rows.Count == pageSize && sw.ElapsedMilliseconds < 250 && pageSize < 2000)
-                        pageSize = Math.Min(2000, pageSize * 2);
-                    if (rows.Count < pageSize) break;
-                }
-                state.SnapshotLoadedAtUtc = DateTime.UtcNow;
-                Debug.WriteLine($"[PhraseService][Snapshot] END account={state.AccountId} rows={state.ById.Count} rev={state.MaxRev} at={DateTime.UtcNow:O}");
+                    Id = rd.GetInt64(0),
+                    AccountId = rd.GetInt64(1),
+                    Text = rd.GetString(2),
+                    Active = rd.GetBoolean(3),
+                    CreatedAt = rd.GetDateTime(4),
+                    UpdatedAt = rd.GetDateTime(5),
+                    Rev = rd.GetInt64(6)
+                });
             }
-            catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][Snapshot][CANCEL] " + oce.Message); }
-            catch (Exception ex) { Debug.WriteLine($"[PhraseService] Snapshot load error account={state.AccountId}: {ex.GetType().Name} {ex.Message}"); }
-            finally { state.Loading = false; }
+            return list;
         }
 
         private async Task<List<PhraseRow>> LoadPageAsync(long accountId, long afterId, int take)
@@ -419,39 +237,24 @@ namespace Wysg.Musm.Radium.Services
                                    ORDER BY id
                                    LIMIT @lim";
             await using var con = CreateConnection();
-            try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false); }
-            catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][PageOpen][CANCEL] " + oce.Message); return list; }
-            await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 45 };
+            await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false);
+            await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 12 };
             cmd.Parameters.AddWithValue("aid", accountId);
             cmd.Parameters.AddWithValue("after", afterId);
             cmd.Parameters.AddWithValue("lim", take);
-            try
+            await using var rd = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess).ConfigureAwait(false);
+            while (await rd.ReadAsync().ConfigureAwait(false))
             {
-                await using var rd = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess).ConfigureAwait(false);
-                while (await rd.ReadAsync().ConfigureAwait(false))
+                list.Add(new PhraseRow
                 {
-                    list.Add(new PhraseRow
-                    {
-                        Id = rd.GetInt64(0),
-                        AccountId = rd.GetInt64(1),
-                        Text = rd.GetString(2),
-                        Active = rd.GetBoolean(3),
-                        CreatedAt = rd.GetDateTime(4),
-                        UpdatedAt = rd.GetDateTime(5),
-                        Rev = rd.GetInt64(6)
-                    });
-                }
-            }
-            catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][PageExec][CANCEL] " + oce.Message); }
-            catch (NpgsqlException ex) when (ex.InnerException is TimeoutException tex)
-            {
-                Debug.WriteLine($"[PhraseService][TIMEOUT] LoadPage after={afterId} take={take}: {tex.Message}");
-                throw tex; // convert to TimeoutException for outer logic
-            }
-            catch (Exception ex) when (IsTransientTimeout(ex))
-            {
-                Debug.WriteLine($"[PhraseService][TIMEOUT-TRANSIENT] LoadPage after={afterId} take={take}: {ex.GetType().Name} {ex.Message}");
-                throw new TimeoutException($"Transient timeout in LoadPage: {ex.Message}", ex);
+                    Id = rd.GetInt64(0),
+                    AccountId = rd.GetInt64(1),
+                    Text = rd.GetString(2),
+                    Active = rd.GetBoolean(3),
+                    CreatedAt = rd.GetDateTime(4),
+                    UpdatedAt = rd.GetDateTime(5),
+                    Rev = rd.GetInt64(6)
+                });
             }
             return list;
         }
@@ -459,168 +262,187 @@ namespace Wysg.Musm.Radium.Services
         public async Task<IReadOnlyList<string>> GetPhrasesForAccountAsync(long accountId)
         {
             if (accountId <= 0) return Array.Empty<string>();
-            try { await EnsureUpToDateAsync(accountId).ConfigureAwait(false); }
-            catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][GetPhrases][CANCEL] " + oce.Message); }
-            if (_states.TryGetValue(accountId, out var state))
-                return state.ById.Values.Where(r => r.Active).Select(r => r.Text).OrderBy(t => t).Take(500).ToList();
-            return Array.Empty<string>();
+            if (!_states.TryGetValue(accountId, out var state))
+            {
+                state = _states.GetOrAdd(accountId, id => new AccountPhraseState(id));
+                try { await LoadSmallSetAsync(state).ConfigureAwait(false); } catch { return Array.Empty<string>(); }
+            }
+            return state.ById.Values.Where(r => r.Active).Select(r => r.Text).OrderBy(t => t).Take(500).ToList();
         }
 
         public async Task<IReadOnlyList<string>> GetPhrasesByPrefixAccountAsync(long accountId, string prefix, int limit = 50)
         {
-            if (accountId <= 0) return Array.Empty<string>();
-            if (string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
-            try { await EnsureUpToDateAsync(accountId).ConfigureAwait(false); }
-            catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][GetPrefix][CANCEL] " + oce.Message); }
-            if (_states.TryGetValue(accountId, out var state))
+            if (accountId <= 0 || string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
+            if (!_states.TryGetValue(accountId, out var state))
             {
-                return state.ById.Values.Where(r => r.Active && r.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(r => r.Text.Length).ThenBy(r => r.Text)
-                    .Take(limit).Select(r => r.Text).ToList();
+                state = _states.GetOrAdd(accountId, id => new AccountPhraseState(id));
+                try { await LoadSmallSetAsync(state).ConfigureAwait(false); } catch { return Array.Empty<string>(); }
             }
-            return Array.Empty<string>();
+            return state.ById.Values.Where(r => r.Active && r.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(r => r.Text.Length).ThenBy(r => r.Text)
+                .Take(limit).Select(r => r.Text).ToList();
         }
 
-        // Deprecated wrappers
+        private async Task LoadSmallSetAsync(AccountPhraseState state)
+        {
+            Debug.WriteLine($"[PhraseService][LoadSmall] Loading phrases for account={state.AccountId}");
+            await using var con = CreateConnection();
+            await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false);
+            const string sql = @"SELECT id, account_id, text, active, created_at, updated_at, rev
+                                   FROM radium.phrase
+                                   WHERE account_id = @aid
+                                   ORDER BY updated_at DESC
+                                   LIMIT 100";
+            await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 12 };
+            cmd.Parameters.AddWithValue("aid", state.AccountId);
+            await using var rd = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess).ConfigureAwait(false);
+            state.ById.Clear();
+            state.MaxRev = 0;
+            int count = 0;
+            while (await rd.ReadAsync().ConfigureAwait(false))
+            {
+                var row = new PhraseRow
+                {
+                    Id = rd.GetInt64(0),
+                    AccountId = rd.GetInt64(1),
+                    Text = rd.GetString(2),
+                    Active = rd.GetBoolean(3),
+                    CreatedAt = rd.GetDateTime(4),
+                    UpdatedAt = rd.GetDateTime(5),
+                    Rev = rd.GetInt64(6)
+                };
+                state.ById[row.Id] = row;
+                if (row.Rev > state.MaxRev) state.MaxRev = row.Rev;
+                count++;
+            }
+            state.SnapshotLoadedAtUtc = DateTime.UtcNow;
+            Debug.WriteLine($"[PhraseService][LoadSmall] Loaded {count} phrases for account={state.AccountId}");
+        }
+
         public Task<IReadOnlyList<string>> GetPhrasesForTenantAsync(long tenantId) => GetPhrasesForAccountAsync(tenantId);
         public Task<IReadOnlyList<string>> GetPhrasesByPrefixAsync(long tenantId, string prefix, int limit = 50) => GetPhrasesByPrefixAccountAsync(tenantId, prefix, limit);
 
         public async Task<IReadOnlyList<PhraseInfo>> GetAllPhraseMetaAsync(long accountId)
         {
             if (accountId <= 0) return Array.Empty<PhraseInfo>();
-            try { await EnsureUpToDateAsync(accountId).ConfigureAwait(false); }
-            catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][GetMeta][CANCEL] " + oce.Message); }
-            if (_states.TryGetValue(accountId, out var state) && state.ById.Count > 0)
+            if (!_states.TryGetValue(accountId, out var state) || state.ById.Count == 0)
             {
-                return state.ById.Values
-                    .OrderByDescending(r => r.UpdatedAt)
-                    .Take(1000)
-                    .Select(r => new PhraseInfo(r.Id, r.AccountId, r.Text, r.Active, r.UpdatedAt, r.Rev))
-                    .ToList();
+                state = _states.GetOrAdd(accountId, id => new AccountPhraseState(id));
+                try { await LoadSmallSetAsync(state).ConfigureAwait(false); } catch { return Array.Empty<PhraseInfo>(); }
             }
-            // If still empty (first call, background load running) return empty; UI can retry.
-            return Array.Empty<PhraseInfo>();
+            return state.ById.Values.OrderByDescending(r => r.UpdatedAt).Take(1000)
+                .Select(r => new PhraseInfo(r.Id, r.AccountId, r.Text, r.Active, r.UpdatedAt, r.Rev)).ToList();
+        }
+
+        public async Task RefreshPhrasesAsync(long accountId)
+        {
+            if (accountId <= 0) return;
+            if (_states.TryGetValue(accountId, out var state))
+            {
+                await state.UpdateLock.WaitAsync().ConfigureAwait(false);
+                try
+                {
+                    state.UpdatingSnapshot = true;
+                    state.ById.Clear();
+                    state.MaxRev = 0;
+                    state.MaxIdLoaded = 0;
+                    try { await LoadSmallSetAsync(state).ConfigureAwait(false); }
+                    finally { state.UpdatingSnapshot = false; }
+                }
+                finally { state.UpdateLock.Release(); }
+            }
         }
 
         public async Task<PhraseInfo> UpsertPhraseAsync(long accountId, string text, bool active = true)
         {
-            if (accountId <= 0) throw new System.ArgumentOutOfRangeException(nameof(accountId), "AccountId must be > 0");
-            // NOTE (Rev Stabilization):
-            // Originally the UPSERT logic always executed an UPDATE branch (ON CONFLICT) that set updated_at=now() and rev=nextval(...)
-            // even when neither 'text' nor 'active' changed. In the database a BEFORE UPDATE trigger (radium.touch_phrase)
-            // ALSO bumped updated_at and rev unconditionally. Result: every window open (ensure / refresh) caused silent rev churn.
-            // Fix path:
-            //   1. Application: perform a pre-select; if row exists and Active already matches, return early (NO UPDATE sent).
-            //   2. Database: trigger changed to bump rev only when NEW.active IS DISTINCT FROM OLD.active OR NEW.text IS DISTINCT FROM OLD.text.
-            //   3. Application UPDATE statements no longer assign updated_at / rev explicitly (let trigger decide).
-            //   4. UI (PhrasesViewModel) suppresses ToggleActive during initial binding to avoid accidental UPDATE.
-            // This method therefore only produces rev increments for real state transitions.
+            if (accountId <= 0) throw new ArgumentOutOfRangeException(nameof(accountId));
             await EnsureBackendAsync().ConfigureAwait(false);
             if (!_radiumAvailable) throw new InvalidOperationException("radium.phrase not available");
-            const string selectExistingSql = @"SELECT id, account_id, text, active, created_at, updated_at, rev
-                                                FROM radium.phrase
-                                                WHERE account_id=@aid AND text=@text";
-            const string insertSql = @"INSERT INTO radium.phrase(account_id,text,active) VALUES(@aid,@text,@active)
-                                      RETURNING id, account_id, text, active, created_at, updated_at, rev";
-            const string updateSql = @"UPDATE radium.phrase SET active=@active
-                                      WHERE account_id=@aid AND text=@text
-                                      RETURNING id, account_id, text, active, created_at, updated_at, rev";
-            int attempts = 0;
-            while (true)
+            var state = _states.GetOrAdd(accountId, id => new AccountPhraseState(id));
+            await state.UpdateLock.WaitAsync().ConfigureAwait(false);
+            try
             {
-                attempts++;
-                NpgsqlConnection? con = null;
-                try
-                {
-                    con = CreateConnection();
-                    await con.OpenAsync().ConfigureAwait(false); // deterministic open (connection disposed in finally)
-                    // Attempt SET LOCAL (best-effort)
-                    try
-                    {
-                        await using var stCmd = new NpgsqlCommand("SET LOCAL statement_timeout TO 10000", con);
-                        await stCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-                    }
-                    catch (Exception ex) when (IsTransient(ex) || IsTransientTimeout(ex))
-                    { Debug.WriteLine($"[PhraseService][Upsert] Ignoring transient SET LOCAL failure: {ex.Message}"); }
-                    catch (Exception ex) { Debug.WriteLine($"[PhraseService][Upsert] Non-fatal SET LOCAL error (proceed): {ex.GetType().Name} {ex.Message}"); }
-                    // Pre-check existing
-                    PhraseInfo? existing = null;
-                    await using (var sel = new NpgsqlCommand(selectExistingSql, con) { CommandTimeout = 20 })
-                    {
-                        sel.Parameters.AddWithValue("aid", accountId);
-                        sel.Parameters.AddWithValue("text", text);
-                        using var ctsSel = new CancellationTokenSource(TimeSpan.FromSeconds(8));
-                        await using var rdSel = await sel.ExecuteReaderAsync(ctsSel.Token).ConfigureAwait(false);
-                        if (await rdSel.ReadAsync(ctsSel.Token).ConfigureAwait(false))
-                            existing = new PhraseInfo(rdSel.GetInt64(0), rdSel.GetInt64(1), rdSel.GetString(2), rdSel.GetBoolean(3), rdSel.GetDateTime(5), rdSel.GetInt64(6));
-                    }
-                    if (existing != null)
-                    {
-                        if (existing.Active == active)
-                        {
-                            Debug.WriteLine($"[PhraseService][Upsert] SKIP(no-change) text='{text}' rev={existing.Rev}");
-                            CacheAfterUpsert(existing);
-                            return existing;
-                        }
-                        PhraseInfo? updated = null;
-                        await using (var upd = new NpgsqlCommand(updateSql, con) { CommandTimeout = 30 })
-                        {
-                            upd.Parameters.AddWithValue("aid", accountId);
-                            upd.Parameters.AddWithValue("text", text);
-                            upd.Parameters.AddWithValue("active", active);
-                            using var ctsUpd = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                            await using var rdUpd = await upd.ExecuteReaderAsync(ctsUpd.Token).ConfigureAwait(false);
-                            if (await rdUpd.ReadAsync(ctsUpd.Token).ConfigureAwait(false))
-                                updated = new PhraseInfo(rdUpd.GetInt64(0), rdUpd.GetInt64(1), rdUpd.GetString(2), rdUpd.GetBoolean(3), rdUpd.GetDateTime(5), rdUpd.GetInt64(6));
-                        }
-                        if (updated == null) throw new InvalidOperationException("Upsert update failed");
-                        Debug.WriteLine($"[PhraseService][Upsert] UPDATE text='{text}' oldRev={existing.Rev} newRev={updated.Rev}");
-                        CacheAfterUpsert(updated); return updated;
-                    }
-                    else
-                    {
-                        PhraseInfo? inserted = null;
-                        await using (var ins = new NpgsqlCommand(insertSql, con) { CommandTimeout = 30 })
-                        {
-                            ins.Parameters.AddWithValue("aid", accountId);
-                            ins.Parameters.AddWithValue("text", text);
-                            ins.Parameters.AddWithValue("active", active);
-                            using var ctsIns = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                            await using var rdIns = await ins.ExecuteReaderAsync(ctsIns.Token).ConfigureAwait(false);
-                            if (await rdIns.ReadAsync(ctsIns.Token).ConfigureAwait(false))
-                                inserted = new PhraseInfo(rdIns.GetInt64(0), rdIns.GetInt64(1), rdIns.GetString(2), rdIns.GetBoolean(3), rdIns.GetDateTime(5), rdIns.GetInt64(6));
-                        }
-                        if (inserted == null) throw new InvalidOperationException("Upsert insert failed");
-                        Debug.WriteLine($"[PhraseService][Upsert] INSERT text='{text}' rev={inserted.Rev}");
-                        CacheAfterUpsert(inserted); return inserted;
-                    }
-                }
-                catch (OperationCanceledException oce)
-                {
-                    Debug.WriteLine($"[PhraseService][Upsert][CANCEL] attempt={attempts} text='{text}' {oce.Message}");
-                    if (attempts < 4) { if (con != null) try { NpgsqlConnection.ClearPool(con); } catch { } await Task.Delay(150 * attempts); continue; }
-                    throw;
-                }
-                catch (Exception ex) when ((IsTransient(ex) || IsTransientTimeout(ex)) && attempts < 4)
-                {
-                    Debug.WriteLine($"[PhraseService][RETRY] Upsert attempt={attempts} text='{text}' transient: {ex.Message}");
-                    if (con != null) try { NpgsqlConnection.ClearPool(con); } catch { }
-                    await Task.Delay(150 * attempts); continue;
-                }
-                finally
-                {
-                    if (con != null) await con.DisposeAsync();
-                }
+                state.UpdatingSnapshot = true;
+                var result = await UpsertPhraseInternalAsync(accountId, text, active).ConfigureAwait(false);
+                UpdateSnapshotAfterUpsert(state, result);
+                _cache.Clear(accountId);
+                return result;
+            }
+            finally
+            {
+                state.UpdatingSnapshot = false;
+                state.UpdateLock.Release();
             }
         }
 
-        private void CacheAfterUpsert(PhraseInfo info)
+        private async Task<PhraseInfo> UpsertPhraseInternalAsync(long accountId, string text, bool active)
         {
-            // Cache policy: we mirror only the active flag / rev / updated_at returned.
-            // Since we intentionally skip no-op updates, a returned row implies either initial insert
-            // or a genuine state change validated by server trigger logic.
-            var st = _states.GetOrAdd(info.AccountId, id => new AccountPhraseState(id));
-            if (!st.ById.TryGetValue(info.Id, out var row))
+            int attempts = 0;
+            const int maxAttempts = 3;
+            while (attempts < maxAttempts)
+            {
+                attempts++;
+                try
+                {
+                    await using var con = CreateConnection();
+                    await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false);
+                    // Check existing (avoid duplicate insert)
+                    const string selectSql = @"SELECT id, account_id, text, active, created_at, updated_at, rev
+                                              FROM radium.phrase
+                                              WHERE account_id=@aid AND text=@text";
+                    PhraseInfo? existing = null;
+                    await using (var selCmd = new NpgsqlCommand(selectSql, con) { CommandTimeout = 12 })
+                    {
+                        selCmd.Parameters.AddWithValue("aid", accountId);
+                        selCmd.Parameters.AddWithValue("text", text);
+                        await using var rd = await selCmd.ExecuteReaderAsync().ConfigureAwait(false);
+                        if (await rd.ReadAsync().ConfigureAwait(false))
+                        {
+                            existing = new PhraseInfo(
+                                rd.GetInt64(0), rd.GetInt64(1), rd.GetString(2), rd.GetBoolean(3), rd.GetDateTime(5), rd.GetInt64(6));
+                        }
+                    }
+                    if (existing != null && existing.Active == active) return existing; // no-op
+                    PhraseInfo result;
+                    if (existing == null)
+                    {
+                        const string insertSql = @"INSERT INTO radium.phrase(account_id,text,active) VALUES(@aid,@text,@active)
+                                                  RETURNING id, account_id, text, active, created_at, updated_at, rev";
+                        await using var ins = new NpgsqlCommand(insertSql, con) { CommandTimeout = 12 };
+                        ins.Parameters.AddWithValue("aid", accountId);
+                        ins.Parameters.AddWithValue("text", text);
+                        ins.Parameters.AddWithValue("active", active);
+                        await using var rd = await ins.ExecuteReaderAsync().ConfigureAwait(false);
+                        if (!await rd.ReadAsync().ConfigureAwait(false)) throw new InvalidOperationException("Insert failed");
+                        result = new PhraseInfo(rd.GetInt64(0), rd.GetInt64(1), rd.GetString(2), rd.GetBoolean(3), rd.GetDateTime(5), rd.GetInt64(6));
+                    }
+                    else
+                    {
+                        const string updateSql = @"UPDATE radium.phrase SET active=@active
+                                                  WHERE account_id=@aid AND text=@text
+                                                  RETURNING id, account_id, text, active, created_at, updated_at, rev";
+                        await using var upd = new NpgsqlCommand(updateSql, con) { CommandTimeout = 12 };
+                        upd.Parameters.AddWithValue("aid", accountId);
+                        upd.Parameters.AddWithValue("text", text);
+                        upd.Parameters.AddWithValue("active", active);
+                        await using var rd = await upd.ExecuteReaderAsync().ConfigureAwait(false);
+                        if (!await rd.ReadAsync().ConfigureAwait(false)) throw new InvalidOperationException("Update failed");
+                        result = new PhraseInfo(rd.GetInt64(0), rd.GetInt64(1), rd.GetString(2), rd.GetBoolean(3), rd.GetDateTime(5), rd.GetInt64(6));
+                    }
+                    return result;
+                }
+                catch (Exception ex) when ((IsTransient(ex) || IsTransientTimeout(ex)) && attempts < maxAttempts)
+                {
+                    Debug.WriteLine($"[PhraseService][UpsertInternal][Transient] attempt={attempts} {ex.GetType().Name}: {ex.Message}");
+                    await Task.Delay(150 * attempts).ConfigureAwait(false);
+                }
+            }
+            throw new InvalidOperationException("Upsert failed after retries");
+        }
+
+        private void UpdateSnapshotAfterUpsert(AccountPhraseState state, PhraseInfo info)
+        {
+            if (!state.ById.TryGetValue(info.Id, out var row))
             {
                 row = new PhraseRow
                 {
@@ -632,20 +454,17 @@ namespace Wysg.Musm.Radium.Services
                     UpdatedAt = info.UpdatedAt,
                     Rev = info.Rev
                 };
-                st.ById[info.Id] = row;
+                state.ById[info.Id] = row;
             }
             else
             {
+                row.Text = info.Text;
                 row.Active = info.Active;
                 row.UpdatedAt = info.UpdatedAt;
                 row.Rev = info.Rev;
             }
-            if (info.Rev > st.MaxRev) st.MaxRev = info.Rev;
-            if (info.Id > st.MaxIdLoaded) st.MaxIdLoaded = info.Id;
-            
-            // Clear completion cache to force refresh on next completion request
-            _cache.Clear(info.AccountId);
-            Debug.WriteLine($"[PhraseService] Cleared completion cache for account={info.AccountId} after phrase upsert");
+            if (info.Rev > state.MaxRev) state.MaxRev = info.Rev;
+            if (info.Id > state.MaxIdLoaded) state.MaxIdLoaded = info.Id;
         }
 
         public async Task<PhraseInfo?> ToggleActiveAsync(long accountId, long phraseId)
@@ -653,79 +472,102 @@ namespace Wysg.Musm.Radium.Services
             if (accountId <= 0) return null;
             await EnsureBackendAsync().ConfigureAwait(false);
             if (!_radiumAvailable) return null;
-            const string sql = @"UPDATE radium.phrase SET active = NOT active
-                                 WHERE account_id=@aid AND id=@pid
-                                 RETURNING id, account_id, text, active, created_at, updated_at, rev";
-            int attempts = 0; int baseDelay = 120;
-            while (true)
+            var state = _states.GetOrAdd(accountId, id => new AccountPhraseState(id));
+            await state.UpdateLock.WaitAsync().ConfigureAwait(false);
+            try
             {
-                attempts++;
-                NpgsqlConnection? con = null;
-                try
+                state.UpdatingSnapshot = true;
+                var info = await ToggleActiveInternalAsync(accountId, phraseId).ConfigureAwait(false);
+                if (info != null)
                 {
-                    con = CreateConnection();
-                    await con.OpenAsync().ConfigureAwait(false);
-                    await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 12 };
-                    cmd.Parameters.AddWithValue("aid", accountId);
-                    cmd.Parameters.AddWithValue("pid", phraseId);
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(6));
-                    await using var rd = await cmd.ExecuteReaderAsync(cts.Token).ConfigureAwait(false);
-                    if (await rd.ReadAsync(cts.Token).ConfigureAwait(false))
-                    {
-                        var info = new PhraseInfo(rd.GetInt64(0), rd.GetInt64(1), rd.GetString(2), rd.GetBoolean(3), rd.GetDateTime(5), rd.GetInt64(6));
-                        if (_states.TryGetValue(accountId, out var st) && st.ById.TryGetValue(info.Id, out var row))
-                        { row.Active = info.Active; row.UpdatedAt = info.UpdatedAt; row.Rev = info.Rev; if (info.Rev > st.MaxRev) st.MaxRev = info.Rev; }
-                        _cache.Clear(accountId);
-                        Debug.WriteLine($"[PhraseService] Toggle success id={phraseId} active={info.Active} rev={info.Rev}");
-                        return info;
-                    }
-                    return null;
+                    UpdateSnapshotAfterToggle(state, info);
+                    _cache.Clear(accountId);
                 }
-                catch (OperationCanceledException oce)
-                {
-                    Debug.WriteLine($"[PhraseService][Toggle][CANCEL] attempt={attempts} id={phraseId} {oce.Message}");
-                    if (attempts < 5) { if (con != null) try { NpgsqlConnection.ClearPool(con); } catch { } await Task.Delay(baseDelay * attempts); continue; }
-                    return null;
-                }
-                catch (Exception ex) when ((IsTransient(ex) || IsTransientTimeout(ex)) && attempts < 5)
-                {
-                    Debug.WriteLine($"[PhraseService][Toggle][RETRY {attempts}] transient: {ex.GetType().Name} {ex.Message}");
-                    if (con != null) try { NpgsqlConnection.ClearPool(con); } catch { }
-                    await Task.Delay(baseDelay * attempts); continue;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[PhraseService][Toggle][FAIL] attempt={attempts} id={phraseId} {ex.GetType().Name} {ex.Message}");
-                    if (con != null) try { NpgsqlConnection.ClearPool(con); } catch { }
-                    return null;
-                }
-                finally
-                {
-                    if (con != null) await con.DisposeAsync();
-                }
+                return info;
+            }
+            finally
+            {
+                state.UpdatingSnapshot = false;
+                state.UpdateLock.Release();
             }
         }
 
-        public async Task<long?> GetAnyAccountIdAsync()
+        private async Task<PhraseInfo?> ToggleActiveInternalAsync(long accountId, long phraseId)
         {
-            return await GetAnyAccountIdInternalAsync(null).ConfigureAwait(false);
+            const string sql = @"UPDATE radium.phrase SET active = NOT active
+                                 WHERE account_id=@aid AND id=@pid
+                                 RETURNING id, account_id, text, active, created_at, updated_at, rev";
+            int attempts = 0;
+            const int maxAttempts = 3;
+            while (attempts < maxAttempts)
+            {
+                attempts++;
+                try
+                {
+                    await using var con = CreateConnection();
+                    await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false);
+                    await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 12 };
+                    cmd.Parameters.AddWithValue("aid", accountId);
+                    cmd.Parameters.AddWithValue("pid", phraseId);
+                    await using var rd = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+                    if (await rd.ReadAsync().ConfigureAwait(false))
+                    {
+                        return new PhraseInfo(rd.GetInt64(0), rd.GetInt64(1), rd.GetString(2), rd.GetBoolean(3), rd.GetDateTime(5), rd.GetInt64(6));
+                    }
+                    return null;
+                }
+                catch (Exception ex) when ((IsTransient(ex) || IsTransientTimeout(ex)) && attempts < maxAttempts)
+                {
+                    Debug.WriteLine($"[PhraseService][ToggleInternal][Transient] attempt={attempts} {ex.GetType().Name}: {ex.Message}");
+                    await Task.Delay(150 * attempts).ConfigureAwait(false);
+                }
+            }
+            return null;
         }
+
+        private void UpdateSnapshotAfterToggle(AccountPhraseState state, PhraseInfo info)
+        {
+            if (state.ById.TryGetValue(info.Id, out var row))
+            {
+                row.Active = info.Active;
+                row.UpdatedAt = info.UpdatedAt;
+                row.Rev = info.Rev;
+                if (info.Rev > state.MaxRev) state.MaxRev = info.Rev;
+            }
+            else
+            {
+                var newRow = new PhraseRow
+                {
+                    Id = info.Id,
+                    AccountId = info.AccountId,
+                    Text = info.Text,
+                    Active = info.Active,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = info.UpdatedAt,
+                    Rev = info.Rev
+                };
+                state.ById[info.Id] = newRow;
+                if (info.Rev > state.MaxRev) state.MaxRev = info.Rev;
+            }
+        }
+
+        public async Task<long?> GetAnyAccountIdAsync() => await GetAnyAccountIdInternalAsync(null).ConfigureAwait(false);
 
         private async Task<long?> GetAnyAccountIdInternalAsync(long? cachedAccount)
         {
             await EnsureBackendAsync().ConfigureAwait(false);
-            if (!_radiumAvailable) return cachedAccount; // fallback to provided cached value
+            if (!_radiumAvailable) return cachedAccount;
             const string sql = "SELECT account_id FROM radium.phrase ORDER BY account_id LIMIT 1";
             await using var con = CreateConnection();
             try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false); }
-            catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][AnyAccount][CANCEL-Open] " + oce.Message); return cachedAccount; }
-            await using var cmd = new NpgsqlCommand(sql, con);
+            catch { return cachedAccount; }
+            await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 8 };
             try
             {
                 var result = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
                 return result == null ? cachedAccount : (long?)(result is long l ? l : Convert.ToInt64(result));
             }
-            catch (OperationCanceledException oce) { Debug.WriteLine("[PhraseService][AnyAccount][CANCEL-Exec] " + oce.Message); return cachedAccount; }
+            catch { return cachedAccount; }
         }
 
         private static bool IsTransient(Exception ex)
@@ -733,7 +575,7 @@ namespace Wysg.Musm.Radium.Services
             if (ex is TimeoutException) return true;
             if (ex is IOException) return true;
             if (ex is SocketException) return true;
-            if (ex is OperationCanceledException) return true; // treat as transient (UI should not break)
+            if (ex is OperationCanceledException) return true; // treat external cancels as transient (rare after FR-262)
             if (ex is NpgsqlException npgEx)
             {
                 if (npgEx.InnerException is TimeoutException) return true;

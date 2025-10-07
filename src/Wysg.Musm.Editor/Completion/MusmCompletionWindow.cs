@@ -327,6 +327,8 @@ namespace Wysg.Musm.Editor.Completion
             foreach (var item in items) target.Add(item);
             w.ComputeReplaceRegionFromCaret();
             w.Show();
+            // Auto-select first item by default (new behavior FR-264)
+            w.EnsureFirstItemSelected();
             Debug.WriteLine("[CW] ShowForCurrentWord opened");
             return w;
         }
@@ -348,10 +350,23 @@ namespace Wysg.Musm.Editor.Completion
             }
             else
             {
-                _allowSelectionOnce = true;
-                CompletionList.ListBox.SelectedIndex = -1;
+                // New default: select first item if exists (FR-264)
+                EnsureFirstItemSelected();
             }
             AdjustListBoxHeight(); // ensure height adapts when selection triggers virtualization/layout changes
+        }
+
+        public void EnsureFirstItemSelected()
+        {
+            if (CompletionList?.ListBox is not { } lb) return;
+            if (lb.Items.Count == 0) return;
+            if (lb.SelectedIndex == -1)
+            {
+                _allowSelectionOnce = true;
+                lb.SelectedIndex = 0;
+                lb.ScrollIntoView(lb.SelectedItem);
+                Debug.WriteLine("[CW] Auto-selected first completion item (FR-264)");
+            }
         }
 
         /// <summary>

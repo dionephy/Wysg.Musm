@@ -12,44 +12,57 @@ using Wysg.Musm.Radium.Services.Diagnostics; // added
 
 namespace Wysg.Musm.Radium.ViewModels
 {
+    /// <summary>
+    /// ViewModel driving the splash + authentication experience.
+    /// Responsibilities:
+    ///   * Attempt a silent session restoration using a persisted refresh token.
+    ///   * On success: ensure (or create) a central account record, load per-account Reportify settings, populate tenant context, fire LoginSuccess.
+    ///   * On failure: present interactive login UI (email/password + Google OAuth) and surface validation / error messages.
+    ///   * Provide a quick "Test Central" connectivity check before user credentials are entered (helps diagnose network / firewall issues).
+    ///
+    /// UX flow:
+    ///   1. Splash shows loading spinner.
+    ///   2. If refresh token present -> RefreshAsync -> EnsureAccountAsync -> load settings -> set ITenantContext -> signal success -> main window.
+    ///   3. Else show credential form; user logs in; same ensure + settings load path.
+    ///
+    /// Design choices:
+    ///   * Fire-and-forget background task for last login timestamp so UI remains responsive.
+    ///   * Separation of concerns: token persistence abstracted via IAuthStorage; central DB logic kept in ISupabaseService.
+    ///   * Minimal retries here (fail fast) ? deeper network retry logic lives inside lower-level services when appropriate.
+    /// </summary>
     public partial class SplashLoginViewModel : BaseViewModel
     {
         private readonly IAuthService _auth;
-        private readonly ISupabaseService _supabase;
+        private readonly AzureSqlCentralService _central; // replaced ISupabaseService
         private readonly ITenantContext _tenantContext;
         private readonly IAuthStorage _storage;
 
         [ObservableProperty]
-        private bool _isLoading = true;
-
+        private bool _isLoading = true;  // true while attempting silent restore
         [ObservableProperty]
-        private bool _showLogin = false;
-
+        private bool _showLogin = false; // switches UI from spinner to login form
         [ObservableProperty]
-        private string _email = string.Empty;
-
+        private string _email = string.Empty; // bound email entry (pre-filled from storage if available)
         [ObservableProperty]
-        private string _errorMessage = string.Empty;
-
+        private string _errorMessage = string.Empty; // validation or terminal error
         [ObservableProperty]
-        private string _statusMessage = "Loading...";
-
+        private string _statusMessage = "Loading..."; // progressive status messaging
         [ObservableProperty]
-        private bool _rememberMe = true;
+        private bool _rememberMe = true; // whether to persist refresh token
 
         public IRelayCommand LoginCommand { get; }
         public IRelayCommand GoogleLoginCommand { get; }
         public IRelayCommand SignUpCommand { get; }
         public IRelayCommand TestCentralCommand { get; }
 
-        public SplashLoginViewModel(IAuthService auth, ISupabaseService supabase, ITenantContext tenantContext, IAuthStorage storage)
+        public SplashLoginViewModel(IAuthService auth, AzureSqlCentralService central, ITenantContext tenantContext, IAuthStorage storage)
         {
             _auth = auth;
-            _supabase = supabase;
+            _central = central;
             _tenantContext = tenantContext;
             _storage = storage;
 
-            RememberMe = _storage.RememberMe || true; // default checked
+            RememberMe = _storage.RememberMe || true; // ensure checkbox starts checked
             if (_storage.Email != null) Email = _storage.Email;
 
             LoginCommand = new AsyncRelayCommand<object?>(OnEmailLoginAsync);
@@ -57,51 +70,72 @@ namespace Wysg.Musm.Radium.ViewModels
             SignUpCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(OnOpenSignUp);
             TestCentralCommand = new AsyncRelayCommand(OnTestCentralAsync);
 
-            _ = InitializeAsync();
+            _ = InitializeAsync(); // kick off silent restore; no await in ctor
         }
 
+        /// <summary>
+        /// Silent initialization path invoked on splash load. Attempts token refresh -> account ensure -> settings load.
+        /// Falls back to interactive login UI on any failure (user still able to proceed manually).
+        /// </summary>
         private async Task InitializeAsync()
         {
+            var swAll = Stopwatch.StartNew();
             try
             {
                 Debug.WriteLine("[Splash][Init] Begin T=" + Environment.CurrentManagedThreadId);
-                await Task.Delay(300);
+                StatusMessage = "Initializing...";
+                await Task.Delay(120); // smaller visual delay just to paint UI
 
                 var storedRt = _storage.RefreshToken;
                 if (!string.IsNullOrWhiteSpace(storedRt))
                 {
-                    StatusMessage = "Restoring session...";
-                    Debug.WriteLine("[Splash][Init] Attempt silent refresh");
+                    var swStage = Stopwatch.StartNew();
+                    StatusMessage = "Restoring session (refresh token)...";
+                    Debug.WriteLine("[Splash][Init][Stage] Refresh start");
                     var refreshed = await _auth.RefreshAsync(storedRt!);
-                    Debug.WriteLine($"[Splash][Init] Refresh result Success={refreshed.Success}");
+                    swStage.Stop();
+                    Debug.WriteLine($"[Splash][Init][Stage] Refresh done success={refreshed.Success} ms={swStage.ElapsedMilliseconds}");
                     if (refreshed.Success)
                     {
                         try
                         {
-                            Debug.WriteLine("[Splash][Init] EnsureAccountAsync start for user=" + refreshed.UserId);
-                            long accountId = await _supabase.EnsureAccountAsync(refreshed.UserId, _storage.Email ?? string.Empty, _storage.DisplayName ?? string.Empty);
+                            // Ensure account
+                            swStage.Restart();
+                            StatusMessage = "Ensuring account...";
+                            Debug.WriteLine("[Splash][Init][Stage] EnsureAccount start user=" + refreshed.UserId);
+                            var combined = await _central.EnsureAccountAndGetSettingsAsync(refreshed.UserId, _storage.Email ?? string.Empty, _storage.DisplayName ?? string.Empty);
+                            var accountId = combined.accountId;
+                            swStage.Stop();
+                            Debug.WriteLine($"[Splash][Init][Stage] Ensure+Settings account={accountId} ms={swStage.ElapsedMilliseconds} settingsLen={(combined.settingsJson?.Length ?? 0)}");
 
-                            // Load reportify settings (central)
-                            try
-                            {
-                                var rptSvc = ((App)Application.Current).Services.GetService(typeof(IReportifySettingsService)) as IReportifySettingsService;
-                                if (rptSvc != null)
-                                {
-                                    var json = await rptSvc.GetSettingsJsonAsync(accountId);
-                                    _tenantContext.ReportifySettingsJson = json;
-                                    Debug.WriteLine("[Splash][Init] Loaded reportify settings len=" + (json?.Length ?? 0));
-                                }
-                            }
-                            catch { }
+                            // Apply settings immediately
+                            _tenantContext.ReportifySettingsJson = combined.settingsJson;
 
-                            // Set tenant + signal success BEFORE last-login update
+                            // Set tenant context
+                            StatusMessage = "Loading phrases...";
                             _tenantContext.TenantId = accountId;
                             _tenantContext.TenantCode = refreshed.UserId;
-                            Debug.WriteLine("[Splash][Init] Silent login success (tenant set)");
+
+                            // Preload phrases BEFORE signaling success as requested
+                            try
+                            {
+                                var phraseSvc = ((App)Application.Current).Services.GetService(typeof(IPhraseService)) as IPhraseService;
+                                if (phraseSvc != null)
+                                {
+                                    var swP = Stopwatch.StartNew();
+                                    await phraseSvc.PreloadAsync(accountId);
+                                    swP.Stop();
+                                    Debug.WriteLine($"[Splash][Init][Stage] Phrase preload ms={swP.ElapsedMilliseconds}");
+                                }
+                            }
+                            catch (Exception pex) { Debug.WriteLine("[Splash][Init][Stage][PhrasePreload][WARN] " + pex.Message); }
+
+                            StatusMessage = "Finalizing session...";
+                            Debug.WriteLine("[Splash][Init] Silent login success (tenant set) with phrases");
                             LoginSuccess?.Invoke();
 
-                            // Fire & forget last login update (silent) so UI isn't blocked
-                            BackgroundTask.Run("LastLoginUpdate", () => _supabase.UpdateLastLoginAsync(accountId, silent: true));
+                            // Background last login update
+                            BackgroundTask.Run("LastLoginUpdate", () => _central.UpdateLastLoginAsync(accountId, silent: true));
                             return;
                         }
                         catch (OperationCanceledException oce)
@@ -117,10 +151,11 @@ namespace Wysg.Musm.Radium.ViewModels
                     }
                 }
 
+                // Fallback to interactive login
                 IsLoading = false;
                 ShowLogin = true;
-                StatusMessage = "Please log in to continue";
-                Debug.WriteLine("[Splash][Init] Show login UI");
+                StatusMessage = string.IsNullOrEmpty(ErrorMessage) ? "Please log in to continue" : ErrorMessage;
+                Debug.WriteLine("[Splash][Init] Show login UI (silent restore path ended) totalMs=" + swAll.ElapsedMilliseconds);
             }
             catch (OperationCanceledException oce)
             {
@@ -136,6 +171,10 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
+        /// <summary>
+        /// Handles email/password authentication path. Ensures account, updates last login (interactive error surfaced),
+        /// loads reportify settings, persists auth context (if RememberMe).  Raises LoginSuccess on completion.
+        /// </summary>
         private async Task OnEmailLoginAsync(object? parameter)
         {
             if (parameter is not PasswordBox pw) { ErrorMessage = "Unexpected password input."; return; }
@@ -153,23 +192,29 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine("[Splash][Login] Auth success=" + auth.Success);
                 if (!auth.Success) { ErrorMessage = auth.Error; return; }
 
-                var accountId = await _supabase.EnsureAccountAsync(auth.UserId, auth.Email, auth.DisplayName);
-                await _supabase.UpdateLastLoginAsync(accountId); // interactive login keep errors visible
+                var accountId = await _central.EnsureAccountAsync(auth.UserId, auth.Email, auth.DisplayName);
+                await _central.UpdateLastLoginAsync(accountId); // interactive login keep errors visible
                 _tenantContext.TenantId = accountId;
                 _tenantContext.TenantCode = auth.UserId;
 
                 // Load reportify settings after login
                 try
                 {
-                    var rptSvc = ((App)Application.Current).Services.GetService(typeof(IReportifySettingsService)) as IReportifySettingsService;
-                    if (rptSvc != null)
-                    {
-                        var json = await rptSvc.GetSettingsJsonAsync(accountId);
-                        _tenantContext.ReportifySettingsJson = json;
-                        Debug.WriteLine("[Splash][Login] Loaded reportify settings len=" + (json?.Length ?? 0));
-                    }
+                    var combined = await _central.EnsureAccountAndGetSettingsAsync(auth.UserId, auth.Email, auth.DisplayName);
+                    _tenantContext.ReportifySettingsJson = combined.settingsJson;
+                    Debug.WriteLine("[Splash][Login] Loaded reportify settings len=" + (combined.settingsJson?.Length ?? 0));
                 }
                 catch { }
+
+                // Preload phrases before closing splash (requirement)
+                try
+                {
+                    StatusMessage = "Loading phrases...";
+                    var phraseSvc = ((App)Application.Current).Services.GetService(typeof(IPhraseService)) as IPhraseService;
+                    if (phraseSvc != null)
+                        await phraseSvc.PreloadAsync(accountId);
+                }
+                catch (Exception px) { Debug.WriteLine("[Splash][Login][PhrasePreload][WARN] " + px.Message); }
 
                 PersistAuth(auth);
                 Debug.WriteLine("[Splash][Login] Success account=" + accountId);
@@ -191,6 +236,9 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
+        /// <summary>
+        /// Handles Google OAuth sign-in path. Mirrors email/password flow with different credential source.
+        /// </summary>
         private async Task OnGoogleLoginAsync()
         {
             IsBusy = true;
@@ -203,23 +251,27 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine("[Splash][Google] Auth success=" + auth.Success);
                 if (!auth.Success) { ErrorMessage = auth.Error; return; }
 
-                var accountId = await _supabase.EnsureAccountAsync(auth.UserId, auth.Email, auth.DisplayName);
-                await _supabase.UpdateLastLoginAsync(accountId); // interactive login keep errors visible
+                var accountId = await _central.EnsureAccountAsync(auth.UserId, auth.Email, auth.DisplayName);
+                await _central.UpdateLastLoginAsync(accountId); // interactive login keep errors visible
                 _tenantContext.TenantId = accountId;
                 _tenantContext.TenantCode = auth.UserId;
 
-                // Load reportify settings after login
                 try
                 {
-                    var rptSvc = ((App)Application.Current).Services.GetService(typeof(IReportifySettingsService)) as IReportifySettingsService;
-                    if (rptSvc != null)
-                    {
-                        var json = await rptSvc.GetSettingsJsonAsync(accountId);
-                        _tenantContext.ReportifySettingsJson = json;
-                        Debug.WriteLine("[Splash][Login] Loaded reportify settings len=" + (json?.Length ?? 0));
-                    }
+                    var combined = await _central.EnsureAccountAndGetSettingsAsync(auth.UserId, auth.Email, auth.DisplayName);
+                    _tenantContext.ReportifySettingsJson = combined.settingsJson;
+                    Debug.WriteLine("[Splash][Login] Loaded reportify settings len=" + (combined.settingsJson?.Length ?? 0));
                 }
                 catch { }
+
+                try
+                {
+                    StatusMessage = "Loading phrases...";
+                    var phraseSvc = ((App)Application.Current).Services.GetService(typeof(IPhraseService)) as IPhraseService;
+                    if (phraseSvc != null)
+                        await phraseSvc.PreloadAsync(accountId);
+                }
+                catch (Exception px) { Debug.WriteLine("[Splash][Google][PhrasePreload][WARN] " + px.Message); }
 
                 PersistAuth(auth);
                 Debug.WriteLine("[Splash][Google] Success account=" + accountId);
@@ -241,6 +293,7 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
+        /// <summary>Persists authentication artifacts (refresh token, email, display name) based on RememberMe choice.</summary>
         private void PersistAuth(Wysg.Musm.Radium.Models.AuthResult auth)
         {
             _storage.RememberMe = RememberMe;
@@ -271,7 +324,7 @@ namespace Wysg.Musm.Radium.ViewModels
             try
             {
                 Debug.WriteLine("[Splash][TestCentral] Start");
-                var (ok, msg) = await _supabase.TestConnectionAsync();
+                var (ok, msg) = await _central.TestConnectionAsync();
                 StatusMessage = ok ? msg : $"Central DB error: {msg}";
                 Debug.WriteLine($"[Splash][TestCentral] Done ok={ok} msg={msg}");
             }
@@ -288,6 +341,6 @@ namespace Wysg.Musm.Radium.ViewModels
             finally { IsBusy = false; }
         }
 
-        public event Action? LoginSuccess;
+        public event Action? LoginSuccess; // Raised after tenant context set & settings loaded
     }
 }

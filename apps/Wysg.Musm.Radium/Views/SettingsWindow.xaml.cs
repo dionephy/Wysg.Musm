@@ -13,9 +13,46 @@ namespace Wysg.Musm.Radium.Views
     public partial class SettingsWindow : Window
     {
         private Border? _dragGhost; private string? _dragItem; private ListBox? _dragSource; private Border? _dropIndicator;
+        private readonly bool _databaseOnly;
 
-        public SettingsWindow() { InitializeComponent(); if (Application.Current is App app) { var vm = app.Services.GetRequiredService<SettingsViewModel>(); DataContext = vm; } else DataContext = new SettingsViewModel(); InitializeAutomationLists(); }
-        public SettingsWindow(SettingsViewModel vm) { InitializeComponent(); DataContext = vm; InitializeAutomationLists(); }
+        public SettingsWindow(bool databaseOnly = false)
+        {
+            _databaseOnly = databaseOnly;
+            InitializeComponent();
+            if (Application.Current is App app)
+            {
+                var vm = app.Services.GetRequiredService<SettingsViewModel>();
+                DataContext = vm;
+            }
+            else DataContext = new SettingsViewModel();
+            InitializeAutomationLists();
+            if (_databaseOnly) ApplyDatabaseOnlyMode();
+        }
+        public SettingsWindow(SettingsViewModel vm, bool databaseOnly = false)
+        {
+            _databaseOnly = databaseOnly;
+            InitializeComponent(); DataContext = vm; InitializeAutomationLists(); if (_databaseOnly) ApplyDatabaseOnlyMode();
+        }
+
+        private void ApplyDatabaseOnlyMode()
+        {
+            try
+            {
+                if (FindName("tabsRoot") is TabControl tabs)
+                {
+                    if (FindName("tabDatabase") is TabItem db) tabs.SelectedItem = db;
+                    void Disable(string name) { if (FindName(name) is TabItem ti) ti.IsEnabled = false; }
+                    Disable("tabAutomation");
+                    Disable("tabReportify");
+                    Disable("tabPhrases");
+                    Disable("tabSpy");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.WriteLine("[SettingsWindow] ApplyDatabaseOnlyMode error: " + ex.Message);
+            }
+        }
 
         // After DataContext set, call LoadAutomation and bind ListBoxes to VM collections
         private void InitializeAutomationLists()
@@ -260,17 +297,34 @@ namespace Wysg.Musm.Radium.Views
             {
                 if (svm.Phrases != null)
                 {
+                    Debug.WriteLine("[SettingsWindow] Setting phrases DataContext from SettingsViewModel.Phrases");
                     phrasesRoot.DataContext = svm.Phrases;
                 }
                 else if (Application.Current is App app)
                 {
                     try
                     {
+                        Debug.WriteLine("[SettingsWindow] SettingsViewModel.Phrases is null, getting PhrasesViewModel from DI");
                         var phrasesVm = app.Services.GetService<PhrasesViewModel>();
-                        if (phrasesVm != null) phrasesRoot.DataContext = phrasesVm;
+                        if (phrasesVm != null) 
+                        {
+                            phrasesRoot.DataContext = phrasesVm;
+                            Debug.WriteLine("[SettingsWindow] Successfully set phrases DataContext from DI");
+                        }
+                        else
+                        {
+                            Debug.WriteLine("[SettingsWindow] Failed to get PhrasesViewModel from DI");
+                        }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[SettingsWindow] Error getting PhrasesViewModel from DI: {ex.Message}");
+                    }
                 }
+            }
+            else
+            {
+                Debug.WriteLine($"[SettingsWindow] DataContext is not SettingsViewModel, it is: {DataContext?.GetType().Name ?? "null"}");
             }
         }
 

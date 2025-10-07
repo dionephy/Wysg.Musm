@@ -13,7 +13,7 @@ namespace Wysg.Musm.Radium.Services
         public ReportifySettingsService(ICentralDataSourceProvider ds, IRadiumLocalSettings local)
         { _ds = ds; _local = local; }
 
-        private NpgsqlConnection CreateConnection() => _ds.Central.CreateConnection();
+        private NpgsqlConnection CreateConnection(bool meta = false) => meta ? _ds.CentralMeta.CreateConnection() : _ds.Central.CreateConnection();
 
         private static bool IsTransient(Exception ex)
         {
@@ -29,58 +29,82 @@ namespace Wysg.Musm.Radium.Services
             return false;
         }
 
+        private static bool IsReadTimeout(Exception ex)
+        {
+            if (ex is TimeoutException) return true;
+            if (ex is NpgsqlException npg && (npg.Message.IndexOf("Timeout", StringComparison.OrdinalIgnoreCase) >= 0 || npg.Message.IndexOf("reading from stream", StringComparison.OrdinalIgnoreCase) >= 0)) return true;
+            return false;
+        }
+
         public async Task<string?> GetSettingsJsonAsync(long accountId)
         {
+            // Strategy v3:
+            //  1) Ultra-fast meta attempt (CentralMeta pool) with 3s command timeout + server-side statement_timeout (SET LOCAL 3000).
+            //     If it times out while reading, we assume cold backend; skip waiting longer and retry quickly.
+            //  2) Single primary attempt (12s command timeout) with server-side limit (SET LOCAL 8000) but soft local stopwatch cap (fail fast >9s).
+            //  No further retries. Total worst-case wait ~ (3s + 2s backoff + 9s) ~= 14s; typical success < 300ms once warm.
             const string sql = "SELECT settings_json::text FROM radium.reportify_setting WHERE account_id=@aid";
-            int attempts = 0;
-            while (true)
-            {
-                attempts++;
-                await using var con = CreateConnection();
-                try
-                {
-                    await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con);
-                }
-                catch (Exception ex) when (IsTransient(ex) && attempts < 2)
-                {
-                    Debug.WriteLine($"[ReportifySettings][Get][RETRY-OPEN {attempts}] transient: {ex.Message}");
-                    try { NpgsqlConnection.ClearPool(con); } catch { }
-                    await Task.Delay(120 * attempts);
-                    continue;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine("[ReportifySettings][Get][OPEN-FAIL] " + ex.Message);
-                    return null;
-                }
 
-                await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 12 };
-                cmd.Parameters.AddWithValue("aid", accountId);
+            async Task<string?> AttemptAsync(bool meta, int cmdTimeoutSeconds, int serverStmtMs, int attempt)
+            {
+                await using var con = CreateConnection(meta);
+                var sw = Stopwatch.StartNew();
+                await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con);
+                var openMs = sw.ElapsedMilliseconds;
+                // Apply server-side statement timeout to ensure backend cancels if stuck
                 try
                 {
-                    using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(8));
-                    var obj = await cmd.ExecuteScalarAsync(cts.Token);
-                    return obj as string ?? obj?.ToString();
+                    await using var st = new NpgsqlCommand($"SET LOCAL statement_timeout TO {serverStmtMs}", con) { CommandTimeout = 2 };
+                    await st.ExecuteNonQueryAsync();
                 }
-                catch (OperationCanceledException oce) when (attempts < 2)
-                {
-                    Debug.WriteLine($"[ReportifySettings][Get][CANCEL-RETRY {attempts}] {oce.Message}");
-                    try { NpgsqlConnection.ClearPool(con); } catch { }
-                    await Task.Delay(120 * attempts);
-                    continue;
-                }
-                catch (Exception ex) when (IsTransient(ex) && attempts < 2)
-                {
-                    Debug.WriteLine($"[ReportifySettings][Get][RETRY {attempts}] transient exec: {ex.Message}");
-                    try { NpgsqlConnection.ClearPool(con); } catch { }
-                    await Task.Delay(120 * attempts);
-                    continue;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine("[ReportifySettings] Get error: " + ex.Message);
-                    return null;
-                }
+                catch (Exception ex) { Debug.WriteLine($"[ReportifySettings][Get][Attempt{attempt}] SET LOCAL warn: {ex.Message}"); }
+                await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = cmdTimeoutSeconds };
+                cmd.Parameters.AddWithValue("aid", accountId);
+                sw.Restart();
+                var obj = await cmd.ExecuteScalarAsync();
+                var execMs = sw.ElapsedMilliseconds;
+                Debug.WriteLine($"[ReportifySettings][Get] attempt={attempt} meta={meta} openMs={openMs} execMs={execMs} totalMs={openMs + execMs}");
+                return obj as string ?? obj?.ToString();
+            }
+
+            // Attempt 1 (meta)
+            try
+            {
+                return await AttemptAsync(meta: true, cmdTimeoutSeconds: 3, serverStmtMs: 3000, attempt: 1);
+            }
+            catch (Exception ex) when (IsReadTimeout(ex) || IsTransient(ex))
+            {
+                Debug.WriteLine($"[ReportifySettings][Get][Attempt1-FAIL] {ex.GetType().Name}: {ex.Message} -> quick retry on primary");
+                await Task.Delay(500); // short backoff instead of long stall
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ReportifySettings][Get][Attempt1-ABORT] {ex.GetType().Name}: {ex.Message}");
+                return null;
+            }
+
+            // Attempt 2 (primary). Soft cap 9s even though cmd timeout is 12s to avoid long splash block.
+            var softCap = TimeSpan.FromSeconds(9);
+            var swAll = Stopwatch.StartNew();
+            try
+            {
+                var result = await AttemptAsync(meta: false, cmdTimeoutSeconds: 12, serverStmtMs: 8000, attempt: 2);
+                return result;
+            }
+            catch (Exception ex) when (IsReadTimeout(ex) || IsTransient(ex))
+            {
+                Debug.WriteLine($"[ReportifySettings][Get][Attempt2-FAIL] {ex.GetType().Name}: {ex.Message} softElapsed={swAll.ElapsedMilliseconds}ms");
+                return null; // give up fast for startup; user can manually refresh later
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ReportifySettings][Get][Attempt2-ABORT] {ex.GetType().Name}: {ex.Message}");
+                return null;
+            }
+            finally
+            {
+                if (swAll.Elapsed > softCap)
+                    Debug.WriteLine($"[ReportifySettings][Get][WARN] Attempt2 exceeded soft cap {softCap.TotalMilliseconds}ms (elapsed={swAll.ElapsedMilliseconds})");
             }
         }
 

@@ -1,5 +1,11 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
+## Change Log Addition (2025-10-07 - Phrase Toggle Throughput Optimization)
+- Added FR-261..FR-263: Removed global serialization semaphore in `PhraseService` (now per-account locking only) reducing contention on Supabase free tier. Eliminated aggressive per-command CancellationTokenSource usage causing early OperationCanceledException. Capped MaxPoolSize to 50 and relaxed KeepAlive to 30s. Toggle/upsert now single OPEN + UPDATE/INSERT with CommandTimeout=30 (default) and lightweight retry only on genuine transient timeouts. UI already strict synchronous (FR-258..260); this patch prevents self-inflicted cancellations under pool pressure.
+
+## Change Log Addition (2025-10-05 - Phrase Database Stability)
+- Implemented synchronous phrase interaction flow (FR-258, FR-259, FR-260) to ensure stability under rapid user clicks and network latency. PhraseService now uses strict synchronous flow: user action → database update → snapshot update → UI display from snapshot. Added per-account update locks to prevent UI state corruption and ensure all operations complete atomically before allowing new requests.
+
 ## Change Log Addition (2025-10-05 - Settings Automation Remove NullRef Fix)
 - Hardened SettingsWindow automation list helpers against null DataContext / unexpected list names (FR-234). Added guarded GetListForListBox with ItemsSource fallback + debug logging. Prevents NullReferenceException when clicking module remove (X) before DataContext fully initialized or during transient re-template.
 
@@ -99,7 +105,10 @@
 - Added KnownControl.StudyRemark and SpyWindow combo alphabetized (FR-211, FR-212).
 - Added PACS custom getter GetCurrentStudyRemark (FR-213).
 
-(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection)
+(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection + phrase database stability)
+
+## Change Log Addition (2025-10-07 - Completion First Item Auto-Select)
+- Implement MusmCompletionWindow.EnsureFirstItemSelected invoked on popup show and when no exact match (FR-264). Added selection permit flag reuse to avoid guard clearing. Update tests pending (add new task T369).
 
 ## AI Architecture Overview (New Section)
 Layer Responsibilities:
@@ -214,4 +223,13 @@ T031 added (see tasks.md).
 - Add IsAccountValid property and bind Save Settings button IsEnabled.
 - Inject PhrasesViewModel into SettingsViewModel (composition) to eliminate binding errors.
 - Bind phrases tab root DataContext to SettingsViewModel.Phrases; fall back to service resolve if null.
+
+## Plan Addition (2025-10-05 - FR-258, FR-259, FR-260)
+- Implement synchronous phrase database interaction flow to ensure stability under rapid user clicks and network latency.
+- Add per-account state update locks in PhraseService to prevent UI state corruption during database operations.
+- Enhance PhrasesViewModel to wait for database completion and display snapshot state (never optimistic UI state).
+- Add automatic consistency recovery via snapshot refresh when any phrase operation fails.
+- Implement UI toggle prevention during active database operations to ensure atomicity and final consistency.
+
+(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection + phrase database stability)
 
