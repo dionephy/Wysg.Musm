@@ -233,3 +233,1020 @@ T031 added (see tasks.md).
 
 (Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection + phrase database stability)
 
+## Change Log Addition (2025-10-07 - Completion First Item Auto-Select)
+- Implement MusmCompletionWindow.EnsureFirstItemSelected invoked on popup show and when no exact match (FR-264). Added selection permit flag reuse to avoid guard clearing. Update tests pending (add new task T369).
+
+## AI Architecture Overview (New Section)
+Layer Responsibilities:
+1. Domain (Wysg.Musm.Domain.AI)
+   - Pure contracts & record types (provider agnostic) : ILLMClient, IModelRouter, skill interfaces, ReportState, context records.
+2. UseCases (Wysg.Musm.UseCases.AI)
+   - Orchestrator (ReportPipeline) composing skill interfaces; no vendor code.
+3. Infrastructure (Wysg.Musm.Infrastructure.AI)
+   - Adapters (future: OpenAI/Ollama), routing, telemetry, prompt templates. Currently: NoOp implementations for development.
+4. API Host (Wysg.Musm.Api)
+   - Registers AddMusmAi(); future Minimal API endpoints expose structured skills (e.g., POST /api/report/current-study-intake, POST /api/report/postprocess). No direct raw prompt endpoint.
+
+Dependency Direction: UI/Clients -> API (HTTP) -> UseCases -> Domain; Infrastructure implements Domain & is registered only at host boundary.
+
+Extensibility Path:
+- Add real provider: implement ILLMClient + skill classes; adjust AddMusmAi(useNoOp:false) + config binding.
+- Add new skill: define interface in Domain, implement Infrastructure adapter, extend ReportPipeline or new orchestrator.
+
+Fallback Strategy:
+- NoOp skills return empty strings/unchanged text enabling UI operation without blocking (graceful degradation while server offline).
+
+Telemetry Plan:
+- IInferenceTelemetry future implementation logs structured event {skill, model, ms, success, tokens} (Serilog sink + optional metrics).
+
+Next Steps (AI):
+- Define JSON contract validation & retry guard.
+- Implement HeaderSplitter, HeaderParser, Proofreader (real) + routing heuristics.
+- Add error isolation (try/catch around each stage) fulfilling FR-AI-009.
+- Add configuration section: "Ai:Provider:OpenAI" etc.
+
+# Implementation Plan: Previous Study Multi-Report + Reportify Settings (FR-214..FR-230)
+
+Branch: [radium-cumulative] | Date: 2025-10-02 | Spec: ./Spec.md
+
+## Update Summary (FR-230)
+Restored option checkboxes alongside sample buttons within each Reportify group so users can preview and toggle in same context.
+
+## Design Change
+- Each Expander now contains a StackPanel with top WrapPanel (sample buttons) and second WrapPanel (checkboxes).
+- JSON still updates when checkboxes or text inputs change (existing bindings unaffected).
+
+## Risk
+Minimal—pure XAML adjustment; bindings reused.
+
+## Tasks Added
+T031 added (see tasks.md).
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Tab)
+- Added Phrases tab inside SettingsWindow (FR-235) migrating UI from standalone PhrasesWindow (DataGrid + Add/Activate + Refresh). Injects PhrasesViewModel lazily on tab load to avoid impacting settings load path. Standalone window can be deprecated in future cleanup.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Resilience)
+- Hardened PhraseService.ToggleActiveAsync to ignore transient failures executing SET LOCAL and added retry path (FR-236). Prevents NpgsqlException (Timeout during reading attempt) surfacing when user unchecks Active in phrases grid.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Adaptive Retry)
+- Implemented adaptive retry/backoff + pool clear for PhraseService.ToggleActiveAsync; resilient SET LOCAL handling for upsert & toggle (FR-237).
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Roundtrip Removal)
+- Removed SET LOCAL pre-command in ToggleActiveAsync; rely solely on UPDATE + tighter timeouts (FR-238) to mitigate stream read timeouts on rapid toggles.
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Dark Theme)
+- Applied dark styling to SettingsWindow Phrases tab (DataGrid + controls) and removed legacy standalone PhrasesWindow + Manage Phrases button (FR-239).
+
+## Change Log Addition (2025-10-05 - Integrated Spy Tab)
+- Added Spy tab to Settings consolidating UI spy functionality (process pick, mapping, chain editor, basic procedure ops) (FR-240).
+
+## Plan Addition (2025-10-05 - FR-241 / FR-242)
+- FR-241: Create Themes/DarkTheme.xaml consolidating dark palette + implicit control styles; merge into App.xaml. Remove reliance on scattered per-window styles progressively (initial application to Settings Spy tab).
+- FR-242: Mirror SpyWindow PACS procedure methods in integrated Spy tab (adds 21 ComboBoxItem entries) enabling immediate procedure selection without opening standalone window.
+
+## Plan Addition (2025-10-05 - FR-243)
+- FR-243: Replace minimal implicit ComboBox style with full template (border, toggle glyph, popup) applied globally so integrated Spy tab inherits identical dark appearance without per-window style duplication.
+
+## Plan Addition (2025-10-05 - FR-244)
+- FR-244: Enhance ComboBox template by inserting full-surface transparent ToggleButton over content (excluding arrow cell) to toggle IsDropDownOpen, ensuring click on label opens list without needing small arrow target.
+
+## Plan Addition (2025-10-05 - FR-245)
+- FR-245: Retire per-window DarkMiniCombo usage; rely on global template. Modify hover visuals to be slightly darker (PanelAlt + AccentAlt border) to reduce visual noise.
+
+## Plan Addition (2025-10-05 - FR-246 / FR-247 / FR-248)
+- FR-246: Introduce Dark.MonoFont resource referencing packaged D2Coding; set as implicit Window FontFamily.
+- FR-247: Adjust implicit ComboBox style (font size 11) for denser layout; rely on existing global template for click-anywhere behavior.
+- FR-248: Swap TextBox -> Label for CurrentStudyLabel to avoid user confusion about editability and reduce visual chrome.
+
+## Plan Addition (2025-10-05 - FR-249..FR-251)
+- Add radium.reportify_setting table (account-scoped singleton) storing JSON & rev.
+- Implement IReportifySettingsService (Get, Upsert, Delete) using central data source provider.
+- Extend SettingsViewModel with Save/Load commands guarded by presence of tenant/account id & service.
+- Upsert increments rev server-side via UPDATE expression; client does not diff JSON (server revision bump acceptable per write request).
+- Add UI buttons to Reportify tab for Load/Save; disabled only when service unavailable.
+
+## Plan Addition (2025-10-05 - FR-252)
+- On login (silent or interactive) after EnsureAccountAsync succeeds: resolve IReportifySettingsService, fetch JSON, store in ITenantContext.ReportifySettingsJson.
+- SettingsViewModel constructor checks tenant context for existing JSON and applies it (ApplyReportifyJson) removing need for manual Load.
+- Reportify tab buttons reduced to Save + Close.
+
+## Plan Addition (2025-10-05 - FR-253)
+- Implement ReportifyConfig loader parsing tenant ReportifySettingsJson once per change.
+- Integrate ApplyReportifyBlock / ApplyReportifyConclusion using regex passes per line with conditional steps keyed off config flags.
+- Conclusion paragraph numbering executed pre line splitting; indentation applied post transformations for continuation lines.
+- Editor toggle now calls ApplyReportifyBlock / ApplyReportifyConclusion replacing SimpleReportifyBlock usage.
+- Config reloaded automatically when tenant.ReportifySettingsJson differs from last applied before next transformation.
+
+## Plan Addition (2025-10-05 - FR-254, FR-255)
+- Add AccountIdChanged event to ITenantContext/TenantContext (invoke when TenantId changes).
+- Modify PhraseService methods to early-return empty (or throw for mutation) when accountId <= 0.
+- Update PhrasesViewModel: subscribe to AccountIdChanged; clear Items on logout; trigger RefreshAsync on first valid >0 id.
+- Remove legacy fallback adoption logic where possible (retain ResolveAccountIdAsync only for backward compatibility; new guards prefer tenant.AccountId).
+- Update Spec/Tasks docs accordingly.
+
+## Plan Addition (2025-10-05 - FR-256, FR-257)
+- Replace parameterless SettingsWindow DataContext with DI-resolved SettingsViewModel (inject tenant, reportify svc, phrases VM).
+- Add IsAccountValid property and bind Save Settings button IsEnabled.
+- Inject PhrasesViewModel into SettingsViewModel (composition) to eliminate binding errors.
+- Bind phrases tab root DataContext to SettingsViewModel.Phrases; fall back to service resolve if null.
+
+## Plan Addition (2025-10-05 - FR-258, FR-259, FR-260)
+- Implement synchronous phrase database interaction flow to ensure stability under rapid user clicks and network latency.
+- Add per-account state update locks in PhraseService to prevent UI state corruption during database operations.
+- Enhance PhrasesViewModel to wait for database completion and display snapshot state (never optimistic UI state).
+- Add automatic consistency recovery via snapshot refresh when any phrase operation fails.
+- Implement UI toggle prevention during active database operations to ensure atomicity and final consistency.
+
+(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection + phrase database stability)
+
+## Change Log Addition (2025-10-07 - Completion First Item Auto-Select)
+- Implement MusmCompletionWindow.EnsureFirstItemSelected invoked on popup show and when no exact match (FR-264). Added selection permit flag reuse to avoid guard clearing. Update tests pending (add new task T369).
+
+## AI Architecture Overview (New Section)
+Layer Responsibilities:
+1. Domain (Wysg.Musm.Domain.AI)
+   - Pure contracts & record types (provider agnostic) : ILLMClient, IModelRouter, skill interfaces, ReportState, context records.
+2. UseCases (Wysg.Musm.UseCases.AI)
+   - Orchestrator (ReportPipeline) composing skill interfaces; no vendor code.
+3. Infrastructure (Wysg.Musm.Infrastructure.AI)
+   - Adapters (future: OpenAI/Ollama), routing, telemetry, prompt templates. Currently: NoOp implementations for development.
+4. API Host (Wysg.Musm.Api)
+   - Registers AddMusmAi(); future Minimal API endpoints expose structured skills (e.g., POST /api/report/current-study-intake, POST /api/report/postprocess). No direct raw prompt endpoint.
+
+Dependency Direction: UI/Clients -> API (HTTP) -> UseCases -> Domain; Infrastructure implements Domain & is registered only at host boundary.
+
+Extensibility Path:
+- Add real provider: implement ILLMClient + skill classes; adjust AddMusmAi(useNoOp:false) + config binding.
+- Add new skill: define interface in Domain, implement Infrastructure adapter, extend ReportPipeline or new orchestrator.
+
+Fallback Strategy:
+- NoOp skills return empty strings/unchanged text enabling UI operation without blocking (graceful degradation while server offline).
+
+Telemetry Plan:
+- IInferenceTelemetry future implementation logs structured event {skill, model, ms, success, tokens} (Serilog sink + optional metrics).
+
+Next Steps (AI):
+- Define JSON contract validation & retry guard.
+- Implement HeaderSplitter, HeaderParser, Proofreader (real) + routing heuristics.
+- Add error isolation (try/catch around each stage) fulfilling FR-AI-009.
+- Add configuration section: "Ai:Provider:OpenAI" etc.
+
+# Implementation Plan: Previous Study Multi-Report + Reportify Settings (FR-214..FR-230)
+
+Branch: [radium-cumulative] | Date: 2025-10-02 | Spec: ./Spec.md
+
+## Update Summary (FR-230)
+Restored option checkboxes alongside sample buttons within each Reportify group so users can preview and toggle in same context.
+
+## Design Change
+- Each Expander now contains a StackPanel with top WrapPanel (sample buttons) and second WrapPanel (checkboxes).
+- JSON still updates when checkboxes or text inputs change (existing bindings unaffected).
+
+## Risk
+Minimal—pure XAML adjustment; bindings reused.
+
+## Tasks Added
+T031 added (see tasks.md).
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Tab)
+- Added Phrases tab inside SettingsWindow (FR-235) migrating UI from standalone PhrasesWindow (DataGrid + Add/Activate + Refresh). Injects PhrasesViewModel lazily on tab load to avoid impacting settings load path. Standalone window can be deprecated in future cleanup.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Resilience)
+- Hardened PhraseService.ToggleActiveAsync to ignore transient failures executing SET LOCAL and added retry path (FR-236). Prevents NpgsqlException (Timeout during reading attempt) surfacing when user unchecks Active in phrases grid.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Adaptive Retry)
+- Implemented adaptive retry/backoff + pool clear for PhraseService.ToggleActiveAsync; resilient SET LOCAL handling for upsert & toggle (FR-237).
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Roundtrip Removal)
+- Removed SET LOCAL pre-command in ToggleActiveAsync; rely solely on UPDATE + tighter timeouts (FR-238) to mitigate stream read timeouts on rapid toggles.
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Dark Theme)
+- Applied dark styling to SettingsWindow Phrases tab (DataGrid + controls) and removed legacy standalone PhrasesWindow + Manage Phrases button (FR-239).
+
+## Change Log Addition (2025-10-05 - Integrated Spy Tab)
+- Added Spy tab to Settings consolidating UI spy functionality (process pick, mapping, chain editor, basic procedure ops) (FR-240).
+
+## Plan Addition (2025-10-05 - FR-241 / FR-242)
+- FR-241: Create Themes/DarkTheme.xaml consolidating dark palette + implicit control styles; merge into App.xaml. Remove reliance on scattered per-window styles progressively (initial application to Settings Spy tab).
+- FR-242: Mirror SpyWindow PACS procedure methods in integrated Spy tab (adds 21 ComboBoxItem entries) enabling immediate procedure selection without opening standalone window.
+
+## Plan Addition (2025-10-05 - FR-243)
+- FR-243: Replace minimal implicit ComboBox style with full template (border, toggle glyph, popup) applied globally so integrated Spy tab inherits identical dark appearance without per-window style duplication.
+
+## Plan Addition (2025-10-05 - FR-244)
+- FR-244: Enhance ComboBox template by inserting full-surface transparent ToggleButton over content (excluding arrow cell) to toggle IsDropDownOpen, ensuring click on label opens list without needing small arrow target.
+
+## Plan Addition (2025-10-05 - FR-245)
+- FR-245: Retire per-window DarkMiniCombo usage; rely on global template. Modify hover visuals to be slightly darker (PanelAlt + AccentAlt border) to reduce visual noise.
+
+## Plan Addition (2025-10-05 - FR-246 / FR-247 / FR-248)
+- FR-246: Introduce Dark.MonoFont resource referencing packaged D2Coding; set as implicit Window FontFamily.
+- FR-247: Adjust implicit ComboBox style (font size 11) for denser layout; rely on existing global template for click-anywhere behavior.
+- FR-248: Swap TextBox -> Label for CurrentStudyLabel to avoid user confusion about editability and reduce visual chrome.
+
+## Plan Addition (2025-10-05 - FR-249..FR-251)
+- Add radium.reportify_setting table (account-scoped singleton) storing JSON & rev.
+- Implement IReportifySettingsService (Get, Upsert, Delete) using central data source provider.
+- Extend SettingsViewModel with Save/Load commands guarded by presence of tenant/account id & service.
+- Upsert increments rev server-side via UPDATE expression; client does not diff JSON (server revision bump acceptable per write request).
+- Add UI buttons to Reportify tab for Load/Save; disabled only when service unavailable.
+
+## Plan Addition (2025-10-05 - FR-252)
+- On login (silent or interactive) after EnsureAccountAsync succeeds: resolve IReportifySettingsService, fetch JSON, store in ITenantContext.ReportifySettingsJson.
+- SettingsViewModel constructor checks tenant context for existing JSON and applies it (ApplyReportifyJson) removing need for manual Load.
+- Reportify tab buttons reduced to Save + Close.
+
+## Plan Addition (2025-10-05 - FR-253)
+- Implement ReportifyConfig loader parsing tenant ReportifySettingsJson once per change.
+- Integrate ApplyReportifyBlock / ApplyReportifyConclusion using regex passes per line with conditional steps keyed off config flags.
+- Conclusion paragraph numbering executed pre line splitting; indentation applied post transformations for continuation lines.
+- Editor toggle now calls ApplyReportifyBlock / ApplyReportifyConclusion replacing SimpleReportifyBlock usage.
+- Config reloaded automatically when tenant.ReportifySettingsJson differs from last applied before next transformation.
+
+## Plan Addition (2025-10-05 - FR-254, FR-255)
+- Add AccountIdChanged event to ITenantContext/TenantContext (invoke when TenantId changes).
+- Modify PhraseService methods to early-return empty (or throw for mutation) when accountId <= 0.
+- Update PhrasesViewModel: subscribe to AccountIdChanged; clear Items on logout; trigger RefreshAsync on first valid >0 id.
+- Remove legacy fallback adoption logic where possible (retain ResolveAccountIdAsync only for backward compatibility; new guards prefer tenant.AccountId).
+- Update Spec/Tasks docs accordingly.
+
+## Plan Addition (2025-10-05 - FR-256, FR-257)
+- Replace parameterless SettingsWindow DataContext with DI-resolved SettingsViewModel (inject tenant, reportify svc, phrases VM).
+- Add IsAccountValid property and bind Save Settings button IsEnabled.
+- Inject PhrasesViewModel into SettingsViewModel (composition) to eliminate binding errors.
+- Bind phrases tab root DataContext to SettingsViewModel.Phrases; fall back to service resolve if null.
+
+## Plan Addition (2025-10-05 - FR-258, FR-259, FR-260)
+- Implement synchronous phrase database interaction flow to ensure stability under rapid user clicks and network latency.
+- Add per-account state update locks in PhraseService to prevent UI state corruption during database operations.
+- Enhance PhrasesViewModel to wait for database completion and display snapshot state (never optimistic UI state).
+- Add automatic consistency recovery via snapshot refresh when any phrase operation fails.
+- Implement UI toggle prevention during active database operations to ensure atomicity and final consistency.
+
+(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection + phrase database stability)
+
+## Change Log Addition (2025-10-07 - Completion First Item Auto-Select)
+- Implement MusmCompletionWindow.EnsureFirstItemSelected invoked on popup show and when no exact match (FR-264). Added selection permit flag reuse to avoid guard clearing. Update tests pending (add new task T369).
+
+## AI Architecture Overview (New Section)
+Layer Responsibilities:
+1. Domain (Wysg.Musm.Domain.AI)
+   - Pure contracts & record types (provider agnostic) : ILLMClient, IModelRouter, skill interfaces, ReportState, context records.
+2. UseCases (Wysg.Musm.UseCases.AI)
+   - Orchestrator (ReportPipeline) composing skill interfaces; no vendor code.
+3. Infrastructure (Wysg.Musm.Infrastructure.AI)
+   - Adapters (future: OpenAI/Ollama), routing, telemetry, prompt templates. Currently: NoOp implementations for development.
+4. API Host (Wysg.Musm.Api)
+   - Registers AddMusmAi(); future Minimal API endpoints expose structured skills (e.g., POST /api/report/current-study-intake, POST /api/report/postprocess). No direct raw prompt endpoint.
+
+Dependency Direction: UI/Clients -> API (HTTP) -> UseCases -> Domain; Infrastructure implements Domain & is registered only at host boundary.
+
+Extensibility Path:
+- Add real provider: implement ILLMClient + skill classes; adjust AddMusmAi(useNoOp:false) + config binding.
+- Add new skill: define interface in Domain, implement Infrastructure adapter, extend ReportPipeline or new orchestrator.
+
+Fallback Strategy:
+- NoOp skills return empty strings/unchanged text enabling UI operation without blocking (graceful degradation while server offline).
+
+Telemetry Plan:
+- IInferenceTelemetry future implementation logs structured event {skill, model, ms, success, tokens} (Serilog sink + optional metrics).
+
+Next Steps (AI):
+- Define JSON contract validation & retry guard.
+- Implement HeaderSplitter, HeaderParser, Proofreader (real) + routing heuristics.
+- Add error isolation (try/catch around each stage) fulfilling FR-AI-009.
+- Add configuration section: "Ai:Provider:OpenAI" etc.
+
+# Implementation Plan: Previous Study Multi-Report + Reportify Settings (FR-214..FR-230)
+
+Branch: [radium-cumulative] | Date: 2025-10-02 | Spec: ./Spec.md
+
+## Update Summary (FR-230)
+Restored option checkboxes alongside sample buttons within each Reportify group so users can preview and toggle in same context.
+
+## Design Change
+- Each Expander now contains a StackPanel with top WrapPanel (sample buttons) and second WrapPanel (checkboxes).
+- JSON still updates when checkboxes or text inputs change (existing bindings unaffected).
+
+## Risk
+Minimal—pure XAML adjustment; bindings reused.
+
+## Tasks Added
+T031 added (see tasks.md).
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Tab)
+- Added Phrases tab inside SettingsWindow (FR-235) migrating UI from standalone PhrasesWindow (DataGrid + Add/Activate + Refresh). Injects PhrasesViewModel lazily on tab load to avoid impacting settings load path. Standalone window can be deprecated in future cleanup.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Resilience)
+- Hardened PhraseService.ToggleActiveAsync to ignore transient failures executing SET LOCAL and added retry path (FR-236). Prevents NpgsqlException (Timeout during reading attempt) surfacing when user unchecks Active in phrases grid.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Adaptive Retry)
+- Implemented adaptive retry/backoff + pool clear for PhraseService.ToggleActiveAsync; resilient SET LOCAL handling for upsert & toggle (FR-237).
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Roundtrip Removal)
+- Removed SET LOCAL pre-command in ToggleActiveAsync; rely solely on UPDATE + tighter timeouts (FR-238) to mitigate stream read timeouts on rapid toggles.
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Dark Theme)
+- Applied dark styling to SettingsWindow Phrases tab (DataGrid + controls) and removed legacy standalone PhrasesWindow + Manage Phrases button (FR-239).
+
+## Change Log Addition (2025-10-05 - Integrated Spy Tab)
+- Added Spy tab to Settings consolidating UI spy functionality (process pick, mapping, chain editor, basic procedure ops) (FR-240).
+
+## Plan Addition (2025-10-05 - FR-241 / FR-242)
+- FR-241: Create Themes/DarkTheme.xaml consolidating dark palette + implicit control styles; merge into App.xaml. Remove reliance on scattered per-window styles progressively (initial application to Settings Spy tab).
+- FR-242: Mirror SpyWindow PACS procedure methods in integrated Spy tab (adds 21 ComboBoxItem entries) enabling immediate procedure selection without opening standalone window.
+
+## Plan Addition (2025-10-05 - FR-243)
+- FR-243: Replace minimal implicit ComboBox style with full template (border, toggle glyph, popup) applied globally so integrated Spy tab inherits identical dark appearance without per-window style duplication.
+
+## Plan Addition (2025-10-05 - FR-244)
+- FR-244: Enhance ComboBox template by inserting full-surface transparent ToggleButton over content (excluding arrow cell) to toggle IsDropDownOpen, ensuring click on label opens list without needing small arrow target.
+
+## Plan Addition (2025-10-05 - FR-245)
+- FR-245: Retire per-window DarkMiniCombo usage; rely on global template. Modify hover visuals to be slightly darker (PanelAlt + AccentAlt border) to reduce visual noise.
+
+## Plan Addition (2025-10-05 - FR-246 / FR-247 / FR-248)
+- FR-246: Introduce Dark.MonoFont resource referencing packaged D2Coding; set as implicit Window FontFamily.
+- FR-247: Adjust implicit ComboBox style (font size 11) for denser layout; rely on existing global template for click-anywhere behavior.
+- FR-248: Swap TextBox -> Label for CurrentStudyLabel to avoid user confusion about editability and reduce visual chrome.
+
+## Plan Addition (2025-10-05 - FR-249..FR-251)
+- Add radium.reportify_setting table (account-scoped singleton) storing JSON & rev.
+- Implement IReportifySettingsService (Get, Upsert, Delete) using central data source provider.
+- Extend SettingsViewModel with Save/Load commands guarded by presence of tenant/account id & service.
+- Upsert increments rev server-side via UPDATE expression; client does not diff JSON (server revision bump acceptable per write request).
+- Add UI buttons to Reportify tab for Load/Save; disabled only when service unavailable.
+
+## Plan Addition (2025-10-05 - FR-252)
+- On login (silent or interactive) after EnsureAccountAsync succeeds: resolve IReportifySettingsService, fetch JSON, store in ITenantContext.ReportifySettingsJson.
+- SettingsViewModel constructor checks tenant context for existing JSON and applies it (ApplyReportifyJson) removing need for manual Load.
+- Reportify tab buttons reduced to Save + Close.
+
+## Plan Addition (2025-10-05 - FR-253)
+- Implement ReportifyConfig loader parsing tenant ReportifySettingsJson once per change.
+- Integrate ApplyReportifyBlock / ApplyReportifyConclusion using regex passes per line with conditional steps keyed off config flags.
+- Conclusion paragraph numbering executed pre line splitting; indentation applied post transformations for continuation lines.
+- Editor toggle now calls ApplyReportifyBlock / ApplyReportifyConclusion replacing SimpleReportifyBlock usage.
+- Config reloaded automatically when tenant.ReportifySettingsJson differs from last applied before next transformation.
+
+## Plan Addition (2025-10-05 - FR-254, FR-255)
+- Add AccountIdChanged event to ITenantContext/TenantContext (invoke when TenantId changes).
+- Modify PhraseService methods to early-return empty (or throw for mutation) when accountId <= 0.
+- Update PhrasesViewModel: subscribe to AccountIdChanged; clear Items on logout; trigger RefreshAsync on first valid >0 id.
+- Remove legacy fallback adoption logic where possible (retain ResolveAccountIdAsync only for backward compatibility; new guards prefer tenant.AccountId).
+- Update Spec/Tasks docs accordingly.
+
+## Plan Addition (2025-10-05 - FR-256, FR-257)
+- Replace parameterless SettingsWindow DataContext with DI-resolved SettingsViewModel (inject tenant, reportify svc, phrases VM).
+- Add IsAccountValid property and bind Save Settings button IsEnabled.
+- Inject PhrasesViewModel into SettingsViewModel (composition) to eliminate binding errors.
+- Bind phrases tab root DataContext to SettingsViewModel.Phrases; fall back to service resolve if null.
+
+## Plan Addition (2025-10-05 - FR-258, FR-259, FR-260)
+- Implement synchronous phrase database interaction flow to ensure stability under rapid user clicks and network latency.
+- Add per-account state update locks in PhraseService to prevent UI state corruption during database operations.
+- Enhance PhrasesViewModel to wait for database completion and display snapshot state (never optimistic UI state).
+- Add automatic consistency recovery via snapshot refresh when any phrase operation fails.
+- Implement UI toggle prevention during active database operations to ensure atomicity and final consistency.
+
+(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection + phrase database stability)
+
+## Change Log Addition (2025-10-07 - Completion First Item Auto-Select)
+- Implement MusmCompletionWindow.EnsureFirstItemSelected invoked on popup show and when no exact match (FR-264). Added selection permit flag reuse to avoid guard clearing. Update tests pending (add new task T369).
+
+## AI Architecture Overview (New Section)
+Layer Responsibilities:
+1. Domain (Wysg.Musm.Domain.AI)
+   - Pure contracts & record types (provider agnostic) : ILLMClient, IModelRouter, skill interfaces, ReportState, context records.
+2. UseCases (Wysg.Musm.UseCases.AI)
+   - Orchestrator (ReportPipeline) composing skill interfaces; no vendor code.
+3. Infrastructure (Wysg.Musm.Infrastructure.AI)
+   - Adapters (future: OpenAI/Ollama), routing, telemetry, prompt templates. Currently: NoOp implementations for development.
+4. API Host (Wysg.Musm.Api)
+   - Registers AddMusmAi(); future Minimal API endpoints expose structured skills (e.g., POST /api/report/current-study-intake, POST /api/report/postprocess). No direct raw prompt endpoint.
+
+Dependency Direction: UI/Clients -> API (HTTP) -> UseCases -> Domain; Infrastructure implements Domain & is registered only at host boundary.
+
+Extensibility Path:
+- Add real provider: implement ILLMClient + skill classes; adjust AddMusmAi(useNoOp:false) + config binding.
+- Add new skill: define interface in Domain, implement Infrastructure adapter, extend ReportPipeline or new orchestrator.
+
+Fallback Strategy:
+- NoOp skills return empty strings/unchanged text enabling UI operation without blocking (graceful degradation while server offline).
+
+Telemetry Plan:
+- IInferenceTelemetry future implementation logs structured event {skill, model, ms, success, tokens} (Serilog sink + optional metrics).
+
+Next Steps (AI):
+- Define JSON contract validation & retry guard.
+- Implement HeaderSplitter, HeaderParser, Proofreader (real) + routing heuristics.
+- Add error isolation (try/catch around each stage) fulfilling FR-AI-009.
+- Add configuration section: "Ai:Provider:OpenAI" etc.
+
+# Implementation Plan: Previous Study Multi-Report + Reportify Settings (FR-214..FR-230)
+
+Branch: [radium-cumulative] | Date: 2025-10-02 | Spec: ./Spec.md
+
+## Update Summary (FR-230)
+Restored option checkboxes alongside sample buttons within each Reportify group so users can preview and toggle in same context.
+
+## Design Change
+- Each Expander now contains a StackPanel with top WrapPanel (sample buttons) and second WrapPanel (checkboxes).
+- JSON still updates when checkboxes or text inputs change (existing bindings unaffected).
+
+## Risk
+Minimal—pure XAML adjustment; bindings reused.
+
+## Tasks Added
+T031 added (see tasks.md).
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Tab)
+- Added Phrases tab inside SettingsWindow (FR-235) migrating UI from standalone PhrasesWindow (DataGrid + Add/Activate + Refresh). Injects PhrasesViewModel lazily on tab load to avoid impacting settings load path. Standalone window can be deprecated in future cleanup.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Resilience)
+- Hardened PhraseService.ToggleActiveAsync to ignore transient failures executing SET LOCAL and added retry path (FR-236). Prevents NpgsqlException (Timeout during reading attempt) surfacing when user unchecks Active in phrases grid.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Adaptive Retry)
+- Implemented adaptive retry/backoff + pool clear for PhraseService.ToggleActiveAsync; resilient SET LOCAL handling for upsert & toggle (FR-237).
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Roundtrip Removal)
+- Removed SET LOCAL pre-command in ToggleActiveAsync; rely solely on UPDATE + tighter timeouts (FR-238) to mitigate stream read timeouts on rapid toggles.
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Dark Theme)
+- Applied dark styling to SettingsWindow Phrases tab (DataGrid + controls) and removed legacy standalone PhrasesWindow + Manage Phrases button (FR-239).
+
+## Change Log Addition (2025-10-05 - Integrated Spy Tab)
+- Added Spy tab to Settings consolidating UI spy functionality (process pick, mapping, chain editor, basic procedure ops) (FR-240).
+
+## Plan Addition (2025-10-05 - FR-241 / FR-242)
+- FR-241: Create Themes/DarkTheme.xaml consolidating dark palette + implicit control styles; merge into App.xaml. Remove reliance on scattered per-window styles progressively (initial application to Settings Spy tab).
+- FR-242: Mirror SpyWindow PACS procedure methods in integrated Spy tab (adds 21 ComboBoxItem entries) enabling immediate procedure selection without opening standalone window.
+
+## Plan Addition (2025-10-05 - FR-243)
+- FR-243: Replace minimal implicit ComboBox style with full template (border, toggle glyph, popup) applied globally so integrated Spy tab inherits identical dark appearance without per-window style duplication.
+
+## Plan Addition (2025-10-05 - FR-244)
+- FR-244: Enhance ComboBox template by inserting full-surface transparent ToggleButton over content (excluding arrow cell) to toggle IsDropDownOpen, ensuring click on label opens list without needing small arrow target.
+
+## Plan Addition (2025-10-05 - FR-245)
+- FR-245: Retire per-window DarkMiniCombo usage; rely on global template. Modify hover visuals to be slightly darker (PanelAlt + AccentAlt border) to reduce visual noise.
+
+## Plan Addition (2025-10-05 - FR-246 / FR-247 / FR-248)
+- FR-246: Introduce Dark.MonoFont resource referencing packaged D2Coding; set as implicit Window FontFamily.
+- FR-247: Adjust implicit ComboBox style (font size 11) for denser layout; rely on existing global template for click-anywhere behavior.
+- FR-248: Swap TextBox -> Label for CurrentStudyLabel to avoid user confusion about editability and reduce visual chrome.
+
+## Plan Addition (2025-10-05 - FR-249..FR-251)
+- Add radium.reportify_setting table (account-scoped singleton) storing JSON & rev.
+- Implement IReportifySettingsService (Get, Upsert, Delete) using central data source provider.
+- Extend SettingsViewModel with Save/Load commands guarded by presence of tenant/account id & service.
+- Upsert increments rev server-side via UPDATE expression; client does not diff JSON (server revision bump acceptable per write request).
+- Add UI buttons to Reportify tab for Load/Save; disabled only when service unavailable.
+
+## Plan Addition (2025-10-05 - FR-252)
+- On login (silent or interactive) after EnsureAccountAsync succeeds: resolve IReportifySettingsService, fetch JSON, store in ITenantContext.ReportifySettingsJson.
+- SettingsViewModel constructor checks tenant context for existing JSON and applies it (ApplyReportifyJson) removing need for manual Load.
+- Reportify tab buttons reduced to Save + Close.
+
+## Plan Addition (2025-10-05 - FR-253)
+- Implement ReportifyConfig loader parsing tenant ReportifySettingsJson once per change.
+- Integrate ApplyReportifyBlock / ApplyReportifyConclusion using regex passes per line with conditional steps keyed off config flags.
+- Conclusion paragraph numbering executed pre line splitting; indentation applied post transformations for continuation lines.
+- Editor toggle now calls ApplyReportifyBlock / ApplyReportifyConclusion replacing SimpleReportifyBlock usage.
+- Config reloaded automatically when tenant.ReportifySettingsJson differs from last applied before next transformation.
+
+## Plan Addition (2025-10-05 - FR-254, FR-255)
+- Add AccountIdChanged event to ITenantContext/TenantContext (invoke when TenantId changes).
+- Modify PhraseService methods to early-return empty (or throw for mutation) when accountId <= 0.
+- Update PhrasesViewModel: subscribe to AccountIdChanged; clear Items on logout; trigger RefreshAsync on first valid >0 id.
+- Remove legacy fallback adoption logic where possible (retain ResolveAccountIdAsync only for backward compatibility; new guards prefer tenant.AccountId).
+- Update Spec/Tasks docs accordingly.
+
+## Plan Addition (2025-10-05 - FR-256, FR-257)
+- Replace parameterless SettingsWindow DataContext with DI-resolved SettingsViewModel (inject tenant, reportify svc, phrases VM).
+- Add IsAccountValid property and bind Save Settings button IsEnabled.
+- Inject PhrasesViewModel into SettingsViewModel (composition) to eliminate binding errors.
+- Bind phrases tab root DataContext to SettingsViewModel.Phrases; fall back to service resolve if null.
+
+## Plan Addition (2025-10-05 - FR-258, FR-259, FR-260)
+- Implement synchronous phrase database interaction flow to ensure stability under rapid user clicks and network latency.
+- Add per-account state update locks in PhraseService to prevent UI state corruption during database operations.
+- Enhance PhrasesViewModel to wait for database completion and display snapshot state (never optimistic UI state).
+- Add automatic consistency recovery via snapshot refresh when any phrase operation fails.
+- Implement UI toggle prevention during active database operations to ensure atomicity and final consistency.
+
+(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection + phrase database stability)
+
+## Change Log Addition (2025-10-07 - Completion First Item Auto-Select)
+- Implement MusmCompletionWindow.EnsureFirstItemSelected invoked on popup show and when no exact match (FR-264). Added selection permit flag reuse to avoid guard clearing. Update tests pending (add new task T369).
+
+## AI Architecture Overview (New Section)
+Layer Responsibilities:
+1. Domain (Wysg.Musm.Domain.AI)
+   - Pure contracts & record types (provider agnostic) : ILLMClient, IModelRouter, skill interfaces, ReportState, context records.
+2. UseCases (Wysg.Musm.UseCases.AI)
+   - Orchestrator (ReportPipeline) composing skill interfaces; no vendor code.
+3. Infrastructure (Wysg.Musm.Infrastructure.AI)
+   - Adapters (future: OpenAI/Ollama), routing, telemetry, prompt templates. Currently: NoOp implementations for development.
+4. API Host (Wysg.Musm.Api)
+   - Registers AddMusmAi(); future Minimal API endpoints expose structured skills (e.g., POST /api/report/current-study-intake, POST /api/report/postprocess). No direct raw prompt endpoint.
+
+Dependency Direction: UI/Clients -> API (HTTP) -> UseCases -> Domain; Infrastructure implements Domain & is registered only at host boundary.
+
+Extensibility Path:
+- Add real provider: implement ILLMClient + skill classes; adjust AddMusmAi(useNoOp:false) + config binding.
+- Add new skill: define interface in Domain, implement Infrastructure adapter, extend ReportPipeline or new orchestrator.
+
+Fallback Strategy:
+- NoOp skills return empty strings/unchanged text enabling UI operation without blocking (graceful degradation while server offline).
+
+Telemetry Plan:
+- IInferenceTelemetry future implementation logs structured event {skill, model, ms, success, tokens} (Serilog sink + optional metrics).
+
+Next Steps (AI):
+- Define JSON contract validation & retry guard.
+- Implement HeaderSplitter, HeaderParser, Proofreader (real) + routing heuristics.
+- Add error isolation (try/catch around each stage) fulfilling FR-AI-009.
+- Add configuration section: "Ai:Provider:OpenAI" etc.
+
+# Implementation Plan: Previous Study Multi-Report + Reportify Settings (FR-214..FR-230)
+
+Branch: [radium-cumulative] | Date: 2025-10-02 | Spec: ./Spec.md
+
+## Update Summary (FR-230)
+Restored option checkboxes alongside sample buttons within each Reportify group so users can preview and toggle in same context.
+
+## Design Change
+- Each Expander now contains a StackPanel with top WrapPanel (sample buttons) and second WrapPanel (checkboxes).
+- JSON still updates when checkboxes or text inputs change (existing bindings unaffected).
+
+## Risk
+Minimal—pure XAML adjustment; bindings reused.
+
+## Tasks Added
+T031 added (see tasks.md).
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Tab)
+- Added Phrases tab inside SettingsWindow (FR-235) migrating UI from standalone PhrasesWindow (DataGrid + Add/Activate + Refresh). Injects PhrasesViewModel lazily on tab load to avoid impacting settings load path. Standalone window can be deprecated in future cleanup.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Resilience)
+- Hardened PhraseService.ToggleActiveAsync to ignore transient failures executing SET LOCAL and added retry path (FR-236). Prevents NpgsqlException (Timeout during reading attempt) surfacing when user unchecks Active in phrases grid.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Adaptive Retry)
+- Implemented adaptive retry/backoff + pool clear for PhraseService.ToggleActiveAsync; resilient SET LOCAL handling for upsert & toggle (FR-237).
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Roundtrip Removal)
+- Removed SET LOCAL pre-command in ToggleActiveAsync; rely solely on UPDATE + tighter timeouts (FR-238) to mitigate stream read timeouts on rapid toggles.
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Dark Theme)
+- Applied dark styling to SettingsWindow Phrases tab (DataGrid + controls) and removed legacy standalone PhrasesWindow + Manage Phrases button (FR-239).
+
+## Change Log Addition (2025-10-05 - Integrated Spy Tab)
+- Added Spy tab to Settings consolidating UI spy functionality (process pick, mapping, chain editor, basic procedure ops) (FR-240).
+
+## Plan Addition (2025-10-05 - FR-241 / FR-242)
+- FR-241: Create Themes/DarkTheme.xaml consolidating dark palette + implicit control styles; merge into App.xaml. Remove reliance on scattered per-window styles progressively (initial application to Settings Spy tab).
+- FR-242: Mirror SpyWindow PACS procedure methods in integrated Spy tab (adds 21 ComboBoxItem entries) enabling immediate procedure selection without opening standalone window.
+
+## Plan Addition (2025-10-05 - FR-243)
+- FR-243: Replace minimal implicit ComboBox style with full template (border, toggle glyph, popup) applied globally so integrated Spy tab inherits identical dark appearance without per-window style duplication.
+
+## Plan Addition (2025-10-05 - FR-244)
+- FR-244: Enhance ComboBox template by inserting full-surface transparent ToggleButton over content (excluding arrow cell) to toggle IsDropDownOpen, ensuring click on label opens list without needing small arrow target.
+
+## Plan Addition (2025-10-05 - FR-245)
+- FR-245: Retire per-window DarkMiniCombo usage; rely on global template. Modify hover visuals to be slightly darker (PanelAlt + AccentAlt border) to reduce visual noise.
+
+## Plan Addition (2025-10-05 - FR-246 / FR-247 / FR-248)
+- FR-246: Introduce Dark.MonoFont resource referencing packaged D2Coding; set as implicit Window FontFamily.
+- FR-247: Adjust implicit ComboBox style (font size 11) for denser layout; rely on existing global template for click-anywhere behavior.
+- FR-248: Swap TextBox -> Label for CurrentStudyLabel to avoid user confusion about editability and reduce visual chrome.
+
+## Plan Addition (2025-10-05 - FR-249..FR-251)
+- Add radium.reportify_setting table (account-scoped singleton) storing JSON & rev.
+- Implement IReportifySettingsService (Get, Upsert, Delete) using central data source provider.
+- Extend SettingsViewModel with Save/Load commands guarded by presence of tenant/account id & service.
+- Upsert increments rev server-side via UPDATE expression; client does not diff JSON (server revision bump acceptable per write request).
+- Add UI buttons to Reportify tab for Load/Save; disabled only when service unavailable.
+
+## Plan Addition (2025-10-05 - FR-252)
+- On login (silent or interactive) after EnsureAccountAsync succeeds: resolve IReportifySettingsService, fetch JSON, store in ITenantContext.ReportifySettingsJson.
+- SettingsViewModel constructor checks tenant context for existing JSON and applies it (ApplyReportifyJson) removing need for manual Load.
+- Reportify tab buttons reduced to Save + Close.
+
+## Plan Addition (2025-10-05 - FR-253)
+- Implement ReportifyConfig loader parsing tenant ReportifySettingsJson once per change.
+- Integrate ApplyReportifyBlock / ApplyReportifyConclusion using regex passes per line with conditional steps keyed off config flags.
+- Conclusion paragraph numbering executed pre line splitting; indentation applied post transformations for continuation lines.
+- Editor toggle now calls ApplyReportifyBlock / ApplyReportifyConclusion replacing SimpleReportifyBlock usage.
+- Config reloaded automatically when tenant.ReportifySettingsJson differs from last applied before next transformation.
+
+## Plan Addition (2025-10-05 - FR-254, FR-255)
+- Add AccountIdChanged event to ITenantContext/TenantContext (invoke when TenantId changes).
+- Modify PhraseService methods to early-return empty (or throw for mutation) when accountId <= 0.
+- Update PhrasesViewModel: subscribe to AccountIdChanged; clear Items on logout; trigger RefreshAsync on first valid >0 id.
+- Remove legacy fallback adoption logic where possible (retain ResolveAccountIdAsync only for backward compatibility; new guards prefer tenant.AccountId).
+- Update Spec/Tasks docs accordingly.
+
+## Plan Addition (2025-10-05 - FR-256, FR-257)
+- Replace parameterless SettingsWindow DataContext with DI-resolved SettingsViewModel (inject tenant, reportify svc, phrases VM).
+- Add IsAccountValid property and bind Save Settings button IsEnabled.
+- Inject PhrasesViewModel into SettingsViewModel (composition) to eliminate binding errors.
+- Bind phrases tab root DataContext to SettingsViewModel.Phrases; fall back to service resolve if null.
+
+## Plan Addition (2025-10-05 - FR-258, FR-259, FR-260)
+- Implement synchronous phrase database interaction flow to ensure stability under rapid user clicks and network latency.
+- Add per-account state update locks in PhraseService to prevent UI state corruption during database operations.
+- Enhance PhrasesViewModel to wait for database completion and display snapshot state (never optimistic UI state).
+- Add automatic consistency recovery via snapshot refresh when any phrase operation fails.
+- Implement UI toggle prevention during active database operations to ensure atomicity and final consistency.
+
+(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection + phrase database stability)
+
+## Change Log Addition (2025-10-07 - Completion First Item Auto-Select)
+- Implement MusmCompletionWindow.EnsureFirstItemSelected invoked on popup show and when no exact match (FR-264). Added selection permit flag reuse to avoid guard clearing. Update tests pending (add new task T369).
+
+## AI Architecture Overview (New Section)
+Layer Responsibilities:
+1. Domain (Wysg.Musm.Domain.AI)
+   - Pure contracts & record types (provider agnostic) : ILLMClient, IModelRouter, skill interfaces, ReportState, context records.
+2. UseCases (Wysg.Musm.UseCases.AI)
+   - Orchestrator (ReportPipeline) composing skill interfaces; no vendor code.
+3. Infrastructure (Wysg.Musm.Infrastructure.AI)
+   - Adapters (future: OpenAI/Ollama), routing, telemetry, prompt templates. Currently: NoOp implementations for development.
+4. API Host (Wysg.Musm.Api)
+   - Registers AddMusmAi(); future Minimal API endpoints expose structured skills (e.g., POST /api/report/current-study-intake, POST /api/report/postprocess). No direct raw prompt endpoint.
+
+Dependency Direction: UI/Clients -> API (HTTP) -> UseCases -> Domain; Infrastructure implements Domain & is registered only at host boundary.
+
+Extensibility Path:
+- Add real provider: implement ILLMClient + skill classes; adjust AddMusmAi(useNoOp:false) + config binding.
+- Add new skill: define interface in Domain, implement Infrastructure adapter, extend ReportPipeline or new orchestrator.
+
+Fallback Strategy:
+- NoOp skills return empty strings/unchanged text enabling UI operation without blocking (graceful degradation while server offline).
+
+Telemetry Plan:
+- IInferenceTelemetry future implementation logs structured event {skill, model, ms, success, tokens} (Serilog sink + optional metrics).
+
+Next Steps (AI):
+- Define JSON contract validation & retry guard.
+- Implement HeaderSplitter, HeaderParser, Proofreader (real) + routing heuristics.
+- Add error isolation (try/catch around each stage) fulfilling FR-AI-009.
+- Add configuration section: "Ai:Provider:OpenAI" etc.
+
+# Implementation Plan: Previous Study Multi-Report + Reportify Settings (FR-214..FR-230)
+
+Branch: [radium-cumulative] | Date: 2025-10-02 | Spec: ./Spec.md
+
+## Update Summary (FR-230)
+Restored option checkboxes alongside sample buttons within each Reportify group so users can preview and toggle in same context.
+
+## Design Change
+- Each Expander now contains a StackPanel with top WrapPanel (sample buttons) and second WrapPanel (checkboxes).
+- JSON still updates when checkboxes or text inputs change (existing bindings unaffected).
+
+## Risk
+Minimal—pure XAML adjustment; bindings reused.
+
+## Tasks Added
+T031 added (see tasks.md).
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Tab)
+- Added Phrases tab inside SettingsWindow (FR-235) migrating UI from standalone PhrasesWindow (DataGrid + Add/Activate + Refresh). Injects PhrasesViewModel lazily on tab load to avoid impacting settings load path. Standalone window can be deprecated in future cleanup.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Resilience)
+- Hardened PhraseService.ToggleActiveAsync to ignore transient failures executing SET LOCAL and added retry path (FR-236). Prevents NpgsqlException (Timeout during reading attempt) surfacing when user unchecks Active in phrases grid.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Adaptive Retry)
+- Implemented adaptive retry/backoff + pool clear for PhraseService.ToggleActiveAsync; resilient SET LOCAL handling for upsert & toggle (FR-237).
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Roundtrip Removal)
+- Removed SET LOCAL pre-command in ToggleActiveAsync; rely solely on UPDATE + tighter timeouts (FR-238) to mitigate stream read timeouts on rapid toggles.
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Dark Theme)
+- Applied dark styling to SettingsWindow Phrases tab (DataGrid + controls) and removed legacy standalone PhrasesWindow + Manage Phrases button (FR-239).
+
+## Change Log Addition (2025-10-05 - Integrated Spy Tab)
+- Added Spy tab to Settings consolidating UI spy functionality (process pick, mapping, chain editor, basic procedure ops) (FR-240).
+
+## Plan Addition (2025-10-05 - FR-241 / FR-242)
+- FR-241: Create Themes/DarkTheme.xaml consolidating dark palette + implicit control styles; merge into App.xaml. Remove reliance on scattered per-window styles progressively (initial application to Settings Spy tab).
+- FR-242: Mirror SpyWindow PACS procedure methods in integrated Spy tab (adds 21 ComboBoxItem entries) enabling immediate procedure selection without opening standalone window.
+
+## Plan Addition (2025-10-05 - FR-243)
+- FR-243: Replace minimal implicit ComboBox style with full template (border, toggle glyph, popup) applied globally so integrated Spy tab inherits identical dark appearance without per-window style duplication.
+
+## Plan Addition (2025-10-05 - FR-244)
+- FR-244: Enhance ComboBox template by inserting full-surface transparent ToggleButton over content (excluding arrow cell) to toggle IsDropDownOpen, ensuring click on label opens list without needing small arrow target.
+
+## Plan Addition (2025-10-05 - FR-245)
+- FR-245: Retire per-window DarkMiniCombo usage; rely on global template. Modify hover visuals to be slightly darker (PanelAlt + AccentAlt border) to reduce visual noise.
+
+## Plan Addition (2025-10-05 - FR-246 / FR-247 / FR-248)
+- FR-246: Introduce Dark.MonoFont resource referencing packaged D2Coding; set as implicit Window FontFamily.
+- FR-247: Adjust implicit ComboBox style (font size 11) for denser layout; rely on existing global template for click-anywhere behavior.
+- FR-248: Swap TextBox -> Label for CurrentStudyLabel to avoid user confusion about editability and reduce visual chrome.
+
+## Plan Addition (2025-10-05 - FR-249..FR-251)
+- Add radium.reportify_setting table (account-scoped singleton) storing JSON & rev.
+- Implement IReportifySettingsService (Get, Upsert, Delete) using central data source provider.
+- Extend SettingsViewModel with Save/Load commands guarded by presence of tenant/account id & service.
+- Upsert increments rev server-side via UPDATE expression; client does not diff JSON (server revision bump acceptable per write request).
+- Add UI buttons to Reportify tab for Load/Save; disabled only when service unavailable.
+
+## Plan Addition (2025-10-05 - FR-252)
+- On login (silent or interactive) after EnsureAccountAsync succeeds: resolve IReportifySettingsService, fetch JSON, store in ITenantContext.ReportifySettingsJson.
+- SettingsViewModel constructor checks tenant context for existing JSON and applies it (ApplyReportifyJson) removing need for manual Load.
+- Reportify tab buttons reduced to Save + Close.
+
+## Plan Addition (2025-10-05 - FR-253)
+- Implement ReportifyConfig loader parsing tenant ReportifySettingsJson once per change.
+- Integrate ApplyReportifyBlock / ApplyReportifyConclusion using regex passes per line with conditional steps keyed off config flags.
+- Conclusion paragraph numbering executed pre line splitting; indentation applied post transformations for continuation lines.
+- Editor toggle now calls ApplyReportifyBlock / ApplyReportifyConclusion replacing SimpleReportifyBlock usage.
+- Config reloaded automatically when tenant.ReportifySettingsJson differs from last applied before next transformation.
+
+## Plan Addition (2025-10-05 - FR-254, FR-255)
+- Add AccountIdChanged event to ITenantContext/TenantContext (invoke when TenantId changes).
+- Modify PhraseService methods to early-return empty (or throw for mutation) when accountId <= 0.
+- Update PhrasesViewModel: subscribe to AccountIdChanged; clear Items on logout; trigger RefreshAsync on first valid >0 id.
+- Remove legacy fallback adoption logic where possible (retain ResolveAccountIdAsync only for backward compatibility; new guards prefer tenant.AccountId).
+- Update Spec/Tasks docs accordingly.
+
+## Plan Addition (2025-10-05 - FR-256, FR-257)
+- Replace parameterless SettingsWindow DataContext with DI-resolved SettingsViewModel (inject tenant, reportify svc, phrases VM).
+- Add IsAccountValid property and bind Save Settings button IsEnabled.
+- Inject PhrasesViewModel into SettingsViewModel (composition) to eliminate binding errors.
+- Bind phrases tab root DataContext to SettingsViewModel.Phrases; fall back to service resolve if null.
+
+## Plan Addition (2025-10-05 - FR-258, FR-259, FR-260)
+- Implement synchronous phrase database interaction flow to ensure stability under rapid user clicks and network latency.
+- Add per-account state update locks in PhraseService to prevent UI state corruption during database operations.
+- Enhance PhrasesViewModel to wait for database completion and display snapshot state (never optimistic UI state).
+- Add automatic consistency recovery via snapshot refresh when any phrase operation fails.
+- Implement UI toggle prevention during active database operations to ensure atomicity and final consistency.
+
+(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection + phrase database stability)
+
+## Change Log Addition (2025-10-07 - Completion First Item Auto-Select)
+- Implement MusmCompletionWindow.EnsureFirstItemSelected invoked on popup show and when no exact match (FR-264). Added selection permit flag reuse to avoid guard clearing. Update tests pending (add new task T369).
+
+## AI Architecture Overview (New Section)
+Layer Responsibilities:
+1. Domain (Wysg.Musm.Domain.AI)
+   - Pure contracts & record types (provider agnostic) : ILLMClient, IModelRouter, skill interfaces, ReportState, context records.
+2. UseCases (Wysg.Musm.UseCases.AI)
+   - Orchestrator (ReportPipeline) composing skill interfaces; no vendor code.
+3. Infrastructure (Wysg.Musm.Infrastructure.AI)
+   - Adapters (future: OpenAI/Ollama), routing, telemetry, prompt templates. Currently: NoOp implementations for development.
+4. API Host (Wysg.Musm.Api)
+   - Registers AddMusmAi(); future Minimal API endpoints expose structured skills (e.g., POST /api/report/current-study-intake, POST /api/report/postprocess). No direct raw prompt endpoint.
+
+Dependency Direction: UI/Clients -> API (HTTP) -> UseCases -> Domain; Infrastructure implements Domain & is registered only at host boundary.
+
+Extensibility Path:
+- Add real provider: implement ILLMClient + skill classes; adjust AddMusmAi(useNoOp:false) + config binding.
+- Add new skill: define interface in Domain, implement Infrastructure adapter, extend ReportPipeline or new orchestrator.
+
+Fallback Strategy:
+- NoOp skills return empty strings/unchanged text enabling UI operation without blocking (graceful degradation while server offline).
+
+Telemetry Plan:
+- IInferenceTelemetry future implementation logs structured event {skill, model, ms, success, tokens} (Serilog sink + optional metrics).
+
+Next Steps (AI):
+- Define JSON contract validation & retry guard.
+- Implement HeaderSplitter, HeaderParser, Proofreader (real) + routing heuristics.
+- Add error isolation (try/catch around each stage) fulfilling FR-AI-009.
+- Add configuration section: "Ai:Provider:OpenAI" etc.
+
+# Implementation Plan: Previous Study Multi-Report + Reportify Settings (FR-214..FR-230)
+
+Branch: [radium-cumulative] | Date: 2025-10-02 | Spec: ./Spec.md
+
+## Update Summary (FR-230)
+Restored option checkboxes alongside sample buttons within each Reportify group so users can preview and toggle in same context.
+
+## Design Change
+- Each Expander now contains a StackPanel with top WrapPanel (sample buttons) and second WrapPanel (checkboxes).
+- JSON still updates when checkboxes or text inputs change (existing bindings unaffected).
+
+## Risk
+Minimal—pure XAML adjustment; bindings reused.
+
+## Tasks Added
+T031 added (see tasks.md).
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Tab)
+- Added Phrases tab inside SettingsWindow (FR-235) migrating UI from standalone PhrasesWindow (DataGrid + Add/Activate + Refresh). Injects PhrasesViewModel lazily on tab load to avoid impacting settings load path. Standalone window can be deprecated in future cleanup.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Resilience)
+- Hardened PhraseService.ToggleActiveAsync to ignore transient failures executing SET LOCAL and added retry path (FR-236). Prevents NpgsqlException (Timeout during reading attempt) surfacing when user unchecks Active in phrases grid.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Adaptive Retry)
+- Implemented adaptive retry/backoff + pool clear for PhraseService.ToggleActiveAsync; resilient SET LOCAL handling for upsert & toggle (FR-237).
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Roundtrip Removal)
+- Removed SET LOCAL pre-command in ToggleActiveAsync; rely solely on UPDATE + tighter timeouts (FR-238) to mitigate stream read timeouts on rapid toggles.
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Dark Theme)
+- Applied dark styling to SettingsWindow Phrases tab (DataGrid + controls) and removed legacy standalone PhrasesWindow + Manage Phrases button (FR-239).
+
+## Change Log Addition (2025-10-05 - Integrated Spy Tab)
+- Added Spy tab to Settings consolidating UI spy functionality (process pick, mapping, chain editor, basic procedure ops) (FR-240).
+
+## Plan Addition (2025-10-05 - FR-241 / FR-242)
+- FR-241: Create Themes/DarkTheme.xaml consolidating dark palette + implicit control styles; merge into App.xaml. Remove reliance on scattered per-window styles progressively (initial application to Settings Spy tab).
+- FR-242: Mirror SpyWindow PACS procedure methods in integrated Spy tab (adds 21 ComboBoxItem entries) enabling immediate procedure selection without opening standalone window.
+
+## Plan Addition (2025-10-05 - FR-243)
+- FR-243: Replace minimal implicit ComboBox style with full template (border, toggle glyph, popup) applied globally so integrated Spy tab inherits identical dark appearance without per-window style duplication.
+
+## Plan Addition (2025-10-05 - FR-244)
+- FR-244: Enhance ComboBox template by inserting full-surface transparent ToggleButton over content (excluding arrow cell) to toggle IsDropDownOpen, ensuring click on label opens list without needing small arrow target.
+
+## Plan Addition (2025-10-05 - FR-245)
+- FR-245: Retire per-window DarkMiniCombo usage; rely on global template. Modify hover visuals to be slightly darker (PanelAlt + AccentAlt border) to reduce visual noise.
+
+## Plan Addition (2025-10-05 - FR-246 / FR-247 / FR-248)
+- FR-246: Introduce Dark.MonoFont resource referencing packaged D2Coding; set as implicit Window FontFamily.
+- FR-247: Adjust implicit ComboBox style (font size 11) for denser layout; rely on existing global template for click-anywhere behavior.
+- FR-248: Swap TextBox -> Label for CurrentStudyLabel to avoid user confusion about editability and reduce visual chrome.
+
+## Plan Addition (2025-10-05 - FR-249..FR-251)
+- Add radium.reportify_setting table (account-scoped singleton) storing JSON & rev.
+- Implement IReportifySettingsService (Get, Upsert, Delete) using central data source provider.
+- Extend SettingsViewModel with Save/Load commands guarded by presence of tenant/account id & service.
+- Upsert increments rev server-side via UPDATE expression; client does not diff JSON (server revision bump acceptable per write request).
+- Add UI buttons to Reportify tab for Load/Save; disabled only when service unavailable.
+
+## Plan Addition (2025-10-05 - FR-252)
+- On login (silent or interactive) after EnsureAccountAsync succeeds: resolve IReportifySettingsService, fetch JSON, store in ITenantContext.ReportifySettingsJson.
+- SettingsViewModel constructor checks tenant context for existing JSON and applies it (ApplyReportifyJson) removing need for manual Load.
+- Reportify tab buttons reduced to Save + Close.
+
+## Plan Addition (2025-10-05 - FR-253)
+- Implement ReportifyConfig loader parsing tenant ReportifySettingsJson once per change.
+- Integrate ApplyReportifyBlock / ApplyReportifyConclusion using regex passes per line with conditional steps keyed off config flags.
+- Conclusion paragraph numbering executed pre line splitting; indentation applied post transformations for continuation lines.
+- Editor toggle now calls ApplyReportifyBlock / ApplyReportifyConclusion replacing SimpleReportifyBlock usage.
+- Config reloaded automatically when tenant.ReportifySettingsJson differs from last applied before next transformation.
+
+## Plan Addition (2025-10-05 - FR-254, FR-255)
+- Add AccountIdChanged event to ITenantContext/TenantContext (invoke when TenantId changes).
+- Modify PhraseService methods to early-return empty (or throw for mutation) when accountId <= 0.
+- Update PhrasesViewModel: subscribe to AccountIdChanged; clear Items on logout; trigger RefreshAsync on first valid >0 id.
+- Remove legacy fallback adoption logic where possible (retain ResolveAccountIdAsync only for backward compatibility; new guards prefer tenant.AccountId).
+- Update Spec/Tasks docs accordingly.
+
+## Plan Addition (2025-10-05 - FR-256, FR-257)
+- Replace parameterless SettingsWindow DataContext with DI-resolved SettingsViewModel (inject tenant, reportify svc, phrases VM).
+- Add IsAccountValid property and bind Save Settings button IsEnabled.
+- Inject PhrasesViewModel into SettingsViewModel (composition) to eliminate binding errors.
+- Bind phrases tab root DataContext to SettingsViewModel.Phrases; fall back to service resolve if null.
+
+## Plan Addition (2025-10-05 - FR-258, FR-259, FR-260)
+- Implement synchronous phrase database interaction flow to ensure stability under rapid user clicks and network latency.
+- Add per-account state update locks in PhraseService to prevent UI state corruption during database operations.
+- Enhance PhrasesViewModel to wait for database completion and display snapshot state (never optimistic UI state).
+- Add automatic consistency recovery via snapshot refresh when any phrase operation fails.
+- Implement UI toggle prevention during active database operations to ensure atomicity and final consistency.
+
+(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection + phrase database stability)
+
+## Change Log Addition (2025-10-07 - Completion First Item Auto-Select)
+- Implement MusmCompletionWindow.EnsureFirstItemSelected invoked on popup show and when no exact match (FR-264). Added selection permit flag reuse to avoid guard clearing. Update tests pending (add new task T369).
+
+## AI Architecture Overview (New Section)
+Layer Responsibilities:
+1. Domain (Wysg.Musm.Domain.AI)
+   - Pure contracts & record types (provider agnostic) : ILLMClient, IModelRouter, skill interfaces, ReportState, context records.
+2. UseCases (Wysg.Musm.UseCases.AI)
+   - Orchestrator (ReportPipeline) composing skill interfaces; no vendor code.
+3. Infrastructure (Wysg.Musm.Infrastructure.AI)
+   - Adapters (future: OpenAI/Ollama), routing, telemetry, prompt templates. Currently: NoOp implementations for development.
+4. API Host (Wysg.Musm.Api)
+   - Registers AddMusmAi(); future Minimal API endpoints expose structured skills (e.g., POST /api/report/current-study-intake, POST /api/report/postprocess). No direct raw prompt endpoint.
+
+Dependency Direction: UI/Clients -> API (HTTP) -> UseCases -> Domain; Infrastructure implements Domain & is registered only at host boundary.
+
+Extensibility Path:
+- Add real provider: implement ILLMClient + skill classes; adjust AddMusmAi(useNoOp:false) + config binding.
+- Add new skill: define interface in Domain, implement Infrastructure adapter, extend ReportPipeline or new orchestrator.
+
+Fallback Strategy:
+- NoOp skills return empty strings/unchanged text enabling UI operation without blocking (graceful degradation while server offline).
+
+Telemetry Plan:
+- IInferenceTelemetry future implementation logs structured event {skill, model, ms, success, tokens} (Serilog sink + optional metrics).
+
+Next Steps (AI):
+- Define JSON contract validation & retry guard.
+- Implement HeaderSplitter, HeaderParser, Proofreader (real) + routing heuristics.
+- Add error isolation (try/catch around each stage) fulfilling FR-AI-009.
+- Add configuration section: "Ai:Provider:OpenAI" etc.
+
+# Implementation Plan: Previous Study Multi-Report + Reportify Settings (FR-214..FR-230)
+
+Branch: [radium-cumulative] | Date: 2025-10-02 | Spec: ./Spec.md
+
+## Update Summary (FR-230)
+Restored option checkboxes alongside sample buttons within each Reportify group so users can preview and toggle in same context.
+
+## Design Change
+- Each Expander now contains a StackPanel with top WrapPanel (sample buttons) and second WrapPanel (checkboxes).
+- JSON still updates when checkboxes or text inputs change (existing bindings unaffected).
+
+## Risk
+Minimal—pure XAML adjustment; bindings reused.
+
+## Tasks Added
+T031 added (see tasks.md).
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Tab)
+- Added Phrases tab inside SettingsWindow (FR-235) migrating UI from standalone PhrasesWindow (DataGrid + Add/Activate + Refresh). Injects PhrasesViewModel lazily on tab load to avoid impacting settings load path. Standalone window can be deprecated in future cleanup.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Resilience)
+- Hardened PhraseService.ToggleActiveAsync to ignore transient failures executing SET LOCAL and added retry path (FR-236). Prevents NpgsqlException (Timeout during reading attempt) surfacing when user unchecks Active in phrases grid.
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Adaptive Retry)
+- Implemented adaptive retry/backoff + pool clear for PhraseService.ToggleActiveAsync; resilient SET LOCAL handling for upsert & toggle (FR-237).
+
+## Change Log Addition (2025-10-05 - Phrase Toggle Roundtrip Removal)
+- Removed SET LOCAL pre-command in ToggleActiveAsync; rely solely on UPDATE + tighter timeouts (FR-238) to mitigate stream read timeouts on rapid toggles.
+
+## Change Log Addition (2025-10-05 - Integrated Phrases Dark Theme)
+- Applied dark styling to SettingsWindow Phrases tab (DataGrid + controls) and removed legacy standalone PhrasesWindow + Manage Phrases button (FR-239).
+
+## Change Log Addition (2025-10-05 - Integrated Spy Tab)
+- Added Spy tab to Settings consolidating UI spy functionality (process pick, mapping, chain editor, basic procedure ops) (FR-240).
+
+## Plan Addition (2025-10-05 - FR-241 / FR-242)
+- FR-241: Create Themes/DarkTheme.xaml consolidating dark palette + implicit control styles; merge into App.xaml. Remove reliance on scattered per-window styles progressively (initial application to Settings Spy tab).
+- FR-242: Mirror SpyWindow PACS procedure methods in integrated Spy tab (adds 21 ComboBoxItem entries) enabling immediate procedure selection without opening standalone window.
+
+## Plan Addition (2025-10-05 - FR-243)
+- FR-243: Replace minimal implicit ComboBox style with full template (border, toggle glyph, popup) applied globally so integrated Spy tab inherits identical dark appearance without per-window style duplication.
+
+## Plan Addition (2025-10-05 - FR-244)
+- FR-244: Enhance ComboBox template by inserting full-surface transparent ToggleButton over content (excluding arrow cell) to toggle IsDropDownOpen, ensuring click on label opens list without needing small arrow target.
+
+## Plan Addition (2025-10-05 - FR-245)
+- FR-245: Retire per-window DarkMiniCombo usage; rely on global template. Modify hover visuals to be slightly darker (PanelAlt + AccentAlt border) to reduce visual noise.
+
+## Plan Addition (2025-10-05 - FR-246 / FR-247 / FR-248)
+- FR-246: Introduce Dark.MonoFont resource referencing packaged D2Coding; set as implicit Window FontFamily.
+- FR-247: Adjust implicit ComboBox style (font size 11) for denser layout; rely on existing global template for click-anywhere behavior.
+- FR-248: Swap TextBox -> Label for CurrentStudyLabel to avoid user confusion about editability and reduce visual chrome.
+
+## Plan Addition (2025-10-05 - FR-249..FR-251)
+- Add radium.reportify_setting table (account-scoped singleton) storing JSON & rev.
+- Implement IReportifySettingsService (Get, Upsert, Delete) using central data source provider.
+- Extend SettingsViewModel with Save/Load commands guarded by presence of tenant/account id & service.
+- Upsert increments rev server-side via UPDATE expression; client does not diff JSON (server revision bump acceptable per write request).
+- Add UI buttons to Reportify tab for Load/Save; disabled only when service unavailable.
+
+## Plan Addition (2025-10-05 - FR-252)
+- On login (silent or interactive) after EnsureAccountAsync succeeds: resolve IReportifySettingsService, fetch JSON, store in ITenantContext.ReportifySettingsJson.
+- SettingsViewModel constructor checks tenant context for existing JSON and applies it (ApplyReportifyJson) removing need for manual Load.
+- Reportify tab buttons reduced to Save + Close.
+
+## Plan Addition (2025-10-05 - FR-253)
+- Implement ReportifyConfig loader parsing tenant ReportifySettingsJson once per change.
+- Integrate ApplyReportifyBlock / ApplyReportifyConclusion using regex passes per line with conditional steps keyed off config flags.
+- Conclusion paragraph numbering executed pre line splitting; indentation applied post transformations for continuation lines.
+- Editor toggle now calls ApplyReportifyBlock / ApplyReportifyConclusion replacing SimpleReportifyBlock usage.
+- Config reloaded automatically when tenant.ReportifySettingsJson differs from last applied before next transformation.
+
+## Plan Addition (2025-10-05 - FR-254, FR-255)
+- Add AccountIdChanged event to ITenantContext/TenantContext (invoke when TenantId changes).
+- Modify PhraseService methods to early-return empty (or throw for mutation) when accountId <= 0.
+- Update PhrasesViewModel: subscribe to AccountIdChanged; clear Items on logout; trigger RefreshAsync on first valid >0 id.
+- Remove legacy fallback adoption logic where possible (retain ResolveAccountIdAsync only for backward compatibility; new guards prefer tenant.AccountId).
+- Update Spec/Tasks docs accordingly.
+
+## Plan Addition (2025-10-05 - FR-256, FR-257)
+- Replace parameterless SettingsWindow DataContext with DI-resolved SettingsViewModel (inject tenant, reportify svc, phrases VM).
+- Add IsAccountValid property and bind Save Settings button IsEnabled.
+- Inject PhrasesViewModel into SettingsViewModel (composition) to eliminate binding errors.
+- Bind phrases tab root DataContext to SettingsViewModel.Phrases; fall back to service resolve if null.
+
+## Plan Addition (2025-10-05 - FR-258, FR-259, FR-260)
+- Implement synchronous phrase database interaction flow to ensure stability under rapid user clicks and network latency.
+- Add per-account state update locks in PhraseService to prevent UI state corruption during database operations.
+- Enhance PhrasesViewModel to wait for database completion and display snapshot state (never optimistic UI state).
+- Add automatic consistency recovery via snapshot refresh when any phrase operation fails.
+- Implement UI toggle prevention during active database operations to ensure atomicity and final consistency.
+
+(Update: account_id migration + phrase snapshot + OCR additions + completion improvements + bug fixes + selection guard fixes + multiple event handling + navigation state tracking + focus-aware first navigation guard + manual editor navigation handling + guard-silent selection updates + recursive guard protection + phrase database stability)
+
+## Change Log Addition (2025-10-07 - FR-265 ComboBox Full-Surface Activation)
+- Modified DarkTheme.xaml ComboBox template: added transparent `FullSurfaceToggle` overlay bound to `IsDropDownOpen` and bound popup Border Width/MinWidth to parent ActualWidth to satisfy FR-265.
+
+## Change Log Addition (2025-10-07 - FR-266 ComboBox Hover & Cursor)
+- Adjusted DarkTheme.xaml ComboBox template: hover background now Dark.Brush.Panel (darker) and overlay toggle cursor set to Arrow to avoid link-hand while preserving full-surface click (FR-266).
+
+## Change Log Addition (2025-10-07 - FR-267 Neutral Hover Background)
+- Adjusted ComboBox template again: hover no longer alters background, only border; overlay toggle template reduced and cursor forced to Arrow (FR-267).
+

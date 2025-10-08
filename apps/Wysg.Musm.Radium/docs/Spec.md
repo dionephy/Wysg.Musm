@@ -695,3 +695,12 @@ For full behavioral definitions see MUSM Editor Specification included in design
 - **FR-246** DarkTheme applies D2Coding (Dark.MonoFont) as default Window FontFamily + size 13 for unified look.
 - **FR-247** Decrease global ComboBox FontSize to 11 and enforce monospace font for compact UI in all windows.
 - **FR-248** Replace editable TextBox for CurrentStudyLabel with non-editable Label control in MainWindow header.
+
+## Update: ComboBox Full-Surface Click + Popup Width (2025-10-07)
+- **FR-265** Global dark theme ComboBox MUST open its dropdown when any point in the text/content area is clicked (not just the arrow glyph) and the popup width MUST exactly match the control ActualWidth.
+
+## Update: ComboBox Hover Refinement (2025-10-07)
+- **FR-246** Global dark theme ComboBox hover state MUST use the darker panel background (no brightness jump) and the cursor over the text/content surface MUST remain Arrow (not Hand) while still opening on click.
+
+## Update: ComboBox Hover Neutral Background (2025-10-07)
+- **FR-267** ComboBox hover MUST NOT change background brightness (only border accent) and MUST keep Arrow cursor over full-surface clickable area while still opening dropdown on click.

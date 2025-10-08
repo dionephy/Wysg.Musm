@@ -170,6 +170,9 @@
 - [X] T355 DI-resolve SettingsViewModel with tenant/reportify/phrases services (FR-256).
 - [X] T356 Add IsAccountValid + Save Settings enable binding (FR-256).
 - [X] T357 Compose PhrasesViewModel inside SettingsViewModel and fix bindings (FR-257).
+- [X] T370 Implement full-surface click + equal width popup for ComboBox in DarkTheme (FR-265).
+- [X] T371 Darken ComboBox hover background & set arrow cursor on full-surface toggle (FR-266).
+- [X] T372 Neutralize ComboBox hover background; keep Arrow cursor (FR-267).
 
 **Input**: Spec.md & Plan.md (cumulative)  
 **Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  
@@ -389,3 +392,6 @@ Phrase stability test set: T363 T364 T365 (after T358-T362 complete)
 - [X] T361 Implement automatic consistency recovery via snapshot refresh when phrase operations fail (FR-260).
 - [X] T362 Add UI toggle prevention during active database operations to ensure atomicity (FR-259).
 - [ ] T369 Add unit test verifying first completion item auto-selected on popup open with non-exact match (FR-264).
+- [X] T370 Implement full-surface click + equal width popup for ComboBox in DarkTheme (FR-265).
+- [X] T371 Darken ComboBox hover background & set arrow cursor on full-surface toggle (FR-266).
+- [X] T372 Neutralize ComboBox hover background; keep Arrow cursor (FR-267).
