@@ -120,8 +120,34 @@ public class MusmEditor : TextEditor
         var editor = (MusmEditor)d;
         var newText = e.NewValue as string ?? string.Empty;
         if (editor.Text == newText) return;
+        
         editor._suppressTextSync = true;
-        try { editor.Text = newText; } finally { editor._suppressTextSync = false; }
+        try 
+        { 
+            // Defer the text change to ensure no undo group is open
+            // This avoids the "No undo group should be open at this point" error
+            editor.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    editor._suppressTextSync = true;
+                    
+                    // Double-check the text hasn't changed in the meantime
+                    if (editor.Text != newText)
+                    {
+                        editor.Text = newText;
+                    }
+                }
+                finally
+                {
+                    editor._suppressTextSync = false;
+                }
+            }), DispatcherPriority.Background);
+        } 
+        finally 
+        { 
+            editor._suppressTextSync = false; 
+        }
     }
 
     // ===== Caret / Selection bindable mirrors =====

@@ -56,17 +56,105 @@ namespace Wysg.Musm.Radium.ViewModels
             if (_reportified)
             {
                 _suppressAutoToggle = true;
-                Reportified = false;
-                _suppressAutoToggle = false;
+                try
+                {
+                    // Set reportified to false first
+                    _reportified = false;
+                    OnPropertyChanged(nameof(Reportified));
+                    
+                    // Then update the text properties to dereportified values
+                    HeaderText = _rawHeader;
+                    FindingsText = _rawFindings;
+                    ConclusionText = _rawConclusion;
+                }
+                finally
+                {
+                    _suppressAutoToggle = false;
+                }
             }
         }
 
         // Editor-bound properties (override setters to integrate auto-unreportify + JSON update)
-        private string _headerText = string.Empty; public string HeaderText { get => _headerText; set { if (value != _headerText) { AutoUnreportifyOnEdit(); if (!_reportified) _rawHeader = value; if (SetProperty(ref _headerText, value)) UpdateCurrentReportJson(); } } }
-        private string _findingsText = string.Empty; public string FindingsText { get => _findingsText; set { if (value != _findingsText) { AutoUnreportifyOnEdit(); if (!_reportified) _rawFindings = value; if (SetProperty(ref _findingsText, value)) UpdateCurrentReportJson(); } } }
-        private string _conclusionText = string.Empty; public string ConclusionText { get => _conclusionText; set { if (value != _conclusionText) { AutoUnreportifyOnEdit(); if (!_reportified) _rawConclusion = value; if (SetProperty(ref _conclusionText, value)) UpdateCurrentReportJson(); } } }
+        // NEW BEHAVIOR: When reportified, cancel the text change and only dereportify
+        private string _headerText = string.Empty; 
+        public string HeaderText 
+        { 
+            get => _headerText; 
+            set 
+            { 
+                if (value != _headerText) 
+                { 
+                    // NEW: If reportified and not suppressing, cancel change and dereportify
+                    if (_reportified && !_suppressAutoToggle)
+                    {
+                        AutoUnreportifyOnEdit();
+                        return; // Cancel the text change
+                    }
+                    if (!_reportified) _rawHeader = value; 
+                    if (SetProperty(ref _headerText, value)) UpdateCurrentReportJson(); 
+                } 
+            } 
+        }
+        
+        private string _findingsText = string.Empty; 
+        public string FindingsText 
+        { 
+            get => _findingsText; 
+            set 
+            { 
+                if (value != _findingsText) 
+                { 
+                    // NEW: If reportified and not suppressing, cancel change and dereportify
+                    if (_reportified && !_suppressAutoToggle)
+                    {
+                        AutoUnreportifyOnEdit();
+                        return; // Cancel the text change
+                    }
+                    if (!_reportified) _rawFindings = value; 
+                    if (SetProperty(ref _findingsText, value)) UpdateCurrentReportJson(); 
+                } 
+            } 
+        }
+        
+        private string _conclusionText = string.Empty; 
+        public string ConclusionText 
+        { 
+            get => _conclusionText; 
+            set 
+            { 
+                if (value != _conclusionText) 
+                { 
+                    // NEW: If reportified and not suppressing, cancel change and dereportify
+                    if (_reportified && !_suppressAutoToggle)
+                    {
+                        AutoUnreportifyOnEdit();
+                        return; // Cancel the text change
+                    }
+                    if (!_reportified) _rawConclusion = value; 
+                    if (SetProperty(ref _conclusionText, value)) UpdateCurrentReportJson(); 
+                } 
+            } 
+        }
+        
         // Alias retained for compatibility (some code referenced ReportFindings originally)
-        public string ReportFindings { get => _findingsText; set { if (value != _findingsText) { AutoUnreportifyOnEdit(); if (!_reportified) _rawFindings = value; if (SetProperty(ref _findingsText, value)) UpdateCurrentReportJson(); } } }
+        public string ReportFindings 
+        { 
+            get => _findingsText; 
+            set 
+            { 
+                if (value != _findingsText) 
+                { 
+                    // NEW: If reportified and not suppressing, cancel change and dereportify
+                    if (_reportified && !_suppressAutoToggle)
+                    {
+                        AutoUnreportifyOnEdit();
+                        return; // Cancel the text change
+                    }
+                    if (!_reportified) _rawFindings = value; 
+                    if (SetProperty(ref _findingsText, value)) UpdateCurrentReportJson(); 
+                } 
+            } 
+        }
 
         // Simple transformation: capitalize first char of each line and ensure trailing period
         private string SimpleReportifyBlock(string input)

@@ -175,6 +175,7 @@
 - [X] T372 Neutralize ComboBox hover background; keep Arrow cursor (FR-267).
 - [X] T373 Bind gridSide width to (Window - central grid) using SubtractConverter (FR-268).
 - [X] T374 Bind gridTop & gridBottom heights to (Window - central grid) using SubtractNoOffsetConverter (FR-269).
+- [X] T375 Implement reportified text change cancellation in MainViewModel.Editor.cs property setters (FR-270, FR-271, FR-272) - when user attempts edit in reportified state, cancel the change and dereportify instead of applying change first.
 
 **Input**: Spec.md & Plan.md (cumulative)  
 **Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  
@@ -399,3 +400,4 @@ Phrase stability test set: T363 T364 T365 (after T358-T362 complete)
 - [X] T372 Neutralize ComboBox hover background; keep Arrow cursor (FR-267).
 - [X] T373 Bind gridSide width to (Window - central grid) using SubtractConverter (FR-268).
 - [X] T374 Bind gridTop & gridBottom heights to (Window - central grid) using SubtractNoOffsetConverter (FR-269).
+-
