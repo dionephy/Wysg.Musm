@@ -19,7 +19,8 @@
         <!-- Shared font resource (ensure Fonts/D2Coding.ttf Build Action=Resource) -->
         <!-- If your assembly name differs adjust Wysg.Musm.Radium below -->
         <FontFamily x:Key="UiMonospaceFont">pack://application:,,,/Wysg.Musm.Radium;component/Fonts/#D2Coding</FontFamily>
-
+        <local:OffsetSubtractConverter x:Key="WidthSubtract"/>
+        <local:OffsetSubtractAndHalveConverter x:Key="HeightSubtract"/>
 
         <!-- Global Dark Theme Brushes -->
         <Color x:Key="Dark.Color.Background">#1E1E1E</Color>
@@ -272,17 +273,50 @@
         </Grid.ColumnDefinitions>
 
 
-        <Grid Grid.Row="1" Grid.Column="1" Name="gridTop" VerticalAlignment="Top" Width="{Binding ElementName=gridCenter, Path=Width}" >
-            <TextBox x:Name="txtPrevJson" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="#181818" Foreground="#808080" FontFamily="{StaticResource UiMonospaceFont}" Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+        <Grid Grid.Row="1" Grid.Column="1" Name="gridTop" VerticalAlignment="Top" Width="{Binding ElementName=gridCenter, Path=Width}">
+            <Grid.Height>
+                <MultiBinding Converter="{StaticResource HeightSubtract}">
+                    <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="ActualHeight"/>
+                    <Binding ElementName="gridCenter" Path="ActualHeight"/>
+                </MultiBinding>
+            </Grid.Height>
+            <TextBox x:Name="txtPrevJson" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Padding="6" Margin="0" 
+                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"
+                     VerticalAlignment="Stretch"
+                     />
         </Grid>
 
-        <Grid Grid.Row="1" Grid.Column="1" Name="gridSide" >
-            <TextBox Text="Sidebar (future)" Background="#181818" Foreground="#808080" FontFamily="{StaticResource UiMonospaceFont}" Padding="6" Margin="0" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"/>
+        <Grid Grid.Row="1" Grid.Column="1" Name="gridSide" Height="{Binding ElementName=gridCenter, Path=Height}" >
+            <Grid.Width>
+                <MultiBinding Converter="{StaticResource WidthSubtract}">
+                    <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="ActualWidth"/>
+                    <Binding ElementName="gridCenter" Path="ActualWidth"/>
+                </MultiBinding>
+            </Grid.Width>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="1*" />
+                    <RowDefinition Height="1*" />                    
+                </Grid.RowDefinitions>
+                <TextBox x:Name="txtPrevJsonSide" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Row="0" 
+                         Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+                <TextBox x:Name="txtJsonSide" Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"  Grid.Row="1" 
+                         Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+            </Grid>
+            
         </Grid>
 
 
         <Grid Grid.Row="1" Grid.Column="1" Name="gridBottom" VerticalAlignment="Bottom" Width="{Binding ElementName=gridCenter, Path=Width}" >
-            <TextBox x:Name="txtJson"  Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="#181818" Foreground="#808080" FontFamily="{StaticResource UiMonospaceFont}" Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+            <Grid.Height>
+                <MultiBinding Converter="{StaticResource HeightSubtract}">
+                    <Binding RelativeSource="{RelativeSource AncestorType=Window}" Path="ActualHeight"/>
+                    <Binding ElementName="gridCenter" Path="ActualHeight"/>
+                </MultiBinding>
+            </Grid.Height>
+            <TextBox x:Name="txtJson"  Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                     Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
         </Grid>
 
         <!-- Central editing area -->

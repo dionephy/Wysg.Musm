@@ -106,6 +106,8 @@ namespace Wysg.Musm.Radium.Views
                 gridCenter.VerticalAlignment = VerticalAlignment.Center;
                 if (gridTop != null) gridTop.HorizontalAlignment = HorizontalAlignment.Center;
                 if (gridBottom != null) gridBottom.HorizontalAlignment = HorizontalAlignment.Center;
+
+                
             }
         }
 

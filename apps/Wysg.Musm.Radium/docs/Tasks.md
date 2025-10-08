@@ -173,6 +173,8 @@
 - [X] T370 Implement full-surface click + equal width popup for ComboBox in DarkTheme (FR-265).
 - [X] T371 Darken ComboBox hover background & set arrow cursor on full-surface toggle (FR-266).
 - [X] T372 Neutralize ComboBox hover background; keep Arrow cursor (FR-267).
+- [X] T373 Bind gridSide width to (Window - central grid) using SubtractConverter (FR-268).
+- [X] T374 Bind gridTop & gridBottom heights to (Window - central grid) using SubtractNoOffsetConverter (FR-269).
 
 **Input**: Spec.md & Plan.md (cumulative)  
 **Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  
@@ -395,3 +397,5 @@ Phrase stability test set: T363 T364 T365 (after T358-T362 complete)
 - [X] T370 Implement full-surface click + equal width popup for ComboBox in DarkTheme (FR-265).
 - [X] T371 Darken ComboBox hover background & set arrow cursor on full-surface toggle (FR-266).
 - [X] T372 Neutralize ComboBox hover background; keep Arrow cursor (FR-267).
+- [X] T373 Bind gridSide width to (Window - central grid) using SubtractConverter (FR-268).
+- [X] T374 Bind gridTop & gridBottom heights to (Window - central grid) using SubtractNoOffsetConverter (FR-269).

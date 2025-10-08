@@ -154,6 +154,12 @@
 ## Update: Completion First Item Auto-Select (2025-10-07)
 - **FR-264** Completion popup MUST auto-select the first item by default whenever it opens or when no exact prefix match is found, ensuring immediate Enter commits the first suggestion without requiring initial Down key navigation.
 
+## Update: Side Panel Dynamic Width (2025-10-07)
+- **FR-268** MainWindow `gridSide` width MUST equal (window ActualWidth - central grid ActualWidth) clamped to >=0; updates reactively on resize.
+
+## Update: Top/Bottom Panel Dynamic Height (2025-10-07)
+- **FR-269** MainWindow `gridTop` and `gridBottom` heights MUST equal (window ActualHeight - central grid ActualHeight) clamped to >=0 and auto-update on resize.
+
 ## Prior Updates
 <!-- cumulative prior content retained below -->
 ## Update: Previous report ingestion refinements (2025-10-05)
@@ -704,3 +710,9 @@ For full behavioral definitions see MUSM Editor Specification included in design
 
 ## Update: ComboBox Hover Neutral Background (2025-10-07)
 - **FR-267** ComboBox hover MUST NOT change background brightness (only border accent) and MUST keep Arrow cursor over full-surface clickable area while still opening dropdown on click.
+
+## Update: Side Panel Dynamic Width (2025-10-07)
+- **FR-268** MainWindow `gridSide` width MUST equal (window ActualWidth - central grid ActualWidth) clamped to >=0; updates reactively on resize.
+
+## Update: Top/Bottom Panel Dynamic Height (2025-10-07)
+- **FR-269** MainWindow `gridTop` and `gridBottom` heights MUST equal (window ActualHeight - central grid ActualHeight) clamped to >=0 and auto-update on resize.
