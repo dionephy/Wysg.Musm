@@ -1,5 +1,13 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Hotkey Text Expansion (2025-01-09)
+- **FR-286** System MUST support user-defined hotkeys (text shortcuts) that expand inline when trigger text is typed in editors, enabling rapid insertion of frequently-used phrases or templates without completion popup.
+- **FR-287** Hotkey storage MUST use central database table `radium.hotkey` with columns: hotkey_id (BIGINT IDENTITY PK), account_id (BIGINT FK NOT NULL), trigger_text (NVARCHAR(64) NOT NULL), expansion_text (NVARCHAR(4000) NOT NULL), is_active (BIT NOT NULL DEFAULT 1), created_at, updated_at, rev. Unique constraint on (account_id, trigger_text).
+- **FR-288** Hotkey service MUST provide async methods: GetActiveHotkeysAsync(accountId), UpsertHotkeyAsync(accountId, trigger, expansion), ToggleActiveAsync(accountId, hotkeyId), DeleteHotkeyAsync(accountId, hotkeyId). All operations MUST follow synchronous database → snapshot → UI flow similar to phrase service.
+- **FR-289** Hotkey service MUST implement in-memory snapshot caching per account with automatic invalidation on upsert/toggle/delete and provide GetHotkeySnapshotAsync for completion integration.
+- **FR-290** Editor text input handling MUST detect hotkey triggers by matching typed word against active hotkey trigger_text (case-insensitive prefix or exact match based on configuration) and replace trigger with expansion_text inline when space or punctuation follows. Hotkey expansion MUST take precedence over phrase completion popup.
+- **FR-291** Settings window MUST include Hotkeys management tab with: DataGrid listing (Id, Trigger, Expansion preview, Active, Updated, Rev); Add controls (Trigger input, Expansion multi-line input, Add button); Refresh button; Delete button for selected row; Active checkbox toggle per row; Dark theme styling consistent with Phrases tab.
+
 ## Update: Phrases tab shows account + global (2025-10-09)
 - FR-283 Phrases tab MUST display both current account phrases and global phrases in a single list. Each row retains its scope via `account_id` (NULL = global). Toggling Active MUST call the appropriate scope-aware API (`ToggleActiveAsync(accountId? : null, id)`). Adding a new phrase from this tab MUST create an account-scoped phrase for the current account. Completion window MUST use combined phrases (global + account) for suggestions.
 - FR-284 Phrases tab MUST include a read-only column `Global` showing a boolean derived from `account_id IS NULL` for quick scope recognition.
@@ -308,10 +316,6 @@
 - Phrase database timeouts causing UI inconsistency (mitigated by synchronous snapshot updates).
 
 ---
-## Appendix A: Implemented Feature Record (Traceability – Historical Notes)
-(Contains prior detailed implementation notes migrated from legacy Spec.md; considered OUT OF SCOPE for core specification validation but retained for audit.)
-
----
 # Legacy / Implementation Detail Chronicle
 
 ## 1) Bug Fixes (2025-01-01 - Latest)
@@ -510,3 +514,5 @@ Future
 
 ## Update: Completion First Item Auto-Select (2025-10-07)
 - **FR-264** Completion popup MUST auto-select the first item by default whenever it opens or when no exact prefix match is found, ensuring immediate Enter commits the first suggestion without requiring initial Down key navigation.
+- FR-305 Completion list first Down/Up press MUST move to the immediate next/previous item and MUST NOT wrap to last/first when no selection existed previously.
+- FR-306 Completion popup MUST not auto-select exact text matches; default selection is the first item to ensure Down selects the second item consistently.

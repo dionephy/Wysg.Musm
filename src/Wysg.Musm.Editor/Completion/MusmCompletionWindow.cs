@@ -37,10 +37,27 @@ namespace Wysg.Musm.Editor.Completion
             try { CompletionList.ListBox.SelectedIndex = -1; } catch { }
             try { CompletionList.ListBox.SelectionChanged += OnListSelectionChanged; } catch { }
             try { CompletionList.ListBox.PreviewKeyDown += OnListPreviewKeyDown; } catch { }
+            try { CompletionList.ListBox.KeyDown += OnListKeyDown; } catch { }
             try { TextArea.Caret.PositionChanged += OnCaretPositionChanged; } catch { }
+
+            // Intercept Home/End at the window level to prevent underlying controls from handling them
+            try { PreviewKeyDown += OnWindowPreviewKeyDown; } catch { }
 
             // Apply dark + minimal styling
             TryApplyDarkTheme();
+        }
+
+        private void OnWindowPreviewKeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.Key is Key.Home or Key.End)
+            {
+                // Ensure only editor processes Home/End
+                e.Handled = true;
+                var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
+                _editor.CaretOffset = (e.Key == Key.Home) ? line.Offset : line.EndOffset;
+                if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
+                _editor.TextArea.Focus();
+            }
         }
 
         private void TryApplyDarkTheme()
@@ -226,15 +243,38 @@ namespace Wysg.Musm.Editor.Completion
 
         private void OnListPreviewKeyDown(object? sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Up || e.Key == Key.Down)
+            if (CompletionList?.ListBox is null) return;
+
+            if (e.Key == Key.Down)
             {
                 e.Handled = true;
-                Debug.WriteLine($"[CW] Suppress internal key={e.Key}");
+                var lb = CompletionList.ListBox;
+                int count = lb.Items.Count;
+                if (count == 0) return;
+                int idx = lb.SelectedIndex;
+                if (idx < 0) idx = -1; // first Down selects index 0
+                int newIdx = Math.Min(idx + 1, count - 1);
+                _allowSelectionOnce = true;
+                lb.SelectedIndex = newIdx;
+                lb.ScrollIntoView(lb.SelectedItem);
+                return;
+            }
+            if (e.Key == Key.Up)
+            {
+                e.Handled = true;
+                var lb = CompletionList.ListBox;
+                int count = lb.Items.Count;
+                if (count == 0) return;
+                int idx = lb.SelectedIndex;
+                if (idx < 0) idx = count; // first Up selects last index
+                int newIdx = Math.Max(idx - 1, 0);
+                _allowSelectionOnce = true;
+                lb.SelectedIndex = newIdx;
+                lb.ScrollIntoView(lb.SelectedItem);
                 return;
             }
 
             Debug.WriteLine($"[CW] PKD key={e.Key} sel={CompletionList?.ListBox?.SelectedIndex}");
-            if (CompletionList?.ListBox is null) return;
 
             if (e.Key is Key.Enter or Key.Return)
             {
@@ -252,21 +292,46 @@ namespace Wysg.Musm.Editor.Completion
             }
             if (e.Key == Key.Home)
             {
-                Debug.WriteLine("[CW] HOME move + maybe close");
+                Debug.WriteLine("[CW] HOME (list) → move caret only");
                 e.Handled = true;
                 var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
                 _editor.CaretOffset = line.Offset;
                 if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
+                _editor.TextArea.Focus();
                 return;
             }
             if (e.Key == Key.End)
             {
-                Debug.WriteLine("[CW] END move + maybe close");
+                Debug.WriteLine("[CW] END (list) → move caret only");
                 e.Handled = true;
                 var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
                 _editor.CaretOffset = line.EndOffset;
                 if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
+                _editor.TextArea.Focus();
                 return;
+            }
+        }
+
+        private void OnListKeyDown(object? sender, KeyEventArgs e)
+        {
+            // Safety: ensure ListBox doesn't process Home/End even if Preview was bypassed
+            if (e.Key == Key.Home)
+            {
+                Debug.WriteLine("[CW] HOME (list KeyDown) suppress selection");
+                e.Handled = true;
+                var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
+                _editor.CaretOffset = line.Offset;
+                if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
+                _editor.TextArea.Focus();
+            }
+            else if (e.Key == Key.End)
+            {
+                Debug.WriteLine("[CW] END (list KeyDown) suppress selection");
+                e.Handled = true;
+                var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
+                _editor.CaretOffset = line.EndOffset;
+                if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
+                _editor.TextArea.Focus();
             }
         }
 
@@ -334,26 +399,21 @@ namespace Wysg.Musm.Editor.Completion
         }
 
         /// <summary>
-        /// Select exact match by item.Text; otherwise keep selection cleared.
+        /// Select the first item by default to keep navigation predictable; do not auto-select exact matches.
         /// </summary>
         public void SelectExactOrNone(string word)
         {
             if (CompletionList?.ListBox is null) return;
-            var data = CompletionList.CompletionData?.OfType<ICompletionData>() ?? Enumerable.Empty<ICompletionData>();
-            var match = data.FirstOrDefault(d => string.Equals(d.Text, word, StringComparison.Ordinal));
-            Debug.WriteLine($"[CW] SelectExactOrNone word='{word}' match={(match!=null)}");
-            if (match != null)
+            var lb = CompletionList.ListBox;
+            if (lb.Items.Count == 0) return;
+            if (lb.SelectedIndex == -1)
             {
                 _allowSelectionOnce = true;
-                CompletionList.ListBox.SelectedItem = match;
-                CompletionList.ListBox.ScrollIntoView(match);
+                lb.SelectedIndex = 0;
+                lb.ScrollIntoView(lb.SelectedItem);
+                Debug.WriteLine("[CW] Default-selected first item (no exact-match auto select)");
             }
-            else
-            {
-                // New default: select first item if exists (FR-264)
-                EnsureFirstItemSelected();
-            }
-            AdjustListBoxHeight(); // ensure height adapts when selection triggers virtualization/layout changes
+            AdjustListBoxHeight();
         }
 
         public void EnsureFirstItemSelected()

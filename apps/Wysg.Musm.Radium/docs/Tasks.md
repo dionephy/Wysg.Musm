@@ -264,4 +264,32 @@ Phrase stability test set: T363 T364 T365 (after T358-T362 complete)
 - [ ] T387 Add unit tests for global phrase operations (insert, toggle, query).
 - [ ] T388 Add integration tests for combined phrase queries with precedence rules.
 
-## Added
+## Added (Hotkey Feature - 2025-01-09)
+- [ ] T408 Create `radium.hotkey` table in central database with all constraints, indexes, and triggers (FR-287).
+- [ ] T409 Define `IHotkeyService` interface with methods: GetActiveHotkeysAsync, UpsertHotkeyAsync, ToggleActiveAsync, DeleteHotkeyAsync (FR-288).
+- [ ] T410 Implement `HotkeyService` using CentralDataSourceProvider with synchronous database → snapshot flow (FR-288).
+- [ ] T411 Implement hotkey snapshot caching mechanism parallel to phrase caching (per-account Dictionary with rev tracking) (FR-289).
+- [ ] T412 Add hotkey cache invalidation in UpsertHotkeyAsync, ToggleActiveAsync, DeleteHotkeyAsync (FR-289).
+- [ ] T413 Integrate hotkey expansion into EditorControl OnTextEntered handler with trigger detection logic (FR-290).
+- [ ] T414 Implement inline text replacement when hotkey trigger followed by space/punctuation (FR-290).
+- [ ] T415 Add Hotkeys tab to SettingsWindow with DataGrid and CRUD controls (FR-291).
+- [ ] T416 Create HotkeysViewModel with observable collections and commands (Add, Delete, Refresh, Toggle) (FR-291).
+- [ ] T417 Wire HotkeysViewModel to SettingsWindow with lazy instantiation on tab load (FR-291).
+- [ ] T418 Apply dark theme styling to Hotkeys tab (DataGrid, TextBox, Button, CheckBox) (FR-291).
+- [ ] T419 Register IHotkeyService and HotkeysViewModel in App.xaml.cs DI container.
+- [ ] T420 Update Spec/Plan/Tasks documentation with hotkey feature details and SQL migration script.
+- [X] T421 Inject IHotkeyService into MainViewModel and preload snapshot during editor init (FR-294).
+- [X] T422 Implement composite ISnippetProvider that merges phrases and hotkeys, listing hotkeys as "{trigger}→{expansion}" (FR-292, FR-295, FR-296).
+- [X] T423 Ensure completion selection replaces current word with expansion and caret advances (FR-293).
+- [X] T426 Add spaces around arrow in hotkey completion display (FR-297).
+- [X] T427 Truncate multi-line hotkey expansion to first line with ellipsis for display (FR-298).
+- [X] T428 Suppress completion item tooltips by setting Description to null (FR-299).
+- [ ] T424 Add unit tests for hotkey completion rendering and insertion behavior (prefix cases, arrow display-only).
+- [ ] T425 Add snapshot refresh tests: add/toggle/delete hotkey reflects in GetActiveHotkeysAsync and completion items.
+- [X] T429 Seed editor completion cache with combined (global + account) phrases on init (FR-301).
+- [X] T430 Composite provider to fetch combined phrases and prefetch when cache empty (FR-300).
+- [X] T431 Fix completion first-press navigation: Down/Up moves relative to current selection without extra press (FR-302).
+- [X] T432 Ensure Home/End move editor caret (line start/end) and never change completion list selection; close popup when outside selection range (FR-303).
+- [X] T433 Intercept Home/End at completion window level; forward only to editor and suppress ListBox handling (FR-304).
+- [X] T434 Prevent first Down from selecting the last item by handling Up/Down in ListBox PreviewKeyDown (FR-305).
+- [X] T435 Disable exact-match auto-selection so first Down always moves to second item (FR-306).

@@ -38,6 +38,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly IPhraseService _phrases;
         private readonly ITenantContext _tenant;
         private readonly IPhraseCache _cache;
+        private readonly IHotkeyService _hotkeys; // new: hotkey service for editor completion
         private readonly PacsService _pacs = new();
         private readonly ICentralDataSourceProvider? _centralProvider; // (reserved for future use)
         private readonly IRadStudyRepository? _studyRepo;
@@ -59,12 +60,13 @@ namespace Wysg.Musm.Radium.ViewModels
             IPhraseService phrases,
             ITenantContext tenant,
             IPhraseCache cache,
+            IHotkeyService hotkeys,
             IRadStudyRepository? studyRepo = null,
             INewStudyProcedure? newStudyProc = null,
             IRadiumLocalSettings? localSettings = null,
             ILockStudyProcedure? lockStudyProc = null)
         {
-            _phrases = phrases; _tenant = tenant; _cache = cache;
+            _phrases = phrases; _tenant = tenant; _cache = cache; _hotkeys = hotkeys;
             _studyRepo = studyRepo; _newStudyProc = newStudyProc; _localSettings = localSettings; _lockStudyProc = lockStudyProc;
             PreviousStudies = new ObservableCollection<PreviousStudyTab>();
             InitializeCommands(); // implemented in Commands partial

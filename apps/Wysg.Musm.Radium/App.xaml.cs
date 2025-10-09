@@ -160,6 +160,14 @@ namespace Wysg.Musm.Radium
                 return new PhraseService(settings, sp.GetRequiredService<ICentralDataSourceProvider>(), cache);
             });
 
+            // Hotkey service (Azure SQL only, follows same pattern as phrases)
+            services.AddSingleton<IHotkeyService>(sp =>
+            {
+                var settings = sp.GetRequiredService<IRadiumLocalSettings>();
+                Debug.WriteLine("[DI] Using AzureSqlHotkeyService");
+                return new AzureSqlHotkeyService(settings);
+            });
+
             // Central account / settings service (Azure SQL or legacy Postgres not supported anymore)
             services.AddSingleton<AzureSqlCentralService>();
 
@@ -190,6 +198,7 @@ namespace Wysg.Musm.Radium
             services.AddTransient<PhrasesViewModel>();
             services.AddTransient<PhraseExtractionViewModel>();
             services.AddTransient<GlobalPhrasesViewModel>(); // Global phrases admin UI (account_id=1 only)
+            services.AddTransient<HotkeysViewModel>(); // Hotkey management UI
             services.AddTransient<SettingsViewModel>(sp => new SettingsViewModel(
                 sp.GetRequiredService<IRadiumLocalSettings>(),
                 sp.GetService<IReportifySettingsService>(),

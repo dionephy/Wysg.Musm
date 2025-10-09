@@ -412,6 +412,30 @@ namespace Wysg.Musm.Radium.Views
             }
         }
 
+        private void OnHotkeysTabLoaded(object sender, RoutedEventArgs e)
+        {
+            if (Application.Current is App app)
+            {
+                try
+                {
+                    var vm = app.Services.GetService<HotkeysViewModel>();
+                    if (vm != null)
+                    {
+                        hotkeysRoot.DataContext = vm;
+                        Debug.WriteLine("[SettingsWindow] Successfully set HotkeysViewModel");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[SettingsWindow] Failed to get HotkeysViewModel from DI");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[SettingsWindow] Error loading HotkeysViewModel: {ex.Message}");
+                }
+            }
+        }
+
         // ---- Integrated Spy Tab Handlers (minimal reuse) ----
         private Views.SpyWindow? _spyDelegate; // lazy delegate instance to reuse existing logic
         private SpyWindow EnsureSpyDelegate()
