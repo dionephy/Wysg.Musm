@@ -436,6 +436,30 @@ namespace Wysg.Musm.Radium.Views
             }
         }
 
+        private void OnSnippetsTabLoaded(object sender, RoutedEventArgs e)
+        {
+            if (Application.Current is App app)
+            {
+                try
+                {
+                    var vm = app.Services.GetService<SnippetsViewModel>();
+                    if (vm != null)
+                    {
+                        snippetsRoot.DataContext = vm;
+                        Debug.WriteLine("[SettingsWindow] Successfully set SnippetsViewModel");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[SettingsWindow] Failed to get SnippetsViewModel from DI");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[SettingsWindow] Error loading SnippetsViewModel: {ex.Message}");
+                }
+            }
+        }
+
         // ---- Integrated Spy Tab Handlers (minimal reuse) ----
         private Views.SpyWindow? _spyDelegate; // lazy delegate instance to reuse existing logic
         private SpyWindow EnsureSpyDelegate()

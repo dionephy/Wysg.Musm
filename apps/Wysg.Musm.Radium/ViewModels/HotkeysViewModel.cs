@@ -73,6 +73,17 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
+        private string _descriptionText = string.Empty;
+        public string DescriptionText
+        {
+            get => _descriptionText;
+            set
+            {
+                if (SetProperty(ref _descriptionText, value))
+                    (AddCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
         private HotkeyRow? _selectedItem;
         public HotkeyRow? SelectedItem
         {
@@ -104,6 +115,7 @@ namespace Wysg.Musm.Radium.ViewModels
             public long AccountId { get; init; }
             public string TriggerText { get; set; } = string.Empty;
             public string ExpansionText { get; set; } = string.Empty;
+            public string Description { get; set; } = string.Empty;
 
             private bool _isActive;
             public bool IsActive
@@ -191,6 +203,7 @@ namespace Wysg.Musm.Radium.ViewModels
                             AccountId = m.AccountId,
                             TriggerText = m.TriggerText,
                             ExpansionText = m.ExpansionText,
+                            Description = m.Description,
                             UpdatedAt = m.UpdatedAt,
                             Rev = m.Rev
                         };
@@ -218,6 +231,7 @@ namespace Wysg.Musm.Radium.ViewModels
             
             var trigger = TriggerText.Trim();
             var expansion = ExpansionText.Trim();
+            var desc = string.IsNullOrWhiteSpace(DescriptionText) ? null : DescriptionText.Trim();
             
             if (string.IsNullOrEmpty(trigger) || string.IsNullOrEmpty(expansion)) return;
 
@@ -227,12 +241,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 IsBusy = true;
 
                 // Synchronous flow: DB -> snapshot -> UI
-                var newHotkey = await _hotkeys.UpsertHotkeyAsync(accountId, trigger, expansion, true);
+                var newHotkey = await _hotkeys.UpsertHotkeyAsync(accountId, trigger, expansion, true, desc);
 
                 Debug.WriteLine($"[HotkeysVM] Hotkey added successfully: id={newHotkey.HotkeyId}");
                 
                 TriggerText = string.Empty;
                 ExpansionText = string.Empty;
+                DescriptionText = string.Empty;
 
                 void AddToUI()
                 {
@@ -242,6 +257,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     {
                         existing.TriggerText = newHotkey.TriggerText;
                         existing.ExpansionText = newHotkey.ExpansionText;
+                        existing.Description = newHotkey.Description;
                         existing.UpdateFromSnapshotSynchronous(newHotkey.IsActive, newHotkey.UpdatedAt, newHotkey.Rev);
                     }
                     else
@@ -252,6 +268,7 @@ namespace Wysg.Musm.Radium.ViewModels
                             AccountId = newHotkey.AccountId,
                             TriggerText = newHotkey.TriggerText,
                             ExpansionText = newHotkey.ExpansionText,
+                            Description = newHotkey.Description,
                             UpdatedAt = newHotkey.UpdatedAt,
                             Rev = newHotkey.Rev
                         };

@@ -468,7 +468,10 @@
                         <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ExpansionText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="60" VerticalScrollBarVisibility="Auto" Style="{StaticResource HotkeyInputBox}"/>
                         <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource HotkeyButton}" Content="Delete Selected" Command="{Binding DeleteCommand}" VerticalAlignment="Top"/>
 
-                        <TextBlock Grid.Row="2" Grid.ColumnSpan="3" Text="Tip: Type trigger text in editors followed by space or punctuation to expand. Example: 'bll' expands to 'bilateral leukoaraiosis'" Foreground="#9AA0A6" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Description:" VerticalAlignment="Center" Margin="0,4,8,0" Foreground="{StaticResource BrushTextPrimary}"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding DescriptionText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource HotkeyInputBox}"/>
+
+                        <TextBlock Grid.Row="3" Grid.ColumnSpan="3" Text="Tip: Type trigger text in editors followed by space or punctuation to expand. Example: 'bll' expands to 'bilateral leukoaraiosis'" Foreground="#9AA0A6" Margin="0,8,0,0" TextWrapping="Wrap"/>
                     </Grid>
 
                     <DataGrid Grid.Row="2" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" IsReadOnly="False" RowHeaderWidth="0" Margin="0,0,0,8"
@@ -476,6 +479,7 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Id" Binding="{Binding HotkeyId}" Width="60" IsReadOnly="True"/>
                             <DataGridTextColumn Header="Trigger" Binding="{Binding TriggerText}" Width="120" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="220" IsReadOnly="True"/>
                             <DataGridTextColumn Header="Expansion Preview" Binding="{Binding ExpansionText}" Width="*" IsReadOnly="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
@@ -497,148 +501,133 @@
                 </Grid>
             </TabItem>
 
-            <!-- Spy (integrated from SpyWindow) -->
-            <TabItem Header="Spy" x:Name="tabSpy">
-                <Grid Margin="8" x:Name="spyRoot">
+            <!-- Snippets -->
+            <TabItem Header="Snippets" x:Name="tabSnippets">
+                <Grid x:Name="snippetsRoot" Margin="8" Loaded="OnSnippetsTabLoaded">
+                    <Grid.Resources>
+                        <SolidColorBrush x:Key="SnippetPanel" Color="#262A30"/>
+                        <SolidColorBrush x:Key="SnippetPanelAlt" Color="#2F343A"/>
+                        <SolidColorBrush x:Key="SnippetBorder" Color="#41474F"/>
+                        <SolidColorBrush x:Key="SnippetSelection" Color="#0E4D7A"/>
+                        <Style TargetType="DataGrid" x:Key="SnippetGridStyle">
+                            <Setter Property="Background" Value="{StaticResource SnippetPanel}"/>
+                            <Setter Property="Foreground" Value="#E0E0E0"/>
+                            <Setter Property="BorderBrush" Value="{StaticResource SnippetBorder}"/>
+                            <Setter Property="RowBackground" Value="#262A30"/>
+                            <Setter Property="AlternatingRowBackground" Value="#22272C"/>
+                            <Setter Property="GridLinesVisibility" Value="None"/>
+                            <Setter Property="SelectionMode" Value="Single"/>
+                            <Setter Property="SelectionUnit" Value="FullRow"/>
+                        </Style>
+                        <Style TargetType="DataGridColumnHeader" x:Key="SnippetHeaderStyle">
+                            <Setter Property="Background" Value="#30363D"/>
+                            <Setter Property="Foreground" Value="#E0E0E0"/>
+                            <Setter Property="BorderBrush" Value="#41474F"/>
+                            <Setter Property="BorderThickness" Value="0 0 1 1"/>
+                            <Setter Property="Padding" Value="6 4"/>
+                        </Style>
+                        <Style TargetType="DataGridRow" x:Key="SnippetRowStyle">
+                            <Setter Property="BorderBrush" Value="#30363D"/>
+                            <Setter Property="BorderThickness" Value="0 0 0 1"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource SnippetSelection}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                        <Style TargetType="TextBox" x:Key="SnippetInputBox">
+                            <Setter Property="Background" Value="#202429"/>
+                            <Setter Property="Foreground" Value="#F5F6F7"/>
+                            <Setter Property="BorderBrush" Value="#41474F"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Setter Property="Padding" Value="4"/>
+                            <Setter Property="FontFamily" Value="Consolas"/>
+                        </Style>
+                        <Style TargetType="Button" x:Key="SnippetButton" BasedOn="{StaticResource {x:Type Button}}">
+                            <Setter Property="Background" Value="#2F343A"/>
+                            <Setter Property="Foreground" Value="#E0E0E0"/>
+                            <Setter Property="BorderBrush" Value="#41474F"/>
+                            <Setter Property="Margin" Value="6 0 0 0"/>
+                            <Setter Property="Padding" Value="8 4"/>
+                        </Style>
+                    </Grid.Resources>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
-                        <RowDefinition Height="2*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
-                        <TextBlock Text="Process:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox x:Name="spyTxtProcess" Width="160"/>
-                        <TextBlock Text="Delay(ms):" VerticalAlignment="Center" Margin="8,0,4,0"/>
-                        <TextBox x:Name="spyTxtDelay" Width="60" Text="1500"/>
-                        <Button Content="Pick" Margin="8,0,0,0" Click="Spy_OnPick"/>
-                        <TextBlock Text="Map to:" Margin="12,0,6,0" VerticalAlignment="Center"/>
-                        <ComboBox x:Name="spyCmbKnown" Width="300" SelectionChanged="Spy_OnKnownSelectionChanged" SelectedValuePath="Tag">
-                            <ComboBoxItem Tag="CloseWorklistButton">Close worklist button</ComboBoxItem>
-                            <ComboBoxItem Tag="OpenWorklistButton">Open worklist button</ComboBoxItem>
-                            <ComboBoxItem Tag="RelatedStudyList">Related studies list</ComboBoxItem>
-                            <ComboBoxItem Tag="ReportCommitButton">Report commit button</ComboBoxItem>
-                            <ComboBoxItem Tag="ReportInput">Report input</ComboBoxItem>
-                            <ComboBoxItem Tag="ReportPane">Report pane</ComboBoxItem>
-                            <ComboBoxItem Tag="ReportText">Report text</ComboBoxItem>
-                            <ComboBoxItem Tag="ReportText2">Report text 2</ComboBoxItem>
-                            <ComboBoxItem Tag="SearchResultsList">Search results list</ComboBoxItem>
-                            <ComboBoxItem Tag="SelectedStudyInRelated">Selected study in related studies</ComboBoxItem>
-                            <ComboBoxItem Tag="SelectedStudyInSearch">Selected study in search</ComboBoxItem>
-                            <ComboBoxItem Tag="StudyInfoBanner">Study info banner</ComboBoxItem>
-                            <ComboBoxItem Tag="StudyRemark">Study remark</ComboBoxItem>
-                            <ComboBoxItem Tag="ViewerToolbar">Viewer toolbar</ComboBoxItem>
-                            <ComboBoxItem Tag="ViewerWindow">Viewer window</ComboBoxItem>
-                            <ComboBoxItem Tag="WorklistListsPane">Worklist lists pane</ComboBoxItem>
-                            <ComboBoxItem Tag="WorklistPane">Worklist pane</ComboBoxItem>
-                            <ComboBoxItem Tag="WorklistToolbar">Worklist toolbar</ComboBoxItem>
-                            <ComboBoxItem Tag="WorklistViewButton">Worklist view button</ComboBoxItem>
-                            <ComboBoxItem Tag="WorklistWindow">Worklist window</ComboBoxItem>
-                        </ComboBox>
-                        <Button Content="Map" Margin="6,0,0,0" Click="Spy_OnMapSelected"/>
-                        <Button Content="Resolve" Margin="6,0,0,0" Click="Spy_OnResolveSelected"/>
-                        <Button Content="Reload" Margin="6,0,0,0" Click="Spy_OnReload"/>
-                        <CheckBox x:Name="spyChkEnableTree" Content="Enable Tree" Margin="12,0,0,0" IsChecked="False"/>
-                    </StackPanel>
+                    <TextBlock Grid.Row="0" Text="Snippets (Template Expansion with Placeholders)" FontWeight="Bold" FontSize="14" Foreground="{StaticResource BrushTextPrimary}" Margin="0,0,0,8"/>
 
-                    <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="3*"/>
-                        </Grid.ColumnDefinitions>
+                    <Grid Grid.Row="1" Margin="0,0,0,8">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <GroupBox Grid.Column="0" Header="UI Tree" Margin="0,0,6,0">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <TreeView x:Name="spyTvAncestry" Grid.Row="0" SelectedItemChanged="Spy_OnAncestrySelected" Visibility="Collapsed"/>
-                                <GroupBox Grid.Row="1" Header="Selected node" Margin="0,6,0,0">
-                                    <TextBox x:Name="spyTxtNodeProps" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" Height="90" VerticalScrollBarVisibility="Auto"/>
-                                </GroupBox>
-                            </Grid>
-                        </GroupBox>
-                        <GroupBox Grid.Column="1" Header="Crawl Editor">
-                            <DockPanel>
-                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,6">
-                                    <TextBlock Text="Map Method:" VerticalAlignment="Center"/>
-                                    <ComboBox x:Name="spyCmbMethod" Width="150" Margin="6,0,12,0">
-                                        <ComboBoxItem Tag="Chain">Chain</ComboBoxItem>
-                                        <ComboBoxItem Tag="AutomationIdOnly">AutomationIdOnly</ComboBoxItem>
-                                    </ComboBox>
-                                    <Button Content="Validate" Click="Spy_OnValidateChain"/>
-                                    <Button Content="Invoke" Margin="6,0,0,0" Click="Spy_OnInvoke"/>
-                                    <Button Content="Get Text" Margin="6,0,0,0" Click="Spy_OnGetText"/>
-                                    <Button Content="Get Name" Margin="6,0,0,0" Click="Spy_OnGetName"/>
-                                    <Button Content="Row Data" Margin="6,0,0,0" Click="Spy_OnGetSelectedRow"/>
-                                    <Button Content="Save" Margin="6,0,0,0" Click="Spy_OnSaveEdited"/>
-                                </StackPanel>
-                                <DataGrid x:Name="spyGridChain" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="True" CanUserDeleteRows="True" IsReadOnly="False">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="160"/>
-                                        <DataGridTextColumn Header="Class" Binding="{Binding ClassName}" Width="160"/>
-                                        <DataGridTextColumn Header="CtlType" Binding="{Binding ControlTypeId}" Width="80"/>
-                                        <DataGridTextColumn Header="AutoId" Binding="{Binding AutomationId}" Width="160"/>
-                                        <DataGridTextColumn Header="Idx" Binding="{Binding IndexAmongMatches}" Width="40"/>
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </DockPanel>
-                        </GroupBox>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Trigger:" VerticalAlignment="Center" Margin="0,0,8,4" Foreground="{StaticResource BrushTextPrimary}"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding TriggerText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SnippetInputBox}" Margin="0,0,0,4"/>
+                        <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource SnippetButton}" Content="Add" Command="{Binding AddCommand}" Margin="6,0,0,4"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Template:" VerticalAlignment="Top" Margin="0,0,8,0" Foreground="{StaticResource BrushTextPrimary}"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SnippetText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="60" VerticalScrollBarVisibility="Auto" Style="{StaticResource SnippetInputBox}"/>
+                        <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource SnippetButton}" Content="Delete Selected" Command="{Binding DeleteCommand}" VerticalAlignment="Top"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="AST (JSON):" VerticalAlignment="Top" Margin="0,4,8,0" Foreground="{StaticResource BrushTextPrimary}"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SnippetAstText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="60" VerticalScrollBarVisibility="Auto" Style="{StaticResource SnippetInputBox}"/>
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Description:" VerticalAlignment="Center" Margin="0,4,8,0" Foreground="{StaticResource BrushTextPrimary}"/>
+                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding DescriptionText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SnippetInputBox}"/>
+
+                        <Border Grid.Row="4" Grid.ColumnSpan="3" Margin="0,8,0,0" Padding="8" Background="{StaticResource SnippetPanelAlt}" BorderBrush="{StaticResource SnippetBorder}" BorderThickness="1" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="Sample Snippet" FontWeight="SemiBold" Foreground="{StaticResource BrushTextPrimary}"/>
+                                <TextBox IsReadOnly="True" Style="{StaticResource SnippetInputBox}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto">
+                                    <TextBox.Text>
+${free text}
+${1^single choice=a^apple|b^banana|3^pear}
+${2^multiple choices^or=a^cola|b^cider}
+${3^single replace=a^apple|b^banana|3^pear}
+
+i have ${1^fruit=a^apple|b^bannana|3^watermelon} and ${2^juices=a^cola|b^cider}, and i want to eat with ${friend}, but ${3^family=mm^mom|dd^dad} said no...
+                                    </TextBox.Text>
+                                </TextBox>
+                            </StackPanel>
+                        </Border>
                     </Grid>
 
-                    <GroupBox Grid.Row="2" Header="Custom Procedures" Margin="0,8,0,8">
-                        <DockPanel>
-                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,8">
-                                <TextBlock Text="PACS Method:" VerticalAlignment="Center"/>
-                                <ComboBox x:Name="spyCmbProcMethod" Width="220" Margin="6,0,12,0" SelectedValuePath="Tag">
-                                    <ComboBoxItem Tag="GetSelectedIdFromSearchResults">Get selected ID (search results)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedNameFromSearchResults">Get selected name (search results)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedSexFromSearchResults">Get selected sex (search results)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedBirthDateFromSearchResults">Get selected birth date (search results)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedAgeFromSearchResults">Get selected age (search results)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedStudynameFromSearchResults">Get selected studyname (search results)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedStudyDateTimeFromSearchResults">Get selected study datetime (search results)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedRadiologistFromSearchResults">Get selected radiologist (search results)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedStudyRemarkFromSearchResults">Get selected study remark (search results)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedReportDateTimeFromSearchResults">Get selected report datetime (search results)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedStudynameFromRelatedStudies">Get selected studyname (related)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedStudyDateTimeFromRelatedStudies">Get selected study datetime (related)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedRadiologistFromRelatedStudies">Get selected radiologist (related)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetSelectedReportDateTimeFromRelatedStudies">Get selected report datetime (related)</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetCurrentPatientNumber">Get current patient number</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetCurrentStudyDateTime">Get current study datetime</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetCurrentStudyRemark">Get current study remark</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetCurrentFindings">Get current findings</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetCurrentConclusion">Get current conclusion</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetCurrentFindings2">Get current findings 2</ComboBoxItem>
-                                    <ComboBoxItem Tag="GetCurrentConclusion2">Get current conclusion 2</ComboBoxItem>
-                                </ComboBox>
-                                <Button Content="Add" Click="Spy_OnAddProcRow"/>
-                                <Button Content="Save" Margin="6,0,0,0" Click="Spy_OnSaveProcedure"/>
-                                <Button Content="Run" Margin="6,0,0,0" Click="Spy_OnRunProcedure"/>
-                            </StackPanel>
-                            <DataGrid x:Name="spyGridProcSteps" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Op" Binding="{Binding Op}" Width="90"/>
-                                    <DataGridTextColumn Header="Arg1.Type" Binding="{Binding Arg1.Type}" Width="80"/>
-                                    <DataGridTextColumn Header="Arg1" Binding="{Binding Arg1.Value}" Width="120"/>
-                                    <DataGridTextColumn Header="Arg2.Type" Binding="{Binding Arg2.Type}" Width="80"/>
-                                    <DataGridTextColumn Header="Arg2" Binding="{Binding Arg2.Value}" Width="120"/>
-                                    <DataGridTextColumn Header="Arg3.Type" Binding="{Binding Arg3.Type}" Width="80"/>
-                                    <DataGridTextColumn Header="Arg3" Binding="{Binding Arg3.Value}" Width="120"/>
-                                    <DataGridTextColumn Header="OutVar" Binding="{Binding OutputVar}" Width="70"/>
-                                    <DataGridTextColumn Header="Preview" Binding="{Binding OutputPreview}" Width="200"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </DockPanel>
-                    </GroupBox>
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" IsReadOnly="False" RowHeaderWidth="0" Margin="0,0,0,8"
+                              Style="{StaticResource SnippetGridStyle}" RowStyle="{StaticResource SnippetRowStyle}" ColumnHeaderStyle="{StaticResource SnippetHeaderStyle}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Id" Binding="{Binding SnippetId}" Width="60" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Trigger" Binding="{Binding TriggerText}" Width="120" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="220" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Template Preview" Binding="{Binding SnippetText}" Width="*" IsReadOnly="True">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                        <Setter Property="ToolTip" Value="{Binding SnippetText}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
+                            <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedAt}" Width="140" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Rev" Binding="{Binding Rev}" Width="60" IsReadOnly="True"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
 
-                    <TextBox Grid.Row="3" x:Name="spyTxtStatus" IsReadOnly="True" Height="120" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"/>
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource SnippetButton}" Content="Refresh" Command="{Binding RefreshCommand}"/>
+                        <Button Content="Close" Width="90" IsCancel="True" Margin="6,0,0,0"/>
+                    </StackPanel>
                 </Grid>
             </TabItem>
 

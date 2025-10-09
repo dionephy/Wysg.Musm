@@ -7,7 +7,7 @@ namespace Wysg.Musm.Radium.Services
     /// <summary>
     /// Hotkey information record (account-scoped, no global hotkeys)
     /// </summary>
-    public record HotkeyInfo(long HotkeyId, long AccountId, string TriggerText, string ExpansionText, bool IsActive, DateTime UpdatedAt, long Rev);
+    public record HotkeyInfo(long HotkeyId, long AccountId, string TriggerText, string ExpansionText, string Description, bool IsActive, DateTime UpdatedAt, long Rev);
 
     /// <summary>
     /// Service for managing account-scoped text expansion hotkeys.
@@ -34,7 +34,7 @@ namespace Wysg.Musm.Radium.Services
         /// Upsert hotkey (insert new or update existing by trigger_text).
         /// Returns updated/created hotkey info from snapshot after DB commit.
         /// </summary>
-        Task<HotkeyInfo> UpsertHotkeyAsync(long accountId, string triggerText, string expansionText, bool isActive = true);
+        Task<HotkeyInfo> UpsertHotkeyAsync(long accountId, string triggerText, string expansionText, bool isActive = true, string? description = null);
 
         /// <summary>
         /// Toggle is_active flag for a specific hotkey.

@@ -168,6 +168,14 @@ namespace Wysg.Musm.Radium
                 return new AzureSqlHotkeyService(settings);
             });
 
+            // Snippet service (Azure SQL)
+            services.AddSingleton<ISnippetService>(sp =>
+            {
+                var settings = sp.GetRequiredService<IRadiumLocalSettings>();
+                Debug.WriteLine("[DI] Using AzureSqlSnippetService");
+                return new AzureSqlSnippetService(settings);
+            });
+
             // Central account / settings service (Azure SQL or legacy Postgres not supported anymore)
             services.AddSingleton<AzureSqlCentralService>();
 
@@ -199,6 +207,7 @@ namespace Wysg.Musm.Radium
             services.AddTransient<PhraseExtractionViewModel>();
             services.AddTransient<GlobalPhrasesViewModel>(); // Global phrases admin UI (account_id=1 only)
             services.AddTransient<HotkeysViewModel>(); // Hotkey management UI
+            services.AddTransient<SnippetsViewModel>(); // Snippet management UI
             services.AddTransient<SettingsViewModel>(sp => new SettingsViewModel(
                 sp.GetRequiredService<IRadiumLocalSettings>(),
                 sp.GetService<IReportifySettingsService>(),

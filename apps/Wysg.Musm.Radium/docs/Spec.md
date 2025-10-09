@@ -1,5 +1,32 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Snippet AST Auto-Build on Insert (2025-01-10)
+- **FR-322** When adding a snippet from Settings → Snippets tab, the system MUST automatically generate `snippet_ast` from the provided `snippet_text` according to docs/snippet_logic.md and persist it with the row.
+- **FR-323** Generated `snippet_ast` MUST contain version and placeholder list capturing mode, label, tabstop (if any), options (key→text), and multi-choice joiner/bilateral hints for mode 2.
+- **FR-324** The UI MUST reflect the computed AST in a read-only/preview textbox before/after insert so users can inspect the parsed structure.
+
+## Update: Snippet Management Tab in Settings (2025-01-10)
+- **FR-319** Settings window MUST include a Snippets management tab similar to Hotkeys with fields: Trigger, Template (multi-line), AST (JSON, multi-line), Description; grid listing (Id, Trigger, Description, Template preview, Active, Updated, Rev) and actions (Add, Delete, Refresh).
+- **FR-320** Snippets tab MUST display a read-only "Sample Snippet" textbox with the following content for user guidance:
+  - First lines:
+    - ${free text}
+    - ${1^single choice=a^apple|b^banana|3^pear}
+    - ${2^multiple choices^or=a^cola|b^cider}
+    - ${3^single replace=a^apple|b^banana|3^pear}
+  - Paragraph:
+    - i have ${1^fruit=a^apple|b^bannana|3^watermelon} and ${2^juices=a^cola|b^cider}, and i want to eat with ${friend}, but ${3^family=mm^mom|dd^dad} said no...
+- **FR-321** Snippet service MUST be registered and used by Snippets tab using synchronous DB→snapshot→UI flow consistent with phrases/hotkeys.
+
+## Update: Snippet Text Expansion with Placeholders (2025-01-10)
+- **FR-311** System MUST support user-defined snippets with placeholder navigation for structured text templates, enabling rapid insertion of complex report sections with tab-stop navigation between editable regions.
+- **FR-312** Snippet storage MUST use central database table `radium.snippet` with columns: snippet_id (BIGINT IDENTITY PK), account_id (BIGINT FK NOT NULL), trigger_text (NVARCHAR(64) NOT NULL), snippet_text (NVARCHAR(4000) NOT NULL), snippet_ast (NVARCHAR(MAX) NOT NULL), description (NVARCHAR(256) NULL), is_active (BIT NOT NULL DEFAULT 1), created_at, updated_at, rev. Unique constraint on (account_id, trigger_text).
+- **FR-313** snippet_text MUST contain template with placeholder syntax (e.g., `${1^fruit=a^apple|b^banana}` for choices, `${2:default}` for text placeholders).
+- **FR-314** snippet_ast MUST store pre-parsed JSON representation of placeholder structure enabling fast runtime parsing without regex overhead during editor insertion.
+- **FR-315** Snippet service MUST provide async methods: GetActiveSnippetsAsync(accountId), UpsertSnippetAsync(accountId, trigger, snippetText, ast, description), ToggleActiveAsync(accountId, snippetId), DeleteSnippetAsync(accountId, snippetId). All operations MUST follow synchronous database → snapshot → UI flow.
+- **FR-316** Snippet service MUST implement in-memory snapshot caching per account with automatic invalidation on upsert/toggle/delete and provide GetSnippetSnapshotAsync for completion integration.
+- **FR-317** Editor MUST detect snippet triggers and insert template with placeholder markers, enabling tab navigation between placeholders.
+- **FR-318** Settings MUST include Snippets management tab with CRUD UI (see FR-319..FR-320).
+
 ## Update: Hotkey Text Expansion (2025-01-09)
 - **FR-286** System MUST support user-defined hotkeys (text shortcuts) that expand inline when trigger text is typed in editors, enabling rapid insertion of frequently-used phrases or templates without completion popup.
 - **FR-287** Hotkey storage MUST use central database table `radium.hotkey` with columns: hotkey_id (BIGINT IDENTITY PK), account_id (BIGINT FK NOT NULL), trigger_text (NVARCHAR(64) NOT NULL), expansion_text (NVARCHAR(4000) NOT NULL), is_active (BIT NOT NULL DEFAULT 1), created_at, updated_at, rev. Unique constraint on (account_id, trigger_text).
@@ -7,6 +34,10 @@
 - **FR-289** Hotkey service MUST implement in-memory snapshot caching per account with automatic invalidation on upsert/toggle/delete and provide GetHotkeySnapshotAsync for completion integration.
 - **FR-290** Editor text input handling MUST detect hotkey triggers by matching typed word against active hotkey trigger_text (case-insensitive prefix or exact match based on configuration) and replace trigger with expansion_text inline when space or punctuation follows. Hotkey expansion MUST take precedence over phrase completion popup.
 - **FR-291** Settings window MUST include Hotkeys management tab with: DataGrid listing (Id, Trigger, Expansion preview, Active, Updated, Rev); Add controls (Trigger input, Expansion multi-line input, Add button); Refresh button; Delete button for selected row; Active checkbox toggle per row; Dark theme styling consistent with Phrases tab.
+- FR-307 Hotkey schema MUST add column radium.hotkey.description NVARCHAR(256) NULL used for completion display.
+- FR-308 Completion window MUST display hotkeys as "{trigger} → {description}" with fallback to first line of expansion when description is null/blank.
+- FR-309 Settings → Hotkeys tab MUST provide a Description input textbox when adding a hotkey.
+- FR-310 Hotkeys grid MUST include a Description column showing the stored description text.
 
 ## Update: Phrases tab shows account + global (2025-10-09)
 - FR-283 Phrases tab MUST display both current account phrases and global phrases in a single list. Each row retains its scope via `account_id` (NULL = global). Toggling Active MUST call the appropriate scope-aware API (`ToggleActiveAsync(accountId? : null, id)`). Adding a new phrase from this tab MUST create an account-scoped phrase for the current account. Completion window MUST use combined phrases (global + account) for suggestions.
@@ -194,6 +225,8 @@
 
 ## Update: Completion First Item Auto-Select (2025-10-07)
 - **FR-264** Completion popup MUST auto-select the first item by default whenever it opens or when no exact prefix match is found, ensuring immediate Enter commits the first suggestion without requiring initial Down key navigation.
+- FR-305 Completion list first Down/Up press MUST move to the immediate next/previous item and MUST NOT wrap to last/first when no selection existed previously.
+- FR-306 Completion popup MUST not auto-select exact text matches; default selection is the first item to ensure Down selects the second item consistently.
 
 ## Update: Side Panel Dynamic Width (2025-10-07)
 - **FR-268** MainWindow `gridSide` width MUST equal (window ActualWidth - central grid ActualWidth) clamped to >=0; updates reactively on resize.

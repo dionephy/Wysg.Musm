@@ -66,21 +66,16 @@ namespace Wysg.Musm.Radium.ViewModels
                     yield return MusmCompletionData.Token(t);
                 }
 
-                // Hotkeys: list active ones as "{trigger} ¡æ {first line}..."; insert full expansion.
-                var mapTask = _hotkeys.GetActiveHotkeysAsync(accountId);
-                if (!mapTask.IsCompleted) mapTask.Wait(50);
-                var map = mapTask.IsCompletedSuccessfully ? mapTask.Result : new Dictionary<string, string>();
-
-                foreach (var kv in map)
+                // Hotkeys with description-driven display
+                var metaTask = _hotkeys.GetAllHotkeyMetaAsync(accountId);
+                if (!metaTask.IsCompleted) metaTask.Wait(50);
+                var meta = metaTask.IsCompletedSuccessfully ? metaTask.Result : Array.Empty<HotkeyInfo>();
+                foreach (var hk in meta.Where(h => h.IsActive))
                 {
-                    var trigger = kv.Key;
-                    if (!trigger.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
-                    var expansion = kv.Value ?? string.Empty;
-                    var firstLine = GetFirstLine(expansion);
-                    var display = expansion.IndexOf('\n') >= 0 || expansion.IndexOf('\r') >= 0
-                        ? $"{trigger} ¡æ {firstLine}..."
-                        : $"{trigger} ¡æ {firstLine}";
-                    yield return MusmCompletionData.Hotkey(display, expansion, description: null);
+                    if (!hk.TriggerText.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+                    var desc = string.IsNullOrWhiteSpace(hk.Description) ? GetFirstLine(hk.ExpansionText) : hk.Description;
+                    var display = $"{hk.TriggerText} ¡æ {desc}";
+                    yield return MusmCompletionData.Hotkey(display, hk.ExpansionText, description: null);
                 }
             }
 
