@@ -43,14 +43,16 @@ public sealed class PlaceholderOverlayRenderer : IBackgroundRenderer, IDisposabl
             {
                 var rect = new Rect(r.Location, new Size(r.Width, textView.DefaultLineHeight));
 
+                // Brighter and more opaque fills for better visibility
                 var fill = isActive
-                    ? new SolidColorBrush(Color.FromArgb(50, 255, 215, 0))     // active (gold-ish)
-                    : new SolidColorBrush(Color.FromArgb(28, 64, 156, 255));   // others (soft blue)
+                    ? new SolidColorBrush(Color.FromArgb(90, 255, 235, 59))     // active: bright yellow
+                    : new SolidColorBrush(Color.FromArgb(60, 33, 150, 243));    // others: vivid blue
 
                 var pen = isActive
-                    ? new Pen(new SolidColorBrush(Color.FromArgb(160, 255, 215, 0)), 1)
-                    : new Pen(new SolidColorBrush(Color.FromArgb(120, 64, 156, 255)), 1);
+                    ? new Pen(new SolidColorBrush(Color.FromArgb(200, 255, 193, 7)), 1.5)
+                    : new Pen(new SolidColorBrush(Color.FromArgb(160, 30, 136, 229)), 1.0);
 
+                fill.Freeze(); pen.Freeze();
                 dc.DrawRectangle(fill, pen, rect);
             }
         }

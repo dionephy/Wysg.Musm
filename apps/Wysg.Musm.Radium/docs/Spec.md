@@ -1,5 +1,24 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Snippet Runtime Behavior (2025-01-10)
+- **FR-325** After snippet insertion the editor enters snippet mode: all placeholders highlighted; caret locked to active placeholder; cannot move outside using arrows/home/end.
+- **FR-326** Navigation and termination:
+  - Tab completes current placeholder and moves to next; if none, exit and place caret at end of inserted snippet.
+  - Enter on free-text placeholder inserts "[ ]" for unfilled and exits to next line; on choice placeholders behaves like Tab completion then moves to next.
+  - Esc exits snippet mode and caret moves to end of inserted snippet.
+- **FR-327** Placeholder behavior:
+  - Free text: ${label} → user types; Tab completes; if exit before completion, replace with "[ ]".
+  - Mode 1 single choice: ${1^label=a^A|b^B} → single key immediately selects and completes; if exit before selection, default to first option.
+  - Mode 2 multi-choice: ${2^label^or^bilateral=a^A|b^B|3^C} → Space or letter toggles; Tab accepts joined text with joiner (", or "/", and "/", "); if exit before completion, insert all options using the joiner.
+  - Mode 3 single replace: ${3^label=aa^A|bb^B} → multi-char key is buffered until Tab/Enter; then replace; if exit before selection, default to first option.
+- **FR-328** UI overlay must show active placeholder distinctly (highlight), others faintly.
+- **FR-329** Snippet mode MUST prevent caret from moving outside current placeholder bounds using arrow keys, Home, or End; caret position is constrained to the selection range.
+- **FR-330** Placeholder completion popup MUST appear for choice-based placeholders (modes 1, 2, 3) showing available options with keys; popup updates as user types keys for mode 3.
+- **FR-331** Multi-choice placeholders (mode 2) MUST display visual checkmarks (✓) next to selected options in the popup window.
+- **FR-332** Bilateral option in mode 2 MUST be parsed and stored in AST for future domain-specific processing (e.g., combining "left X" + "right X" → "bilateral X").
+- **FR-333** PlaceholderModeManager MUST maintain global snippet mode state preventing interference from other editor features during active snippet session.
+- **FR-334** EditorMutationShield MUST guard all programmatic document mutations during snippet mode to prevent cascading event handlers and document change exceptions.
+
 ## Update: Snippet AST Auto-Build on Insert (2025-01-10)
 - **FR-322** When adding a snippet from Settings → Snippets tab, the system MUST automatically generate `snippet_ast` from the provided `snippet_text` according to docs/snippet_logic.md and persist it with the row.
 - **FR-323** Generated `snippet_ast` MUST contain version and placeholder list capturing mode, label, tabstop (if any), options (key→text), and multi-choice joiner/bilateral hints for mode 2.

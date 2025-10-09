@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Text;
 using System.Windows.Input;
 using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Editing;
@@ -19,6 +20,13 @@ public static class SnippetInputHandler
         public readonly List<ExpandedPlaceholder> Map;     // appearance order
         public ExpandedPlaceholder? Current;
         private readonly PlaceholderOverlayRenderer _overlay;
+
+        // Popup for current placeholder
+        public PlaceholderCompletionWindow? Popup { get; set; }
+
+        // Mode 3 accumulation buffer and mode 2 selection set
+        public readonly StringBuilder ChoiceBuffer = new();
+        public readonly HashSet<string> MultiSelected = new(System.StringComparer.OrdinalIgnoreCase);
 
         public Session(TextArea area, int insertOffset, List<ExpandedPlaceholder> map)
         {
@@ -39,7 +47,22 @@ public static class SnippetInputHandler
             return null;
         }
 
-        private void OnCaretChanged(object? s, EventArgs e) => _overlay.Invalidate();
+        private void OnCaretChanged(object? s, EventArgs e)
+        {
+            // Keep caret within current placeholder selection bounds
+            if (Current is null) { _overlay.Invalidate(); return; }
+            var sel = Area.Selection?.SurroundingSegment;
+            if (sel is null) { _overlay.Invalidate(); return; }
+            if (Area.Caret.Offset < sel.Offset)
+            {
+                using (EditorMutationShield.Begin(Area)) Area.Caret.Offset = sel.Offset;
+            }
+            else if (Area.Caret.Offset > sel.EndOffset)
+            {
+                using (EditorMutationShield.Begin(Area)) Area.Caret.Offset = sel.EndOffset;
+            }
+            _overlay.Invalidate();
+        }
 
         private IEnumerable<(int start, int length, bool active)> ProvideSegments()
         {
@@ -101,15 +124,12 @@ public static class SnippetInputHandler
         PlaceholderModeManager.Enter();
 
         var session = new Session(area, insertOffset, map);
-
-        PlaceholderCompletionWindow? popup = null;
-
         session.Current = session.Map.FirstOrDefault(p => p.Length > 0);
         if (session.Current is null) { Exit(); return; }
 
         SelectPlaceholder(area, session, session.Current);
-        popup = ShowPopup(area, session.Current);
-        popup?.SelectFirst();
+        session.Popup = ShowPopup(area, session.Current);
+        session.Popup?.SelectFirst();
 
         area.PreviewKeyDown += OnPreviewKeyDown;
 
@@ -122,28 +142,62 @@ public static class SnippetInputHandler
             }
 
             var cur = session.Current;
+            if (cur is null) { Exit(); e.Handled = true; return; }
 
-            if (e.Key == Key.Up) { popup?.MoveSelection(-1); e.Handled = true; return; }
-            if (e.Key == Key.Down) { popup?.MoveSelection(+1); e.Handled = true; return; }
+            // Prevent caret moving out with arrow keys
+            if (e.Key is Key.Left or Key.Right or Key.Home or Key.End)
+            {
+                var sel = area.Selection.SurroundingSegment;
+                if (sel != null)
+                {
+                    if (e.Key is Key.Left or Key.Home)
+                    {
+                        using (EditorMutationShield.Begin(area)) area.Caret.Offset = sel.Offset;
+                    }
+                    else
+                    {
+                        using (EditorMutationShield.Begin(area)) area.Caret.Offset = sel.EndOffset;
+                    }
+                    e.Handled = true;
+                    return;
+                }
+            }
 
+            // Navigation inside popup
+            if (e.Key == Key.Up) { session.Popup?.MoveSelection(-1); e.Handled = true; return; }
+            if (e.Key == Key.Down) { session.Popup?.MoveSelection(+1); e.Handled = true; return; }
+
+            // Mode-specific key processing
             if (TryMapKeyToString(e.Key, out var keyStr))
             {
-                if (cur != null && cur.Options.Count > 0)
+                if (cur.Options.Count > 0)
                 {
-                    popup?.SelectByKey(keyStr);
-
                     if (cur.Kind == PlaceholderKind.MultiChoice)
                     {
-                        popup?.ToggleCurrent();
+                        // Toggle (Space or letter)
+                        session.Popup?.SelectByKey(keyStr);
+                        session.Popup?.ToggleCurrent();
                         e.Handled = true;
                         return;
                     }
                     else
                     {
-                        var sel = popup?.Selected;
-                        if (sel is not null)
+                        if (cur.Mode == 1)
                         {
-                            AcceptOption(sel.Text);
+                            // Immediate accept on single key
+                            var match = cur.Options.FirstOrDefault(o => o.Key.Equals(keyStr, System.StringComparison.OrdinalIgnoreCase));
+                            if (match != null)
+                            {
+                                AcceptOptionAndComplete(match.Text);
+                                e.Handled = true;
+                                return;
+                            }
+                        }
+                        else if (cur.Mode == 3)
+                        {
+                            // Accumulate multi-char key until Tab/Enter
+                            session.ChoiceBuffer.Append(keyStr);
+                            session.Popup?.SelectByKey(session.ChoiceBuffer.ToString());
                             e.Handled = true;
                             return;
                         }
@@ -153,20 +207,21 @@ public static class SnippetInputHandler
 
             if (e.Key == Key.Space)
             {
-                if (cur != null && cur.Kind == PlaceholderKind.MultiChoice)
+                if (cur.Kind == PlaceholderKind.MultiChoice)
                 {
-                    popup?.ToggleCurrent();
+                    session.Popup?.ToggleCurrent();
                     e.Handled = true;
                     return;
                 }
             }
 
-            if (e.Key == Key.Enter || e.Key == Key.Tab)
+            if (e.Key == Key.Tab)
             {
-                if (cur == null) { Exit(); e.Handled = true; return; }
-
+                // Tab completes current and moves to next
                 if (cur.Options.Count == 0)
                 {
+                    // Free text: keep typed text; remove highlight and move next
+                    MarkCurrentCompleted();
                     JumpToNextOrExit();
                     e.Handled = true;
                     return;
@@ -174,48 +229,108 @@ public static class SnippetInputHandler
 
                 if (cur.Kind == PlaceholderKind.MultiChoice)
                 {
-                    var texts = popup?.GetSelectedTexts() ?? new List<string>();
+                    var texts = session.Popup?.GetSelectedTexts() ?? new List<string>();
                     if (texts.Count == 0)
                     {
-                        var sel = popup?.Selected;
+                        var sel = session.Popup?.Selected;
                         if (sel != null) texts.Add(sel.Text);
                     }
-                    string joiner = string.IsNullOrWhiteSpace(cur.Joiner) ? " " : $" {cur.Joiner.Trim()} ";
-                    AcceptOption(string.Join(joiner, texts));
+                    var output = FormatJoin(texts, cur.Joiner);
+                    AcceptOptionAndComplete(output);
                     e.Handled = true;
                     return;
                 }
-                else
+                else if (cur.Mode == 3)
                 {
-                    var sel = popup?.Selected;
-                    if (sel != null)
-                    {
-                        AcceptOption(sel.Text);
-                    }
-                    else
-                    {
-                        popup?.SelectFirst();
-                        sel = popup?.Selected;
-                        if (sel != null) AcceptOption(sel.Text);
-                        else Exit();
-                    }
+                    // Use accumulated buffer to resolve
+                    var key = session.ChoiceBuffer.ToString();
+                    var match = cur.Options.FirstOrDefault(o => o.Key.Equals(key, System.StringComparison.OrdinalIgnoreCase))
+                               ?? cur.Options.FirstOrDefault();
+                    AcceptOptionAndComplete(match?.Text ?? string.Empty);
                     e.Handled = true;
                     return;
                 }
+                else if (cur.Mode == 1)
+                {
+                    var match = session.Popup?.Selected?.Text ?? cur.Options.FirstOrDefault()?.Text;
+                    AcceptOptionAndComplete(match ?? string.Empty);
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            if (e.Key is Key.Enter)
+            {
+                // End snippet mode and move caret to next line; apply fallback replacement for current
+                ApplyFallbackAndEnd(moveToNextLine: true);
+                e.Handled = true;
+                return;
             }
 
             if (e.Key == Key.Escape)
             {
-                Exit(); e.Handled = true; return;
+                // End snippet: caret at end of inserted snippet; apply fallback replacement
+                ApplyFallbackAndEnd(moveToNextLine: false);
+                e.Handled = true; return;
             }
         }
 
-        void AcceptOption(string text)
+        void MarkCurrentCompleted()
+        {
+            if (session.Current != null)
+            {
+                session.Current.Length = 0; // stop highlighting this placeholder
+            }
+        }
+
+        void AcceptOptionAndComplete(string text)
         {
             if (session.Current is null) { Exit(); return; }
-
             ReplaceSelection(area, text);
+            // Mark the placeholder as completed to remove highlight
+            MarkCurrentCompleted();
             JumpToNextOrExit();
+        }
+
+        void ApplyFallbackAndEnd(bool moveToNextLine)
+        {
+            var cur = session.Current;
+            if (cur != null)
+            {
+                string replacement = string.Empty;
+                if (cur.Options.Count == 0)
+                {
+                    replacement = "[ ]"; // free text fallback
+                }
+                else if (cur.Mode == 1)
+                {
+                    replacement = cur.Options.FirstOrDefault()?.Text ?? string.Empty;
+                }
+                else if (cur.Mode == 2)
+                {
+                    var all = cur.Options.Select(o => o.Text).ToList();
+                    replacement = FormatJoin(all, cur.Joiner);
+                }
+                else if (cur.Mode == 3)
+                {
+                    replacement = cur.Options.FirstOrDefault()?.Text ?? string.Empty;
+                }
+
+                if (!string.IsNullOrEmpty(replacement))
+                {
+                    ReplaceSelection(area, replacement);
+                }
+            }
+
+            if (moveToNextLine)
+            {
+                MoveCaretToLineEnd(area);
+            }
+            else
+            {
+                MoveCaretToEndOfSnippet(area, session);
+            }
+            Exit();
         }
 
         void JumpToNextOrExit()
@@ -225,17 +340,19 @@ public static class SnippetInputHandler
             var next = session.NextAfter(session.Current);
             if (next is null || next.Length <= 0)
             {
-                using (EditorMutationShield.Begin(area))
-                    area.Selection = Selection.Create(area, area.Caret.Offset, area.Caret.Offset);
+                // No next placeholder → leave caret at end of inserted snippet
+                MoveCaretToEndOfSnippet(area, session);
                 Exit();
             }
             else
             {
+                session.ChoiceBuffer.Clear();
+                session.MultiSelected.Clear();
                 session.Current = next;
                 SelectPlaceholder(area, session, next);
-                popup?.Close();
-                popup = ShowPopup(area, next);
-                popup?.SelectFirst();
+                session.Popup?.Close();
+                session.Popup = ShowPopup(area, next);
+                session.Popup?.SelectFirst();
             }
         }
 
@@ -248,9 +365,43 @@ public static class SnippetInputHandler
         void Cleanup()
         {
             area.PreviewKeyDown -= OnPreviewKeyDown;
-            popup?.Close();
-            popup = null;
+            session.Popup?.Close();
+            session.Popup = null;
             session.Dispose();
+        }
+    }
+
+    private static string FormatJoin(IReadOnlyList<string> items, string? joiner)
+    {
+        if (items == null || items.Count == 0) return string.Empty;
+        if (items.Count == 1) return items[0];
+        string conj = (string.Equals(joiner, "or", StringComparison.OrdinalIgnoreCase)) ? "or"
+                    : (string.Equals(joiner, "and", StringComparison.OrdinalIgnoreCase)) ? "and"
+                    : "and"; // default
+        if (items.Count == 2) return string.Join($" {conj} ", items);
+        // Oxford comma style: a, b, and c
+        var head = string.Join(", ", items.Take(items.Count - 1));
+        return $"{head}, {conj} {items[^1]}";
+    }
+
+    private static void MoveCaretToLineEnd(TextArea area)
+    {
+        var line = area.Document.GetLineByOffset(area.Caret.Offset);
+        using (EditorMutationShield.Begin(area))
+        {
+            area.Caret.Offset = line.EndOffset;
+            area.Document.Insert(line.EndOffset, Environment.NewLine);
+            area.Caret.Offset = line.EndOffset + Environment.NewLine.Length;
+        }
+    }
+
+    private static void MoveCaretToEndOfSnippet(TextArea area, Session session)
+    {
+        int end = session.InsertOffset + session.Map.Select(p => p.Start + p.Length).DefaultIfEmpty(0).Max();
+        using (EditorMutationShield.Begin(area))
+        {
+            area.Selection = Selection.Create(area, end, end);
+            area.Caret.Offset = end;
         }
     }
 

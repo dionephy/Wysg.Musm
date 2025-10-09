@@ -17,8 +17,8 @@ namespace Wysg.Musm.Radium.ViewModels
         public void InitializeEditor(EditorControl editor)
         {
             editor.MinCharsForSuggest = 1;
-            // Build a composite provider that merges phrases (tokens; combined scope) with active hotkeys
-            editor.SnippetProvider = new CompositeProvider(_phrases, _tenant, _cache, _hotkeys);
+            // Build a composite provider that merges phrases (tokens; combined scope) with active hotkeys and snippets
+            editor.SnippetProvider = new CompositeProvider(_phrases, _tenant, _cache, _hotkeys, _snippets);
             editor.EnableGhostDebugAnchors(false);
             _ = Task.Run(async () =>
             {
@@ -28,6 +28,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 _cache.Set(accountId, combined);
                 // Preload hotkeys snapshot
                 await _hotkeys.PreloadAsync(accountId);
+                // Preload snippets snapshot
+                await _snippets.PreloadAsync(accountId);
                 await EnsureCapsAsync();
             });
         }
@@ -38,10 +40,11 @@ namespace Wysg.Musm.Radium.ViewModels
             private readonly ITenantContext _tenant;
             private readonly IPhraseCache _cache;
             private readonly IHotkeyService _hotkeys;
+            private readonly ISnippetService _snippets;
             private volatile bool _prefetching;
 
-            public CompositeProvider(IPhraseService phrases, ITenantContext tenant, IPhraseCache cache, IHotkeyService hotkeys)
-            { _phrases = phrases; _tenant = tenant; _cache = cache; _hotkeys = hotkeys; }
+            public CompositeProvider(IPhraseService phrases, ITenantContext tenant, IPhraseCache cache, IHotkeyService hotkeys, ISnippetService snippets)
+            { _phrases = phrases; _tenant = tenant; _cache = cache; _hotkeys = hotkeys; _snippets = snippets; }
 
             public IEnumerable<ICSharpCode.AvalonEdit.CodeCompletion.ICompletionData> GetCompletions(ICSharpCode.AvalonEdit.TextEditor editor)
             {
@@ -54,19 +57,21 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (!_cache.Has(accountId) || _cache.Get(accountId).Count == 0)
                 {
                     TryStartPrefetchCombined(accountId);
-                    yield break;
+                    // continue (we can still show hotkeys/snippets if available)
                 }
 
-                var list = _cache.Get(accountId);
-
-                foreach (var t in list.Where(t => t.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                                      .OrderBy(t => t.Length).ThenBy(t => t))
+                // 1) Phrases (tokens)
+                if (_cache.Has(accountId))
                 {
-                    // No tooltip: factories set Description to empty
-                    yield return MusmCompletionData.Token(t);
+                    var list = _cache.Get(accountId);
+                    foreach (var t in list.Where(t => t.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                                          .OrderBy(t => t.Length).ThenBy(t => t))
+                    {
+                        yield return MusmCompletionData.Token(t);
+                    }
                 }
 
-                // Hotkeys with description-driven display
+                // 2) Hotkeys
                 var metaTask = _hotkeys.GetAllHotkeyMetaAsync(accountId);
                 if (!metaTask.IsCompleted) metaTask.Wait(50);
                 var meta = metaTask.IsCompletedSuccessfully ? metaTask.Result : Array.Empty<HotkeyInfo>();
@@ -76,6 +81,19 @@ namespace Wysg.Musm.Radium.ViewModels
                     var desc = string.IsNullOrWhiteSpace(hk.Description) ? GetFirstLine(hk.ExpansionText) : hk.Description;
                     var display = $"{hk.TriggerText} ¡æ {desc}";
                     yield return MusmCompletionData.Hotkey(display, hk.ExpansionText, description: null);
+                }
+
+                // 3) Snippets (database-driven)
+                var snTask = _snippets.GetActiveSnippetsAsync(accountId);
+                if (!snTask.IsCompleted) snTask.Wait(50);
+                var snDict = snTask.IsCompletedSuccessfully ? snTask.Result : new Dictionary<string, (string text, string ast)>(StringComparer.OrdinalIgnoreCase);
+                foreach (var kv in snDict)
+                {
+                    var trigger = kv.Key;
+                    if (!trigger.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+                    var (text, _ast) = kv.Value;
+                    var snippet = new CodeSnippet(trigger, GetFirstLine(text), text);
+                    yield return MusmCompletionData.Snippet(snippet);
                 }
             }
 

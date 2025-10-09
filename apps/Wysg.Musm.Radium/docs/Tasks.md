@@ -284,3 +284,20 @@ Phrase stability test set: T363 T364 T365 (after T358-T362 complete)
 - [X] T461 Implement `SnippetAstBuilder` that parses placeholders and outputs AST JSON (FR-322, FR-323).
 - [X] T462 Integrate auto-build of `snippet_ast` in `SnippetsViewModel.AddAsync` and preview in UI (FR-324).
 - [ ] T463 Add unit tests for `SnippetAstBuilder` covering free text, mode 1 single, mode 2 multiple (joiner/bilateral), and mode 3 single replace (FR-322..FR-323).
+
+## Added (Snippet Runtime Logic - 2025-01-10)
+- [X] T471 Implement snippet session handler with caret lock and overlay highlighting (FR-325, FR-328).
+- [X] T472 Implement placeholder behaviors per mode 0/1/2/3 and Enter/Tab/Esc handling (FR-326, FR-327).
+- [X] T473 Enhance parsing in `CodeSnippet` for mode 2 header options (joiner/bilateral) and mode 3 multi-char keys (FR-327).
+- [X] T476 Implement caret position enforcement preventing arrow/Home/End movement outside placeholder bounds (FR-329).
+- [X] T477 Implement PlaceholderCompletionWindow with single/multi-choice display and visual checkmarks (FR-330, FR-331).
+- [X] T478 Integrate PlaceholderModeManager for global snippet mode state (FR-333).
+- [X] T479 Integrate EditorMutationShield for programmatic mutation guarding (FR-334).
+- [X] T480 Implement bright yellow active placeholder highlight and faint blue non-active highlights in PlaceholderOverlayRenderer (FR-328).
+- [ ] T474 Implement bilateral combination post-processing (e.g., left/right → bilateral phrasing) if required by domain rules.
+- [ ] T475 Add unit tests for snippet session: mode 1 immediate select, mode 2 toggle + tab join with "or"/"and", mode 3 buffered key acceptance, escape/enter flows.
+- [ ] T481 Add integration tests for complete snippet insertion workflow with all placeholder modes.
+- [ ] T482 Add tests for caret lock enforcement and arrow key prevention.
+- [ ] T483 Add tests for Tab navigation across multiple placeholders.
+- [ ] T484 Add tests for Enter/Escape termination behaviors with fallback replacements.
+- [ ] T485 Add tests for mode 2 joiner variations ("or", "and") and multi-select toggling.

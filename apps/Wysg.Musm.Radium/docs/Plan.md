@@ -179,3 +179,19 @@
 - Added Description textbox to Hotkeys add section; persisted via Upsert with new optional parameter.
 - Added Description column to Hotkeys DataGrid for visibility (read-only).
 
+## Change Log Addition (2025-01-10 - Snippet Runtime Logic)
+- Implemented full snippet mode in editor with session management, selection overlay, and caret lock within active placeholder (FR-325, FR-329).
+- Implemented Tab navigation completing current placeholder and moving to next or exiting when none remain (FR-326).
+- Implemented Enter behavior: inserts "[ ]" for incomplete free-text placeholders and exits to next line; for choice placeholders, completes and moves to next (FR-326).
+- Implemented Escape behavior: exits snippet mode immediately with fallback replacements and moves caret to end of snippet (FR-326).
+- Implemented Mode 0 (free text) with Tab completion keeping typed text or "[ ]" fallback (FR-327).
+- Implemented Mode 1 (single choice) with immediate single-key selection and completion; fallback to first option on early exit (FR-327).
+- Implemented Mode 2 (multi-choice) with Space/letter toggle, Tab join with configurable joiner ("or"/"and"), and all-options fallback on early exit (FR-327, FR-331, FR-332).
+- Implemented Mode 3 (single replace) with buffered multi-char key accumulation until Tab/Enter acceptance; fallback to first option on early exit (FR-327).
+- Enhanced CodeSnippet to parse mode 2 header options including "or", "and", and "bilateral" flags; exposed in ExpandedPlaceholder (FR-332).
+- Implemented PlaceholderCompletionWindow with multi-select visual (checkmarks), arrow navigation, and single/multi-choice modes (FR-330, FR-331).
+- Integrated PlaceholderModeManager for global snippet mode state preventing editor feature interference (FR-333).
+- Integrated EditorMutationShield guarding programmatic mutations to prevent cascading exceptions during snippet sessions (FR-334).
+- Implemented PlaceholderOverlayRenderer showing active placeholder with bright yellow highlight and other placeholders with faint blue highlights (FR-328).
+- Implemented caret position enforcement preventing arrow key, Home, End movements outside current placeholder bounds (FR-329).
+

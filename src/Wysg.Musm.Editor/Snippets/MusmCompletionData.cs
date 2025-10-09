@@ -23,23 +23,31 @@ public sealed class MusmCompletionData : ICompletionData
 
     public string Preview { get; }
 
-    public object Content => Text; // keep list content minimal
+    private readonly string _content; // what shows in the popup list
+    public object Content => _content;
     public double Priority => 0.0;
 
     // ----- Factories -----
     public static MusmCompletionData Token(string token, string? description = null) =>
         new(token, isHotkey: false, isSnippet: false,
-            replacement: token, preview: token, desc: null, snippet: null);
+            replacement: token, preview: token, desc: null, snippet: null,
+            content: token);
 
     public static MusmCompletionData Hotkey(string display, string expanded, string? description = null) =>
         new(display, isHotkey: true, isSnippet: false,
-            replacement: expanded, preview: expanded, desc: null, snippet: null);
+            replacement: expanded, preview: expanded, desc: null, snippet: null,
+            content: display);
 
-    public static MusmCompletionData Snippet(CodeSnippet snippet) =>
-        new(snippet.Shortcut, isHotkey: false, isSnippet: true,
+    public static MusmCompletionData Snippet(CodeSnippet snippet)
+    {
+        var content = $"{snippet.Shortcut} → {snippet.Description}";
+        return new(
+            text: content, // filtering matches on trigger prefix since content starts with trigger
+            isHotkey: false, isSnippet: true,
             replacement: string.Empty, preview: snippet.PreviewText(),
-            desc: null, // suppress tooltip
-            snippet: snippet);
+            desc: null, snippet: snippet,
+            content: content);
+    }
 
     // ----- impl -----
     private readonly CodeSnippet? _snippet;
@@ -51,7 +59,8 @@ public sealed class MusmCompletionData : ICompletionData
         string replacement,
         string preview,
         object? desc,
-        CodeSnippet? snippet)
+        CodeSnippet? snippet,
+        string content)
     {
         Text = text;
         IsHotkey = isHotkey;
@@ -60,6 +69,7 @@ public sealed class MusmCompletionData : ICompletionData
         Preview = preview;
         Description = desc!; // may be null → completion window shows no tooltip
         _snippet = snippet;
+        _content = content;
     }
 
     public void Complete(TextArea area, ISegment completionSegment, EventArgs insertionRequestEventArgs)

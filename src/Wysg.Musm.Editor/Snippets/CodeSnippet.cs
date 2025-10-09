@@ -22,34 +22,40 @@ public sealed record SnippetOption(string Key, string Text);
 public sealed class ExpandedPlaceholder
 {
     public int Index { get; init; }
+    public int Mode { get; init; } // 0,1,2,3 based on snippet header
     public string Label { get; init; }
     public int Start { get; set; }
     public int Length { get; set; }
     public IReadOnlyList<SnippetOption> Options { get; init; }
     public PlaceholderKind Kind { get; init; }
-    public string? Joiner { get; init; }  // for MultiChoice (e.g., "or")
+    public string? Joiner { get; init; }  // for MultiChoice (e.g., "or" or "and")
+    public bool Bilateral { get; init; }  // for mode 2 option processing
 
-    public ExpandedPlaceholder(int index, string label, int start, int length,
+    public ExpandedPlaceholder(int index, int mode, string label, int start, int length,
                                IReadOnlyList<SnippetOption> options,
                                PlaceholderKind kind,
-                               string? joiner = null)
+                               string? joiner = null,
+                               bool bilateral = false)
     {
         Index = index;
+        Mode = mode;
         Label = label;
         Start = start;
         Length = length;
         Options = options;
         Kind = kind;
         Joiner = joiner;
+        Bilateral = bilateral;
     }
 }
 
 /// Hotkey: plain text without placeholders
 /// Snippet: supports:
-///   - ${label}              -> FreeText
-///   - ${date} / ${number}   -> macros
-///   - ${1^label=a^A|b^B}    -> SingleChoice (letter/number keys)
-///   - ${2^label^or=a^A|b^B} -> MultiChoice with joiner "or"
+///   - ${label}                              -> FreeText
+///   - ${date} / ${number}                   -> macros
+///   - ${1^label=a^A|b^B}                    -> Mode 1 SingleChoice (immediate)
+///   - ${2^label^or^bilateral=a^A|b^B|...}  -> Mode 2 MultiChoice with options (joiner=or/and, bilateral)
+///   - ${3^label=aa^A|bb^B}                  -> Mode 3 SingleChoice (multi-char keys, accept on Tab)
 public sealed class CodeSnippet
 {
     public string Shortcut { get; }
@@ -64,11 +70,10 @@ public sealed class CodeSnippet
     }
 
     // Combined placeholder regex:
-    // 1) Choice: ${<idx>^<label>(^<joiner>)?=<opts>}
-    //    where <opts> is key^text | key^text | ...
+    // 1) Header: ${<idx>^<left>=<opts>} where <left> is label[^opt...]
     // 2) Free/Macros: ${<free>}
     private static readonly Regex PlaceholderRx = new(
-        @"\$\{(?:(?<idx>\d+)\^(?<label>[^}=]+?)(?:\^(?<join>[^}=]+))?=(?<opts>[^}]*)|(?<free>[^}]+))\}",
+        @"\$\{(?:(?<idx>\d+)\^(?<left>[^}=]+)=(?<opts>[^}]*)|(?<free>[^}]+))\}",
         RegexOptions.Compiled);
 
     public bool IsSnippet => PlaceholderRx.IsMatch(Template);
@@ -81,11 +86,13 @@ public sealed class CodeSnippet
         {
             if (m.Groups["idx"].Success)
             {
-                // choice: show label → first option
-                var label = m.Groups["label"].Value;
+                var left = m.Groups["left"].Value;
+                var (mode, label, joiner, bilateral) = ParseHeader(left);
                 var opts = ParseOptions(m.Groups["opts"].Value);
                 var first = opts.FirstOrDefault()?.Text ?? "";
-                return $"{label} → {first}";
+                return mode == 2
+                    ? $"{label} → {first}"
+                    : $"{label} → {first}";
             }
             // free / macro
             var free = m.Groups["free"].Value.Trim();
@@ -116,20 +123,21 @@ public sealed class CodeSnippet
 
             if (m.Groups["idx"].Success)
             {
-                // Choice (single or multi)
                 int idx = int.Parse(m.Groups["idx"].Value);
-                string label = m.Groups["label"].Value;
-                string? joiner = m.Groups["join"].Success ? m.Groups["join"].Value : null;
+                var left = m.Groups["left"].Value;
+                var (mode, label, joiner, bilateral) = ParseHeader(left);
                 var options = ParseOptions(m.Groups["opts"].Value);
 
                 int start = sb.Length;
-                // Insert the label as the initial visible token
+                // show label as initial visible token
                 sb.Append(label);
                 int length = label.Length;
 
-                var kind = string.IsNullOrEmpty(joiner) ? PlaceholderKind.SingleChoice
-                                                        : PlaceholderKind.MultiChoice;
-                map.Add(new ExpandedPlaceholder(idx, label, start, length, options, kind, joiner));
+                var kind = mode == 2 ? PlaceholderKind.MultiChoice : PlaceholderKind.SingleChoice;
+
+                map.Add(new ExpandedPlaceholder(index: idx, mode: mode, label: label,
+                    start: start, length: length, options: options, kind: kind,
+                    joiner: joiner, bilateral: bilateral));
             }
             else
             {
@@ -151,15 +159,16 @@ public sealed class CodeSnippet
                 }
                 else
                 {
-                    initial = label; // show label as hint; user will type over it
+                    initial = label; // hint text
                     kind = PlaceholderKind.FreeText;
                 }
 
                 sb.Append(initial);
                 int length = initial.Length;
 
-                map.Add(new ExpandedPlaceholder(autoIndex++, label, start, length,
-                                                Array.Empty<SnippetOption>(), kind, null));
+                map.Add(new ExpandedPlaceholder(index: autoIndex++, mode: 0, label: label,
+                    start: start, length: length, options: Array.Empty<SnippetOption>(),
+                    kind: kind, joiner: null, bilateral: false));
             }
 
             cursor = m.Index + m.Length;
@@ -168,6 +177,27 @@ public sealed class CodeSnippet
         if (cursor < Template.Length) sb.Append(Template.AsSpan(cursor));
 
         return (sb.ToString(), map);
+    }
+
+    private static (int mode, string label, string? joiner, bool bilateral) ParseHeader(string left)
+    {
+        // left is "label" or "label^opt1^opt2"; mode determined by caller (idx)
+        // For mode 2, options can include "or" or "and" and "bilateral".
+        var parts = left.Split('^', StringSplitOptions.RemoveEmptyEntries);
+        string label = (parts.Length > 0) ? parts[0] : string.Empty;
+        string? joiner = null;
+        bool bilateral = false;
+        if (parts.Length > 1)
+        {
+            for (int i = 1; i < parts.Length; i++)
+            {
+                var opt = parts[i].Trim().ToLowerInvariant();
+                if (opt == "or" || opt == "and") joiner = opt;
+                if (opt == "bilateral") bilateral = true;
+            }
+        }
+        // The actual mode is set by idx in Expand; here we return a placeholder 0 for mode (unused)
+        return (0, label, joiner, bilateral);
     }
 
     private static List<SnippetOption> ParseOptions(string raw)
@@ -179,7 +209,7 @@ public sealed class CodeSnippet
         {
             var idx = tok.IndexOf('^');
             if (idx <= 0 || idx >= tok.Length - 1) continue;
-            string key = tok.Substring(0, idx).Trim();    // can be letter or digit (e.g., "a", "3")
+            string key = tok.Substring(0, idx).Trim();    // can be letter/digit or multi-char (e.g., "aa")
             string text = tok.Substring(idx + 1).Trim();
             if (key.Length > 0 && text.Length > 0)
                 list.Add(new SnippetOption(key, text));
