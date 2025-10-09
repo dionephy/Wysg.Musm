@@ -1,5 +1,33 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Phrases tab shows account + global (2025-10-09)
+- FR-283 Phrases tab MUST display both current account phrases and global phrases in a single list. Each row retains its scope via `account_id` (NULL = global). Toggling Active MUST call the appropriate scope-aware API (`ToggleActiveAsync(accountId? : null, id)`). Adding a new phrase from this tab MUST create an account-scoped phrase for the current account. Completion window MUST use combined phrases (global + account) for suggestions.
+- FR-284 Phrases tab MUST include a read-only column `Global` showing a boolean derived from `account_id IS NULL` for quick scope recognition.
+
+## Update: Global Phrase Conversion (2025-10-09)
+- **FR-279** Global phrases admin MUST be able to convert selected account-specific phrases into global phrases from Settings → Global Phrases tab.
+  - When converting multiple phrases with identical text from the same account, exactly one global row MUST remain (account_id = NULL) and the rest MUST be deleted.
+  - When a global phrase with the same text already exists, selected account phrases with that text MUST be deleted (deduplicated) and no additional global rows created.
+  - Operation MUST be synchronous and update in-memory snapshots and caches for both the account scope and the global scope on success; UI MUST reflect final snapshot state.
+  - Conversion MUST be guarded by per-account lock and global lock to avoid races; UI displays converted and duplicates removed counts.
+  - UI MUST allow:
+    - Adding a new global phrase
+    - Multi-selecting account phrases via checkboxes and invoking Convert Selected to Global
+    - Toggling Active on existing global phrases
+  - Visibility: Tab is visible when AccountId == 1 (temporary admin guard until role model lands).
+- **FR-280** Global phrases admin tab MUST list all non-global phrases (account_id IS NOT NULL) across all accounts by default when opened; the search box is optional and when left empty the grid shows a cross-account list (latest updated first), enabling mixed-account conversion in a single action.
+- **FR-281** Failsafe duplicate purge: whenever a phrase becomes or already exists as global (account_id IS NULL), all non-global duplicates with the same text across all accounts MUST be removed (DELETE), ensuring a single authoritative global row remains. This applies to both ConvertToGlobal and UpsertPhrase with account_id = NULL.
+- **FR-282** Global Phrases tab MUST NOT contain manual account filter inputs; instead, the Account Phrases grid MUST include a read-only `account_id` column and an editable `Select` checkbox column bound two-way to enable conversion selection. The Convert button MUST operate on all checked rows across mixed accounts.
+- **FR-285** Global Phrases tab MUST expose a `Select All` action that marks all rows in the Account Phrases grid as selected, enabling quick bulk conversion.
+
+## Update: Global Phrases Support (2025-01-08)
+- **FR-273** System MUST support global phrases (account_id IS NULL) that are available to all accounts without requiring account ownership.
+- **FR-274** Phrase queries MUST support three modes: account-only, global-only, and combined (global + account-specific with deduplication).
+- **FR-275** Global phrase management MUST follow the same synchronous database flow as account phrases (FR-258..FR-260) ensuring consistency.
+- **FR-276** Phrase upsert and toggle operations MUST accept nullable account_id where NULL indicates a global phrase accessible to all accounts.
+- **FR-277** Combined phrase queries MUST merge global and account-specific phrases with account-specific taking precedence in case of text conflicts.
+- **FR-278** Database schema MUST use filtered unique indexes to enforce uniqueness separately for global phrases (account_id IS NULL) and per-account phrases (account_id IS NOT NULL).
+
 ## Update: Phrase Toggle Throughput Optimization (2025-10-07)
 - **FR-261** Phrase mutation pipeline MUST avoid cross-account global serialization; only per-account locking is permitted to reduce artificial contention.
 - **FR-262** Phrase toggle/upsert operations MUST NOT apply additional short client-side cancellation tokens (manual CTS) that preempt server execution; rely on CommandTimeout only for cancellation.
@@ -54,6 +82,11 @@
 - **FR-164** Settings window MUST expose an "Automation (Preview)" tab with placeholder checkboxes for configuring actions on New Study and Add Study (non-functional skeleton).
 
 ## Update: Previous studies UX + Report Upsert (2025-10-02)
+- **FR-153** Previous report Reportified toggle MUST apply reversible formatting using preserved original previous study text (no cumulative transformation loss).
+- **FR-154** Current study label visual element changed from TextBlock toSelectable as interim (final selectable requirement may require read-only TextBox) – MUST still bind `CurrentStudyLabel`.
+- **FR-155** Previous study tab title MUST be formatted `YYYY-MM-DD MOD` where MOD is derived modality (LOINC-derived when available; fallback regex heuristic on studyname).
+- **FR-156** Previous study tabs MUST be unique by the composite (StudyDateTime, Modality). Duplicate combinations are ignored during load/ingest.
+- **FR-157** PACS procedure metadata getter failures MUST NOT propagate exceptions (return null + debug log entry).
 - **FR-158** Current study label MUST be displayed in a selectable read-only text control (read-only TextBox) instead of non-selectable label (PP2 fix).
 - **FR-159** Previous study tab buttons MUST not toggle off the active tab when clicked again (except when a different overflow item is selected) – at least one tab remains visually active.
 - **FR-160** Adding a previous study MUST perform an UPSERT into `med.rad_report` keyed by (study_id, report_datetime) updating existing row instead of inserting duplicate (constraint: uq_rad_report__studyid_reportdt).
@@ -173,176 +206,6 @@
 - **FR-152** When AddStudy command invoked: gather selected related study metadata, ensure rad_study, verify banner matches patient/study date; pull findings/conclusion (choose longer variant); build partial report JSON with only `header_and_findings` and `conclusion` populated plus duplication in `findings`; insert med.rad_report row (is_created=false, is_mine=false, created_by=radiologist, report_datetime=report date); refresh PreviousStudies from DB.
 
 ## Update: Previous study tab modality & toggle reliability (2025-10-02)
-- **FR-153** Previous report Reportified toggle MUST apply reversible formatting using preserved original previous study text (no cumulative transformation loss).
-- **FR-154** Current study label visual element changed from TextBlock toSelectable as interim (final selectable requirement may require read-only TextBox) – MUST still bind `CurrentStudyLabel`.
-- **FR-155** Previous study tab title MUST be formatted `YYYY-MM-DD MOD` where MOD is derived modality (LOINC-derived when available; fallback regex heuristic on studyname).
-- **FR-156** Previous study tabs MUST be unique by the composite (StudyDateTime, Modality). Duplicate combinations are ignored during load/ingest.
-- **FR-157** PACS procedure metadata getter failures MUST NOT propagate exceptions (return null + debug log entry).
-
-## Prior Recent Updates
-- FR-146 Birth date persistence.
-- FR-147 Tree toggle user control.
-- FR-144/FR-145 earlier (see history).
-
----
-
-## Update: Completion Navigation Guard (2025-09-30)
-- **FR-131** Completion popup MUST treat the first Down/Up navigation after the editor regains focus as selecting the natural boundary item (first/last) even if a prior selection was left behind, by recalculating navigation state whenever the list is rebuilt and when the list lacks keyboard focus, and the editor MUST adjust selection without raising guard-driven clears so the very next key advances immediately without requiring duplicate keystrokes.
-- **FR-132** Completion popup selection guard MUST prevent recursive event handling and properly handle navigation by using a guard flag to prevent infinite recursion during programmatic selection changes.
-- **FR-133** Completion popup MUST: (a) never skip intermediate items during sequential Up/Down navigation (one keypress → move exactly one item), and (b) cap visible item height to at most 8 items (dynamic ListBox MaxHeight) while allowing scroll for overflow.
-- **FR-134** Completion popup MUST auto-size its height exactly to (items_count * measured_item_height + padding) when item_count ≤ 8, and clamp to 8-items height when item_count > 8, updating after list rebuilds and after selection-induced layout changes.
-
-## Update: Bug Fixes (2025-01-01)
-- **FR-126** Phrase extraction window MUST use proper dependency injection to prevent service injection errors during phrase save operations.
-- **FR-127** Completion popup Down/Up key navigation MUST work reliably by properly handling keyboard events and selection state management.
-- **FR-128** Completion popup selection guard MUST prevent recursive clearing while allowing legitimate keyboard navigation by temporarily disabling selection event handlers during programmatic changes.
-- **FR-129** Completion popup MUST preserve selections that are added via keyboard navigation by detecting multiple SelectionChanged events from single user actions and allowing new selections without interference.
-- **FR-130** Completion popup keyboard navigation MUST correctly handle first vs subsequent navigation by tracking user navigation state rather than relying on selection index, ensuring first Down key always selects first item (index 0).
-
-## Update: Editor Completion Improvements (2025-01-01)
-- **FR-124** Completion list MUST refresh immediately when new phrases are added via phrase extractor or phrase manager by clearing completion cache on phrase upsert/toggle.
-- **FR-125** Down/Up key navigation MUST work properly in completion popup by allowing selection changes during keyboard navigation.
-
-## Update: Phrase Extraction Window (Dereportified Source + Non-blocking Save)
-- Extraction now always uses dereportified versions of current header/findings/conclusion even if UI is in reportified state (uses MainViewModel.GetDereportifiedSections()).
-- Save Selected executes asynchronously with IsBusy gating; UI remains responsive (no freeze on network latency).
-- Save command disabled while background save in progress; re-enabled after completion.
-- Central DB upsert updates in-memory snapshot immediately (single source of truth) — no separate local DB write needed.
-
----
-# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
-
-(Updated: account_id replaces tenant_id; phrase completion now uses in‑memory snapshot. Added OCR element text operation and current patient/study PACS banner extraction.)
-
-**Feature Branch**: `[radium-cumulative]`  
-**Created**: 2025-09-28  
-**Status**: Draft (living cumulative spec)  
-**Input**: User description (evolving), prior implemented feature notes (migrated to Appendix)
-
----
-## Execution Flow (main)
-```
-1. Parse cumulative scope (reporting workflow + editor + mapping + PACS helpers + OCR utilities)
-2. Extract key concepts: studies, previous reports, reporting pipeline, editor assistance, mapping, PACS submission, OCR banner parsing
-3. Mark ambiguities
-4. Define user scenarios (radiologist daily workflow + assistant automation)
-5. Generate functional requirements (testable, numbered FR-###)
-6. Identify key entities (Report, PrevReport, Study, Mapping, GhostSuggestion, Snippet, ProcedureOp)
-7. Run review checklist – implementation details moved to Appendix
-8. Return SUCCESS (spec ready for planning updates)
-```
----
-
-
-## ⚡ Quick Guidelines
-- Focuses on WHAT value Radium delivers to radiologist and supporting assistants
-- Technical HOW (algorithms, classes, UI control specifics) deferred to plan & appendix
-- Ambiguities explicitly tagged
-
----
-
-
-## User Scenarios & Testing (mandatory)
-
-### Primary User Story – Current Study Reporting
-A radiologist selects the current study in PACS. Radium automatically extracts patient & study metadata, prompts for missing mappings (LOINC, technique), generates initial chief complaint/history preview from study & patient remarks, and prepares editable header fields. Radiologist optionally adjusts technique/comparison and then types findings assisted by completions, snippets, and AI ghost suggestions. Post‑processing produces proofread & formatted header/findings/conclusion which can be sent back to PACS in one action.
-
-### Secondary User Story – Previous Study Reference
-Radiologist requests a previous study. Radium retrieves prior report text, splits header vs findings, parses structured header fields, proofreads components, and surfaces selectable comparison content to include in the current report.
-
-### Mapping Story – Studyname→LOINC Parts
-Mapping specialist (or radiologist) opens Studyname→LOINC window, filters studynames, assembles parts via category lists and/or playbook suggestions, adjusts sequence ordering, and saves mapping so future automatic technique / standardized naming can occur without manual prompts.
-
-### Editor Productivity Story
-While entering findings, the editor provides: phrase / hotkey / snippet completions after minimal typing; optional idle ghost (AI) multi‑line suggestions without interrupting typing; snippet placeholder navigation; ability to import and transform prior study findings via contextual action. Completion list updates immediately when new phrases are added.
-
-### PACS Submission Story
-On completion, user initiates "Send to PACS". System validates banner metadata matches current study, injects formatted (reportified + numbered) sections into the respective PACS fields, confirms acknowledgment, and persists final structured report + study metadata locally.
-
-### OCR & Live Banner Story
-User or automation needs quick extraction of patient number or study date/time from currently visible viewer banner (even if not mapped in UI tree). System provides lightweight OCR procedure operation and dedicated PACS methods to retrieve these values for chaining in custom procedures.
-
-### Phrase Management Stability Story
-User toggles phrase active status in Settings phrases tab. System synchronously updates database, then updates in-memory snapshot, then displays the snapshot state (not the optimistic UI state). If database update fails, UI reverts to snapshot state. This ensures stability and consistency under rapid clicking or network issues.
-
-### Acceptance Scenarios
-1. Given a current study with unmapped studyname, when opened, then LOINC mapping window appears before editing proceeds (unless mapping already exists).
-2. Given modality = MR and missing technique mapping, when current study loads, then technique mapping capture window appears and upon confirmation Report.technique is populated.
-3. Given prior report text, when user requests previous study, then system produces structured fields (chief complaint, history, technique, comparison) and proofread variants without modifying original source text.
-4. Given the user types a word of ≥ MinCharsForSuggest letters, when matches exist, then completion popup appears restricted to that word span and only inserts on explicit accept (Enter or delimiter) – never auto‑commits.
-5. Given user is idle (≥ GhostIdleMs) with no completion popup open, when suggestions available, then ghost suggestions render and can be accepted with Tab.
-6. Given findings text entered, when postprocess run, then conclusion preview and all proofread fields are generated exactly once per invocation and are traceable.
-7. Given Send to PACS executed, when PACS acknowledgment received, then system stores final report payload locally atomically (header+findings+conclusion with metadata) or reports failure with reason.
-8. Given the user adds a GetTextOCR operation to a procedure with an element target, then on run the system attempts OCR inside the element bounds and returns extracted text (or explicit reason markers when engine unavailable / empty).
-9. Given the user invokes new PACS methods (Get current patient number / Get current study date time) in procedures, then values derived from banner (digits cluster / date pattern) are returned when present.
-10. **Given user adds new phrases via phrase extractor or phrase manager, when user types prefix of new phrase in editor, then completion popup shows new phrases immediately without restart.**
-11. **Given completion popup is open and user presses Down/Up keys, then selection changes to next/previous item respectively.**
-12. **Given user clicks "Extract Phrases" button, when phrase extraction window opens, then all services are properly injected and phrase saving works without errors.**
-13. **Given completion popup with multiple items is displayed and user presses Down key repeatedly, then selection moves through all items sequentially without skipping or stopping.**
-14. **Given completion popup selection guard is active, when legitimate keyboard navigation occurs, then selection changes are preserved without being cleared by the guard mechanism.**
-15. **Given reportified state is ON for header/findings/conclusion editors, when user attempts to type or paste text, then the text change is cancelled and reportified state toggles OFF, displaying dereportified text for user to make the edit again.**
-
-### Edge Cases
-- What happens when studyname mapping window is closed without selection? → [NEEDS CLARIFICATION: fallback behavior – skip, force retry, or mark as unmapped?]
-- Previous report missing clear header delimiter → Fallback: treat entire text as findings and leave structured header fields empty; still proofread findings.
-- Ghost suggestions appear but user begins typing mid‑suggestion → They must instantly disappear (no flicker insertion) and idle timer resets.
-- PACS field length limit exceeded → [NEEDS CLARIFICATION: truncation vs user warning]
-- Network/LLM service unavailable during postprocess → System must allow manual editing; mark fields requiring AI with placeholder and non‑blocking warning.
-- OCR engine unavailable (Windows OCR not enabled) → Operation returns explicit "(ocr unavailable)" preview token without throwing.
-- Patient number regex finds multiple sequences → Longest sequence selected.
-- Completion popup navigation causes recursive events → Selection guard prevents infinite loops while allowing legitimate navigation.
-- Phrase database timeout during toggle → UI reverts to snapshot state and logs error; user can retry.
-
----
-## Requirements (mandatory)
-
-### Functional Requirements (Reporting Pipeline)
-- **FR-001** System MUST acquire current study patient & study metadata and render in title bar within <1s of selection (local extraction only; external calls excluded).
-- **FR-002** System MUST detect absent studyname→LOINC mapping and prompt user before continuing automatic parsing.
-- **FR-003** System MUST (when modality=MR and technique unmapped) open technique mapping capture prior to drafting header.
-- **FR-004** System MUST run Study Remark Parser (LLM) using inputs (study remark + studyname + patient info) to populate chief_complaint and history_preview.
-- **FR-005** System MUST run Patient Remark Parser (LLM) using inputs (patient remark + studyname + patient info + history_preview) to populate history.
-- **FR-006** System MUST allow manual override for chief_complaint, history, technique, comparison at any time before send.
-- **FR-007** System MUST support retrieving previous study text and populating PrevReport.header_and_findings and PrevReport.conclusion unchanged.
-- **FR-008** System MUST split prev report header vs findings using header findings splitter (LLM) returning split_index.
-- **FR-009** System MUST parse header portion to structured fields (chief_complaint, history, technique, comparison) in PrevReport.
-- **FR-010** System MUST produce proofread variants for each parsed / entered header field via proofreader (LLM) preserving original.
-- **FR-011** System MUST proofread previous findings and conclusion independently of current report fields.
-- **FR-012** System MUST let user select comparisons sourced from previous studies to populate Report.comparison.
-- **FR-013** System MUST capture user-entered findings text in Report.findings without loss of formatting.
-- **FR-014** System MUST generate a conclusion_preview from findings via conclusion generator (LLM).
-- **FR-015** System MUST proofread findings, conclusion_preview, and header fields into *_proofread counterparts.
-- **FR-016** System MUST apply rule-based reportifier to header, findings_proofread, conclusion_proofread producing *_reportified variants.
-- **FR-017** System MUST apply rule-based numberer to conclusion_reportified producing numbered output.
-- **FR-018** System MUST validate banner metadata vs current study prior to PACS submission and block send on mismatch with explicit reason.
-- **FR-019** System MUST submit (header_reportified + findings_reportified) and (conclusion_reportified_numbered) to appropriate PACS fields and confirm acceptance.
-- **FR-020** System MUST persist final report (header_findings composite, conclusion, structured JSON components) on successful PACS acknowledgment.
-- **FR-021** System MUST fetch selected patient/study metadata from Search Results list and expose as properties + `CurrentStudyLabel` string on New Study.
-- **FR-022** System MUST (when AddStudy command invoked) gather selected related study metadata, ensure rad_study, verify banner matches patient/study date, pull findings/conclusion (choose longer variant), build partial report JSON with only `header_and_findings` and `conclusion` populated plus duplication in `findings`, insert med.rad_report row (is_created=false, is_mine=false, created_by=radiologist, report_datetime=report date), refresh PreviousStudies from DB.
-
-### Functional Requirements (Editor Assistance)
-- **FR-050** Editor MUST open completion popup only when current contiguous letter span length ≥ configured MinCharsForSuggest and provider returns ≥1 item.
-- **FR-051** Editor MUST restrict completion replacement range to the word-of-interest (letters only) at popup creation.
-- **FR-052** Editor MUST not auto-select non-exact items; selection appears only on exact match or cursor navigation.
-- **FR-053** Editor MUST close completion popup when caret exits replacement range, word becomes empty, or idle threshold elapses.
-- **FR-054** Editor MUST reserve Tab for ghost suggestion acceptance (not snippet/completion insertion).
-- **FR-055** Editor MUST trigger ghost suggestions only after idle period with no active completion popup.
-- **FR-056** Accepting ghost suggestion MUST insert its full text atomically and clear ghost state.
-- **FR-057** Snippet insertion MUST expand placeholders and allow Tab/Shift+Tab navigation through ordered placeholders.
-- **FR-058** Import-from-previous-study command MUST allow user to insert transformed previous findings into current cursor location (LLM transform) without overwriting unrelated text.
-
-### Functional Requirements (Editor Completion Improvements & Bug Fixes)
-- **FR-124** Completion cache MUST be invalidated immediately when phrases are added or modified via UpsertPhraseAsync or ToggleActiveAsync to ensure new phrases appear in completion list without application restart.
-- **FR-125** Completion popup MUST respond to Down/Up key navigation by allowing selection changes when ListBox has keyboard focus, while maintaining exact-match-only selection for non-keyboard events.
-- **FR-126** Phrase extraction window MUST use dependency injection to resolve PhraseExtractionViewModel with all required services properly injected to prevent runtime errors during phrase operations.
-- **FR-127** Completion popup keyboard navigation MUST handle Up/Down keys reliably by explicitly managing selection state and preventing event propagation conflicts that could interfere with navigation.
-- **FR-128** Completion popup selection guard MUST handle multiple selection events from single user actions by preventing recursive clearing and temporarily disabling event handlers during programmatic selection changes.
-- **FR-129** Completion popup selection preservation MUST detect and allow new selections added via keyboard navigation by analyzing SelectionChanged event patterns and preventing immediate clearing of legitimate user selections.
-- **FR-130** Completion popup first navigation detection MUST track user navigation state using a dedicated flag rather than selection index to ensure first Down key always selects first item (index 0) regardless of existing selections from exact matching.
-- **FR-131** Completion popup MUST recompute first-navigation state when suggestions refresh or the editor owns focus so that the first Down/Up key after typing selects the first or last item instead of skipping ahead even if the list retained a prior selection, and the editor MUST directly handle subsequent Up/Down keys so the very next press moves to the adjacent item on the first try.
-- **FR-132** Completion popup selection guard MUST prevent recursive event handling by using a guard flag to stop infinite loops during programmatic changes while preserving legitimate keyboard navigation.
-- **FR-133** Completion popup MUST: (a) never skip intermediate items during sequential Up/Down navigation (one keypress → move exactly one item), and (b) cap visible item height to at most 8 items (dynamic ListBox MaxHeight) while allowing scroll for overflow.
-- **FR-134** Completion popup MUST auto-size its height exactly to (items_count * measured_item_height + padding) when item_count ≤ 8, and clamp to 8-items height when item_count > 8, updating after list rebuilds and after selection-induced layout changes.
 - **FR-153** Previous report Reportified toggle MUST apply reversible formatting using preserved original previous study text (no cumulative transformation loss).
 - **FR-154** Current study label visual element changed from TextBlock toSelectable as interim (final selectable requirement may require read-only TextBox) – MUST still bind `CurrentStudyLabel`.
 - **FR-155** Previous study tab title MUST be formatted `YYYY-MM-DD MOD` where MOD is derived modality (LOINC-derived when available; fallback regex heuristic on studyname).
@@ -646,3 +509,4 @@ Future
 - **FR-272** After cancelling a text change and dereportifying, the editor MUST display the dereportified (raw) text for the user to make their intended edit.
 
 ## Update: Completion First Item Auto-Select (2025-10-07)
+- **FR-264** Completion popup MUST auto-select the first item by default whenever it opens or when no exact prefix match is found, ensuring immediate Enter commits the first suggestion without requiring initial Down key navigation.

@@ -1,6 +1,7 @@
 <Window x:Class="Wysg.Musm.Radium.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:Wysg.Musm.Radium.Views"
         Title="Settings" Height="780" Width="1020" WindowStartupLocation="CenterOwner" Background="#1E1E1E" Foreground="#E8E8E8">
     <Grid Margin="12">
         <Grid.Resources>
@@ -19,6 +20,9 @@
             <SolidColorBrush x:Key="BrushTextSecondary" Color="#C8C8C8"/>
             <SolidColorBrush x:Key="BrushTabHeader" Color="#FFE4E4E4"/>
             <SolidColorBrush x:Key="BrushTabHeaderSelected" Color="#FF3E3E3E"/>
+
+            <!-- Converter for Active boolean to button text -->
+            <views:ActiveToButtonTextConverter x:Key="ActiveToButtonTextConverter"/>
 
             <!-- Button / TextBox styles (brightened) -->
             <Style TargetType="Button">
@@ -377,6 +381,7 @@
                             <DataGridCheckBoxColumn Header="Active" Binding="{Binding Active, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
                             <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedAt}" Width="140" IsReadOnly="True"/>
                             <DataGridTextColumn Header="Rev" Binding="{Binding Rev}" Width="80" IsReadOnly="True"/>
+                            <DataGridCheckBoxColumn Header="Global" Binding="{Binding IsGlobal, Mode=OneWay}" Width="70" IsReadOnly="True"/>
                         </DataGrid.Columns>
                     </DataGrid>
 
@@ -526,6 +531,224 @@
                     </GroupBox>
 
                     <TextBox Grid.Row="3" x:Name="spyTxtStatus" IsReadOnly="True" Height="120" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"/>
+                </Grid>
+            </TabItem>
+
+            <!-- Global Phrases (admin only: account_id == 1) -->
+            <TabItem Header="Global Phrases" x:Name="tabGlobalPhrases">
+                <TabItem.Style>
+                    <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding AccountId, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TabItem.Style>
+                <Grid x:Name="globalPhrasesRoot" Margin="8" Loaded="OnGlobalPhrasesTabLoaded">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <TextBlock Grid.Row="0" 
+                               Text="Global Phrases (Available to All Accounts)" 
+                               FontSize="16" 
+                               FontWeight="Bold" 
+                               Foreground="{StaticResource BrushTextPrimary}"
+                               Margin="0,0,0,10"/>
+
+                    <!-- Add New Phrase Section -->
+                    <Border Grid.Row="1" 
+                            BorderBrush="{StaticResource BrushBorder}" 
+                            BorderThickness="1" 
+                            Padding="10" 
+                            Margin="0,0,0,10"
+                            Background="{StaticResource BrushSurfaceAlt}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" 
+                                       Text="New Phrase:" 
+                                       VerticalAlignment="Center" 
+                                       Foreground="{StaticResource BrushTextPrimary}"
+                                       Margin="0,0,10,0"/>
+
+                            <TextBox Grid.Column="1" 
+                                     Text="{Binding NewPhraseText, UpdateSourceTrigger=PropertyChanged}"
+                                     VerticalAlignment="Center"
+                                     Padding="5"
+                                     Margin="0,0,10,0">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Enter" Command="{Binding AddPhraseCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
+
+                            <Button Grid.Column="2" 
+                                    Content="Add Global Phrase" 
+                                    Command="{Binding AddPhraseCommand}"
+                                    Padding="10,5"
+                                    MinWidth="120"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Account Phrase Conversion Section -->
+                    <Border Grid.Row="2"
+                            BorderBrush="{StaticResource BrushBorder}"
+                            BorderThickness="1"
+                            Padding="10"
+                            Margin="0,0,0,10"
+                            Background="{StaticResource BrushSurface}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="200"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Account phrases list -->
+                            <DataGrid Grid.Row="0" Grid.ColumnSpan="2"
+                                      ItemsSource="{Binding AccountPhrases}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False" CanUserDeleteRows="False"
+                                      IsReadOnly="False"
+                                      Background="{StaticResource BrushSurface}"
+                                      Foreground="{StaticResource BrushTextPrimary}"
+                                      BorderBrush="{StaticResource BrushBorder}"
+                                      RowBackground="{StaticResource BrushSurface}"
+                                      AlternatingRowBackground="{StaticResource BrushSurfaceAlt}"
+                                      HeadersVisibility="Column"
+                                      RowHeaderWidth="0">
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="Select" Width="70" IsReadOnly="False">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="AccountId" Binding="{Binding AccountId}" Width="100" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Text" Binding="{Binding Text}" Width="*" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Active" Binding="{Binding Active}" Width="70" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="90" IsReadOnly="True"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Convert + Select All buttons -->
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                                <Button Content="Select All" Command="{Binding SelectAllAccountPhrasesCommand}"/>
+                                <Button Content="Convert Selected to Global" Command="{Binding ConvertSelectedCommand}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Global Phrases List -->
+                    <DataGrid Grid.Row="3" 
+                              ItemsSource="{Binding Items}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              RowHeaderWidth="0"
+                              IsReadOnly="True"
+                              Background="{StaticResource BrushSurface}"
+                              Foreground="{StaticResource BrushTextPrimary}"
+                              BorderBrush="{StaticResource BrushBorder}"
+                              RowBackground="{StaticResource BrushSurface}"
+                              AlternatingRowBackground="{StaticResource BrushSurfaceAlt}">
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
+                                <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}"/>
+                                <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
+                                <Setter Property="BorderThickness" Value="0 0 1 1"/>
+                                <Setter Property="Padding" Value="6 4"/>
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+                        <DataGrid.Columns>
+                            <!-- Text Column -->
+                            <DataGridTextColumn Header="Phrase Text" 
+                                                Binding="{Binding Text}" 
+                                                Width="*" 
+                                                MinWidth="200"/>
+
+                            <!-- Active Status Column -->
+                            <DataGridTextColumn Header="Active" 
+                                                Binding="{Binding Active}" 
+                                                Width="60"/>
+
+                            <!-- Updated Time Column -->
+                            <DataGridTextColumn Header="Updated" 
+                                                Binding="{Binding UpdatedAtDisplay}" 
+                                                Width="150"/>
+
+                            <!-- Revision Column -->
+                            <DataGridTextColumn Header="Rev" 
+                                                Binding="{Binding Rev}" 
+                                                Width="60"/>
+
+                            <!-- Actions Column -->
+                            <DataGridTemplateColumn Header="Actions" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="{Binding Active, Converter={StaticResource ActiveToButtonTextConverter}}"
+                                                Command="{Binding ToggleCommand}"
+                                                Padding="5,2"
+                                                MinWidth="80"
+                                                HorizontalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Status Bar -->
+                    <Border Grid.Row="4" 
+                            BorderBrush="{StaticResource BrushBorder}" 
+                            BorderThickness="0,1,0,0" 
+                            Padding="10,5" 
+                            Margin="0,10,0,0"
+                            Background="{StaticResource BrushSurfaceAlt}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="Status:"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource BrushTextPrimary}"
+                                       Margin="0,0,10,0"
+                                       VerticalAlignment="Center"/>
+
+                            <TextBlock Grid.Column="1" 
+                                       Text="{Binding StatusMessage}"
+                                       Foreground="{StaticResource BrushTextSecondary}"
+                                       VerticalAlignment="Center"/>
+
+                            <Button Grid.Column="2" 
+                                    Content="Refresh" 
+                                    Command="{Binding RefreshCommand}"
+                                    Padding="10,5"
+                                    MinWidth="80"/>
+                        </Grid>
+                    </Border>
                 </Grid>
             </TabItem>
         </TabControl>

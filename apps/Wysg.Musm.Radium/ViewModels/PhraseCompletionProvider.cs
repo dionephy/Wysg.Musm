@@ -7,6 +7,7 @@ using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.CodeCompletion;
 using Wysg.Musm.Editor.Snippets;
 using Wysg.Musm.Radium.Services;
+using System.Collections.Concurrent;
 
 namespace Wysg.Musm.Radium.ViewModels
 {
@@ -14,6 +15,7 @@ namespace Wysg.Musm.Radium.ViewModels
     /// Supplies completion items (tokens) from the central phrase database.
     /// Implements ISnippetProvider to plug into EditorControl per spec_editor.md.
     /// Only letters are treated as word characters (editor behavior already enforces this).
+    /// Now uses combined phrases (global + account-specific) for completion (FR-274, T385).
     /// </summary>
     internal sealed class PhraseCompletionProvider : ISnippetProvider
     {
@@ -21,6 +23,10 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly ITenantContext _ctx;
         private readonly IPhraseCache _cache;
         private volatile bool _prefetching;
+
+        // Tracks whether we've already loaded the combined (global+account) list into cache for a given account.
+        private readonly ConcurrentDictionary<long, DateTime> _combinedReadyAt = new();
+        private static readonly TimeSpan RefreshTtl = TimeSpan.FromMinutes(2); // periodic background refresh
 
         public PhraseCompletionProvider(IPhraseService svc, ITenantContext ctx, IPhraseCache cache)
         { _svc = svc; _ctx = ctx; _cache = cache; }
@@ -32,7 +38,13 @@ namespace Wysg.Musm.Radium.ViewModels
 
             long accountId = _ctx.AccountId; // alias for former tenant id
 
-            // Ensure cache seeded asynchronously (single flight)
+            // If combined list is not known to be loaded (or TTL expired), start a background prefetch to combined list.
+            if (!_combinedReadyAt.TryGetValue(accountId, out var when) || (DateTime.UtcNow - when) > RefreshTtl)
+            {
+                TryStartPrefetch(accountId, allowRetryForEmpty: true);
+            }
+
+            // Ensure cache seeded asynchronously (single flight) if we have no cache yet
             if (!_cache.Has(accountId))
             {
                 TryStartPrefetch(accountId);
@@ -63,21 +75,24 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 try
                 {
-                    var all = await _svc.GetPhrasesForAccountAsync(accountId);
+                    // Use combined phrases (global + account-specific) for completion
+                    var all = await _svc.GetCombinedPhrasesAsync(accountId);
                     if (all.Count > 0)
                     {
                         _cache.Set(accountId, all);
-                        Debug.WriteLine($"[PhraseCompletion] Prefetch loaded {all.Count} phrases for account={accountId}");
+                        _combinedReadyAt[accountId] = DateTime.UtcNow;
+                        Debug.WriteLine($"[PhraseCompletion] Prefetch loaded {all.Count} combined phrases (global + account) for account={accountId}");
                     }
                     else if (allowRetryForEmpty)
                     {
                         // simple delayed retry
                         await Task.Delay(750);
-                        var again = await _svc.GetPhrasesForAccountAsync(accountId);
+                        var again = await _svc.GetCombinedPhrasesAsync(accountId);
                         if (again.Count > 0)
                         {
                             _cache.Set(accountId, again);
-                            Debug.WriteLine($"[PhraseCompletion] Retry loaded {again.Count} phrases for account={accountId}");
+                            _combinedReadyAt[accountId] = DateTime.UtcNow;
+                            Debug.WriteLine($"[PhraseCompletion] Retry loaded {again.Count} combined phrases for account={accountId}");
                         }
                     }
                 }

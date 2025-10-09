@@ -8,5 +8,6 @@ namespace Wysg.Musm.Radium.Services
         void Set(long tenantId, IReadOnlyList<string> phrases);
         bool Has(long tenantId);
         void Clear(long tenantId);
+        void ClearAll();
     }
 }

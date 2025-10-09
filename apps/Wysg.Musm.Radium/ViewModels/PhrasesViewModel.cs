@@ -58,6 +58,8 @@ namespace Wysg.Musm.Radium.ViewModels
             
             public PhraseRow(PhrasesViewModel owner) { _owner = owner; }
             public long Id { get; init; }
+            public long? AccountId { get; init; } // null => global phrase
+            public bool IsGlobal => AccountId == null;
             public string Text { get; set; } = string.Empty;
             
             private bool _active;
@@ -67,8 +69,6 @@ namespace Wysg.Musm.Radium.ViewModels
                 set
                 {
                     // STRICT synchronous requirement (2025-10-07 refinement):
-                    // Do NOT apply the optimistic UI change here. We only perform the DB toggle and then
-                    // update the backing field from the refreshed snapshot (UpdateFromSnapshotSynchronous).
                     if (_suppressNotify || _isToggling)
                     {
                         Debug.WriteLine($"[PhraseRow] Active change blocked for id={Id} - suppressNotify={_suppressNotify}, isToggling={_isToggling}");
@@ -85,8 +85,6 @@ namespace Wysg.Musm.Radium.ViewModels
                     OnPropertyChanged(nameof(Active)); // forces UI to reflect current backing field state
                     _suppressNotify = false;
 
-                    // Kick off the strict toggle flow (DB -> snapshot -> UI). Fire & forget is fine because
-                    // UI does NOT show the new state until snapshot update method runs.
                     _ = _owner.OnActiveChangedAsync(this);
                 }
             }
@@ -122,18 +120,6 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
-        private async Task<long?> ResolveAccountIdAsync()
-        {
-            if (_tenant.TenantId > 0) return _tenant.TenantId;
-            var any = await _phrases.GetAnyAccountIdAsync();
-            if (any.HasValue)
-            {
-                _tenant.TenantId = any.Value; // adopt for session
-                Debug.WriteLine($"[PhrasesVM] Adopted fallback account id={any.Value}");
-            }
-            return any;
-        }
-
         private async Task RefreshAsync()
         {
             Debug.WriteLine($"[PhrasesVM] RefreshAsync called - AccountId={_tenant.AccountId}");
@@ -150,21 +136,32 @@ namespace Wysg.Musm.Radium.ViewModels
             
             Debug.WriteLine($"[PhrasesVM] Refreshing phrases from snapshot for account={accountId}");
             
-            // Get the current snapshot state (this will load if needed)
-            var meta = await _phrases.GetAllPhraseMetaAsync(accountId).ConfigureAwait(false);
-            Debug.WriteLine($"[PhrasesVM] GetAllPhraseMetaAsync returned {meta.Count} phrases");
-            
+            // Load account-specific and global metadata
+            var loadAccountTask = _phrases.GetAllPhraseMetaAsync(accountId);
+            var loadGlobalTask = _phrases.GetAllGlobalPhraseMetaAsync();
+            await Task.WhenAll(loadAccountTask, loadGlobalTask).ConfigureAwait(false);
+            var accountMeta = loadAccountTask.Result;
+            var globalMeta = loadGlobalTask.Result;
+
             // Synchronous UI update
             void UpdateUI()
             {
                 Items.Clear();
-                foreach (var m in meta)
+                // Account phrases first (stable previous behavior)
+                foreach (var m in accountMeta)
                 {
-                    var row = new PhraseRow(this) { Id = m.Id, Text = m.Text, UpdatedAt = m.UpdatedAt, Rev = m.Rev };
-                    row.InitializeActive(m.Active); // prevents accidental toggle
-                    Items.Add(row);
+                    var rowAcc = new PhraseRow(this) { Id = m.Id, AccountId = m.AccountId, Text = m.Text, UpdatedAt = m.UpdatedAt, Rev = m.Rev };
+                    rowAcc.InitializeActive(m.Active);
+                    Items.Add(rowAcc);
                 }
-                Debug.WriteLine($"[PhrasesVM] Loaded {Items.Count} items from snapshot to UI");
+                // Then global phrases
+                foreach (var g in globalMeta)
+                {
+                    var rowG = new PhraseRow(this) { Id = g.Id, AccountId = g.AccountId, Text = g.Text, UpdatedAt = g.UpdatedAt, Rev = g.Rev };
+                    rowG.InitializeActive(g.Active);
+                    Items.Add(rowG);
+                }
+                Debug.WriteLine($"[PhrasesVM] Loaded {Items.Count} items (account + global) to UI");
             }
 
             if (Application.Current?.Dispatcher.CheckAccess() == true)
@@ -184,18 +181,18 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine($"[PhrasesVM] Adding phrase: '{text}'");
                 IsBusy = true;
                 
-                // Synchronous flow: database update ¡æ snapshot update ¡æ UI update from snapshot
+                // Synchronous flow: database update -> snapshot update -> UI update from snapshot
                 var newPhrase = await _phrases.UpsertPhraseAsync(accountId, text, true);
                 
                 Debug.WriteLine($"[PhrasesVM] Phrase added successfully: id={newPhrase.Id}");
                 NewText = string.Empty;
                 
-                // Synchronous UI update - Add new phrase to UI displaying exactly what's in the snapshot
                 void AddToUI()
                 {
                     var row = new PhraseRow(this) 
                     { 
-                        Id = newPhrase.Id, 
+                        Id = newPhrase.Id,
+                        AccountId = newPhrase.AccountId,
                         Text = newPhrase.Text, 
                         UpdatedAt = newPhrase.UpdatedAt, 
                         Rev = newPhrase.Rev 
@@ -213,7 +210,6 @@ namespace Wysg.Musm.Radium.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"[PhrasesVM] Add failed: {ex.Message}");
-                // On any error, refresh from snapshot to ensure consistency
                 await RefreshAsync();
             }
             finally
@@ -225,28 +221,30 @@ namespace Wysg.Musm.Radium.ViewModels
         internal async Task OnActiveChangedAsync(PhraseRow row)
         {
             if (row.Id == 0) return; 
-            var accountId = _tenant.AccountId; 
-            if (accountId <= 0) return;
+            long? accountIdForToggle = row.AccountId; // null => global phrase
+            if (!accountIdForToggle.HasValue)
+            {
+                Debug.WriteLine($"[PhrasesVM] Toggle target is GLOBAL phrase id={row.Id}");
+            }
+            else if (accountIdForToggle.Value <= 0)
+            {
+                Debug.WriteLine($"[PhrasesVM] Invalid account id for toggle: {accountIdForToggle}");
+                return;
+            }
             
-            Debug.WriteLine($"[PhrasesVM] Synchronous toggle requested for phrase id={row.Id} text='{row.Text}' (no optimistic UI state)");
+            Debug.WriteLine($"[PhrasesVM] Synchronous toggle requested for phrase id={row.Id} text='{row.Text}' (scope={(accountIdForToggle.HasValue ? "account" : "global")})");
             
-            // Mark as toggling to prevent further UI changes during operation
             row.SetToggling(true);
             
             try
             {
-                // STRICT flow: user action already captured ¡æ database update ¡æ snapshot ¡æ UI
-                var updated = await _phrases.ToggleActiveAsync(accountId, row.Id).ConfigureAwait(false);
-                
+                var updated = await _phrases.ToggleActiveAsync(accountIdForToggle, row.Id).ConfigureAwait(false);
                 if (updated == null) 
                 {
                     Debug.WriteLine($"[PhrasesVM] Toggle failed for id={row.Id}, refreshing from snapshot");
-                    // Failed - refresh from snapshot to ensure consistency
                     await RefreshAsync();
                     return;
                 }
-                
-                Debug.WriteLine($"[PhrasesVM] Toggle completed for id={row.Id}, snapshot state={updated.Active}");
                 
                 void UpdateUI()
                 {
@@ -257,7 +255,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (Application.Current?.Dispatcher.CheckAccess() == true)
                     UpdateUI();
                 else
-                    Application.Current?.Dispatcher.Invoke(UpdateUI); // Synchronous invoke
+                    Application.Current?.Dispatcher.Invoke(UpdateUI);
             }
             catch (Exception ex)
             {
@@ -275,7 +273,7 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             private readonly Func<object?, Task> _execAsync;
             private readonly Predicate<object?>? _can;
-            public DelegateCommand(Func<object?, Task> execAsync, Predicate<object?>? can = null) { _execAsync = execAsync; _can = can; }
+            public DelegateCommand(Func<object?, Task> execAsync, Predicate<object?>? _can = null) { _execAsync = execAsync; this._can = _can; }
             public bool CanExecute(object? parameter) => _can?.Invoke(parameter) ?? true;
             public async void Execute(object? parameter) => await _execAsync(parameter);
             public event EventHandler? CanExecuteChanged;

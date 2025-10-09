@@ -189,6 +189,7 @@ namespace Wysg.Musm.Radium
             services.AddTransient<StudynameLoincViewModel>();
             services.AddTransient<PhrasesViewModel>();
             services.AddTransient<PhraseExtractionViewModel>();
+            services.AddTransient<GlobalPhrasesViewModel>(); // Global phrases admin UI (account_id=1 only)
             services.AddTransient<SettingsViewModel>(sp => new SettingsViewModel(
                 sp.GetRequiredService<IRadiumLocalSettings>(),
                 sp.GetService<IReportifySettingsService>(),

@@ -1,19 +1,50 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Globalization;
+using System.Windows.Data;
 using Wysg.Musm.Radium.ViewModels;
+using Wysg.Musm.Radium.Services;
 using Microsoft.Extensions.DependencyInjection;
+using System.ComponentModel;
 
 namespace Wysg.Musm.Radium.Views
 {
-    public partial class SettingsWindow : Window
+    /// <summary>
+    /// Converter for Active boolean to button text.
+    /// </summary>
+    public class ActiveToButtonTextConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is bool active)
+            {
+                return active ? "Deactivate" : "Activate";
+            }
+            return "Toggle";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public partial class SettingsWindow : Window, INotifyPropertyChanged
     {
         private Border? _dragGhost; private string? _dragItem; private ListBox? _dragSource; private Border? _dropIndicator;
         private readonly bool _databaseOnly;
+        private readonly ITenantContext? _tenantContext;
+
+        // Expose AccountId for binding
+        public long AccountId => _tenantContext?.AccountId ?? 0;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public SettingsWindow(bool databaseOnly = false)
         {
@@ -23,15 +54,43 @@ namespace Wysg.Musm.Radium.Views
             {
                 var vm = app.Services.GetRequiredService<SettingsViewModel>();
                 DataContext = vm;
+                _tenantContext = app.Services.GetService<ITenantContext>();
+                
+                // Subscribe to account changes to update visibility
+                if (_tenantContext != null)
+                {
+                    _tenantContext.AccountIdChanged += OnAccountIdChanged;
+                }
             }
             else DataContext = new SettingsViewModel();
             InitializeAutomationLists();
             if (_databaseOnly) ApplyDatabaseOnlyMode();
         }
+        
         public SettingsWindow(SettingsViewModel vm, bool databaseOnly = false)
         {
             _databaseOnly = databaseOnly;
-            InitializeComponent(); DataContext = vm; InitializeAutomationLists(); if (_databaseOnly) ApplyDatabaseOnlyMode();
+            InitializeComponent(); 
+            DataContext = vm; 
+            InitializeAutomationLists(); 
+            if (_databaseOnly) ApplyDatabaseOnlyMode();
+            if (Application.Current is App app)
+            {
+                _tenantContext = app.Services.GetService<ITenantContext>();
+                
+                // Subscribe to account changes
+                if (_tenantContext != null)
+                {
+                    _tenantContext.AccountIdChanged += OnAccountIdChanged;
+                }
+            }
+        }
+
+        private void OnAccountIdChanged(long oldId, long newId)
+        {
+            // Notify that AccountId property has changed
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AccountId)));
+            Debug.WriteLine($"[SettingsWindow] AccountId changed from {oldId} to {newId}");
         }
 
         private void ApplyDatabaseOnlyMode()
@@ -46,9 +105,10 @@ namespace Wysg.Musm.Radium.Views
                     Disable("tabReportify");
                     Disable("tabPhrases");
                     Disable("tabSpy");
+                    Disable("tabGlobalPhrases");
                 }
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 Debug.WriteLine("[SettingsWindow] ApplyDatabaseOnlyMode error: " + ex.Message);
             }
@@ -325,6 +385,30 @@ namespace Wysg.Musm.Radium.Views
             else
             {
                 Debug.WriteLine($"[SettingsWindow] DataContext is not SettingsViewModel, it is: {DataContext?.GetType().Name ?? "null"}");
+            }
+        }
+
+        private void OnGlobalPhrasesTabLoaded(object sender, RoutedEventArgs e)
+        {
+            if (Application.Current is App app)
+            {
+                try
+                {
+                    var vm = app.Services.GetService<GlobalPhrasesViewModel>();
+                    if (vm != null)
+                    {
+                        globalPhrasesRoot.DataContext = vm;
+                        Debug.WriteLine("[SettingsWindow] Successfully set GlobalPhrasesViewModel");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[SettingsWindow] Failed to get GlobalPhrasesViewModel from DI");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[SettingsWindow] Error loading GlobalPhrasesViewModel: {ex.Message}");
+                }
             }
         }
 
