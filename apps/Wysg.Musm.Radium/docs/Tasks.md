@@ -1,6 +1,18 @@
 ﻿# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Added
+- [X] T526 Fix snippet option parsing to allow empty text values (e.g., `0^` for empty string choice) in CodeSnippet.ParseOptions() (FR-371).
+- [X] T515 Fix snippet completion display to show "{trigger} → {description}" instead of "{trigger} → {snippet text}" in MusmCompletionData and EditorCompletionData (FR-362).
+- [X] T516 Implement proper mode extraction from placeholder index prefix (1^, 2^, 3^) in CodeSnippet.Expand() method (FR-363).
+- [X] T517 Add modification tracking to Session class: CurrentPlaceholderModified flag and CurrentPlaceholderOriginalText storage (FR-364, FR-365).
+- [X] T518 Update SelectPlaceholder to record original placeholder text and reset modification flag when switching placeholders (FR-369).
+- [X] T519 Update OnDocumentChanged to mark free-text placeholders as modified when edits occur within their bounds (FR-370).
+- [X] T520 Fix ApplyFallbackAndEnd to only apply "[ ]" for unmodified free text placeholders; keep typed text if modified (FR-364).
+- [X] T521 Improve key handling: allow normal typing in free-text placeholders, handle mode 1 immediate selection, mode 3 buffer accumulation (FR-366, FR-367, FR-368).
+- [X] T522 Update PreviewText method to use new ParseHeader signature (three-tuple return).
+- [X] T523 Update Spec.md with FR-362..FR-370 documenting snippet logic implementation fixes (cumulative).
+- [X] T524 Update Plan.md with change log entry for snippet logic fixes including approach, test plan, and risk mitigation (cumulative).
+- [X] T525 Update Tasks.md with completed snippet logic tasks (this file, cumulative).
 - [X] T493 Add "Get HTML" button to SpyWindow → Crawl Editor toolbar and wire Click to `OnGetHtml` (FR-339).
 - [X] T494 Implement `OnGetHtml` to fetch URL from clipboard (http/https), reuse shared HttpClient, and output HTML or error to `txtStatus` (FR-339, aligns with Custom Procedure `GetHTML`).
 - [X] T495 Update Spec/Plan/Tasks with FR-339 entries and implementation notes.
@@ -45,6 +57,23 @@
 - [X] T509 Document requirement for `GetCurrentPatientRemark` procedure to target Element=`PatientRemark` to avoid accidentally reading `StudyRemark` (FR-355).
 - [X] T510 Auto-seed default procedure when missing: `GetCurrentPatientRemark` → single-step `GetText` on Element=`PatientRemark` (FR-356, FR-357).
 - [X] T511 Auto-seed default procedure when missing: `GetCurrentStudyRemark` → single-step `GetText` on Element=`StudyRemark` (FR-358).
+- [X] T527 Fix completion to show snippet description from DB, fallback to first line when blank (FR-372).
+- [X] T528 Change ISnippetService.GetActiveSnippetsAsync to return description and update caller (EditorInit) (FR-372).
+- [X] T529 Prevent raw newline on Enter when a completion item is selected; commit insertion instead (FR-373).
+- [X] T530 Cancel Enter key when selecting a snippet from completion; commit insertion instead (FR-373).
+- [X] T531 Ensure Enter ends snippet mode and moves caret to next line (FR-374).
+- [X] T532 Apply fallback replacement to all uncompleted placeholders on Enter/Esc per snippet_logic.md (FR-375).
+- [X] T533 Ensure Mode 1 fallback uses first option text even when empty (e.g., pons empty) (FR-375).
+- [X] T534 Enter inserts newline at end-of-snippet and moves caret to next line (FR-376).
+- [X] T535 Mode 1 accepts numpad digits for selection (FR-377).
+- [X] T536 Mode 1 ignores non-matching keys; does not overwrite placeholder text (FR-378).
+- [X] T537 Mode 1 ignore non-matching keys (consume event, no mutation) (FR-379).
+- [X] T538 Use dynamic end TextAnchor to place caret after fully resolved snippet (FR-380).
+- [X] T539 Lock special characters and general typing in Mode 1/3 placeholders (FR-381).
+- [X] T540 Apply dark theme to PlaceholderCompletionWindow (FR-382).
+- [X] T541 Tab accepts selected item and completes placeholder in Mode 1/3 (FR-383).
+- [X] T542 Forward Tab from placeholder popup to SnippetInputHandler and complete Mode 1/3 (FR-384).
+- [X] T543 Cancel Space and commit selection in main completion window (FR-385).
 
 ## Added (previous)
 - [X] T366 Remove global semaphore serialization in PhraseService (per-account only) (FR-261).
@@ -131,6 +160,8 @@ Legend:
 - [X] T160 Multiple event handling test: verify SelectionChanged event patterns are analyzed correctly (FR-129)
 - [X] T161 Navigation state tracking test: verify first Down key always selects first item (FR-130)
 - [X] T162 Recursive guard protection test: verify guard flag prevents infinite loops during programmatic changes (FR-132)
+- [X] T486 Ensure snippet completion items display and stringify as "{trigger} → {description}" across providers (EditorCompletionData, MusmCompletionData).
+- [X] T487 Verify tooltip shows template and preview uses placeholder-first text.
 
 ## Phase 3 – Pipeline Wiring (UI)
 - [ ] T163 Hook UI command: Load Current Study → invoke pipeline stages 1–5 automatically (FR-001..FR-005)  
@@ -177,6 +208,7 @@ Legend:
 - [X] FR-353..FR-355 documented and implemented (Distinct PatientRemark bookmark + mapping list + procedure usage).
 - [X] FR-356..FR-358 documented and implemented (Auto-seed default key procedures for remarks).
 - [X] FR-360..FR-361 documented and implemented (ProcedureExecutor supports GetHTML/Replace and fixed early-return).
+- [X] FR-362..FR-370 documented and implemented (Snippet logic fixes: completion display, mode extraction, modification tracking, placeholder handling).
 - [X] All FR-001..FR-020 have at least one test task
 - [X] All FR-050..FR-058 have editor test or impl task
 - [X] All FR-090..FR-099 mapping & procedure tasks enumerated

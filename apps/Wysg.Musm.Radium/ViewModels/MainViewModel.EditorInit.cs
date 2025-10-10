@@ -67,7 +67,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     foreach (var t in list.Where(t => t.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                                           .OrderBy(t => t.Length).ThenBy(t => t))
                     {
-                        yield return MusmCompletionData.Token(t);
+                        yield return Wysg.Musm.Editor.Snippets.MusmCompletionData.Token(t);
                     }
                 }
 
@@ -80,20 +80,21 @@ namespace Wysg.Musm.Radium.ViewModels
                     if (!hk.TriggerText.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
                     var desc = string.IsNullOrWhiteSpace(hk.Description) ? GetFirstLine(hk.ExpansionText) : hk.Description;
                     var display = $"{hk.TriggerText} ¡æ {desc}";
-                    yield return MusmCompletionData.Hotkey(display, hk.ExpansionText, description: null);
+                    yield return Wysg.Musm.Editor.Snippets.MusmCompletionData.Hotkey(display, hk.ExpansionText, description: null);
                 }
 
                 // 3) Snippets (database-driven)
                 var snTask = _snippets.GetActiveSnippetsAsync(accountId);
-                if (!snTask.IsCompleted) snTask.Wait(50);
-                var snDict = snTask.IsCompletedSuccessfully ? snTask.Result : new Dictionary<string, (string text, string ast)>(StringComparer.OrdinalIgnoreCase);
+                if (!snTask.IsCompleted) snTask.Wait(75);
+                var snDict = snTask.IsCompletedSuccessfully ? snTask.Result : new Dictionary<string, (string text, string ast, string description)>(StringComparer.OrdinalIgnoreCase);
                 foreach (var kv in snDict)
                 {
                     var trigger = kv.Key;
                     if (!trigger.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
-                    var (text, _ast) = kv.Value;
-                    var snippet = new CodeSnippet(trigger, GetFirstLine(text), text);
-                    yield return MusmCompletionData.Snippet(snippet);
+                    var (text, _ast, description) = kv.Value;
+                    var descToUse = string.IsNullOrWhiteSpace(description) ? GetFirstLine(text) : description;
+                    var snippet = new CodeSnippet(trigger, descToUse, text);
+                    yield return Wysg.Musm.Editor.Snippets.MusmCompletionData.Snippet(snippet);
                 }
             }
 

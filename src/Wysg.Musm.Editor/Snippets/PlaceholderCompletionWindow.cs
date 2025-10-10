@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using ICSharpCode.AvalonEdit.Editing;
 
@@ -47,11 +48,11 @@ public sealed class PlaceholderCompletionWindow : Window
             ItemsSource = items.ToList(),
             BorderThickness = new Thickness(0),
             Padding = new Thickness(6, 4, 6, 4),
-            MinWidth = 200,
-            MaxWidth = 380,
-            MaxHeight = 240,
-            Background = Brushes.White,
-            Foreground = Brushes.Black,
+            MinWidth = 220,
+            MaxWidth = 420,
+            MaxHeight = 260,
+            Background = new SolidColorBrush(Color.FromRgb(30, 30, 30)),
+            Foreground = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
             FontSize = 12,
             SnapsToDevicePixels = true,
             Focusable = false,
@@ -59,10 +60,14 @@ public sealed class PlaceholderCompletionWindow : Window
         };
         _list.DisplayMemberPath = nameof(Item.Display);
 
+        // Intercept Tab/Space via event handlers (even though we don't take focus)
+        _list.PreviewKeyDown += OnListPreviewKeyDown;
+
+        // Dark border + subtle shadow
         _chrome = new Border
         {
-            Background = Brushes.White,
-            BorderBrush = new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
+            Background = new SolidColorBrush(Color.FromRgb(30, 30, 30)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(65, 65, 65)),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(6),
             Child = _list,
@@ -70,13 +75,38 @@ public sealed class PlaceholderCompletionWindow : Window
             {
                 ShadowDepth = 2,
                 BlurRadius = 8,
-                Opacity = 0.25
+                Opacity = 0.35
             },
             Focusable = false
         };
 
         Content = _chrome;
         Deactivated += (_, __) => Close();
+    }
+
+    private void OnListPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Tab)
+        {
+            // Let snippet handler consume Tab; avoid inserting a tab char
+            e.Handled = true;
+            // Forward a synthetic Tab press to the editor TextArea so SnippetInputHandler handles it
+            var args = new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(_area.TextView)!, 0, Key.Tab)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent
+            };
+            InputManager.Current?.ProcessInput(args);
+            return;
+        }
+        if (e.Key == Key.Space)
+        {
+            // Toggle selection in multi-choice context only; do not insert a space into editor
+            e.Handled = true;
+            if (_isMulti)
+            {
+                ToggleCurrent();
+            }
+        }
     }
 
     public void ShowAtCaret()

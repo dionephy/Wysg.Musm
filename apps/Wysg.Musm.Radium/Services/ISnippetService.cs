@@ -26,7 +26,7 @@ namespace Wysg.Musm.Radium.Services
     {
         Task PreloadAsync(long accountId);
         Task<IReadOnlyList<SnippetInfo>> GetAllSnippetMetaAsync(long accountId);
-        Task<IReadOnlyDictionary<string, (string text, string ast)>> GetActiveSnippetsAsync(long accountId);
+        Task<IReadOnlyDictionary<string, (string text, string ast, string description)>> GetActiveSnippetsAsync(long accountId);
         Task<SnippetInfo> UpsertSnippetAsync(long accountId, string triggerText, string snippetText, string snippetAst, bool isActive = true, string? description = null);
         Task<SnippetInfo?> ToggleActiveAsync(long accountId, long snippetId);
         Task<bool> DeleteSnippetAsync(long accountId, long snippetId);

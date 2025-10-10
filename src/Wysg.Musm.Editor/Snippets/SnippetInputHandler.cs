@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.Text;
+using System.Windows;
 using System.Windows.Input;
 using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Editing;
@@ -21,12 +22,21 @@ public static class SnippetInputHandler
         public ExpandedPlaceholder? Current;
         private readonly PlaceholderOverlayRenderer _overlay;
 
+        // Tracks dynamic end of snippet span
+        public TextAnchor? EndAnchor { get; set; }
+
         // Popup for current placeholder
         public PlaceholderCompletionWindow? Popup { get; set; }
 
         // Mode 3 accumulation buffer and mode 2 selection set
         public readonly StringBuilder ChoiceBuffer = new();
         public readonly HashSet<string> MultiSelected = new(System.StringComparer.OrdinalIgnoreCase);
+        
+        // Track whether current free-text placeholder was modified
+        public bool CurrentPlaceholderModified { get; set; }
+        
+        // Store original text of current placeholder for comparison
+        public string CurrentPlaceholderOriginalText { get; set; } = string.Empty;
 
         public Session(TextArea area, int insertOffset, List<ExpandedPlaceholder> map)
         {
@@ -83,9 +93,22 @@ public static class SnippetInputHandler
         private void OnDocumentChanged(object? s, DocumentChangeEventArgs e)
         {
             int delta = e.InsertionLength - e.RemovalLength;
-            if (delta == 0) return;
-
+            
             int pos = e.Offset; // absolute doc offset
+
+            // Check if change is within current placeholder (free text typing)
+            if (Current != null && Current.Options.Count == 0)
+            {
+                int startAbs = InsertOffset + Current.Start;
+                int endAbs = startAbs + Current.Length;
+                
+                if (pos >= startAbs && pos <= endAbs)
+                {
+                    CurrentPlaceholderModified = true;
+                }
+            }
+
+            if (delta == 0) return;
 
             foreach (var ph in Map)
             {
@@ -124,6 +147,16 @@ public static class SnippetInputHandler
         PlaceholderModeManager.Enter();
 
         var session = new Session(area, insertOffset, map);
+        // Hook mouse handlers to prevent caret jumps outside placeholder
+        area.PreviewMouseDown += OnPreviewMouseDown;
+        area.PreviewMouseUp += OnPreviewMouseUp;
+
+        // Create anchor at snippet end so it tracks subsequent document changes inside snippet
+        var endAnchor = doc.CreateAnchor(insertOffset + expandedText.Length);
+        endAnchor.MovementType = AnchorMovementType.AfterInsertion; // extend when text inserted at anchor
+        endAnchor.SurviveDeletion = true;
+        session.EndAnchor = endAnchor;
+
         session.Current = session.Map.FirstOrDefault(p => p.Length > 0);
         if (session.Current is null) { Exit(); return; }
 
@@ -174,34 +207,50 @@ public static class SnippetInputHandler
                 {
                     if (cur.Kind == PlaceholderKind.MultiChoice)
                     {
-                        // Toggle (Space or letter)
+                        // Mode 2: Toggle selection (Space or letter)
                         session.Popup?.SelectByKey(keyStr);
                         session.Popup?.ToggleCurrent();
                         e.Handled = true;
                         return;
                     }
-                    else
+                    else if (cur.Mode == 1)
                     {
-                        if (cur.Mode == 1)
+                        // Mode 1: Immediate accept on single key match
+                        var match = cur.Options.FirstOrDefault(o => o.Key.Equals(keyStr, System.StringComparison.OrdinalIgnoreCase));
+                        if (match != null)
                         {
-                            // Immediate accept on single key
-                            var match = cur.Options.FirstOrDefault(o => o.Key.Equals(keyStr, System.StringComparison.OrdinalIgnoreCase));
-                            if (match != null)
-                            {
-                                AcceptOptionAndComplete(match.Text);
-                                e.Handled = true;
-                                return;
-                            }
-                        }
-                        else if (cur.Mode == 3)
-                        {
-                            // Accumulate multi-char key until Tab/Enter
-                            session.ChoiceBuffer.Append(keyStr);
-                            session.Popup?.SelectByKey(session.ChoiceBuffer.ToString());
+                            AcceptOptionAndComplete(match.Text);
                             e.Handled = true;
                             return;
                         }
+                        // If no match, ignore (do not mutate placeholder text)
+                        e.Handled = true;
+                        return;
                     }
+                    else if (cur.Mode == 3)
+                    {
+                        // Mode 3: Accumulate multi-char key until Tab/Enter
+                        session.ChoiceBuffer.Append(keyStr);
+                        session.Popup?.SelectByKey(session.ChoiceBuffer.ToString());
+                        e.Handled = true;
+                        return;
+                    }
+                }
+                else
+                {
+                    // Free text placeholder: allow normal typing (don't handle, let default behavior)
+                    return; // e.Handled stays false
+                }
+            }
+
+            // For Mode 1 and 3, lock other character keys (no typing allowed)
+            if (cur.Options.Count > 0 && (cur.Mode == 1 || cur.Mode == 3))
+            {
+                // Allow only navigation and our handled keys; block others (including punctuation, letters not mapped, backspace/delete, etc.)
+                if (!(e.Key is Key.Tab or Key.Enter or Key.Return or Key.Escape or Key.Up or Key.Down or Key.Left or Key.Right or Key.Home or Key.End))
+                {
+                    e.Handled = true;
+                    return;
                 }
             }
 
@@ -245,6 +294,7 @@ public static class SnippetInputHandler
                     // Use accumulated buffer to resolve
                     var key = session.ChoiceBuffer.ToString();
                     var match = cur.Options.FirstOrDefault(o => o.Key.Equals(key, System.StringComparison.OrdinalIgnoreCase))
+                               ?? cur.Options.FirstOrDefault(o => o.Key.Equals(session.Popup?.Selected?.Key, System.StringComparison.OrdinalIgnoreCase))
                                ?? cur.Options.FirstOrDefault();
                     AcceptOptionAndComplete(match?.Text ?? string.Empty);
                     e.Handled = true;
@@ -252,8 +302,11 @@ public static class SnippetInputHandler
                 }
                 else if (cur.Mode == 1)
                 {
-                    var match = session.Popup?.Selected?.Text ?? cur.Options.FirstOrDefault()?.Text;
-                    AcceptOptionAndComplete(match ?? string.Empty);
+                    // Use popup selected or default first
+                    var selectedKey = session.Popup?.Selected?.Key;
+                    var match = cur.Options.FirstOrDefault(o => o.Key.Equals(selectedKey, System.StringComparison.OrdinalIgnoreCase))
+                               ?? cur.Options.FirstOrDefault();
+                    AcceptOptionAndComplete(match?.Text ?? string.Empty);
                     e.Handled = true;
                     return;
                 }
@@ -261,7 +314,7 @@ public static class SnippetInputHandler
 
             if (e.Key is Key.Enter)
             {
-                // End snippet mode and move caret to next line; apply fallback replacement for current
+                // End snippet mode and move caret to next line; apply fallback replacement for ALL remaining placeholders
                 ApplyFallbackAndEnd(moveToNextLine: true);
                 e.Handled = true;
                 return;
@@ -294,37 +347,68 @@ public static class SnippetInputHandler
 
         void ApplyFallbackAndEnd(bool moveToNextLine)
         {
-            var cur = session.Current;
-            if (cur != null)
+            // Build replacements for ALL placeholders that are not completed (Length>0)
+            var toReplace = new List<(int absStart, int length, string replacement)>();
+            foreach (var ph in session.Map)
             {
-                string replacement = string.Empty;
-                if (cur.Options.Count == 0)
+                if (ph.Length <= 0) continue; // already completed
+                int absStart = session.InsertOffset + ph.Start;
+                int length = ph.Length;
+
+                string? replacement = null;
+
+                if (ph.Options.Count == 0)
                 {
-                    replacement = "[ ]"; // free text fallback
+                    // Free text
+                    if (ph == session.Current)
+                    {
+                        if (!session.CurrentPlaceholderModified)
+                            replacement = "[ ]";
+                        // else leave typed text (replacement stays null)
+                    }
+                    else
+                    {
+                        // Non-current free text was not modified; replace with [ ]
+                        replacement = "[ ]";
+                    }
                 }
-                else if (cur.Mode == 1)
+                else if (ph.Mode == 1)
                 {
-                    replacement = cur.Options.FirstOrDefault()?.Text ?? string.Empty;
+                    replacement = ph.Options.FirstOrDefault()?.Text ?? string.Empty; // may be empty
                 }
-                else if (cur.Mode == 2)
+                else if (ph.Mode == 2)
                 {
-                    var all = cur.Options.Select(o => o.Text).ToList();
-                    replacement = FormatJoin(all, cur.Joiner);
+                    var all = ph.Options.Select(o => o.Text).ToList();
+                    replacement = FormatJoin(all, ph.Joiner);
                 }
-                else if (cur.Mode == 3)
+                else if (ph.Mode == 3)
                 {
-                    replacement = cur.Options.FirstOrDefault()?.Text ?? string.Empty;
+                    replacement = ph.Options.FirstOrDefault()?.Text ?? string.Empty;
                 }
 
-                if (!string.IsNullOrEmpty(replacement))
+                if (replacement != null)
                 {
-                    ReplaceSelection(area, replacement);
+                    toReplace.Add((absStart, length, replacement));
+                }
+            }
+
+            // Apply replacements from right to left to keep offsets valid
+            if (toReplace.Count > 0)
+            {
+                using (EditorMutationShield.Begin(area))
+                {
+                    foreach (var item in toReplace.OrderByDescending(t => t.absStart))
+                    {
+                        area.Document.Replace(item.absStart, item.length, item.replacement);
+                    }
                 }
             }
 
             if (moveToNextLine)
             {
-                MoveCaretToLineEnd(area);
+                // Move caret to the end of snippet, then insert newline
+                MoveCaretToEndOfSnippet(area, session);
+                InsertNewLineAtCaret(area);
             }
             else
             {
@@ -365,9 +449,46 @@ public static class SnippetInputHandler
         void Cleanup()
         {
             area.PreviewKeyDown -= OnPreviewKeyDown;
+            area.PreviewMouseDown -= OnPreviewMouseDown;
+            area.PreviewMouseUp -= OnPreviewMouseUp;
             session.Popup?.Close();
             session.Popup = null;
             session.Dispose();
+        }
+
+        void OnPreviewMouseDown(object? s, MouseButtonEventArgs e)
+        {
+            if (!PlaceholderModeManager.IsActive) return;
+            var sel = area.Selection.SurroundingSegment;
+            if (sel == null) return;
+            var relative = e.GetPosition(area.TextView); // point relative to TextView
+            var tvPos = area.TextView.GetPosition(relative);
+            if (tvPos == null)
+            {
+                e.Handled = true; return;
+            }
+            int off = area.Document.GetOffset(tvPos.Value.Location);
+            int start = sel.Offset;
+            int end = sel.EndOffset;
+            if (off < start || off > end)
+            {
+                e.Handled = true;
+                using (EditorMutationShield.Begin(area)) area.Caret.Offset = (off < start) ? start : end;
+            }
+        }
+
+        void OnPreviewMouseUp(object? s, MouseButtonEventArgs e)
+        {
+            if (!PlaceholderModeManager.IsActive) return;
+            var sel = area.Selection.SurroundingSegment;
+            if (sel == null) return;
+            int start = sel.Offset;
+            int end = sel.EndOffset;
+            if (area.Caret.Offset < start || area.Caret.Offset > end)
+            {
+                e.Handled = true;
+                using (EditorMutationShield.Begin(area)) area.Caret.Offset = end;
+            }
         }
     }
 
@@ -395,9 +516,20 @@ public static class SnippetInputHandler
         }
     }
 
+    private static void InsertNewLineAtCaret(TextArea area)
+    {
+        using (EditorMutationShield.Begin(area))
+        {
+            var off = area.Caret.Offset;
+            area.Document.Insert(off, Environment.NewLine);
+            area.Caret.Offset = off + Environment.NewLine.Length;
+        }
+    }
+
     private static void MoveCaretToEndOfSnippet(TextArea area, Session session)
     {
-        int end = session.InsertOffset + session.Map.Select(p => p.Start + p.Length).DefaultIfEmpty(0).Max();
+        // Prefer dynamic anchor when available
+        int end = session.EndAnchor?.Offset ?? (session.InsertOffset + session.Map.Select(p => p.Start + p.Length).DefaultIfEmpty(0).Max());
         using (EditorMutationShield.Begin(area))
         {
             area.Selection = Selection.Create(area, end, end);
@@ -409,6 +541,7 @@ public static class SnippetInputHandler
     {
         if (key >= Key.A && key <= Key.Z) { s = ((char)('a' + (key - Key.A))).ToString(); return true; }
         if (key >= Key.D0 && key <= Key.D9) { s = ((char)('0' + (key - Key.D0))).ToString(); return true; }
+        if (key >= Key.NumPad0 && key <= Key.NumPad9) { s = ((char)('0' + (key - Key.NumPad0))).ToString(); return true; }
         s = string.Empty; return false;
     }
 
@@ -421,6 +554,10 @@ public static class SnippetInputHandler
             area.Selection = Selection.Create(area, absStart, absStart + p.Length);
             area.Caret.Offset = absStart + p.Length;
             area.TextView.InvalidateLayer(KnownLayer.Selection);
+            
+            // Record original text and reset modification flag
+            session.CurrentPlaceholderOriginalText = area.Document.GetText(absStart, p.Length);
+            session.CurrentPlaceholderModified = false;
         }
     }
 

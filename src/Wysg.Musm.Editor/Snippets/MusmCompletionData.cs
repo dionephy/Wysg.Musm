@@ -72,6 +72,8 @@ public sealed class MusmCompletionData : ICompletionData
         _content = content;
     }
 
+    public override string ToString() => _content; // ensure ToString shows "{trigger} → {description}"
+
     public void Complete(TextArea area, ISegment completionSegment, EventArgs insertionRequestEventArgs)
     {
         if (IsSnippet)

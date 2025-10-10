@@ -87,9 +87,22 @@ public sealed class CodeSnippet
             if (m.Groups["idx"].Success)
             {
                 var left = m.Groups["left"].Value;
-                var (mode, label, joiner, bilateral) = ParseHeader(left);
+                var (label, joiner, bilateral) = ParseHeader(left);
                 var opts = ParseOptions(m.Groups["opts"].Value);
                 var first = opts.FirstOrDefault()?.Text ?? "";
+                
+                // Extract mode from index
+                int idx = int.Parse(m.Groups["idx"].Value);
+                int mode = 0;
+                if (idx >= 1 && idx <= 3) mode = idx;
+                else if (idx >= 10 && idx <= 39) mode = idx / 10;
+                else if (idx >= 100)
+                {
+                    string idxStr = idx.ToString();
+                    if (int.TryParse(idxStr[0].ToString(), out int firstDigit) && firstDigit >= 1 && firstDigit <= 3)
+                        mode = firstDigit;
+                }
+                
                 return mode == 2
                     ? $"{label} → {first}"
                     : $"{label} → {first}";
@@ -125,17 +138,44 @@ public sealed class CodeSnippet
             {
                 int idx = int.Parse(m.Groups["idx"].Value);
                 var left = m.Groups["left"].Value;
-                var (mode, label, joiner, bilateral) = ParseHeader(left);
+                var (label, joiner, bilateral) = ParseHeader(left);
                 var options = ParseOptions(m.Groups["opts"].Value);
+
+                // Extract mode from index: the first digit is the mode (1, 2, or 3)
+                // The remaining digits (if any) are the actual index
+                int mode = 0;
+                int actualIndex = idx;
+                if (idx >= 1 && idx <= 3)
+                {
+                    mode = idx;
+                    actualIndex = idx;
+                }
+                else if (idx >= 10 && idx <= 39)
+                {
+                    mode = idx / 10;
+                    actualIndex = idx % 10;
+                }
+                else if (idx >= 100)
+                {
+                    // For cases like 123, first digit is mode
+                    string idxStr = idx.ToString();
+                    if (int.TryParse(idxStr[0].ToString(), out int firstDigit) && firstDigit >= 1 && firstDigit <= 3)
+                    {
+                        mode = firstDigit;
+                        actualIndex = int.Parse(idxStr.Substring(1));
+                    }
+                }
 
                 int start = sb.Length;
                 // show label as initial visible token
                 sb.Append(label);
                 int length = label.Length;
 
-                var kind = mode == 2 ? PlaceholderKind.MultiChoice : PlaceholderKind.SingleChoice;
+                var kind = mode == 2 ? PlaceholderKind.MultiChoice : 
+                          (mode == 1 || mode == 3) ? PlaceholderKind.SingleChoice : 
+                          PlaceholderKind.FreeText;
 
-                map.Add(new ExpandedPlaceholder(index: idx, mode: mode, label: label,
+                map.Add(new ExpandedPlaceholder(index: actualIndex, mode: mode, label: label,
                     start: start, length: length, options: options, kind: kind,
                     joiner: joiner, bilateral: bilateral));
             }
@@ -179,9 +219,9 @@ public sealed class CodeSnippet
         return (sb.ToString(), map);
     }
 
-    private static (int mode, string label, string? joiner, bool bilateral) ParseHeader(string left)
+    private static (string label, string? joiner, bool bilateral) ParseHeader(string left)
     {
-        // left is "label" or "label^opt1^opt2"; mode determined by caller (idx)
+        // left is "label" or "label^opt1^opt2"
         // For mode 2, options can include "or" or "and" and "bilateral".
         var parts = left.Split('^', StringSplitOptions.RemoveEmptyEntries);
         string label = (parts.Length > 0) ? parts[0] : string.Empty;
@@ -196,8 +236,7 @@ public sealed class CodeSnippet
                 if (opt == "bilateral") bilateral = true;
             }
         }
-        // The actual mode is set by idx in Expand; here we return a placeholder 0 for mode (unused)
-        return (0, label, joiner, bilateral);
+        return (label, joiner, bilateral);
     }
 
     private static List<SnippetOption> ParseOptions(string raw)
@@ -208,10 +247,13 @@ public sealed class CodeSnippet
         foreach (var tok in raw.Split('|'))
         {
             var idx = tok.IndexOf('^');
-            if (idx <= 0 || idx >= tok.Length - 1) continue;
-            string key = tok.Substring(0, idx).Trim();    // can be letter/digit or multi-char (e.g., "aa")
-            string text = tok.Substring(idx + 1).Trim();
-            if (key.Length > 0 && text.Length > 0)
+            if (idx < 0) continue; // no separator found, skip
+            
+            string key = tok.Substring(0, idx).Trim();
+            string text = (idx < tok.Length - 1) ? tok.Substring(idx + 1).Trim() : string.Empty;
+            
+            // Allow empty text but require non-empty key
+            if (key.Length > 0)
                 list.Add(new SnippetOption(key, text));
         }
         return list;

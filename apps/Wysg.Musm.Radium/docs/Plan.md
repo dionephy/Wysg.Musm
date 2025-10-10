@@ -1,5 +1,90 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
+## Change Log Addition (2025-01-10 - Snippet Empty Text Option Support)
+- Fixed snippet option parsing to allow empty text values (e.g., `0^` for empty string choice).
+- Modified `CodeSnippet.ParseOptions()` to:
+  - Accept options where the text portion is empty string (text after `^` separator).
+  - Only require non-empty key (before `^` separator).
+  - Handle edge cases like `0^|1^and the pons` where first option has key "0" and empty text "".
+- Example use case: `${1^pons=0^|1^and the pons}` now correctly provides two options:
+  - Key "0" → empty string (nothing inserted)
+  - Key "1" → "and the pons"
+- Previous behavior: Empty text options were skipped entirely due to `if (key.Length > 0 && text.Length > 0)` check.
+- New behavior: Empty text allowed, only key must be non-empty via `if (key.Length > 0)` check.
+
+## Approach (Empty Text Options)
+1) Modified ParseOptions to handle `^` separator with optional trailing text.
+2) Extract text using substring with bounds check: `(idx < tok.Length - 1) ? tok.Substring(idx + 1).Trim() : string.Empty`.
+3) Accept option when key is non-empty regardless of text length.
+4) Empty text options insert nothing (empty string) when selected in mode 1/3, or contribute nothing to joined output in mode 2.
+
+## Test Plan (Empty Text Options)
+- Create snippet: `${1^severity=1^mild|2^moderate|3^severe} degree of microangiopathy in the bilateral cerebral white matter ${1^pons=0^|1^and the pons}`
+- Insert snippet and navigate to second placeholder (pons).
+- Press '0' → verify empty string is inserted (nothing appears).
+- Insert snippet again, press '1' → verify "and the pons" is inserted.
+- Verify both options appear in popup with keys "0" and "1".
+
+## Risks / Mitigations (Empty Text Options)
+- Empty text might be confusing to users; consider UI feedback showing "(nothing)" for empty options in popup.
+- Current implementation shows empty string as-is which is acceptable for medical report templates where omission is intentional.
+
+## Change Log Addition (2025-01-10 - Snippet Logic Implementation Fixes)
+- Fixed snippet completion display to show "{trigger} → {description}" instead of "{trigger} → {snippet text}":
+  - Updated `MusmCompletionData.Snippet` factory to use `snippet.Shortcut` and `snippet.Description` in content string.
+  - Updated `EditorCompletionData.ForSnippet` to use same format pattern.
+  - ToString() method now returns the properly formatted display string.
+- Implemented proper mode extraction from placeholder syntax:
+  - Mode number is now extracted from the index prefix (1^, 2^, 3^) in placeholder definitions.
+  - Modified `CodeSnippet.Expand()` to parse mode from first digit of index for indices like 1, 2, 3, or 10-39, or 100+.
+  - Mode determines placeholder behavior: 1=immediate single choice, 2=multi-choice with joiner, 3=multi-char single replace.
+- Fixed free text placeholder fallback logic:
+  - Added tracking in `Session` class to record whether current placeholder was modified during typing.
+  - `SelectPlaceholder` now records original text and resets modification flag when switching placeholders.
+  - `OnDocumentChanged` detects edits within free-text placeholder bounds and marks as modified.
+  - `ApplyFallbackAndEnd` only applies "[ ]" replacement for unmodified free text; keeps typed text if modified.
+- Improved mode-specific key handling:
+  - Mode 1: Single alphanumeric key immediately selects matching option and completes placeholder.
+  - Mode 3: Accumulates multi-char keys in buffer until Tab is pressed for matching.
+  - Free text: Allows normal typing without interference (key events not handled by snippet mode).
+  - Mode 2: Space or matching letter toggles selection in multi-choice popup.
+- Enhanced placeholder navigation:
+  - Tab completes current placeholder with appropriate logic per mode and moves to next.
+  - Enter exits snippet mode with fallback and moves caret to next line.
+  - Escape exits snippet mode with fallback and moves caret to end of inserted snippet.
+  - Arrow keys, Home, End are blocked to keep caret within active placeholder bounds.
+
+## Approach (Snippet Logic)
+1) Mode extraction: Parse first digit of placeholder index to determine behavior mode (1, 2, or 3).
+2) Modification tracking: Track document changes within placeholder bounds to determine if user typed vs left default.
+3) Smart fallback: Apply "[ ]" only for unmodified free text; preserve user typing otherwise.
+4) Mode-specific input: Handle single-key immediate (mode 1), multi-char buffered (mode 3), and multi-select toggle (mode 2).
+5) Cursor confinement: Prevent navigation outside active placeholder during snippet mode.
+
+## Test Plan (Snippet Logic)
+- Free text placeholder:
+  - Insert snippet with `${free text}` placeholder.
+  - Type some text → Tab → verify typed text is kept and cursor moves to next placeholder or end.
+  - Insert again, don't type → Esc → verify "[ ]" is inserted for unfilled placeholder.
+- Mode 1 (immediate single choice):
+  - Insert snippet with `${1^fruit=a^apple|b^banana}`.
+  - Press 'a' → verify immediate replacement with "apple" and completion.
+  - Insert again, press neither → Esc → verify first option "apple" is used as fallback.
+- Mode 2 (multi-choice):
+  - Insert snippet with `${2^items^or=a^cola|b^cider|c^juice}`.
+  - Press 'a' Space 'c' Tab → verify "cola or juice" is inserted.
+  - Insert again, press nothing → Esc → verify all options joined with "or" are inserted.
+- Mode 3 (multi-char single replace):
+  - Insert snippet with `${3^code=aa^apple|bb^banana}`.
+  - Type 'aa' Tab → verify "apple" is inserted.
+  - Insert again, type 'zz' Tab → verify first option "apple" is used (no match).
+  - Insert again, type nothing → Esc → verify first option "apple" is used as fallback.
+
+## Risks / Mitigations (Snippet Logic)
+- If placeholder syntax is malformed, mode may default to 0 (free text behavior).
+- If user types partial match in mode 3 then exits without Tab, first option is used as safe fallback.
+- Modification tracking depends on document change events firing within placeholder bounds; robust for normal typing scenarios.
+
 ## Change Log Addition (2025-10-10 - Automation modules: Study/Patient Remarks)
 - Added two automation modules to Settings → Automation:
   - GetStudyRemark: fetches PACS method "Get current study remark" and updates `study_remark` in current report JSON.
@@ -28,6 +113,72 @@
 - Implemented `Replace` op and `GetHTML` op in the procedure executor for parity with the SpyWindow Custom Procedures UI.
 - Fixed an early return in `ExecuteInternal` that prevented fallback auto-seeding and could lead to returning the previous step’s value when `GetHTML` was present.
 - Registered `CodePagesEncodingProvider` and added light-weight charset handling to decode HTML using header/meta charsets.
+
+## Change Log Addition (2025-01-10 - Snippet Completion Display)
+- Updated completion item formatting to use "{trigger} → {description}" consistently.
+- Applied in `MusmCompletionData.Snippet` and `EditorCompletionData.ForSnippet` (content + ToString override).
+- Tooltip continues to show the full snippet template; preview shows first placeholder preview.
+
+## Change Log Addition (2025-01-10 - Completion uses Snippet Description + Enter handling)
+- Completion provider now pulls snippet `description` from DB and displays "{trigger} → {description}"; falls back to first line of template when description is empty.
+- Enter key on completion window now commits the selected item without inserting a raw newline; if no selection, Enter closes and inserts newline.
+- Updated service contract to return description alongside text and AST.
+
+## Change Log Addition (2025-01-10 - Enter handling + Exit snippet mode)
+- MusmCompletionWindow + EditorControl intercept Enter to commit selected completion items and cancel raw newline.
+- When no selection: if snippet mode active, delegate Enter to SnippetInputHandler; else insert newline and close popup.
+- SnippetInputHandler already ends snippet mode on Enter (ApplyFallbackAndEnd(moveToNextLine: true)).
+
+Tests
+- Invoke completion, select a snippet, press Enter → snippet inserts, no extra newline.
+- With popup open and no selection, press Enter → newline and close (unless snippet mode active, then snippet handler ends mode and moves to next line).
+- During snippet mode, press Enter → mode ends and caret moves to next line.
+
+## Change Log Addition (2025-01-10 - Apply-all placeholder fallbacks)
+- Implemented apply-all fallback replacements when exiting snippet mode (Enter/Esc).
+- Mode 1 fallback uses first option text even when empty (e.g., `${1^pons=0^|1^and the pons}` falls back to empty string).
+
+Test Plan (Apply-all)
+- Insert `${1^severity=1^mild|2^moderate|3^severe} ... ${1^pons=0^|1^and the pons}`
+  - Press Enter immediately: result uses "mild" and "" for pons; caret on next line.
+  - Press Esc immediately: same replacements; caret at end of snippet.
+- Insert with free-text placeholders; without modifying current free-text, press Esc → current and other free-text replaced with "[ ]"; if current was modified, keep its content.
+
+## Change Log Addition (2025-01-10 - Enter newline at end + Mode 1 key handling)
+- Enter now moves caret to end of snippet and inserts a newline; caret ends on next line.
+- Mode 1 accepts numpad digits for selection.
+- Mode 1 ignores non-matching keys; placeholder text remains unchanged.
+
+Test Plan
+- Insert a snippet and immediately press Enter → all placeholders receive fallbacks; caret moves to end, newline inserted, caret on next line.
+- Mode 1 options with numeric keys: press NumPad1/NumPad2 → correct selection and completion.
+- Mode 1: press a letter not in options → nothing changes; caret remains; placeholder unchanged.
+
+## Change Log Addition (2025-01-10 - Caret anchor + Mode 1 ignore)
+- Introduced TextAnchor at snippet end to correctly place caret after all programmatic replacements.
+- Mode 1 key handling ignores non-matching keys (consumes event; no mutation).
+
+Test Plan
+- Snippet with two Mode 1 placeholders, select '1' then '1' → "mild ... and the pons"; caret must be exactly after "pons".
+- Mode 1: press 'a' during placeholder → placeholder remains unchanged; event consumed; no stray "a" appears.
+
+## Change Log Addition (2025-01-10 - Key locking + Dark popup + Tab accept)
+- Implemented key lock for Mode 1/3 placeholders to consume non-navigation/non-control keys.
+- Styled PlaceholderCompletionWindow to dark theme.
+- Tab now accepts selected item for Mode 1/3.
+
+Test Plan
+- Mode 1/3 placeholder: press punctuation or letters not in options → no text appears; event consumed.
+- Popup is dark (bg ~ #1E1E1E, fg ~ #DCDCDC).
+- With popup open on Mode 1/3, press Tab → selected option inserts and current placeholder completes; caret moves to next placeholder or snippet end.
+
+## Change Log Addition (2025-01-10 - Placeholder Tab + Completion Space)
+- Placeholder popup: Tab is forwarded to snippet handler and no raw tab is inserted; Mode 1/3 complete with selected item.
+- Main completion: Space key commits selection and is not inserted into the editor.
+
+Test Plan
+- Mode 1/3 placeholder: open placeholder popup; press Tab → inserts selected item; moves to next placeholder.
+- Completion window: with an item selected, press Space → inserts suggestion; no space is inserted into document.
 
 ## Approach
 1) Surface modules in Automation library list (already bound).

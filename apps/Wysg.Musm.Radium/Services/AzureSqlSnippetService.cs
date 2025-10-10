@@ -69,9 +69,9 @@ namespace Wysg.Musm.Radium.Services
             finally { sem.Release(); }
         }
 
-        public async Task<IReadOnlyDictionary<string, (string text, string ast)>> GetActiveSnippetsAsync(long accountId)
+        public async Task<IReadOnlyDictionary<string, (string text, string ast, string description)>> GetActiveSnippetsAsync(long accountId)
         {
-            if (accountId <= 0) return new Dictionary<string, (string, string)>();
+            if (accountId <= 0) return new Dictionary<string, (string, string, string)>();
             var sem = GetAccountLock(accountId);
             await sem.WaitAsync().ConfigureAwait(false);
             try
@@ -83,7 +83,7 @@ namespace Wysg.Musm.Radium.Services
                 }
                 return snap.Values
                     .Where(s => s.IsActive)
-                    .ToDictionary(s => s.TriggerText, s => (s.SnippetText, s.SnippetAst), StringComparer.OrdinalIgnoreCase);
+                    .ToDictionary(s => s.TriggerText, s => (s.SnippetText, s.SnippetAst, s.Description ?? string.Empty), StringComparer.OrdinalIgnoreCase);
             }
             finally { sem.Release(); }
         }

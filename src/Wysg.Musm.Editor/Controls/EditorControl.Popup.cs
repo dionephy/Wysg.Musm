@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Input;
 using System.Diagnostics;
 using Wysg.Musm.Editor.Completion;
+using Wysg.Musm.Editor.Snippets; // added
 
 namespace Wysg.Musm.Editor.Controls
 {
@@ -79,7 +80,10 @@ namespace Wysg.Musm.Editor.Controls
         private void OnTextEntering(object? s, System.Windows.Input.TextCompositionEventArgs e)
         {
             if (_completionWindow != null && e.Text.Length > 0 && !char.IsLetterOrDigit(e.Text[0]))
+            {
                 _completionWindow.CompletionList.RequestInsertion(e);
+                e.Handled = true; // guarantee the non-alnum char (e.g., space) is canceled
+            }
         }
 
         private void OnTextAreaPreviewKeyDown(object? s, KeyEventArgs e)
@@ -93,17 +97,54 @@ namespace Wysg.Musm.Editor.Controls
             if (ServerGhosts.HasItems && (e.Key is Key.Back or Key.Delete or Key.Enter or Key.Return))
                 ClearServerGhosts();
 
+            // Commit completion on Enter when popup is open and an item is selected (cancel raw newline)
             if (e.Key is Key.Enter or Key.Return)
             {
+                bool hasSelection = _completionWindow?.CompletionList?.ListBox?.SelectedIndex >= 0;
+                if (_completionWindow != null && hasSelection)
+                {
+                    e.Handled = true;
+                    _completionWindow.CompletionList.RequestInsertion(e);
+                    return;
+                }
+
                 bool noSelection = _completionWindow?.CompletionList?.ListBox?.SelectedIndex == -1;
                 if (_completionWindow == null || noSelection)
                 {
+                    // If snippet mode is active, allow SnippetInputHandler to process Enter
+                    if (PlaceholderModeManager.IsActive)
+                    {
+                        return; // do not handle here
+                    }
                     e.Handled = true;
                     CloseCompletionWindow();
                     var off = Editor.CaretOffset;
                     var nl = Environment.NewLine;
                     Editor.Document.Insert(off, nl);
                     Editor.CaretOffset = off + nl.Length;
+                    return;
+                }
+            }
+
+            // Space commits selection (and cancels the space), otherwise inserts a space if popup has no selection
+            if (e.Key == Key.Space)
+            {
+                if (_completionWindow != null)
+                {
+                    e.Handled = true;
+                    bool hasSelection = _completionWindow.CompletionList?.ListBox?.SelectedIndex >= 0;
+                    if (hasSelection)
+                    {
+                        _completionWindow.CompletionList.RequestInsertion(e);
+                    }
+                    else
+                    {
+                        // no selection: insert literal space and close popup
+                        CloseCompletionWindow();
+                        var off = Editor.CaretOffset;
+                        Editor.Document.Insert(off, " ");
+                        Editor.CaretOffset = off + 1;
+                    }
                     return;
                 }
             }
@@ -159,7 +200,12 @@ namespace Wysg.Musm.Editor.Controls
             Editor.TextArea.PreviewKeyDown += (_, e) =>
             {
                 if (e.Key == Key.Tab && (Keyboard.Modifiers == ModifierKeys.None))
-                    e.Handled = true;
+                {
+                    // When snippet mode is active, let SnippetInputHandler process Tab
+                    if (PlaceholderModeManager.IsActive)
+                        return; // do not mark handled
+                    e.Handled = true; // otherwise block raw tab insertion
+                }
             };
         }
     }

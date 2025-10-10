@@ -1,5 +1,17 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Snippet Logic Implementation Fixes (2025-01-10)
+- **FR-362** Snippet completion items MUST display as `{trigger} → {description}` not `{trigger} → {snippet text}` in both MusmCompletionData and EditorCompletionData.
+- **FR-363** Snippet placeholder mode extraction MUST properly parse mode number from the index prefix (1^, 2^, or 3^) in placeholder syntax `${mode^label=...}`.
+- **FR-364** Free text placeholder fallback MUST only apply "[ ]" replacement when the placeholder was NOT modified by user typing; if user typed text, keep the typed text when exiting snippet mode.
+- **FR-365** Snippet session MUST track whether current placeholder text was modified during typing to determine correct fallback behavior on early exit (Enter/Esc).
+- **FR-366** Mode 1 placeholders (single choice immediate) MUST accept selection on single key press matching an option key; non-matching keys should allow normal typing behavior in free-text placeholders.
+- **FR-367** Mode 3 placeholders (single replace multi-char) MUST accumulate typed characters in a buffer until Tab is pressed, then match against option keys for replacement.
+- **FR-368** Snippet mode MUST prevent normal typing interference by only handling alphanumeric keys for choice-based placeholders (modes 1, 2, 3) while allowing normal text input for free-text placeholders.
+- **FR-369** SelectPlaceholder MUST record original placeholder text and reset modification tracking when switching between placeholders for accurate fallback determination.
+- **FR-370** Document change events during snippet mode MUST mark free-text placeholders as modified when edits occur within their bounds to inform fallback logic.
+- **FR-371** Snippet option parsing MUST allow empty text values (e.g., `0^` for empty string choice) enabling options that insert nothing when selected; only the key must be non-empty.
+
 ## Update: Automation Modules for Remarks (2025-10-10)
 - FR-348 Settings → Automation MUST include two modules in the Available Modules list:
   - GetStudyRemark
@@ -103,7 +115,7 @@
 - **FR-320** Snippets tab MUST display a read-only "Sample Snippet" textbox with the following content for user guidance:
   - First lines:
     - ${free text}
-    - ${1^single choice=a^apple|b^banana|3^pear}
+    - ${1^single choice=a^A|b^banana|3^pear}
     - ${2^multiple choices^or=a^cola|b^cider}
     - ${3^single replace=a^apple|b^banana|3^pear}
   - Paragraph:
@@ -305,7 +317,7 @@
 ---
 ## Non-Functional (Derived)
 - **Performance**: Header metadata render <1s (local). Ghost suggestion request dispatch ≤100ms after idle event. LOINC mapping UI list filtering <150ms on typical dataset. OCR element operation should return in <1.2s typical (depends on Windows OCR engine). Completion cache refresh <50ms after phrase add/modify. Keyboard navigation response <50ms. Selection guard event handling <10ms. Multiple event handling <5ms. Navigation state tracking <1ms. Recursive guard handling <1ms. Phrase database operations <2s under normal network conditions. Phrase snapshot updates <100ms.
-- **Reliability**: Any single external (LLM) failure must not block manual editing or PACS send if mandatory fields filled. Dependency injection must resolve all required services to prevent runtime failures. Selection guard must prevent infinite recursion. Multiple SelectionChanged events must be handled gracefully. Navigation state must be tracked accurately. Recursive event handling must be prevented. Phrase database operations must maintain consistency under network instability. Phrase UI must always display snapshot state, never optimistic state.
+- **Reliability**: Any single external (LLM) failure must not block manual editing or PACS send if mandatory fields filled. Dependency injection must resolve all required services to prevent runtime failures. Selection guard must prevent infinite recursion. Multiple SelectionChanged events must be handled gracefully. Navigation state must be tracked accurately. Recursive event handling must be prevented. Phrase database operations must maintain consistency under network instability. Phase UI must always display snapshot state, never optimistic state.
 - **Observability**: Structured logging for each pipeline stage (event type, duration, success/failure) [NEEDS CLARIFICATION: log schema]. Phrase operation logging (database operation, snapshot update, UI update timing).
 - **Local Persistence**: Final report write must be atomic (transaction or temp+rename) [detail for plan]. Phrase snapshot must maintain consistency across database operations.
 
@@ -519,3 +531,38 @@ Future
 - **FR-264** Completion popup MUST auto-select the first item by default whenever it opens or when no exact prefix match is found, ensuring immediate Enter commits the first suggestion without requiring initial Down key navigation.
 - FR-305 Completion list first Down/Up press MUST move to the immediate next/previous item and MUST NOT wrap to last/first when no selection existed previously.
 - FR-306 Completion popup MUST not auto-select exact text matches; default selection is the first item to ensure Down selects the second item consistently.
+
+## Update: Snippet Completion Display and Enter Handling (2025-01-10)
+- FR-372 Completion window MUST display snippets as "{trigger} → {description}" using the DB `description` column; when blank, fallback to first line of `snippet_text`.
+- FR-373 Pressing Enter while a snippet is selected in the completion window MUST insert the snippet (no raw newline). If nothing is selected, Enter inserts a newline and closes the window.
+
+## Update: Snippet Mode Enter Exit (2025-01-10)
+- FR-374 While in snippet mode, pressing Enter MUST end snippet mode (ApplyFallbackAndEnd with moveToNextLine=true) and release PlaceholderModeManager.IsActive.
+
+## Update: Snippet End Applies Fallbacks to All Placeholders (2025-01-10)
+- FR-375 On Enter or Escape, system MUST apply fallback replacement to ALL uncompleted placeholders in the snippet range before exiting:
+  - Free-text: replaced with "[ ]" except the current one if user modified it.
+  - Mode 1: replaced with first option text (may be empty string).
+  - Mode 2: replaced with the join of all option texts using joiner.
+  - Mode 3: replaced with first option text.
+- Caret placement after exit:
+  - Enter: caret moves to next line (newline inserted at end of current line).
+  - Escape: caret moves to end of the inserted snippet.
+
+## Update: Enter positions newline at end of snippet and supports numpad (2025-01-10)
+- FR-376 On Enter, after applying fallbacks, caret MUST move to the end of the inserted snippet and a newline MUST be inserted there; caret lands on the next line.
+- FR-377 Mode 1 key matching MUST accept both top-row digits and numpad digits for selection.
+- FR-378 Mode 1 placeholders MUST ignore non-matching key presses (no mutation of placeholder text or selection state).
+
+## Update: Mode 1 ignore non-matching keys and end-anchor caret fix (2025-01-10)
+- FR-379 Mode 1: Non-matching keys MUST be ignored (no text injected, no selection changed).
+- FR-380 Caret placement after final placeholder completion MUST use a dynamic end anchor to land exactly after the resolved snippet text.
+
+## Update: Mode 1/3 key locking, dark popup, and Tab accept (2025-01-10)
+- FR-381 Special characters and general typing MUST be blocked in Mode 1 and Mode 3 placeholders (only navigation, Tab, Enter, Esc allowed).
+- FR-382 Placeholder completion popup MUST use dark theme consistent with editor.
+- FR-383 In Mode 1 and Mode 3, pressing Tab in the placeholder completion popup MUST accept the selected item and complete the current placeholder.
+
+## Update: Tab accept on placeholder popup and Space suppression (2025-01-10)
+- FR-384 Placeholder completion popup MUST forward Tab to snippet handler (no literal tab in editor) and complete current placeholder when applicable (Mode 1/3).
+- FR-385 In the main completion window, pressing Space with a selected suggestion MUST commit the selection without inserting a space; otherwise Space is canceled.

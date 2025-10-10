@@ -288,6 +288,21 @@ namespace Wysg.Musm.Editor.Completion
                     _editor.Document.Insert(off, nl);
                     _editor.CaretOffset = off + nl.Length;
                 }
+                else
+                {
+                    e.Handled = true;
+                    CompletionList.RequestInsertion(e);
+                }
+                return;
+            }
+            if (e.Key == Key.Space)
+            {
+                // Cancel space so it does not insert into the document; treat like Enter if selection exists
+                e.Handled = true;
+                if (CompletionList.ListBox.SelectedIndex >= 0)
+                {
+                    CompletionList.RequestInsertion(e);
+                }
                 return;
             }
             if (e.Key == Key.Home)

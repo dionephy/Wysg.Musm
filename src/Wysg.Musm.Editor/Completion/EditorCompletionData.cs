@@ -41,8 +41,8 @@ public sealed class EditorCompletionData : ICompletionData
     public static EditorCompletionData ForSnippet(CodeSnippet snippet, string? iconKey = "CodeSnippetIcon", double priority = 0)
         => new(
             text: snippet.Shortcut,
-            content: $"{snippet.Shortcut} — {snippet.Description}",
-            description: snippet.Text,
+            content: $"{snippet.Shortcut} → {snippet.Description}",
+            description: snippet.Text, // keep full template in tooltip
             iconResourceKey: iconKey,
             onComplete: (textArea, completionSegment) => snippet.Insert(textArea, completionSegment),
             priority: priority);
@@ -88,6 +88,8 @@ public sealed class EditorCompletionData : ICompletionData
 
     /// <summary>Optional sort/priority; higher shows earlier (AvalonEdit treats greater as earlier).</summary>
     public double Priority { get; }
+
+    public override string ToString() => _content?.ToString() ?? base.ToString();
 
     public void Complete(TextArea textArea, ISegment completionSegment, EventArgs insertionRequestEventArgs)
         => _onComplete(textArea, completionSegment);

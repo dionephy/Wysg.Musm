@@ -1,6 +1,6 @@
-﻿#after selection and insertion of snippet in the completion window the snippet mode is started.
+﻿# After selection and insertion of snippet in the completion window, the snippet mode is started. (the key press to insert snippet is not counted as key press in the snippet mode.)
 
-## every placeholder is highlighted and the cursor is at the first placeholder.
+## every placeholder is highlighted and the caret is at the first placeholder.
 ## the caret cannot move out of the current placeholder until the placeholder is completed.
 ## on enter key the snippet mode is ended and the caret moves to the next line.
 ## on escape key the snippet mode is ended and the caret moves to the end of the inserted snippet.
