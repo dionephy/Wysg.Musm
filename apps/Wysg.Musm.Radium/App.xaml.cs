@@ -16,6 +16,7 @@ using Wysg.Musm.Radium.Services.Diagnostics; // added
 using Serilog.Events;
 using Microsoft.Data.SqlClient;
 using System.Drawing; // added
+using System.Text; // added for CodePagesEncodingProvider
 
 namespace Wysg.Musm.Radium
 {
@@ -62,6 +63,9 @@ namespace Wysg.Musm.Radium
 
         public App()
         {
+            // Register code page encodings (EUC-KR/CP949, etc.) for non-UTF8 HTML decoding
+            try { Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); } catch { }
+
             // 1. Logging bootstrap -------------------------------------------------------------
             // Only configure if not already set (avoids duplicate sinks when re-hosted in tests)
             bool tracePg = Environment.GetEnvironmentVariable("RAD_TRACE_PG") == "1";

@@ -18,6 +18,10 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _rawConclusion = string.Empty;
         private bool _reportified; public bool Reportified { get => _reportified; set => ToggleReportified(value); }
 
+        // New: PACS remarks captured via automation modules
+        private string _studyRemark = string.Empty; public string StudyRemark { get => _studyRemark; private set { if (SetProperty(ref _studyRemark, value ?? string.Empty)) UpdateCurrentReportJson(); } }
+        private string _patientRemark = string.Empty; public string PatientRemark { get => _patientRemark; private set { if (SetProperty(ref _patientRemark, value ?? string.Empty)) UpdateCurrentReportJson(); } }
+
         private bool _suppressAutoToggle; // prevents recursive toggling while programmatically changing text
 
         private void ToggleReportified(bool value)
@@ -185,7 +189,9 @@ namespace Wysg.Musm.Radium.ViewModels
                 var obj = new
                 {
                     findings = _rawFindings == string.Empty ? ReportFindings : _rawFindings,
-                    conclusion = _rawConclusion == string.Empty ? ConclusionText : _rawConclusion
+                    conclusion = _rawConclusion == string.Empty ? ConclusionText : _rawConclusion,
+                    study_remark = _studyRemark,
+                    patient_remark = _patientRemark
                 };
                 _updatingFromEditors = true;
                 CurrentReportJson = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true });
@@ -203,8 +209,12 @@ namespace Wysg.Musm.Radium.ViewModels
                 var root = doc.RootElement;
                 string newFindings = root.TryGetProperty("findings", out var fEl) ? (fEl.GetString() ?? string.Empty) : string.Empty;
                 string newConclusion = root.TryGetProperty("conclusion", out var cEl) ? (cEl.GetString() ?? string.Empty) : string.Empty;
+                string newStudyRemark = root.TryGetProperty("study_remark", out var sEl) ? (sEl.GetString() ?? string.Empty) : string.Empty;
+                // IMPORTANT: patient_remark is NOT applied from JSON; it must come from the PACS procedure result only.
                 _updatingFromJson = true;
                 _rawFindings = newFindings; _rawConclusion = newConclusion; // keep raw updated
+                StudyRemark = newStudyRemark; // round-trippable
+                // Do not assign PatientRemark here; it is updated by automation AcquirePatientRemarkAsync only
                 if (!_reportified)
                 {
                     if (FindingsText != newFindings) _findingsText = newFindings; // assign backing fields directly to avoid auto toggle

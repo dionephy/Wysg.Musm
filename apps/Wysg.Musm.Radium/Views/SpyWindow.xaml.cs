@@ -194,6 +194,29 @@ namespace Wysg.Musm.Radium.Views
             catch (Exception ex) { txtStatus.Text = "Row Data error: " + ex.Message; }
         }
 
+        // New: Get HTML (clipboard URL) ? mirrors Custom Procedure GetHTML op with smart decoding
+        private async void OnGetHtml(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string clip = string.Empty;
+                try { clip = Clipboard.ContainsText() ? Clipboard.GetText().Trim() : string.Empty; } catch { clip = string.Empty; }
+                if (string.IsNullOrWhiteSpace(clip) || !(clip.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || clip.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+                {
+                    txtStatus.Text = "Get HTML: copy a URL to clipboard first.";
+                    return;
+                }
+
+                txtStatus.Text = "Get HTML: fetching...";
+                var html = await HttpGetHtmlSmartAsync(clip);
+                txtStatus.Text = html ?? "(null)";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = "Get HTML error: " + ex.Message;
+            }
+        }
+
         // ------------------------------------------------------------------
         // Grid commit helper (used across bookmark editing logic)
         // ------------------------------------------------------------------

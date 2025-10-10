@@ -38,7 +38,8 @@ public sealed class UiBookmarks
         ViewerToolbar,
         OpenWorklistButton,
         ReportCommitButton,
-        StudyRemark // new
+        StudyRemark, // existing
+        PatientRemark // new: distinct bookmark for patient remark field
     }
 
     public enum MapMethod { Chain = 0, AutomationIdOnly = 1 }

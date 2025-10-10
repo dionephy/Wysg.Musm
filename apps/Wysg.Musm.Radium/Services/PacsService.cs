@@ -89,6 +89,7 @@ namespace Wysg.Musm.Radium.Services
         public Task<string?> GetCurrentFindings2Async() => ExecWithRetry("GetCurrentFindings2");
         public Task<string?> GetCurrentConclusion2Async() => ExecWithRetry("GetCurrentConclusion2");
         public Task<string?> GetCurrentStudyRemarkAsync() => ExecWithRetry("GetCurrentStudyRemark");
+        public Task<string?> GetCurrentPatientRemarkAsync() => ExecWithRetry("GetCurrentPatientRemark");
 
         public async Task<bool> IsViewerWindowAsync(IntPtr hwnd)
         {

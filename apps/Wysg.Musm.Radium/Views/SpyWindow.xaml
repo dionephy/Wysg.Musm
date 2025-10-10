@@ -231,6 +231,7 @@
                 <ComboBoxItem Tag="StudyInfoBanner">Study info banner</ComboBoxItem>
                 <ComboBoxItem Tag="StudyList">Study list</ComboBoxItem>
                 <ComboBoxItem Tag="StudyRemark">Study remark</ComboBoxItem>
+                <ComboBoxItem Tag="PatientRemark">Patient remark</ComboBoxItem>
                 <ComboBoxItem Tag="ViewerToolbar">Viewer toolbar</ComboBoxItem>
                 <ComboBoxItem Tag="ViewerWindow">Viewer window</ComboBoxItem>
                 <ComboBoxItem Tag="WorklistListsPane">Worklist lists pane</ComboBoxItem>
@@ -274,7 +275,7 @@
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="L="/>
                                         <TextBlock Text="{Binding Level}" Margin="2,0"/>
-                                        <TextBlock Text=", Class="/>
+                                        <TextBlock Text=", Class "/>
                                         <TextBlock Text="{Binding ClassName}" Margin="2,0"/>
                                         <TextBlock Text=", Ct "/>
                                         <TextBlock Text="{Binding ControlTypeId}" Margin="2,0"/>
@@ -308,6 +309,7 @@
                         <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke"/>
                         <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText"/>
                         <Button Content="Get Name" Margin="6,0,0,0" Click="OnGetName"/>
+                        <Button Content="Get HTML" Margin="6,0,0,0" Click="OnGetHtml"/>
                         <Button Content="Row Data" Margin="6,0,0,0" Click="OnGetSelectedRow"/>
                         <Button Content="Save" Margin="6,0,0,0" Click="OnSaveEdited"/>
                         <Separator Margin="12,0" Width="10"/>
@@ -418,6 +420,7 @@
                         <ComboBoxItem Tag="GetCurrentPatientNumber">Get current patient number</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentStudyDateTime">Get current study date time</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentStudyRemark">Get current study remark</ComboBoxItem>
+                        <ComboBoxItem Tag="GetCurrentPatientRemark">Get current patient remark</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentFindings">Get current findings</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentConclusion">Get current conclusion</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentFindings2">Get current findings 2</ComboBoxItem>
@@ -450,6 +453,8 @@
                                         <ComboBoxItem Content="Invoke"/>
                                         <ComboBoxItem Content="GetValueFromSelection"/>
                                         <ComboBoxItem Content="ToDateTime"/>
+                                        <ComboBoxItem Content="Replace"/>
+                                        <ComboBoxItem Content="GetHTML"/>
                                     </ComboBox>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -503,12 +508,16 @@
                                             <TextBox.Style>
                                                 <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
                                                     <Setter Property="Visibility" Value="Visible"/>
+                                                    <Setter Property="AcceptsReturn" Value="False"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Arg1.Type}" Value="Element">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Arg1.Type}" Value="Var">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Arg1.Type}" Value="String">
+                                                            <Setter Property="AcceptsReturn" Value="True"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -570,12 +579,16 @@
                                                 <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
                                                     <Setter Property="Visibility" Value="Visible"/>
                                                     <Setter Property="IsEnabled" Value="{Binding Arg2Enabled}"/>
+                                                    <Setter Property="AcceptsReturn" Value="False"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Arg2.Type}" Value="Element">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Arg2.Type}" Value="Var">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Arg2.Type}" Value="String">
+                                                            <Setter Property="AcceptsReturn" Value="True"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -635,12 +648,16 @@
                                                 <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
                                                     <Setter Property="Visibility" Value="Visible"/>
                                                     <Setter Property="IsEnabled" Value="{Binding Arg3Enabled}"/>
+                                                    <Setter Property="AcceptsReturn" Value="False"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Arg3.Type}" Value="Element">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Arg3.Type}" Value="Var">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Arg3.Type}" Value="String">
+                                                            <Setter Property="AcceptsReturn" Value="True"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>

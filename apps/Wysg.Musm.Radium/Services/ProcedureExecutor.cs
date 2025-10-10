@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
@@ -16,30 +19,27 @@ namespace Wysg.Musm.Radium.Services
     /// </summary>
     internal static class ProcedureExecutor
     {
+        private static readonly HttpClient _http = new HttpClient();
+        private static bool _encProviderRegistered;
+        private static void EnsureEncodingProviders()
+        {
+            if (_encProviderRegistered) return;
+            try { Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); } catch { }
+            _encProviderRegistered = true;
+        }
+
         // Cache for resolved known controls (avoid repeated expensive UIA crawls)
         private static readonly Dictionary<UiBookmarks.KnownControl, AutomationElement> _controlCache = new();
         private static AutomationElement? GetCached(UiBookmarks.KnownControl key)
         {
             if (_controlCache.TryGetValue(key, out var el))
             {
-                try
-                {
-                    // Probe a cheap property to verify element still alive
-                    _ = el.Name; // access triggers exception if stale
-                    return el;
-                }
-                catch
-                {
-                    _controlCache.Remove(key);
-                }
+                try { _ = el.Name; return el; } catch { _controlCache.Remove(key); }
             }
             return null;
         }
-        private static void StoreCache(UiBookmarks.KnownControl key, AutomationElement el)
-        {
-            if (el == null) return;
-            _controlCache[key] = el;
-        }
+        private static void StoreCache(UiBookmarks.KnownControl key, AutomationElement el) { if (el != null) _controlCache[key] = el; }
+
         // --- Data contracts (shape must match SpyWindow serialization) ---
         private sealed class ProcStore { public Dictionary<string, List<ProcOpRow>> Methods { get; set; } = new(); }
         private sealed class ProcOpRow
@@ -51,6 +51,8 @@ namespace Wysg.Musm.Radium.Services
             public bool Arg1Enabled { get; set; } = true;
             public bool Arg2Enabled { get; set; } = true;
             public bool Arg3Enabled { get; set; } = false;
+            public string? OutputVar { get; set; }
+            public string? OutputPreview { get; set; }
         }
         private sealed class ProcArg { public string Type { get; set; } = "String"; public string? Value { get; set; } }
 
@@ -74,16 +76,30 @@ namespace Wysg.Musm.Radium.Services
             catch { return new ProcStore(); }
         }
 
-        public static Task<string?> ExecuteAsync(string methodTag)
+        private static void Save(ProcStore s)
         {
-            return Task.Run(() => ExecuteInternal(methodTag));
+            try
+            {
+                var p = GetProcPath();
+                File.WriteAllText(p, JsonSerializer.Serialize(s, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true }));
+            }
+            catch { }
         }
+
+        public static Task<string?> ExecuteAsync(string methodTag) => Task.Run(() => ExecuteInternal(methodTag));
 
         private static string? ExecuteInternal(string methodTag)
         {
             if (string.IsNullOrWhiteSpace(methodTag)) return null;
             var store = Load();
-            if (!store.Methods.TryGetValue(methodTag, out var steps) || steps.Count == 0) return null; // no custom procedure defined
+
+            if (!store.Methods.TryGetValue(methodTag, out var steps) || steps.Count == 0)
+            {
+                // Create a sensible default for known tags when missing
+                steps = TryCreateFallbackProcedure(methodTag);
+                if (steps.Count > 0) { store.Methods[methodTag] = steps; Save(store); }
+                else return null;
+            }
 
             var vars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
             string? last = null;
@@ -91,10 +107,36 @@ namespace Wysg.Musm.Radium.Services
             {
                 var row = steps[i];
                 var (preview, value) = ExecuteRow(row, vars);
-                vars[$"var{i + 1}"] = value;
+                // Store under implicit var{i+1}
+                var implicitKey = $"var{i + 1}";
+                vars[implicitKey] = value;
+                // Also store under explicit OutputVar if provided by SpyWindow
+                if (!string.IsNullOrWhiteSpace(row.OutputVar)) vars[row.OutputVar!] = value;
                 if (value != null) last = value;
             }
             return last;
+        }
+
+        private static List<ProcOpRow> TryCreateFallbackProcedure(string methodTag)
+        {
+            // Seed minimal viable procedures for well-known PACS tags when user has not authored one yet.
+            // Request focuses on GetCurrentPatientRemark.
+            if (string.Equals(methodTag, "GetCurrentPatientRemark", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "GetText", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.PatientRemark.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false, OutputVar = "var1" }
+                };
+            }
+            // Also provide a fallback for study remark if not present
+            if (string.Equals(methodTag, "GetCurrentStudyRemark", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "GetText", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.StudyRemark.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false, OutputVar = "var1" }
+                };
+            }
+            return new List<ProcOpRow>();
         }
 
         private static (string preview, string? value) ExecuteRow(ProcOpRow row, Dictionary<string, string?> vars)
@@ -129,6 +171,8 @@ namespace Wysg.Musm.Radium.Services
                 case "ToDateTime":
                 case "TakeLast":
                 case "Trim":
+                case "Replace":
+                case "GetHTML":
                     return ExecuteElemental(row, vars);
                 default:
                     return ("(unsupported)", null);
@@ -173,11 +217,7 @@ namespace Wysg.Musm.Radium.Services
                     {
                         var el = ResolveElement(row.Arg1);
                         if (el == null) return ("(no element)", null);
-                        try
-                        {
-                            var inv = el.Patterns.Invoke.PatternOrDefault; if (inv != null) inv.Invoke(); else el.Patterns.Toggle.PatternOrDefault?.Toggle();
-                            return ("(invoked)", null);
-                        }
+                        try { var inv = el.Patterns.Invoke.PatternOrDefault; if (inv != null) inv.Invoke(); else el.Patterns.Toggle.PatternOrDefault?.Toggle(); return ("(invoked)", null); }
                         catch { return ("(error)", null); }
                     }
                     case "TakeLast":
@@ -189,6 +229,15 @@ namespace Wysg.Musm.Radium.Services
                     case "Trim":
                     {
                         var s = ResolveString(row.Arg1, vars); var v = s?.Trim(); return (v ?? "(null)", v);
+                    }
+                    case "Replace":
+                    {
+                        var input = ResolveString(row.Arg1, vars) ?? string.Empty;
+                        var search = Regex.Unescape(ResolveString(row.Arg2, vars) ?? string.Empty);
+                        var repl = Regex.Unescape(ResolveString(row.Arg3, vars) ?? string.Empty);
+                        if (string.IsNullOrEmpty(search)) return (input, input);
+                        var output = input.Replace(search, repl);
+                        return (output, output);
                     }
                     case "GetValueFromSelection":
                     {
@@ -223,10 +272,46 @@ namespace Wysg.Musm.Radium.Services
                         if (DateTime.TryParse(s.Trim(), out var dt)) { var iso = dt.ToString("o"); return (dt.ToString("yyyy-MM-dd HH:mm:ss"), iso); }
                         return ("(parse fail)", null);
                     }
+                    case "GetHTML":
+                    {
+                        var url = ResolveString(row.Arg1, vars);
+                        if (string.IsNullOrWhiteSpace(url) || !(url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+                            return ("(no url)", null);
+                        try
+                        {
+                            EnsureEncodingProviders();
+                            using var resp = _http.GetAsync(url).ConfigureAwait(false).GetAwaiter().GetResult();
+                            resp.EnsureSuccessStatusCode();
+                            var bytes = resp.Content.ReadAsByteArrayAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                            var charset = resp.Content.Headers.ContentType?.CharSet;
+                            var html = DecodeHtml(bytes, charset);
+                            return (html ?? string.Empty, html);
+                        }
+                        catch (Exception ex) { return ($"(error) {ex.Message}", null); }
+                    }
                 }
             }
             catch { }
             return ("(unsupported)", null);
+        }
+
+        private static string DecodeHtml(byte[] bytes, string? headerCharset)
+        {
+            try
+            {
+                Encoding enc = Encoding.UTF8;
+                if (!string.IsNullOrWhiteSpace(headerCharset)) { try { enc = Encoding.GetEncoding(headerCharset!); } catch { enc = Encoding.UTF8; } }
+                var text = enc.GetString(bytes);
+                var sample = text.Length > 8192 ? text.Substring(0, 8192) : text;
+                var m = Regex.Match(sample, "charset=([^\"'>]+)", RegexOptions.IgnoreCase);
+                if (m.Success)
+                {
+                    var cs = m.Groups[1].Value.Trim().TrimEnd(';');
+                    try { var e2 = Encoding.GetEncoding(cs); text = e2.GetString(bytes); } catch { }
+                }
+                return text;
+            }
+            catch { return Encoding.UTF8.GetString(bytes); }
         }
 
         private static AutomationElement? ResolveElement(ProcArg arg)

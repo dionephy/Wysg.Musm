@@ -1,5 +1,79 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Automation Modules for Remarks (2025-10-10)
+- FR-348 Settings → Automation MUST include two modules in the Available Modules list:
+  - GetStudyRemark
+  - GetPatientRemark
+- FR-349 When the automation sequence runs and includes GetStudyRemark, the app MUST call PACS method "Get current study remark" and set `study_remark` in the current report JSON to the fetched string (empty when null).
+- FR-350 When the automation sequence runs and includes GetPatientRemark, the app MUST call PACS method "Get current patient remark" and set `patient_remark` in the current report JSON to the fetched string (empty when null).
+- FR-351 `CurrentReportJson` MUST round-trip these fields. Editing `study_remark` or `patient_remark` directly in the JSON view MUST update the bound properties, and properties changes MUST serialize back to JSON.
+- FR-352 Remarks capture MUST not throw; errors set status text and leave previous values unchanged.
+
+## Update: Fix mapping for Patient Remark (2025-10-10)
+- FR-353 SpyWindow MUST expose a distinct known control `PatientRemark` (separate from `StudyRemark`) so users can map the patient remark UI element explicitly.
+- FR-354 Known control list in SpyWindow (Map to:) MUST include `PatientRemark`.
+- FR-355 `GetCurrentPatientRemark` custom procedure MUST be able to use Arg1 Element = `PatientRemark` to extract the correct field value; previous flows that targeted `StudyRemark` will need remapping by the user.
+
+## Update: Auto-seed key procedure for GetPatientRemark (2025-10-10)
+- FR-356 If no user-defined procedure exists for the PACS method tag `GetCurrentPatientRemark`, the app MUST auto-create and persist a default procedure consisting of a single step: `GetText` on Element=`PatientRemark`.
+- FR-357 The GetPatientRemark automation module MUST use `GetCurrentPatientRemark` as its key procedure entry-point (via `PacsService.GetCurrentPatientRemarkAsync`), ensuring the auto-seeded procedure is executed when user has not authored one yet.
+- FR-358 Similarly, when missing, the app SHOULD auto-seed `GetCurrentStudyRemark` with a single step: `GetText` on Element=`StudyRemark`.
+
+## Update: Enforcement – patient_remark source (2025-10-10)
+- FR-359 `patient_remark` in the current report JSON MUST only be set from the result of executing the `GetCurrentPatientRemark` custom procedure (through `PacsService.GetCurrentPatientRemarkAsync()`), with no alternative source or fallback. Any prior non-procedure source MUST be removed.
+
+## Update: ProcedureExecutor – GetHTML and Replace ops (2025-10-10)
+- FR-360 Procedure execution engine MUST support operations:
+  - `Replace` (uses C#-style escape decoding via Regex.Unescape for Arg2/Arg3; replaces all occurrences).
+  - `GetHTML` (performs HTTP GET on URL from Arg1 Var or String; applies smart decoding using response header charset and meta charset; returns HTML string; errors produce `(error)` preview with null output as per FR-338).
+- FR-361 Procedure execution MUST NOT prematurely return before attempting fallback auto-seed for known PACS tags; remove early-return that bypassed fallback creation.
+
+## Update: Crawl Editor "Get HTML" button (2025-10-10)
+- FR-339 SpyWindow Crawl Editor MUST provide a "Get HTML" button next to "Get Name".
+  - Behavior: Performs an HTTP GET for a URL read from the clipboard (must start with http/https) and writes the fetched HTML into the status box.
+  - Error Handling: When clipboard does not contain a valid URL, show "Get HTML: copy a URL to clipboard first.". Any fetch error shows "Get HTML error: {message}".
+  - Implementation: Reuse the same HttpClient as Custom Procedure `GetHTML` (FR-338) ensuring consistent behavior.
+
+## Update: Get HTML Korean decoding fix (2025-10-10)
+- FR-340 "Get HTML" MUST decode response bytes using charset detection and support Korean encodings.
+  - Charset detection order: HTTP Content-Type charset → HTML <meta> charset (first ~8KB) → UTF-8 fallback with quality check → CP949 (EUC-KR superset) fallback when UTF-8 looks corrupted.
+  - The Custom Procedure operation `GetHTML` MUST use the same decoding logic.
+  - The application MUST register `CodePagesEncodingProvider` at startup to enable CP949/EUC-KR.
+  - Result: Korean text is readable (no "��" mojibake) for common KR news/medical sites.
+
+## Update: Statistical charset detection fallback (2025-10-10)
+- FR-341 When header/meta are inconclusive or inconsistent, the system MUST apply a statistical charset detector in addition to known fallbacks.
+  - Use Ude (Mozilla Universal Charset Detector) to propose a candidate encoding.
+  - Build a candidate set: header, meta, Ude, UTF-8, CP949, x-windows-949, ms949, EUC-KR, KS_C_5601-1987.
+  - Choose the best decoded text by heuristic: fewest replacement characters (U+FFFD), then highest Hangul count.
+  - Applies to both Crawl Editor button and Custom Procedure `GetHTML`.
+
+## Update: Custom Procedures multiline arguments (2025-10-10)
+- FR-342 Procedures grid string argument editors MUST allow multi-line input to pass multi-line parameters.
+  - Scope: `SpyWindow` → Custom Procedures → DataGrid columns `Arg1`, `Arg2`, `Arg3` when their Type is `String`.
+  - UI: TextBoxes used for String types MUST set `AcceptsReturn=True`. Other types (Element/Var) continue to use ComboBoxes.
+  - Behavior: Enter inserts a newline inside the TextBox instead of committing the cell edit; stored value preserves `\r\n` as typed.
+
+## Update: Split op multiline separators, escapes, and regex (2025-10-10)
+- FR-343 Split Arg2 MUST support C#-style escapes (e.g., `\n`, `\r\n`, `\t`) so users can express multi-line separators without literal newlines.
+- FR-344 Split Arg2 starting with `re:` or `regex:` MUST be treated as a regular expression and split using `Regex.Split` with `Singleline | IgnoreCase`. This enables patterns like `</TR>\s*</TABLE></BR>` to match across line breaks and variable whitespace.
+- FR-345 Split MUST retry CRLF when only LF is provided in Arg2 but the input uses Windows `\r\n` newlines (best-effort convenience).
+- FR-346 Split behavior with Arg3 index remains unchanged: when a valid index is provided, output the selected part; otherwise, join all parts with `\u001F` and preview shows `{parts} parts`.
+
+## Update: Replace op supports escapes (2025-10-10)
+- FR-347 Replace operation Arg2 (search) and Arg3 (replacement) MUST support C#-style escapes via `Regex.Unescape` so users can search/replace `\n`, `\t`, etc.
+
+## Update: PACS Patient Remark + New Procedure Ops (2025-10-10)
+- FR-336 PACS method "Get current patient remark" MUST be available via Custom Procedures.
+  - Combo item Tag: `GetCurrentPatientRemark` shown in SpyWindow → Custom Procedures → PACS Method list.
+  - `PacsService.GetCurrentPatientRemarkAsync()` MUST call the procedure tag with retry and return string or null on failure (no exceptions propagate).
+- FR-338 Add procedure operation `GetHTML`.
+  - Args: Arg1 Var (URL); Arg2/Arg3 disabled.
+  - Behavior: Perform HTTP GET to fetch HTML. On success, store full HTML; preview shows HTML; errors preview `(error)` and store null. Operation executes asynchronously in Set/Run flows.
+
+## Update: Settings Automation Spy button (2025-10-10)
+- FR-335 Settings window MUST provide a "Spy" button in the Automation tab footer, positioned next to "Save Automation". Clicking it MUST open the same `SpyWindow` as the Main Window "Spy" action (non-modal, owned by Settings window).
+
 ## Update: Snippet Runtime Behavior (2025-01-10)
 - **FR-325** After snippet insertion the editor enters snippet mode: all placeholders highlighted; caret locked to active placeholder; cannot move outside using arrows/home/end.
 - **FR-326** Navigation and termination:
@@ -9,7 +83,7 @@
 - **FR-327** Placeholder behavior:
   - Free text: ${label} → user types; Tab completes; if exit before completion, replace with "[ ]".
   - Mode 1 single choice: ${1^label=a^A|b^B} → single key immediately selects and completes; if exit before selection, default to first option.
-  - Mode 2 multi-choice: ${2^label^or^bilateral=a^A|b^B|3^C} → Space or letter toggles; Tab accepts joined text with joiner (", or "/", and "/", "); if exit before completion, insert all options using the joiner.
+  - Mode 2 multi-choice: ${2^label^or^bilateral=a^A|b^B|3^C} → Space or letter toggles; Tab accepts joined text with joiner (", or ", " and ", "); if exit before completion, insert all options using the joiner.
   - Mode 3 single replace: ${3^label=aa^A|bb^B} → multi-char key is buffered until Tab/Enter; then replace; if exit before selection, default to first option.
 - **FR-328** UI overlay must show active placeholder distinctly (highlight), others faintly.
 - **FR-329** Snippet mode MUST prevent caret from moving outside current placeholder bounds using arrow keys, Home, or End; caret position is constrained to the selection range.
@@ -41,7 +115,7 @@
 - **FR-312** Snippet storage MUST use central database table `radium.snippet` with columns: snippet_id (BIGINT IDENTITY PK), account_id (BIGINT FK NOT NULL), trigger_text (NVARCHAR(64) NOT NULL), snippet_text (NVARCHAR(4000) NOT NULL), snippet_ast (NVARCHAR(MAX) NOT NULL), description (NVARCHAR(256) NULL), is_active (BIT NOT NULL DEFAULT 1), created_at, updated_at, rev. Unique constraint on (account_id, trigger_text).
 - **FR-313** snippet_text MUST contain template with placeholder syntax (e.g., `${1^fruit=a^apple|b^banana}` for choices, `${2:default}` for text placeholders).
 - **FR-314** snippet_ast MUST store pre-parsed JSON representation of placeholder structure enabling fast runtime parsing without regex overhead during editor insertion.
-- **FR-315** Snippet service MUST provide async methods: GetActiveSnippetsAsync(accountId), UpsertSnippetAsync(accountId, trigger, snippetText, ast, description), ToggleActiveAsync(accountId, snippetId), DeleteSnippetAsync(accountId, snippetId). All operations MUST follow synchronous database → snapshot → UI flow.
+- **FR-315** Snippet service MUST provide async methods: GetActiveSnippetsAsync(accountId), UpsertSnippetAsync(accountId, trigger, snippetText, ast, description), ToggleActiveAsync(accountId, snippetId). All operations MUST follow synchronous database → snapshot → UI flow.
 - **FR-316** Snippet service MUST implement in-memory snapshot caching per account with automatic invalidation on upsert/toggle/delete and provide GetSnippetSnapshotAsync for completion integration.
 - **FR-317** Editor MUST detect snippet triggers and insert template with placeholder markers, enabling tab navigation between placeholders.
 - **FR-318** Settings MUST include Snippets management tab with CRUD UI (see FR-319..FR-320).
@@ -67,7 +141,6 @@
   - When converting multiple phrases with identical text from the same account, exactly one global row MUST remain (account_id = NULL) and the rest MUST be deleted.
   - When a global phrase with the same text already exists, selected account phrases with that text MUST be deleted (deduplicated) and no additional global rows created.
   - Operation MUST be synchronous and update in-memory snapshots and caches for both the account scope and the global scope on success; UI MUST reflect final snapshot state.
-  - Conversion MUST be guarded by per-account lock and global lock to avoid races; UI displays converted and duplicates removed counts.
   - UI MUST allow:
     - Adding a new global phrase
     - Multi-selecting account phrases via checkboxes and invoking Convert Selected to Global
@@ -149,133 +222,7 @@
 - **FR-159** Previous study tab buttons MUST not toggle off the active tab when clicked again (except when a different overflow item is selected) – at least one tab remains visually active.
 - **FR-160** Adding a previous study MUST perform an UPSERT into `med.rad_report` keyed by (study_id, report_datetime) updating existing row instead of inserting duplicate (constraint: uq_rad_report__studyid_reportdt).
 - **FR-161** On New Study load completion, system MUST automatically load all existing prior studies (with reports) for the patient into previous study tabs (unique by StudyDateTime+Modality rule still applies).
-
-## Update: Automation UX refinements (2025-10-05)
-- **FR-183** New Study button MUST be a no-op when automation settings exist but contain zero modules.
-- **FR-184** Settings window MUST provide dedicated Save Automation action persisting only automation sequences.
-- **FR-185** Dropping module onto Available Modules pane MUST remove it from ordered panes and appear once in library.
-- **FR-186** Settings window title bar MUST use dark immersive mode (when OS supports) matching main window.
-- **FR-187** Automation drop indicator MUST clear on mouse up (even failed drop) and ghost removed.
-
-## Update: Automation duplicate modules & live report JSON (2025-10-05)
-- **FR-191** Automation panes MUST allow duplicate module entries (same module can appear multiple times in same or different panes).
-- **FR-192** Each ordered module entry MUST expose a remove (X) control that removes only that instance from its pane.
-- **FR-193** Available Modules pane MUST retain modules regardless of drag (modules are copied, not moved).
-- **FR-194** Main window MUST display live JSON preview of current report (header+findings+conclusion) in txtJson updating on each edit.
-- **FR-195** Findings editor MUST bind two-way to ReportFindings alias property feeding live JSON generation.
-- **FR-196** Automation drag drop indicator MUST clear when cursor leaves list bounds or drag data invalid.
-
-## Update: Automation move/copy semantics & DB tab restore (2025-10-05)
-- **FR-197** Drag from library MUST copy; drag between ordered panes MUST move (reordering within same pane keeps only one instance).
-- **FR-198** Remove (X) button MUST display literal 'X' and remove only the clicked instance.
-- **FR-199** Database settings tab MUST remain visible alongside Automation tab.
-- **FR-200** Drop indicator MUST always clear on drag leaving any list or invalid target (with debug logging for diagnostics).
-
-## Update: Lock Study module & JSON simplification (2025-10-05)
-- **FR-201** Report JSON preview MUST include only findings and conclusion (header removed from combined field).
-- **FR-202** A modular `LockStudy` procedure MUST exist to only set PatientLocked and status without clearing fields.
-- **FR-203** Automation sequences may include `LockStudy` alongside `NewStudy` executing both in defined order.
-
-## Update: Reportify behavior & locking decoupling (2025-10-05)
-- **FR-204** NewStudyProcedure MUST not perform locking; locking handled solely by LockStudy module.
-- **FR-205** When reportified is ON, any edit to current header/findings/conclusion auto-disables reportified and restores raw text.
-- **FR-206** Live JSON preview MUST always reflect raw (un-reportified) findings/conclusion regardless of reportified toggle state.
-- **FR-207** Conclusion reportify MUST only capitalize first letter per line and append trailing period if alphanumeric ending (no numbering/indent injection).
-
-## Update: Reportify formatting & immediate JSON (2025-10-05)
-- **FR-208** Toggling reportified MUST not alter text with regex artifacts; only sentence capitalization + trailing period per line.
-- **FR-209** Live JSON preview MUST reflect the latest keystroke (no character lag) by capturing raw text before serialization.
-
-## Update: Two-way JSON editing (2025-10-05)
-- **FR-210** JSON preview panel MUST support two-way editing; valid JSON edits update Findings/Conclusion (raw); invalid JSON ignored without breaking existing text.
-
-## Update: Study Remark mapping & PACS getter (2025-10-05)
-- **FR-211** UI Spy KnownControl list MUST include a mappable `Study remark` entry enabling bookmark capture.
-- **FR-212** Known control ComboBox in SpyWindow MUST list items in case-insensitive alphabetical order by display text.
-- **FR-213** PACS service MUST expose custom procedure method tag `GetCurrentStudyRemark` retrievable via `PacsService.GetCurrentStudyRemarkAsync()` and selectable in custom procedure method list.
-
-## Update: Integrated Phrases Management Tab (2025-10-05)
-- **FR-235** Settings window MUST include a "Phrases" tab consolidating phrase add/activate/refresh and listing (Id, Text, Active, Updated, Rev) replacing standalone PhrasesWindow; bindings reuse existing PhrasesViewModel commands and collections.
-
-## Update: Phrase toggle resilience (2025-10-05)
-- **FR-236** Toggling a phrase Active flag MUST tolerate transient connection/read timeouts on preliminary SET LOCAL statement_timeout without failing the toggle; the toggle retry logic (≤4 attempts) must proceed even if SET LOCAL fails.
-
-## Update: Phrase toggle adaptive retry (2025-10-05)
-- **FR-237** Phrase Active toggle MUST implement adaptive retry (≥4 attempts with exponential-ish backoff) clearing pooled connections on transient timeouts and must not surface Npgsql timeout errors caused by repeated rapid toggling; SET LOCAL failures are ignored.
-
-## Update: Phrase toggle roundtrip removal (2025-10-05)
-- **FR-238** Phrase Active toggle MUST avoid auxiliary SET LOCAL commands; a single UPDATE statement with reduced CommandTimeout (≤12s) and cancellation token (≤6s) is used to minimize stream read timeouts on rapid successive toggles.
-
-## Update: Integrated Phrases dark theme (2025-10-05)
-- **FR-239** Settings Phrases tab MUST use unified dark theme (panel #262A30, alt #2F343A, headers #30363D, selection #0E4D7A) and the standalone PhrasesWindow MUST be removed along with its launch button.
-
-## Update: Integrated Spy tab (2025-10-05)
-- **FR-240** Settings window MUST include a Spy tab exposing process pick, bookmark chain editing, minimal custom procedures grid, and quick resolve actions duplicating SpyWindow core controls for consolidated tooling.
-
-## Update: Global Dark Theme + Spy PACS Combo (2025-10-05)
-- **FR-241** Introduce global DarkTheme.xaml merged in App.xaml to centralize brushes & control styles (Window, Button, TextBox, ComboBox, TabControl, DataGrid, TreeView, GroupBox, CheckBox, ScrollBar, TextBlock). All windows (including Settings/Spy) should rely on these implicit styles instead of local duplicates.
-- **FR-242** Populate PACS Method ComboBox in Settings Spy tab with same items as standalone SpyWindow (procedure authoring) including new current-context getters.
-- **FR-243** Enhance implicit ComboBox style with full custom template (toggle button + popup) to ensure consistent dark styling across MainWindow and SettingsWindow; remove discrepancy where Settings combo used default light chrome.
-
-## Update: Click-Anywhere ComboBox Drop (2025-10-05)
-- **FR-244** Modify global ComboBox template to allow opening dropdown when clicking anywhere in text/content area (overlay transparent ToggleButton bound to IsDropDownOpen). Improves UX parity with custom editors.
-
-## Update: MainWindow ComboBox + Hover Tuning (2025-10-05)
-- **FR-245** Apply global click-anywhere ComboBox template to MainWindow by removing legacy DarkMiniCombo style; adjust hover to darker tone (AccentAlt border, PanelAlt background) for reduced brightness.
-
-## Update: Reportify Settings Persistence (2025-10-05)
-- **FR-249** System MUST persist per-account reportify settings JSON in central table radium.reportify_setting with columns (account_id PK/FK, settings_json jsonb, updated_at, rev).
-- **FR-250** Settings window Reportify tab MUST provide Load Settings and Save Settings buttons which load existing JSON into individual option checkboxes/text fields and persist current in-memory configuration respectively.
-- **FR-251** Saving reportify settings MUST perform an upsert (INSERT .. ON CONFLICT) incrementing rev and updating updated_at only when settings_json changes; client ignores transient DB errors silently.
-
-## Update: Reportify Settings Auto-Load (2025-10-05)
-- **FR-252** Application MUST automatically load per-account reportify settings JSON during successful login (silent refresh or explicit) storing it in tenant context; Reportify tab shows only Save and Close (no manual Load) and Save performs create/update upsert accordingly.
-
-## Update: Reportify Functional Implementation (2025-10-05)
-- **FR-253** Reportify toggle MUST apply all enabled transformations from persisted per-account settings (arrows, bullets, spacing, parentheses, number-unit spacing, whitespace collapse, capitalization, trailing period, paragraph numbering for conclusions, indentation of continuation lines) and reflect changes immediately upon toggling; settings JSON changes after login take effect on next toggle.
-
-## Update: Phrase Loading Guard & Account Change Events (2025-10-05)
-- **FR-254** Phrase loading MUST return empty (and never query DB) when AccountId <= 0; Add/Toggles throw or no-op until a valid AccountId is set.
-- **FR-255** Application MUST raise an AccountIdChanged event (oldId,newId) on tenant context; phrase UI MUST clear on logout (newId<=0) and auto reload on first valid login (transition 0->>0).
-
-## Update: Settings Window Composition (2025-10-05)
-- **FR-256** Settings window MUST resolve SettingsViewModel via DI including tenant + reportify services; Save Settings button enabled only when AccountId > 0 and services present.
-- **FR-257** Phrases tab within Settings MUST bind to shared PhrasesViewModel instance (no duplicate loads); bindings NewText/AddCommand/Items/RefreshCommand must resolve without binding errors.
-
-## Update: Completion First Item Auto-Select (2025-10-07)
-- **FR-264** Completion popup MUST auto-select the first item by default whenever it opens or when no exact prefix match is found, ensuring immediate Enter commits the first suggestion without requiring initial Down key navigation.
-- FR-305 Completion list first Down/Up press MUST move to the immediate next/previous item and MUST NOT wrap to last/first when no selection existed previously.
-- FR-306 Completion popup MUST not auto-select exact text matches; default selection is the first item to ensure Down selects the second item consistently.
-
-## Update: Side Panel Dynamic Width (2025-10-07)
-- **FR-268** MainWindow `gridSide` width MUST equal (window ActualWidth - central grid ActualWidth) clamped to >=0; updates reactively on resize.
-
-## Update: Top/Bottom Panel Dynamic Height (2025-10-07)
-- **FR-269** MainWindow `gridTop` and `gridBottom` heights MUST equal (window ActualHeight - central grid ActualHeight) clamped to >=0 and auto-update on resize.
-
-## Prior Updates
-<!-- cumulative prior content retained below -->
-## Update: Previous report ingestion refinements (2025-10-05)
-- **FR-152a** Ensure AddStudy always populates `header_and_findings` and `conclusion` (attempt retrieval regardless of banner validity) and only display studies with at least one report row containing either field.
-
-## Update: Tree default disabled & new PACS getters (2025-10-05)
-- **FR-148** SpyWindow TreeView MUST be disabled (hidden) by default; user enables via checkbox.
-- **FR-149** After a Pick capture, system MUST auto-clear (uncheck) UseIndex for all nodes in captured chain.
-- **FR-150** Add new bookmark target `ReportText2` for alternate report text control mapping.
-- **FR-151** Add PACS procedure method tags & service accessors: GetCurrentFindings, GetCurrentConclusion, GetCurrentFindings2, GetCurrentConclusion2.
-- **FR-152** When AddStudy command invoked: gather selected related study metadata, ensure rad_study, verify banner matches patient/study date; pull findings/conclusion (choose longer variant); build partial report JSON with only `header_and_findings` and `conclusion` populated plus duplication in `findings`; insert med.rad_report row (is_created=false, is_mine=false, created_by=radiologist, report_datetime=report date); refresh PreviousStudies from DB.
-
-## Update: Previous study tab modality & toggle reliability (2025-10-02)
-- **FR-153** Previous report Reportified toggle MUST apply reversible formatting using preserved original previous study text (no cumulative transformation loss).
-- **FR-154** Current study label visual element changed from TextBlock toSelectable as interim (final selectable requirement may require read-only TextBox) – MUST still bind `CurrentStudyLabel`.
-- **FR-155** Previous study tab title MUST be formatted `YYYY-MM-DD MOD` where MOD is derived modality (LOINC-derived when available; fallback regex heuristic on studyname).
-- **FR-156** Previous study tabs MUST be unique by the composite (StudyDateTime, Modality). Duplicate combinations are ignored during load/ingest.
-- **FR-157** PACS procedure metadata getter failures MUST NOT propagate exceptions (return null + debug log entry).
-- **FR-158** Current study label MUST be displayed in a selectable read-only text control (read-only TextBox) instead of non-selectable label (PP2 fix).
-- **FR-159** Previous study tab buttons MUST not toggle off the active tab when clicked again (except when a different overflow item is selected) – at least one tab remains visually active.
-- **FR-160** Adding a previous study MUST perform an UPSERT into `med.rad_report` keyed by (study_id, report_datetime) updating existing row instead of inserting duplicate (constraint: uq_rad_report__studyid_reportdt).
-- **FR-161** On New Study load completion, system MUST automatically load all existing prior studies (with reports) for the patient into previous study tabs (unique by StudyDateTime+Modality rule still applies).
-- **FR-162** AddStudy MUST validate that selected related study patient number/id matches current patient; on mismatch no ingestion occurs and a status message in red is shown.
+- **FR-162** AddStudy MUST validate that selected related study patient number/id matches current patient; on mismatch no ingestion occurs with explicit status message.
 - **FR-163** Previous report Reportified toggle MUST default to ON when application starts a new study and after each successful AddStudy ingestion.
 - **FR-164** Settings window MUST expose an "Automation (Preview)" tab with placeholder checkboxes for configuring actions on New Study and Add Study (non-functional skeleton).
 - **FR-165** Previous study initial text MUST be treated as already reportified baseline; toggle OFF performs dereportify transform shown in editors; toggle ON restores original baseline text without reprocessing.
@@ -302,6 +249,10 @@
 - **FR-098** Procedure operation GetTextOCR MUST perform OCR on target element bounds and return extracted text or explicit status tokens ("(no element)", "(ocr unavailable)", "(empty)" etc.).
 - **FR-099** PACS helper MUST expose current patient number via banner heuristic (longest digit sequence length ≥5) and current study date/time via date(+time) pattern.
 - **FR-135** Custom procedure Split operation MUST support optional third argument (Arg3, Number) representing zero-based index; when provided and within bounds the operation stores only that part and preview shows part[index]; when out of range preview = (index out of range N); when omitted legacy behavior (all parts joined with \u001F) is preserved.
+- **FR-337** Procedure operation Replace MUST be available with Arg1 Var, Arg2 String, Arg3 String replacing all occurrences.
+- **FR-338** Procedure operation GetHTML MUST fetch and output HTML from Arg1 (URL in Var), errors preview `(error)`.
+- **FR-343..FR-346** Split MUST support multiline separators, escapes, regex prefix, and preserve Arg3 index behavior (see updates above).
+- **FR-347** Replace MUST support C#-style escapes in Arg2/Arg3 (search/replace strings).
 
 ### Functional Requirements (Reliability & Logging)
 - **FR-120** First-chance Postgres exception sampler MUST log each unique (SqlState|Message) only once per application session.

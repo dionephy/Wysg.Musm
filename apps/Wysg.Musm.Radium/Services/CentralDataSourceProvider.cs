@@ -32,58 +32,100 @@ namespace Wysg.Musm.Radium.Services
     /// </summary>
     public sealed class CentralDataSourceProvider : ICentralDataSourceProvider
     {
-        public NpgsqlDataSource Central { get; }
-        public NpgsqlDataSource CentralMeta { get; }
+        public NpgsqlDataSource Central => _central.Value;
+        public NpgsqlDataSource CentralMeta => _centralMeta.Value;
+
+        private readonly IRadiumLocalSettings _settings;
+        private readonly Lazy<NpgsqlDataSource> _central;
+        private readonly Lazy<NpgsqlDataSource> _centralMeta;
         private bool _disposed;
 
         public CentralDataSourceProvider(IRadiumLocalSettings settings)
         {
-            var raw = settings.CentralConnectionString;
-            Debug.WriteLine($"[CentralDataSourceProvider] Raw connection string: {raw}");
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+
+            var redacted = string.IsNullOrWhiteSpace(_settings.CentralConnectionString) ? "<empty>" : "provided";
+            Debug.WriteLine($"[CentralDataSourceProvider] Raw connection string: {redacted}");
+
+            _central = new Lazy<NpgsqlDataSource>(BuildCentral, isThreadSafe: true);
+            _centralMeta = new Lazy<NpgsqlDataSource>(BuildCentralMeta, isThreadSafe: true);
+        }
+
+        private NpgsqlDataSource BuildCentral()
+        {
+            var raw = _settings.CentralConnectionString?.Trim();
+            if (string.IsNullOrWhiteSpace(raw))
+                throw new InvalidOperationException("Central DB is not configured. Open Settings and set IRadiumLocalSettings.CentralConnectionString.");
+
             var tracePg = Environment.GetEnvironmentVariable("RAD_TRACE_PG") == "1";
 
-            // Base builder for normal workload ------------------------------------------------
             var normalBuilder = new NpgsqlConnectionStringBuilder(raw)
             {
-                IncludeErrorDetail = true,          // richer server error messages
-                Multiplexing = false,               // simpler debugging (per-connector pipeline)
-                KeepAlive = 15,                     // TCP keepalive interval (sec) to detect half-open connections
-                NoResetOnClose = false              // allow protocol RESET for pool hygiene
+                IncludeErrorDetail = true,
+                Multiplexing = false,
+                KeepAlive = 15,
+                NoResetOnClose = false
             };
-            if (!raw.Contains("sslmode", StringComparison.OrdinalIgnoreCase)) normalBuilder.SslMode = SslMode.Require;
-            if (normalBuilder.Timeout < 8) normalBuilder.Timeout = 8;              // connect timeout seconds
-            if (normalBuilder.CommandTimeout < 30) normalBuilder.CommandTimeout = 30; // default per-command
-            if (!normalBuilder.ContainsKey("Cancellation Timeout")) normalBuilder["Cancellation Timeout"] = 4000; // ms
+
+            // Enforce SSL if not explicitly provided
+            if (!(normalBuilder.ContainsKey("Ssl Mode") || normalBuilder.ContainsKey("SslMode") || normalBuilder.ContainsKey("SSL Mode")))
+                normalBuilder.SslMode = SslMode.Require;
+
+            if (normalBuilder.Timeout < 8) normalBuilder.Timeout = 8;
+            if (normalBuilder.CommandTimeout < 30) normalBuilder.CommandTimeout = 30;
+            if (!normalBuilder.ContainsKey("Cancellation Timeout")) normalBuilder["Cancellation Timeout"] = 4000;
 
             Debug.WriteLine($"[CentralDataSourceProvider] Final connection string: {normalBuilder.ConnectionString}");
 
-            // Metadata / health probe builder (shorter execution timeout) ---------------------
+            var dsBuilder = new NpgsqlDataSourceBuilder(normalBuilder.ConnectionString);
+            if (tracePg) dsBuilder.UseLoggerFactory(new NpgsqlTraceLoggerFactory());
+            var ds = dsBuilder.Build();
+
+            Debug.WriteLine($"[PG][DataSource] Central created Host={normalBuilder.Host} Port={normalBuilder.Port} Pooling={normalBuilder.Pooling} NoReset={normalBuilder.NoResetOnClose} SSLMode={normalBuilder.SslMode}");
+            return ds;
+        }
+
+        private NpgsqlDataSource BuildCentralMeta()
+        {
+            var raw = _settings.CentralConnectionString?.Trim();
+            if (string.IsNullOrWhiteSpace(raw))
+                throw new InvalidOperationException("Central DB is not configured. Open Settings and set IRadiumLocalSettings.CentralConnectionString.");
+
+            var tracePg = Environment.GetEnvironmentVariable("RAD_TRACE_PG") == "1";
+
+            var normalBuilder = new NpgsqlConnectionStringBuilder(raw)
+            {
+                IncludeErrorDetail = true,
+                Multiplexing = false,
+                KeepAlive = 15,
+                NoResetOnClose = false
+            };
+            if (!(normalBuilder.ContainsKey("Ssl Mode") || normalBuilder.ContainsKey("SslMode") || normalBuilder.ContainsKey("SSL Mode")))
+                normalBuilder.SslMode = SslMode.Require;
+            if (normalBuilder.Timeout < 8) normalBuilder.Timeout = 8;
+            if (normalBuilder.CommandTimeout < 30) normalBuilder.CommandTimeout = 30;
+            if (!normalBuilder.ContainsKey("Cancellation Timeout")) normalBuilder["Cancellation Timeout"] = 4000;
+
             var metaBuilder = new NpgsqlConnectionStringBuilder(normalBuilder.ConnectionString)
             {
                 CommandTimeout = 10
             };
             if (!metaBuilder.ContainsKey("Cancellation Timeout")) metaBuilder["Cancellation Timeout"] = 3000;
 
-            // Build primary data source
-            var dsBuilder = new NpgsqlDataSourceBuilder(normalBuilder.ConnectionString);
-            if (tracePg) dsBuilder.UseLoggerFactory(new NpgsqlTraceLoggerFactory());
-            Central = dsBuilder.Build();
-
-            // Build metadata data source
             var dsMetaBuilder = new NpgsqlDataSourceBuilder(metaBuilder.ConnectionString);
             if (tracePg) dsMetaBuilder.UseLoggerFactory(new NpgsqlTraceLoggerFactory());
-            CentralMeta = dsMetaBuilder.Build();
+            var ds = dsMetaBuilder.Build();
 
-            Debug.WriteLine($"[PG][DataSource] Central created Host={normalBuilder.Host} Port={normalBuilder.Port} Pooling={normalBuilder.Pooling} NoReset={normalBuilder.NoResetOnClose} SSLMode={normalBuilder.SslMode}");
             Debug.WriteLine($"[PG][DataSource] CentralMeta timeout={metaBuilder.CommandTimeout}s");
+            return ds;
         }
 
         public void Dispose()
         {
             if (_disposed) return;
             _disposed = true;
-            try { Central.Dispose(); } catch { }
-            try { CentralMeta.Dispose(); } catch { }
+            try { if (_central.IsValueCreated) _central.Value.Dispose(); } catch { }
+            try { if (_centralMeta.IsValueCreated) _centralMeta.Value.Dispose(); } catch { }
         }
     }
 

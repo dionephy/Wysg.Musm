@@ -482,5 +482,12 @@ namespace Wysg.Musm.Radium.Views
         private void Spy_OnAddProcRow(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnAddProcRow", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
         private void Spy_OnSaveProcedure(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnSaveProcedure", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
         private void Spy_OnRunProcedure(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnRunProcedure", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
+
+        // New: open Spy window directly from Settings Automation tab
+        private void OnOpenSpy(object sender, RoutedEventArgs e)
+        {
+            var win = new SpyWindow { Owner = this };
+            win.Show();
+        }
     }
 }

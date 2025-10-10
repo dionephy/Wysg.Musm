@@ -56,6 +56,36 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private async Task RunNewStudyProcedureAsync() => await (_newStudyProc != null ? _newStudyProc.ExecuteAsync(this) : Task.Run(OnNewStudy));
 
+        // New automation helpers (use UI thread synchronization via async void)
+        private async void AcquireStudyRemarkAsync()
+        {
+            try
+            {
+                var s = await _pacs.GetCurrentStudyRemarkAsync();
+                StudyRemark = s ?? string.Empty; // property triggers JSON update
+                SetStatus("Study remark captured");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[Automation] GetStudyRemark error: " + ex.Message);
+                SetStatus("Study remark capture failed", true);
+            }
+        }
+        private async void AcquirePatientRemarkAsync()
+        {
+            try
+            {
+                var s = await _pacs.GetCurrentPatientRemarkAsync();
+                PatientRemark = s ?? string.Empty; // property triggers JSON update
+                SetStatus("Patient remark captured");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[Automation] GetPatientRemark error: " + ex.Message);
+                SetStatus("Patient remark capture failed", true);
+            }
+        }
+
         private void OnNewStudy()
         {
             var seqRaw = _localSettings?.AutomationNewStudySequence ?? string.Empty;
@@ -65,6 +95,8 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunNewStudyProcedureAsync(); }
                 else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _lockStudyProc != null) { _ = _lockStudyProc.ExecuteAsync(this); }
+                else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { AcquireStudyRemarkAsync(); }
+                else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { AcquirePatientRemarkAsync(); }
             }
         }
         private void OnSelectPrevious(object? o)
