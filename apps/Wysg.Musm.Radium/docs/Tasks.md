@@ -12,6 +12,11 @@
 - [X] T552 Update Tasks.md with completed header component fields tasks (this file, cumulative).
 - [X] T553 Fix crash on startup: Add initialization guard to prevent UpdateFormattedHeader() from running during ViewModel construction (safety fix).
 - [X] T554 JSON-driven Header Recompute: Ensure HeaderText updates in real-time when header component fields are edited via CurrentReportJson (remove suppression and recompute during JSON apply).
+- [X] T555 Make header editor read-only in UI (EditorHeader IsReadOnly=True).
+- [X] T556 Add left-side inputs: txtStudyRemark, txtPatientRemark, editorChiefComplaint, editorPatientHistory with two-way bindings.
+- [X] T557 Expose `IsReadOnly` and `ShowLineNumbers` on `EditorControl` and flow to inner `MusmEditor`.
+- [X] T558 Disable line numbers on editorChiefComplaint/editorPatientHistory.
+- [X] T559 Add "Edit Study Technique" and "Edit Comparison" buttons (placeholders for future dialogs).
 - [X] T526 Fix snippet option parsing to allow empty text values (e.g., `0^` for empty string choice) in CodeSnippet.ParseOptions() (FR-371).
 - [X] T515 Fix snippet completion display to show "{trigger} → {description}" instead of "{trigger} → {snippet text}" in MusmCompletionData and EditorCompletionData (FR-362).
 - [X] T516 Implement proper mode extraction from placeholder index prefix (1^, 2^, 3^) in CodeSnippet.Expand() method (FR-363).

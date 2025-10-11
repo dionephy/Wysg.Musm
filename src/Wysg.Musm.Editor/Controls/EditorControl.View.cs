@@ -55,6 +55,21 @@ namespace Wysg.Musm.Editor.Controls
                 typeof(EditorControl),
                 new PropertyMetadata(System.Windows.Controls.ScrollBarVisibility.Auto));
 
+        // New: Expose read-only and ShowLineNumbers for the embedded editor
+        public static readonly DependencyProperty IsReadOnlyProperty =
+            DependencyProperty.Register(
+                nameof(IsReadOnly),
+                typeof(bool),
+                typeof(EditorControl),
+                new PropertyMetadata(false));
+
+        public static readonly DependencyProperty ShowLineNumbersProperty =
+            DependencyProperty.Register(
+                nameof(ShowLineNumbers),
+                typeof(bool),
+                typeof(EditorControl),
+                new PropertyMetadata(true));
+
         public int GhostIdleMs
         {
             get => (int)GetValue(GhostIdleMsProperty);
@@ -70,6 +85,18 @@ namespace Wysg.Musm.Editor.Controls
         {
             get => (System.Windows.Controls.ScrollBarVisibility)GetValue(VerticalScrollBarVisibilityProperty);
             set => SetValue(VerticalScrollBarVisibilityProperty, value);
+        }
+
+        public bool IsReadOnly
+        {
+            get => (bool)GetValue(IsReadOnlyProperty);
+            set => SetValue(IsReadOnlyProperty, value);
+        }
+
+        public bool ShowLineNumbers
+        {
+            get => (bool)GetValue(ShowLineNumbersProperty);
+            set => SetValue(ShowLineNumbersProperty, value);
         }
 
         private static void OnGhostIdleMsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

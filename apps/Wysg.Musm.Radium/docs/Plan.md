@@ -33,6 +33,25 @@
   - empty `comparison` with no other header content → no Comparison line.
 - Verify header updates immediately as JSON is edited (PropertyChanged).
 
+## Change Log Addition (2025-10-11 - Header UI Inputs + Read-only Header)
+- Added UI editors in `MainWindow.xaml` for: Study Remark, Patient Remark, Chief Complaint, Patient History; placed in a left column next to the JSON editor.
+- Set `EditorHeader` to read-only to prevent direct edits; header remains computed from component fields.
+- Bound editors two-way to `StudyRemark`, `PatientRemark`, `ChiefComplaint`, `PatientHistory`.
+- Turned off line numbers on the two mini editors.
+- Added `Edit Study Technique` and `Edit Comparison` buttons as entry points for future dialogs.
+
+### Approach
+1) Expose `IsReadOnly` and `ShowLineNumbers` DPs on `EditorControl`; bind through to inner `MusmEditor`.
+2) Update `MainWindow.xaml` top area: split into a 3-column grid (left editors, splitter, right JSON).
+3) Mark `EditorHeader` as `IsReadOnly=True`.
+4) Keep existing JSON bindings; header recompute continues to run on property and JSON changes.
+
+### Test Plan
+- Typing in Chief Complaint / Patient History editors updates HeaderText in real time.
+- Editing StudyRemark/PatientRemark updates JSON fields accordingly.
+- The header editor cannot be edited (no caret insertion or text change).
+- Line numbers are hidden for Chief Complaint and Patient History editors.
+
 ## Approach (Header Component Fields)
 1) Store component fields separately instead of free-form header text.
 2) Compute formatted header on-demand using conditional logic for each section.

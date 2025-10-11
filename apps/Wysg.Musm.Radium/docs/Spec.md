@@ -17,6 +17,17 @@
 - **FR-389** Changing any header component field (chief_complaint, patient_history, study_techniques, comparison) MUST immediately update the formatted HeaderText and trigger JSON update.
 - [NEW 2025-10-11] JSON-driven updates: When editing CurrentReportJson directly and changing any of the four header component fields, the HeaderText MUST recompute in real-time accordingly (no suppression during JSON parse).
 - **FR-390** HeaderText setter MUST be private; header is computed from component fields and cannot be directly edited.
+  - [NEW 2025-10-11] Header editor UI MUST be non-editable (read-only) reflecting its computed nature.
+
+## Update: Header Component Inline Editors (2025-10-11)
+- **FR-391** Provide dedicated inputs at the top area to edit header components: `Study Remark`, `Patient Remark`, `Chief Complaint`, `Patient History`.
+- **FR-392** Bindings:
+  - `txtStudyRemark` ⇄ `StudyRemark` (two-way; maps to Report.study_remark in JSON).
+  - `txtPatientRemark` ⇄ `PatientRemark` (two-way; JSON populate remains controlled by automation where applicable).
+  - `editorChiefComplaint` ⇄ `ChiefComplaint` (two-way).
+  - `editorPatientHistory` ⇄ `PatientHistory` (two-way).
+- **FR-393** `editorChiefComplaint` and `editorPatientHistory` MUST have `ShowLineNumbers = false`.
+- **FR-394** Provide two buttons under the component editors: `Edit Study Technique`, `Edit Comparison` (hook points for future dialogs).
 
 ## Update: Snippet Logic Implementation Fixes (2025-01-10)
 - **FR-362** Snippet completion items MUST display as `{trigger} → {description}` not `{trigger} → {snippet text}` in both MusmCompletionData and EditorCompletionData.

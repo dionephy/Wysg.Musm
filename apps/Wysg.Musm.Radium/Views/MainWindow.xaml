@@ -61,7 +61,7 @@
         <!-- Base style for embedded AvalonEdit via MusmEditor inside EditorControl -->
         <Style TargetType="editor:MusmEditor">
             <Setter Property="Background" Value="#1E1E1E"/>
-            <Setter Property="Foreground" Value="#DCDCDC"/>
+            <Setter Property="Foreground" Value="{StaticResource Dark.Brush.ForegroundDim}"/>
             <Setter Property="BorderBrush" Value="#2D2D30"/>
             <Setter Property="BorderThickness" Value="1"/>            
             <Setter Property="FontSize" Value="14"/>
@@ -280,8 +280,51 @@
                     <Binding ElementName="gridCenter" Path="ActualHeight"/>
                 </MultiBinding>
             </Grid.Height>
-            <TextBox x:Name="txtJson"  Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-         Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+            <Grid Name="gridTopChild" >
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="2"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left inputs: remarks + header components (scrollable) -->
+                <ScrollViewer Grid.Column="0"
+                              Margin="0"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Vertical" Margin="0" VerticalAlignment="Stretch">
+                        <TextBlock Text="Study Remark" Margin="0,0,0,4"/>
+                        <TextBox x:Name="txtStudyRemark" Text="{Binding StudyRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+
+
+                        <TextBlock Text="Chief Complaint" Margin="0,0,0,4"/>
+                        <TextBox x:Name="txtChiefComplaint"
+                                 Text="{Binding ChiefComplaint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="4" TextWrapping="Wrap" FontSize="12"/>
+
+                        <TextBlock Text="Patient Remark" Margin="0,0,0,4"/>
+                        <TextBox x:Name="txtPatientRemark" Text="{Binding PatientRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+
+                        <TextBlock Text="Patient History" Margin="0,0,0,4"/>
+                        <TextBox x:Name="txtPatientHistory"
+                                 Text="{Binding PatientHistory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="4" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button Content="Edit Study Technique" Margin="0,0,8,0"/>
+                            <Button Content="Edit Comparison"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+
+                <!-- Right: JSON editor -->
+                <TextBox Grid.Column="2" x:Name="txtJson"  Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                         Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+            </Grid>
            
         </Grid>
 
@@ -297,8 +340,54 @@
                     <RowDefinition Height="1*" />
                     <RowDefinition Height="1*" />                    
                 </Grid.RowDefinitions>
-                <TextBox x:Name="txtJsonSide" Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"  Grid.Row="0" 
-         Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+
+                <Grid Name="gridSideTop"  Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="2"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <ScrollViewer Grid.Column="0"
+              Margin="0"
+              VerticalScrollBarVisibility="Auto"
+              HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Vertical" Margin="0" VerticalAlignment="Stretch">
+                            <TextBlock Text="Study Remark" Margin="0,0,0,4"/>
+                            <TextBox x:Name="txtStudyRemark2" Text="{Binding StudyRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+
+
+                            <TextBlock Text="Chief Complaint" Margin="0,0,0,4"/>
+                            <TextBox x:Name="txtChiefComplaint2"
+                 Text="{Binding ChiefComplaint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Padding="4" TextWrapping="Wrap" FontSize="12"/>
+
+                            <TextBlock Text="Patient Remark" Margin="0,0,0,4"/>
+                            <TextBox x:Name="txtPatientRemark2" Text="{Binding PatientRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+
+                            <TextBlock Text="Patient History" Margin="0,0,0,4"/>
+                            <TextBox x:Name="txtPatientHistory2"
+                 Text="{Binding PatientHistory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Padding="4" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="Edit Study Technique" Margin="0,0,8,0"/>
+                                <Button Content="Edit Comparison"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+
+                    <TextBox x:Name="txtJsonSide" Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2"
+Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+
+                </Grid>
+                
+                
+                
                 
                 <TextBox x:Name="txtPrevJsonSide" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Row="1" 
                          Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
@@ -414,7 +503,7 @@
                 </Grid>
 
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding HeaderText, Mode=OneWay}"/>
+                <editor:EditorControl x:Name="EditorHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding HeaderText, Mode=OneWay}" IsReadOnly="True"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="2"/>
                 <editor:EditorControl x:Name="EditorFindings" Grid.Row="4" DocumentText="{Binding FindingsText, Mode=TwoWay}"/>
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="2"/>
@@ -510,7 +599,7 @@
         </Grid>
 
         <!-- Status bar (bottom) with two lines -->
-        <Grid Grid.Row="2" Grid.ColumnSpan="2" Background="#1E1E1E" Margin="0,2,0,0">
+        <Grid x:Name="gridStatusPortrait" Grid.Row="2" Grid.ColumnSpan="2" Background="#1E1E1E" Margin="0,2,0,0" >
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>

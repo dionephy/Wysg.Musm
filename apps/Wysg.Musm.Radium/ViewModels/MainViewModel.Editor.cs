@@ -20,8 +20,8 @@ namespace Wysg.Musm.Radium.ViewModels
         private bool _reportified; public bool Reportified { get => _reportified; set => ToggleReportified(value); }
 
         // New: PACS remarks captured via automation modules
-        private string _studyRemark = string.Empty; public string StudyRemark { get => _studyRemark; private set { if (SetProperty(ref _studyRemark, value ?? string.Empty)) UpdateCurrentReportJson(); } }
-        private string _patientRemark = string.Empty; public string PatientRemark { get => _patientRemark; private set { if (SetProperty(ref _patientRemark, value ?? string.Empty)) UpdateCurrentReportJson(); } }
+        private string _studyRemark = string.Empty; public string StudyRemark { get => _studyRemark; set { if (SetProperty(ref _studyRemark, value ?? string.Empty)) UpdateCurrentReportJson(); } }
+        private string _patientRemark = string.Empty; public string PatientRemark { get => _patientRemark; set { if (SetProperty(ref _patientRemark, value ?? string.Empty)) UpdateCurrentReportJson(); } }
 
         // Header fields for real-time formatting
         private string _chiefComplaint = string.Empty; 
@@ -280,10 +280,11 @@ namespace Wysg.Musm.Radium.ViewModels
                 string newPatientHistory = root.TryGetProperty("patient_history", out var phEl) ? (phEl.GetString() ?? string.Empty) : string.Empty;
                 string newStudyTechniques = root.TryGetProperty("study_techniques", out var stEl) ? (stEl.GetString() ?? string.Empty) : string.Empty;
                 string newComparison = root.TryGetProperty("comparison", out var compEl) ? (compEl.GetString() ?? string.Empty) : string.Empty;
-                // IMPORTANT: patient_remark is NOT applied from JSON; it must come from the PACS procedure result only.
+                string newPatientRemark = root.TryGetProperty("patient_remark", out var pEl) ? (pEl.GetString() ?? string.Empty) : string.Empty;
                 _updatingFromJson = true;
                 _rawFindings = newFindings; _rawConclusion = newConclusion; // keep raw updated
                 StudyRemark = newStudyRemark; // round-trippable
+                PatientRemark = newPatientRemark; // now round-trippable as well
                 // Update header component fields
                 _chiefComplaint = newChiefComplaint; OnPropertyChanged(nameof(ChiefComplaint));
                 _patientHistory = newPatientHistory; OnPropertyChanged(nameof(PatientHistory));

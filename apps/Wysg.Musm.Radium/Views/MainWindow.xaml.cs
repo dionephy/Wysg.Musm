@@ -98,6 +98,8 @@ namespace Wysg.Musm.Radium.Views
                 gridCenter.VerticalAlignment = VerticalAlignment.Center;
                 var horiz = (tglAlignRight?.IsChecked == true) ? HorizontalAlignment.Right : HorizontalAlignment.Left;
                 gridCenter.HorizontalAlignment = horiz;
+
+                gridStatusPortrait.Visibility = Visibility.Collapsed;
                 
                 if (gridBottom != null) gridBottom.HorizontalAlignment = horiz; // mirror alignment for bottom overlay grid
                 if (gridTop != null) gridTop.HorizontalAlignment = horiz; // mirror alignment for top overlay grid
@@ -109,13 +111,33 @@ namespace Wysg.Musm.Radium.Views
                 if (gridTop != null) gridTop.HorizontalAlignment = HorizontalAlignment.Center;
                 if (gridBottom != null) gridBottom.HorizontalAlignment = HorizontalAlignment.Center;
 
-                
+                gridStatusPortrait.Visibility = Visibility.Visible;
             }
         }
 
         private void OnAlignRightToggled(object sender, RoutedEventArgs e)
         {
             UpdateGridCenterPositioning();
+            UpdateGridSideLayout(tglAlignRight?.IsChecked==true);
+        }
+
+        private void UpdateGridSideLayout(bool right)
+        {
+            var children = gridSideTop.Children;
+            var gridHeaderEdit = children[0] as UIElement;
+            var gridJson = children[2] as UIElement;
+
+            if (gridHeaderEdit == null || gridJson == null) return;
+            if (right)
+            {               
+                Grid.SetColumn(gridHeaderEdit, 2);
+                Grid.SetColumn(gridJson, 0);
+            }
+            else
+            {               
+                Grid.SetColumn(gridHeaderEdit, 0);
+                Grid.SetColumn(gridJson, 2);
+            }
         }
 
         private void OnForceGhost(object sender, RoutedEventArgs e)
@@ -141,18 +163,25 @@ namespace Wysg.Musm.Radium.Views
         private void SwapReportEditors(bool reversed)
         {
             var children = gridCenter.Children;
+            var children2 = gridTopChild.Children;
             var currentReportGrid = children[0] as UIElement;
             var previousReportGrid = children[2] as UIElement;
-            if (currentReportGrid == null || previousReportGrid == null) return;
+            var gridHeaderEdit = children2[0] as UIElement;
+            var gridJson = children2[2] as UIElement;
+            if (currentReportGrid == null || previousReportGrid == null || gridHeaderEdit == null || gridJson == null) return;
             if (reversed)
             {
                 Grid.SetColumn(currentReportGrid, 2);
                 Grid.SetColumn(previousReportGrid, 0);
+                Grid.SetColumn(gridHeaderEdit, 2);
+                Grid.SetColumn(gridJson, 0);
             }
             else
             {
                 Grid.SetColumn(currentReportGrid, 0);
                 Grid.SetColumn(previousReportGrid, 2);
+                Grid.SetColumn(gridHeaderEdit, 0);
+                Grid.SetColumn(gridJson, 2);
             }
         }
 
