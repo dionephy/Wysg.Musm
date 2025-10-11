@@ -162,6 +162,14 @@ public static class SnippetInputHandler
 
         SelectPlaceholder(area, session, session.Current);
         session.Popup = ShowPopup(area, session.Current);
+        // Important: We subscribe to popup.CommitRequested instead of relying on synthetic Tab
+        // forwarding from the popup. The popup raises this event asynchronously (Dispatcher.BeginInvoke),
+        // which avoids re-entrant input routing and crashes that occurred when closing popups while
+        // still in their own input handlers. See PlaceholderCompletionWindow (Root cause & fix note).
+        if (session.Popup != null)
+        {
+            session.Popup.CommitRequested += OnPopupCommitRequested;
+        }
         session.Popup?.SelectFirst();
 
         area.PreviewKeyDown += OnPreviewKeyDown;
@@ -434,8 +442,17 @@ public static class SnippetInputHandler
                 session.MultiSelected.Clear();
                 session.Current = next;
                 SelectPlaceholder(area, session, next);
-                session.Popup?.Close();
+                if (session.Popup != null)
+                {
+                    // Unsubscribe before closing to avoid event leaks
+                    session.Popup.CommitRequested -= OnPopupCommitRequested;
+                    session.Popup.Close();
+                }
                 session.Popup = ShowPopup(area, next);
+                if (session.Popup != null)
+                {
+                    session.Popup.CommitRequested += OnPopupCommitRequested;
+                }
                 session.Popup?.SelectFirst();
             }
         }
@@ -451,9 +468,35 @@ public static class SnippetInputHandler
             area.PreviewKeyDown -= OnPreviewKeyDown;
             area.PreviewMouseDown -= OnPreviewMouseDown;
             area.PreviewMouseUp -= OnPreviewMouseUp;
-            session.Popup?.Close();
+            if (session.Popup != null)
+            {
+                // Unsubscribe before closing to avoid event leaks
+                session.Popup.CommitRequested -= OnPopupCommitRequested;
+                session.Popup.Close();
+            }
             session.Popup = null;
             session.Dispose();
+        }
+
+        void OnPopupCommitRequested(object? s, PlaceholderCompletionWindow.Item? selected)
+        {
+            if (session.Current is null) return;
+            var cur = session.Current;
+            if (cur.Options.Count == 0) return; // free text: ignore
+            if (cur.Kind == PlaceholderKind.MultiChoice) return; // handled via Tab accumulation flow
+
+            // Mode 1 or 3: accept selected item (fallback to first)
+            string text;
+            if (selected != null)
+            {
+                text = selected.Text;
+            }
+            else
+            {
+                var first = cur.Options.FirstOrDefault();
+                text = first?.Text ?? string.Empty;
+            }
+            AcceptOptionAndComplete(text);
         }
 
         void OnPreviewMouseDown(object? s, MouseButtonEventArgs e)
