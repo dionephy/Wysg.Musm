@@ -1,5 +1,23 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: Report Header Component Fields & Real-Time Formatting (2025-01-10)
+- **FR-386** Report JSON MUST include four new header component fields: `chief_complaint` (string), `patient_history` (string), `comparison` (string), `study_techniques` (string).
+- **FR-387** HeaderText MUST be automatically generated in real-time from the four component fields according to the following formatting rules:
+  - If `chief_complaint` is null/whitespace AND `patient_history` is null/whitespace, "Clinical information: " line is NOT shown.
+  - If `chief_complaint` is null/whitespace AND `patient_history` is not whitespace, line starts with "Clinical information: NA".
+  - If `chief_complaint` is not whitespace, line starts with "Clinical information: {chief_complaint}".
+  - Each line of `patient_history` is shown on a separate line prefixed with "- ".
+  - If `study_techniques` is null/whitespace, "Techniques: " line is NOT shown.
+  - If `study_techniques` is not whitespace, line shows "Techniques: {study_techniques}".
+  - If `comparison` is null/whitespace AND all of `chief_complaint`, `patient_history`, `study_techniques` are null/whitespace, "Comparison: " line is NOT shown.
+  - If `comparison` is null/whitespace AND any of `chief_complaint`, `patient_history`, `study_techniques` is not whitespace, line shows "Comparison: NA".
+  - If `comparison` is not whitespace, line shows "Comparison: {comparison}".
+  - Completed header MUST be trimmed of leading/trailing whitespace.
+- **FR-388** Header component fields MUST round-trip through CurrentReportJson (serialize and deserialize).
+- **FR-389** Changing any header component field (chief_complaint, patient_history, study_techniques, comparison) MUST immediately update the formatted HeaderText and trigger JSON update.
+- [NEW 2025-10-11] JSON-driven updates: When editing CurrentReportJson directly and changing any of the four header component fields, the HeaderText MUST recompute in real-time accordingly (no suppression during JSON parse).
+- **FR-390** HeaderText setter MUST be private; header is computed from component fields and cannot be directly edited.
+
 ## Update: Snippet Logic Implementation Fixes (2025-01-10)
 - **FR-362** Snippet completion items MUST display as `{trigger} → {description}` not `{trigger} → {snippet text}` in both MusmCompletionData and EditorCompletionData.
 - **FR-363** Snippet placeholder mode extraction MUST properly parse mode number from the index prefix (1^, 2^, or 3^) in placeholder syntax `${mode^label=...}`.

@@ -34,6 +34,7 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine("[MainWindow] OnLoaded START");
             TryEnableDarkTitleBar();
 
             _pacs ??= new PacsService();
@@ -47,14 +48,15 @@ namespace Wysg.Musm.Radium.Views
             catch { txtUserEmail.Text = string.Empty; }
 
             if (DataContext is not MainViewModel vm) return;
-            InitEditor(vm, EditorHeader);
-            InitEditor(vm, EditorFindings);
-            InitEditor(vm, EditorConclusion);
-            InitEditor(vm, EditorPreviousHeader);
-            InitEditor(vm, EditorPreviousFindings);
+            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Header"); InitEditor(vm, EditorHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Header: " + ex); throw; }
+            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Findings"); InitEditor(vm, EditorFindings); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Findings: " + ex); throw; }
+            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Conclusion"); InitEditor(vm, EditorConclusion); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Conclusion: " + ex); throw; }
+            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor PrevHeader"); InitEditor(vm, EditorPreviousHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor PrevHeader: " + ex); throw; }
+            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor PrevFindings"); InitEditor(vm, EditorPreviousFindings); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor PrevFindings: " + ex); throw; }
 
             UpdateGridCenterSize();
             UpdateGridCenterPositioning();
+            System.Diagnostics.Debug.WriteLine("[MainWindow] OnLoaded COMPLETE");
         }
 
         private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)

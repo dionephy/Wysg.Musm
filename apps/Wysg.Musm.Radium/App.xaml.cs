@@ -110,6 +110,42 @@ namespace Wysg.Musm.Radium
         protected override async void OnStartup(StartupEventArgs e)
         {   
             base.OnStartup(e);
+            // Global exception diagnostics: capture unhandled exceptions early
+            try
+            {
+                AppDomain.CurrentDomain.UnhandledException += (s, ev) =>
+                {
+                    try
+                    {
+                        var ex = ev.ExceptionObject as Exception;
+                        Debug.WriteLine($"[App][UnhandledException] {(ex?.GetType().Name ?? "<null>")}: {ex?.Message}\n{ex?.StackTrace}");
+                        Serilog.Log.Error(ex, "[Unhandled] AppDomain.CurrentDomain.UnhandledException");
+                    }
+                    catch { }
+                };
+                DispatcherUnhandledException += (s, ev2) =>
+                {
+                    try
+                    {
+                        Debug.WriteLine($"[App][DispatcherUnhandled] {ev2.Exception.GetType().Name}: {ev2.Exception.Message}\n{ev2.Exception.StackTrace}");
+                        Serilog.Log.Error(ev2.Exception, "[Unhandled] DispatcherUnhandledException");
+                    }
+                    catch { }
+                    // Do not mark handled here to keep default behavior; change to true to avoid process crash temporarily
+                    // ev2.Handled = true;
+                };
+                System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (s, ev3) =>
+                {
+                    try
+                    {
+                        Debug.WriteLine($"[App][UnobservedTask] {ev3.Exception.GetType().Name}: {ev3.Exception.Message}\n{ev3.Exception.StackTrace}");
+                        Serilog.Log.Error(ev3.Exception, "[Unhandled] UnobservedTaskException");
+                        ev3.SetObserved();
+                    }
+                    catch { }
+                };
+            }
+            catch { }
             Current.ShutdownMode = ShutdownMode.OnExplicitShutdown; // do not exit when splash closes
             await _host.StartAsync(); // activates Singleton services
             if (!ServicesInitialized)

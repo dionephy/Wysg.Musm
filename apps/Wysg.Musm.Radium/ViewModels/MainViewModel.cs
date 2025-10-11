@@ -68,10 +68,32 @@ namespace Wysg.Musm.Radium.ViewModels
             IRadiumLocalSettings? localSettings = null,
             ILockStudyProcedure? lockStudyProc = null)
         {
-            _phrases = phrases; _tenant = tenant; _cache = cache; _hotkeys = hotkeys; _snippets = snippets;
-            _studyRepo = studyRepo; _newStudyProc = newStudyProc; _localSettings = localSettings; _lockStudyProc = lockStudyProc;
-            PreviousStudies = new ObservableCollection<PreviousStudyTab>();
-            InitializeCommands(); // implemented in Commands partial
+            Debug.WriteLine("[MainViewModel] Constructor START");
+            try
+            {
+                Debug.WriteLine("[MainViewModel] Setting dependencies...");
+                _phrases = phrases; _tenant = tenant; _cache = cache; _hotkeys = hotkeys; _snippets = snippets;
+                _studyRepo = studyRepo; _newStudyProc = newStudyProc; _localSettings = localSettings; _lockStudyProc = lockStudyProc;
+                
+                Debug.WriteLine("[MainViewModel] Creating PreviousStudies collection...");
+                PreviousStudies = new ObservableCollection<PreviousStudyTab>();
+                
+                Debug.WriteLine("[MainViewModel] Initializing commands...");
+                InitializeCommands(); // implemented in Commands partial
+                
+                Debug.WriteLine("[MainViewModel] Setting initialization flag...");
+                // Mark as initialized after all construction is complete
+                _isInitialized = true;
+                
+                Debug.WriteLine("[MainViewModel] Constructor COMPLETE");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainViewModel] Constructor EXCEPTION: {ex.GetType().Name}");
+                Debug.WriteLine($"[MainViewModel] Message: {ex.Message}");
+                Debug.WriteLine($"[MainViewModel] StackTrace: {ex.StackTrace}");
+                throw;
+            }
         }
 
         // ------------------------------------------------------------------

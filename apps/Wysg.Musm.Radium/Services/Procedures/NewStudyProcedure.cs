@@ -12,7 +12,9 @@ namespace Wysg.Musm.Radium.Services.Procedures
             if (vm == null) return;
             vm.PreviousStudies.Clear();
             vm.SelectedPreviousStudy = null;
-            vm.HeaderText = vm.FindingsText = vm.ConclusionText = string.Empty;
+            // Clear header component fields (HeaderText is computed from these)
+            vm.ChiefComplaint = vm.PatientHistory = vm.StudyTechniques = vm.Comparison = string.Empty;
+            vm.FindingsText = vm.ConclusionText = string.Empty;
             vm.PatientName = vm.PatientNumber = vm.PatientSex = vm.PatientAge = vm.StudyName = vm.StudyDateTime = string.Empty;
             vm.UpdateCurrentStudyLabelInternal();
             try { await vm.FetchCurrentStudyAsyncInternal(); } catch (Exception ex) { Debug.WriteLine("[NewStudyProcedure] fetch error: " + ex.Message); }

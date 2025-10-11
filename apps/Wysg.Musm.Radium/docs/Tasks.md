@@ -1,6 +1,17 @@
 ﻿# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Added
+- [X] T544 Add four header component fields to MainViewModel.Editor: chief_complaint, patient_history, study_techniques, comparison (FR-386).
+- [X] T545 Implement UpdateFormattedHeader() method with conditional formatting logic per FR-387 (FR-387).
+- [X] T546 Change HeaderText setter to private; header is computed from component fields (FR-390).
+- [X] T547 Update UpdateCurrentReportJson() to serialize new header component fields (FR-388).
+- [X] T548 Update ApplyJsonToEditors() to deserialize and apply new header component fields (FR-388).
+- [X] T549 Wire component field property changes to trigger UpdateFormattedHeader() and UpdateCurrentReportJson() (FR-389).
+- [X] T550 Update Spec.md with FR-386..FR-390 documenting header component fields and real-time formatting (cumulative).
+- [X] T551 Update Plan.md with change log entry for header component fields including approach, test plan, and risk mitigation (cumulative).
+- [X] T552 Update Tasks.md with completed header component fields tasks (this file, cumulative).
+- [X] T553 Fix crash on startup: Add initialization guard to prevent UpdateFormattedHeader() from running during ViewModel construction (safety fix).
+- [X] T554 JSON-driven Header Recompute: Ensure HeaderText updates in real-time when header component fields are edited via CurrentReportJson (remove suppression and recompute during JSON apply).
 - [X] T526 Fix snippet option parsing to allow empty text values (e.g., `0^` for empty string choice) in CodeSnippet.ParseOptions() (FR-371).
 - [X] T515 Fix snippet completion display to show "{trigger} → {description}" instead of "{trigger} → {snippet text}" in MusmCompletionData and EditorCompletionData (FR-362).
 - [X] T516 Implement proper mode extraction from placeholder index prefix (1^, 2^, 3^) in CodeSnippet.Expand() method (FR-363).

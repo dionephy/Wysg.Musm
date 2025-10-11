@@ -16,22 +16,44 @@ namespace Wysg.Musm.Radium.ViewModels
     {
         public void InitializeEditor(EditorControl editor)
         {
+            System.Diagnostics.Debug.WriteLine("[EditorInit] InitializeEditor START");
             editor.MinCharsForSuggest = 1;
             // Build a composite provider that merges phrases (tokens; combined scope) with active hotkeys and snippets
-            editor.SnippetProvider = new CompositeProvider(_phrases, _tenant, _cache, _hotkeys, _snippets);
+            try
+            {
+                editor.SnippetProvider = new CompositeProvider(_phrases, _tenant, _cache, _hotkeys, _snippets);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[EditorInit][EX] Creating CompositeProvider: " + ex);
+                throw;
+            }
             editor.EnableGhostDebugAnchors(false);
             _ = Task.Run(async () =>
             {
                 var accountId = _tenant.AccountId;
                 // Seed cache with COMBINED phrases (global + account) so completion shows both
-                var combined = await _phrases.GetCombinedPhrasesAsync(accountId);
-                _cache.Set(accountId, combined);
-                // Preload hotkeys snapshot
-                await _hotkeys.PreloadAsync(accountId);
-                // Preload snippets snapshot
-                await _snippets.PreloadAsync(accountId);
-                await EnsureCapsAsync();
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine($"[EditorInit] Preload start account={accountId}");
+                    var combined = await _phrases.GetCombinedPhrasesAsync(accountId);
+                    _cache.Set(accountId, combined);
+                    System.Diagnostics.Debug.WriteLine("[EditorInit] Phrases cached: " + combined.Count);
+                    // Preload hotkeys snapshot
+                    await _hotkeys.PreloadAsync(accountId);
+                    System.Diagnostics.Debug.WriteLine("[EditorInit] Hotkeys preloaded");
+                    // Preload snippets snapshot
+                    await _snippets.PreloadAsync(accountId);
+                    System.Diagnostics.Debug.WriteLine("[EditorInit] Snippets preloaded");
+                    await EnsureCapsAsync();
+                    System.Diagnostics.Debug.WriteLine("[EditorInit] EnsureCaps done");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine("[EditorInit][EX] Background preload: " + ex);
+                }
             });
+            System.Diagnostics.Debug.WriteLine("[EditorInit] InitializeEditor COMPLETE");
         }
 
         private sealed class CompositeProvider : ISnippetProvider

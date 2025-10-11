@@ -1,6 +1,7 @@
 using System;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 
 namespace Wysg.Musm.Radium.ViewModels
 {
@@ -22,7 +23,73 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _studyRemark = string.Empty; public string StudyRemark { get => _studyRemark; private set { if (SetProperty(ref _studyRemark, value ?? string.Empty)) UpdateCurrentReportJson(); } }
         private string _patientRemark = string.Empty; public string PatientRemark { get => _patientRemark; private set { if (SetProperty(ref _patientRemark, value ?? string.Empty)) UpdateCurrentReportJson(); } }
 
+        // Header fields for real-time formatting
+        private string _chiefComplaint = string.Empty; 
+        public string ChiefComplaint 
+        { 
+            get => _chiefComplaint; 
+            set 
+            { 
+                Debug.WriteLine($"[Editor] ChiefComplaint setter called with value: {value?.Length ?? 0} chars");
+                if (SetProperty(ref _chiefComplaint, value ?? string.Empty)) 
+                { 
+                    Debug.WriteLine("[Editor] ChiefComplaint property changed, calling updates...");
+                    SafeUpdateJson(); 
+                    SafeUpdateHeader(); 
+                } 
+            } 
+        }
+        
+        private string _patientHistory = string.Empty; 
+        public string PatientHistory 
+        { 
+            get => _patientHistory; 
+            set 
+            { 
+                Debug.WriteLine($"[Editor] PatientHistory setter called with value: {value?.Length ?? 0} chars");
+                if (SetProperty(ref _patientHistory, value ?? string.Empty)) 
+                { 
+                    Debug.WriteLine("[Editor] PatientHistory property changed, calling updates...");
+                    SafeUpdateJson(); 
+                    SafeUpdateHeader(); 
+                } 
+            } 
+        }
+        
+        private string _studyTechniques = string.Empty; 
+        public string StudyTechniques 
+        { 
+            get => _studyTechniques; 
+            set 
+            { 
+                Debug.WriteLine($"[Editor] StudyTechniques setter called with value: {value?.Length ?? 0} chars");
+                if (SetProperty(ref _studyTechniques, value ?? string.Empty)) 
+                { 
+                    Debug.WriteLine("[Editor] StudyTechniques property changed, calling updates...");
+                    SafeUpdateJson(); 
+                    SafeUpdateHeader(); 
+                } 
+            } 
+        }
+        
+        private string _comparison = string.Empty; 
+        public string Comparison 
+        { 
+            get => _comparison; 
+            set 
+            { 
+                Debug.WriteLine($"[Editor] Comparison setter called with value: {value?.Length ?? 0} chars");
+                if (SetProperty(ref _comparison, value ?? string.Empty)) 
+                { 
+                    Debug.WriteLine("[Editor] Comparison property changed, calling updates...");
+                    SafeUpdateJson(); 
+                    SafeUpdateHeader(); 
+                } 
+            } 
+        }
+
         private bool _suppressAutoToggle; // prevents recursive toggling while programmatically changing text
+        private bool _isInitialized; // prevents updates during initialization
 
         private void ToggleReportified(bool value)
         {
@@ -80,22 +147,17 @@ namespace Wysg.Musm.Radium.ViewModels
 
         // Editor-bound properties (override setters to integrate auto-unreportify + JSON update)
         // NEW BEHAVIOR: When reportified, cancel the text change and only dereportify
+        // NOTE: HeaderText is now auto-generated from component fields (chief_complaint, patient_history, study_techniques, comparison)
         private string _headerText = string.Empty; 
         public string HeaderText 
         { 
             get => _headerText; 
-            set 
+            private set // Changed to private - header is computed
             { 
                 if (value != _headerText) 
                 { 
-                    // NEW: If reportified and not suppressing, cancel change and dereportify
-                    if (_reportified && !_suppressAutoToggle)
-                    {
-                        AutoUnreportifyOnEdit();
-                        return; // Cancel the text change
-                    }
                     if (!_reportified) _rawHeader = value; 
-                    if (SetProperty(ref _headerText, value)) UpdateCurrentReportJson(); 
+                    SetProperty(ref _headerText, value);
                 } 
             } 
         }
@@ -191,7 +253,11 @@ namespace Wysg.Musm.Radium.ViewModels
                     findings = _rawFindings == string.Empty ? ReportFindings : _rawFindings,
                     conclusion = _rawConclusion == string.Empty ? ConclusionText : _rawConclusion,
                     study_remark = _studyRemark,
-                    patient_remark = _patientRemark
+                    patient_remark = _patientRemark,
+                    chief_complaint = _chiefComplaint,
+                    patient_history = _patientHistory,
+                    study_techniques = _studyTechniques,
+                    comparison = _comparison
                 };
                 _updatingFromEditors = true;
                 CurrentReportJson = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true });
@@ -210,10 +276,21 @@ namespace Wysg.Musm.Radium.ViewModels
                 string newFindings = root.TryGetProperty("findings", out var fEl) ? (fEl.GetString() ?? string.Empty) : string.Empty;
                 string newConclusion = root.TryGetProperty("conclusion", out var cEl) ? (cEl.GetString() ?? string.Empty) : string.Empty;
                 string newStudyRemark = root.TryGetProperty("study_remark", out var sEl) ? (sEl.GetString() ?? string.Empty) : string.Empty;
+                string newChiefComplaint = root.TryGetProperty("chief_complaint", out var ccEl) ? (ccEl.GetString() ?? string.Empty) : string.Empty;
+                string newPatientHistory = root.TryGetProperty("patient_history", out var phEl) ? (phEl.GetString() ?? string.Empty) : string.Empty;
+                string newStudyTechniques = root.TryGetProperty("study_techniques", out var stEl) ? (stEl.GetString() ?? string.Empty) : string.Empty;
+                string newComparison = root.TryGetProperty("comparison", out var compEl) ? (compEl.GetString() ?? string.Empty) : string.Empty;
                 // IMPORTANT: patient_remark is NOT applied from JSON; it must come from the PACS procedure result only.
                 _updatingFromJson = true;
                 _rawFindings = newFindings; _rawConclusion = newConclusion; // keep raw updated
                 StudyRemark = newStudyRemark; // round-trippable
+                // Update header component fields
+                _chiefComplaint = newChiefComplaint; OnPropertyChanged(nameof(ChiefComplaint));
+                _patientHistory = newPatientHistory; OnPropertyChanged(nameof(PatientHistory));
+                _studyTechniques = newStudyTechniques; OnPropertyChanged(nameof(StudyTechniques));
+                _comparison = newComparison; OnPropertyChanged(nameof(Comparison));
+                // Recompute HeaderText from component fields even during JSON updates
+                UpdateFormattedHeader();
                 // Do not assign PatientRemark here; it is updated by automation AcquirePatientRemarkAsync only
                 if (!_reportified)
                 {
@@ -239,6 +316,104 @@ namespace Wysg.Musm.Radium.ViewModels
             string f = Reportified ? FindingsText : FindingsText;
             string c = Reportified ? ConclusionText : ConclusionText;
             return (h, f, c);
+        }
+
+        // Safe wrappers that check initialization state
+        private void SafeUpdateJson()
+        {
+            if (!_isInitialized)
+            {
+                Debug.WriteLine("[Editor] SafeUpdateJson: Skipped (not initialized)");
+                return;
+            }
+            try 
+            { 
+                Debug.WriteLine("[Editor] SafeUpdateJson: Executing UpdateCurrentReportJson");
+                UpdateCurrentReportJson(); 
+            } 
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Editor] SafeUpdateJson EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+            }
+        }
+
+        private void SafeUpdateHeader()
+        {
+            if (!_isInitialized)
+            {
+                Debug.WriteLine("[Editor] SafeUpdateHeader: Skipped (not initialized)");
+                return;
+            }
+            try 
+            { 
+                Debug.WriteLine("[Editor] SafeUpdateHeader: Executing UpdateFormattedHeader");
+                UpdateFormattedHeader(); 
+            } 
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Editor] SafeUpdateHeader EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+            }
+        }
+
+        // Real-time header formatting based on component fields
+        private void UpdateFormattedHeader()
+        {
+            var lines = new System.Collections.Generic.List<string>();
+            
+            bool hasClinicalInfo = !string.IsNullOrWhiteSpace(_chiefComplaint) || !string.IsNullOrWhiteSpace(_patientHistory);
+            bool hasTechniques = !string.IsNullOrWhiteSpace(_studyTechniques);
+            bool hasAnyHeaderContent = hasClinicalInfo || hasTechniques;
+            
+            // Clinical information logic
+            if (hasClinicalInfo)
+            {
+                if (string.IsNullOrWhiteSpace(_chiefComplaint) && !string.IsNullOrWhiteSpace(_patientHistory))
+                {
+                    // Chief complaint is empty but history exists -> show "Clinical information: NA"
+                    lines.Add("Clinical information: NA");
+                }
+                else if (!string.IsNullOrWhiteSpace(_chiefComplaint))
+                {
+                    // Chief complaint exists -> show it as first line
+                    lines.Add($"Clinical information: {_chiefComplaint}");
+                }
+                
+                // Add patient history lines (each line prefixed with "- ")
+                if (!string.IsNullOrWhiteSpace(_patientHistory))
+                {
+                    var historyLines = _patientHistory.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var line in historyLines)
+                    {
+                        var trimmed = line.Trim();
+                        if (!string.IsNullOrWhiteSpace(trimmed))
+                        {
+                            lines.Add($"- {trimmed}");
+                        }
+                    }
+                }
+            }
+            
+            // Techniques logic
+            if (hasTechniques)
+            {
+                lines.Add($"Techniques: {_studyTechniques}");
+            }
+            
+            // Comparison logic
+            if (!string.IsNullOrWhiteSpace(_comparison))
+            {
+                lines.Add($"Comparison: {_comparison}");
+            }
+            else if (hasAnyHeaderContent)
+            {
+                // Comparison is empty but we have other header content -> show "Comparison: NA"
+                lines.Add("Comparison: NA");
+            }
+            // else: if comparison is empty AND no other header content, don't show comparison line at all
+            
+            // Join and trim the result
+            var formatted = string.Join("\n", lines).Trim();
+            HeaderText = formatted;
         }
     }
 }

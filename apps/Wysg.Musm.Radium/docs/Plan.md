@@ -1,5 +1,61 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
+## Change Log Addition (2025-01-10 - Report Header Component Fields & Real-Time Formatting)
+- Added four new header component fields to report JSON: `chief_complaint`, `patient_history`, `comparison`, `study_techniques`.
+- Implemented real-time header formatting in `MainViewModel.Editor.cs`:
+  - Added public properties for the four component fields with change notification and JSON update triggers.
+  - Changed `HeaderText` setter to private; header is now automatically computed from component fields.
+  - Implemented `UpdateFormattedHeader()` method applying all formatting rules:
+    - Clinical information line shown with "NA" when chief_complaint is empty but patient_history exists.
+    - Patient history lines prefixed with "- ".
+    - Techniques line shown only when study_techniques is not empty.
+    - Comparison shown as "NA" when empty but other header content exists; omitted entirely when all header content is empty.
+    - Final header is trimmed.
+- Updated `UpdateCurrentReportJson()` to serialize new fields.
+- Updated `ApplyJsonToEditors()` to deserialize and apply new fields, triggering header formatting update.
+- Header updates are real-time: any change to component fields immediately updates the formatted header display.
+
+## Change Log Addition (2025-10-11 - JSON-driven Header Recompute)
+- Adjusted header update pipeline so that editing `CurrentReportJson` directly and changing any of the header component fields recomputes `HeaderText` immediately.
+- Removed suppression that prevented `UpdateFormattedHeader()` during JSON apply; header now refreshes in real time on JSON edits.
+- Safeguards remain to prevent recursion and maintain `_raw*` backing fields integrity for findings/conclusion.
+
+### Approach
+1) In `UpdateFormattedHeader()`, remove early return that skipped updates when `_updatingFromJson` was true.
+2) Keep `ApplyJsonToEditors()` calling `UpdateFormattedHeader()` after setting the component backing fields.
+3) Preserve private setter for `HeaderText` to keep it computed-only.
+
+### Test Plan
+- Edit `CurrentReportJson` in the side/bottom JSON editor to set: 
+  - only `chief_complaint` → header shows Clinical information.
+  - only `patient_history` (multi-line) → header shows Clinical information: NA and lines with “- ” prefix.
+  - empty `comparison` with other content → shows "Comparison: NA".
+  - empty `comparison` with no other header content → no Comparison line.
+- Verify header updates immediately as JSON is edited (PropertyChanged).
+
+## Approach (Header Component Fields)
+1) Store component fields separately instead of free-form header text.
+2) Compute formatted header on-demand using conditional logic for each section.
+3) Round-trip component fields through JSON for persistence.
+4) Prevent direct editing of HeaderText (computed property).
+
+## Test Plan (Header Component Fields)
+- Set chief_complaint only → verify "Clinical information: {text}" appears.
+- Set patient_history only → verify "Clinical information: NA" appears with history lines prefixed by "- ".
+- Set both chief_complaint and patient_history → verify chief_complaint shown first, then history lines.
+- Set study_techniques → verify "Techniques: {text}" appears.
+- Set comparison → verify "Comparison: {text}" appears.
+- Leave comparison empty with other content → verify "Comparison: NA" appears.
+- Leave all fields empty → verify header is empty (no "Comparison: " line).
+- Verify round-trip: set fields, check JSON, parse JSON, verify fields restored.
+- Verify multi-line patient_history → each line prefixed with "- ".
+
+## Risks / Mitigations (Header Component Fields)
+- Users cannot directly edit the header text; must edit component fields. Consider adding UI controls for each field or allow editing via JSON view.
+- Formatting logic must be kept in sync with user expectations; any changes to formatting rules require code update.
+- Multi-line patient_history uses simple line split; complex formatting (nested bullets, etc.) not supported initially.
+- **Crash Fix (2025-01-10)**: Added initialization guard (`_isInitialized` flag) to prevent `UpdateFormattedHeader()` and `UpdateCurrentReportJson()` from executing during ViewModel construction. The flag is set to `true` at the end of the constructor, and safe wrapper methods (`SafeUpdateJson()`, `SafeUpdateHeader()`) check this flag before executing.
+
 ## Change Log Addition (2025-01-10 - Snippet Empty Text Option Support)
 - Fixed snippet option parsing to allow empty text values (e.g., `0^` for empty string choice).
 - Modified `CodeSnippet.ParseOptions()` to:

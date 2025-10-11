@@ -280,11 +280,9 @@
                     <Binding ElementName="gridCenter" Path="ActualHeight"/>
                 </MultiBinding>
             </Grid.Height>
-            <TextBox x:Name="txtPrevJson" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     Padding="6" Margin="0" 
-                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"
-                     VerticalAlignment="Stretch"
-                     />
+            <TextBox x:Name="txtJson"  Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+         Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+           
         </Grid>
 
         <Grid Grid.Row="1" Grid.Column="1" Name="gridSide" Height="{Binding ElementName=gridCenter, Path=Height}" >
@@ -299,10 +297,12 @@
                     <RowDefinition Height="1*" />
                     <RowDefinition Height="1*" />                    
                 </Grid.RowDefinitions>
-                <TextBox x:Name="txtPrevJsonSide" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Row="0" 
+                <TextBox x:Name="txtJsonSide" Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"  Grid.Row="0" 
+         Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+                
+                <TextBox x:Name="txtPrevJsonSide" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Row="1" 
                          Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
-                <TextBox x:Name="txtJsonSide" Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"  Grid.Row="1" 
-                         Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+                
             </Grid>
             
         </Grid>
@@ -315,8 +315,11 @@
                     <Binding ElementName="gridCenter" Path="ActualHeight"/>
                 </MultiBinding>
             </Grid.Height>
-            <TextBox x:Name="txtJson"  Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                     Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+            <TextBox x:Name="txtPrevJson" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+          Padding="6" Margin="0" 
+          TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"
+          VerticalAlignment="Stretch"
+          />
         </Grid>
 
         <!-- Central editing area -->
@@ -411,7 +414,7 @@
                 </Grid>
 
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding HeaderText, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding HeaderText, Mode=OneWay}"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="2"/>
                 <editor:EditorControl x:Name="EditorFindings" Grid.Row="4" DocumentText="{Binding FindingsText, Mode=TwoWay}"/>
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="2"/>
