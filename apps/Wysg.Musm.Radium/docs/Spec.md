@@ -1,5 +1,33 @@
 ﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
 
+## Update: PreviousReportTextAndJsonPanel Reusable Control (2025-01-11)
+- **FR-401** System MUST provide a reusable UserControl (PreviousReportTextAndJsonPanel) that displays Previous Report header_and_findings text alongside JSON view to eliminate code duplication.
+- **FR-402** PreviousReportTextAndJsonPanel MUST expose HeaderAndFindingsText dependency property (string, two-way binding) for binding to PreviousHeaderAndFindingsText in ViewModel.
+- **FR-403** PreviousReportTextAndJsonPanel MUST expose JsonText dependency property (string, two-way binding) for binding to PreviousReportJson in ViewModel.
+- **FR-404** PreviousReportTextAndJsonPanel MUST expose Reverse dependency property (bool, default false) to swap column positions when reports are reversed.
+- **FR-405** PreviousReportTextAndJsonPanel layout MUST consist of three columns: ScrollViewer with labeled TextBox (column 0), GridSplitter (column 1), JSON TextBox (column 2).
+- **FR-406** When Reverse property is true, PreviousReportTextAndJsonPanel MUST swap columns: JSON TextBox to column 0, ScrollViewer to column 2.
+- **FR-407** Both gridSideBottom (landscape side panel) and gridBottomControl (portrait bottom panel) MUST use PreviousReportTextAndJsonPanel instead of duplicate XAML.
+- **FR-408** gridBottomControl MUST set Reverse=True to maintain JSON on left, header_and_findings on right layout (portrait mode convention).
+
+## Update: Separate Toggle Effects for Reverse Reports vs Align Right (2025-01-11)
+- **FR-409** Reverse Reports toggle MUST affect only the portrait panels: `gridTopChild` and `gridBottomControl`.
+- **FR-410** Align Right toggle MUST affect only the side panels: `gridSideTop` and `gridSideBottom`.
+- **FR-411** Reverse Reports MUST NOT affect side panels; Align Right MUST NOT affect top/bottom panels.
+- **FR-412** Default Reverse state for `gridBottomControl` MUST be false and toggled exclusively by Reverse Reports.
+- **FR-413** PreviousReportTextAndJsonPanel MUST apply its `Reverse` layout on load and on property changes, by swapping column indices of its left host and JSON box.
+
+## Update: 1:1 Column Widths for ReportInputsAndJsonPanel (2025-01-11)
+- **FR-414** `ReportInputsAndJsonPanel` (used by `gridTopChild` and `gridSideTop`) MUST use 1:1 column widths between inputs (left) and JSON (right), matching `PreviousReportTextAndJsonPanel`.
+
+## Update: Previous Report Field Mapping Change (2025-01-11)
+- **FR-395** PreviousReportJson MUST use `header_and_findings` field instead of `findings` to store the combined header and findings content from previous reports.
+- **FR-396** PreviousReportJson MUST use `final_conclusion` field instead of `conclusion` to store the conclusion content from previous reports.
+- **FR-397** Previous report editor EditorPreviousFindings MUST bind to `PreviousHeaderAndFindingsText` property (maps to report.header_and_findings in JSON).
+- **FR-398** Previous report editor EditorPreviousConclusion MUST bind to `PreviousFinalConclusionText` property (maps to report.final_conclusion in JSON).
+- **FR-399** Previous report side panel MUST display a TextBox bound to `PreviousHeaderAndFindingsText` to the left of the JSON editor (txtPrevJsonSide) with a GridSplitter between them, enabling direct editing of header_and_findings content.
+- **FR-400** Backward compatibility: Properties `PreviousFindingsText` and `PreviousConclusionText` MUST remain as aliases pointing to the new property names to avoid breaking existing code references.
+
 ## Update: Report Header Component Fields & Real-Time Formatting (2025-01-10)
 - **FR-386** Report JSON MUST include four new header component fields: `chief_complaint` (string), `patient_history` (string), `comparison` (string), `study_techniques` (string).
 - **FR-387** HeaderText MUST be automatically generated in real-time from the four component fields according to the following formatting rules:
@@ -303,7 +331,7 @@
 
 ### Data & Key Entities
 - **Report**: technique, chief_complaint, history_preview, chief_complaint_proofread, history, history_proofread, header_and_findings, conclusion, split_index, comparison, technique_proofread, comparison_proofread, findings_proofread, conclusion_proofread, findings, conclusion_preview.
-- **PrevReport**: header_and_findings, split_index, chief_complaint, history, technique, comparison, *_proofread, findings_proofread, conclusion, conclusion_proofread.
+- **PrevReport**: header, header_and_findings, final_conclusion, split_index, chief_complaint, history, technique, comparison, *_proofread, findings_proofread, conclusion_proofread.
 - **Study**: identifiers, modality, studyname, study remark, patient remark, timestamps.
 - **Mapping (StudynameLOINCParts)**: studyname, part list (part_number, part_name, sequence_order), derived technique link [NEEDS CLARIFICATION: technique derivation rule].
 - **GhostSuggestion**: list of alternative multi-line suggestions + selected index.

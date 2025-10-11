@@ -1,5 +1,80 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
+## Change Log Addition (2025-01-11 - PreviousReportTextAndJsonPanel Reusable Control)
+- Created reusable UserControl `PreviousReportTextAndJsonPanel` to eliminate duplicate XAML code in side and bottom panels.
+- Control structure:
+  - Three-column Grid layout: ScrollViewer (column 0) with labeled TextBox for header_and_findings, GridSplitter (column 1), JSON TextBox (column 2).
+  - Dependency properties: `HeaderAndFindingsText` (string, two-way), `JsonText` (string, two-way), `Reverse` (bool, default false).
+  - `ApplyReverse()` method swaps column positions when Reverse property changes.
+- Created files:
+  - `apps\Wysg.Musm.Radium\Controls\PreviousReportTextAndJsonPanel.xaml` - XAML layout with three columns and bindings.
+  - `apps\Wysg.Musm.Radium\Controls\PreviousReportTextAndJsonPanel.xaml.cs` - Code-behind with dependency properties and column swap logic.
+- Updated MainWindow.xaml:
+  - Replaced gridSideBottom duplicate XAML with `<rad:PreviousReportTextAndJsonPanel>` instance (Reverse=false).
+  - Replaced gridBottomControl duplicate XAML with `<rad:PreviousReportTextAndJsonPanel>` instance (Reverse=true for portrait layout).
+  - Both instances bind to `PreviousHeaderAndFindingsText` and `PreviousReportJson`.
+- Updated MainWindow.xaml.cs:
+  - Modified `SwapReportEditors()` to toggle `Reverse` property on `gridSideBottom` and `gridBottomControl` instances.
+  - Inverted reverse logic because gridBottomControl starts with Reverse=true.
+- Benefits:
+  - Single source of truth for layout and styling.
+  - Easier maintenance (changes in one place).
+  - Consistent behavior across portrait and landscape modes.
+
+### Approach (PreviousReportTextAndJsonPanel)
+1) Extract duplicate XAML pattern into a UserControl with configurable bindings.
+2) Expose dependency properties for two-way data binding (HeaderAndFindingsText, JsonText).
+3) Add Reverse property to support layout inversion when reports are swapped.
+4) Replace duplicate XAML in MainWindow.xaml with control instances.
+5) Update SwapReportEditors to toggle Reverse on control instances.
+
+### Test Plan (PreviousReportTextAndJsonPanel)
+- Portrait mode: Verify gridBottomControl displays JSON on left, header_and_findings on right.
+- Landscape mode: Verify gridSideBottom displays header_and_findings on left, JSON on right.
+- Edit header_and_findings TextBox → verify binding updates PreviousHeaderAndFindingsText in ViewModel.
+- Edit JSON TextBox → verify binding updates PreviousReportJson in ViewModel.
+- Toggle Reverse Reports → verify columns swap correctly in both control instances.
+- GridSplitter dragging → verify resizing works smoothly in both panels.
+
+### Risks / Mitigations (PreviousReportTextAndJsonPanel)
+- Dependency property bindings might fail if RelativeSource is incorrect → mitigated by testing bindings in both usage contexts.
+- Column swapping in ApplyReverse might not work if control hierarchy changes → mitigated by using FindName to locate elements at runtime.
+- Reverse property initial state might cause layout flash → mitigated by setting Reverse in XAML declaratively.
+
+## Change Log Addition (2025-01-11 - Previous Report Field Mapping Change)
+- Changed PreviousReportJson field mapping to use `header_and_findings` instead of `findings` and `final_conclusion` instead of `conclusion` for alignment with database schema and domain model.
+- Updated MainViewModel.PreviousStudies.cs:
+  - Renamed internal cache fields: `_prevFindingsCache` → `_prevHeaderAndFindingsCache`, `_prevConclusionCache` → `_prevFinalConclusionCache`.
+  - Renamed properties: `PreviousFindingsText` → `PreviousHeaderAndFindingsText`, `PreviousConclusionText` → `PreviousFinalConclusionText`.
+  - Added backward compatibility aliases `PreviousFindingsText` and `PreviousConclusionText` as passthrough properties to avoid breaking existing references.
+  - Updated JSON serialization in `UpdatePreviousReportJson()` to emit `header_and_findings` and `final_conclusion` fields.
+  - Updated JSON deserialization in `ApplyJsonToPrevious()` to read `header_and_findings` and `final_conclusion` fields.
+  - Updated property change notifications to reference new property names.
+- Updated MainWindow.xaml:
+  - Changed EditorPreviousFindings binding from `PreviousFindingsText` to `PreviousHeaderAndFindingsText`.
+  - Changed EditorPreviousConclusion binding from `PreviousConclusionText` to `PreviousFinalConclusionText`.
+  - Added new TextBox `txtPrevHeaderAndFindingsSide` in the gridSide landscape panel to the left of `txtPrevJsonSide` with a GridSplitter between them, bound to `PreviousHeaderAndFindingsText` for direct editing.
+- Updated documentation: Spec.md (FR-395..FR-400), Plan.md (this entry), Tasks.md (T560..T565).
+
+### Approach (Previous Report Field Mapping)
+1) Align field names with database schema and domain conventions (`header_and_findings`, `final_conclusion`).
+2) Maintain backward compatibility through property aliases to avoid breaking existing code.
+3) Add dedicated TextBox for `header_and_findings` content editing alongside JSON view.
+4) Update all serialization, deserialization, and property notification paths to use new field names.
+
+### Test Plan (Previous Report Field Mapping)
+- Load a previous study → verify EditorPreviousFindings displays content from `header_and_findings`.
+- Edit EditorPreviousFindings → verify `PreviousReportJson` shows updated `header_and_findings` field.
+- Edit txtPrevHeaderAndFindingsSide → verify EditorPreviousFindings updates in real-time.
+- Edit `PreviousReportJson` directly (change `header_and_findings` value) → verify both txtPrevHeaderAndFindingsSide and EditorPreviousFindings update.
+- Verify backward compatibility: code referencing `PreviousFindingsText` or `PreviousConclusionText` continues to work.
+- Landscape mode: verify txtPrevHeaderAndFindingsSide appears to the left of txtPrevJsonSide with proper GridSplitter.
+
+### Risks / Mitigations (Previous Report Field Mapping)
+- Existing code referencing old property names may break → mitigated by providing backward compatibility aliases.
+- JSON parsing of old data with `findings`/`conclusion` fields will fail → mitigated by updating parsing logic to expect new field names (migration may be needed for existing saved reports).
+- UI layout complexity with additional TextBox → mitigated by using GridSplitter for flexible sizing.
+
 ## Change Log Addition (2025-01-10 - Report Header Component Fields & Real-Time Formatting)
 - Added four new header component fields to report JSON: `chief_complaint`, `patient_history`, `comparison`, `study_techniques`.
 - Implemented real-time header formatting in `MainViewModel.Editor.cs`:
@@ -282,4 +357,32 @@ Test Plan
 
 Backlog
 - Wire Add Study sequence execution path to honor the modules (T507).
+
+## Change Log Addition (2025-01-11 – Separate Toggle Effects)
+- Reverse Reports now affects ONLY portrait panels (top/bottom):
+  - `gridTopChild.Reverse = reversed`
+  - `gridBottomControl.Reverse = reversed`
+- Align Right now affects ONLY side panels (landscape):
+  - `gridSideTop.Reverse = right`
+  - `gridSideBottom.Reverse = right`
+- Removed prior cross-effects so toggles are independent.
+
+### Approach (Separate Toggle Effects)
+1) Update `UpdateGridSideLayout` to flip only side panels.
+2) Update `SwapReportEditors` to flip only top/bottom panels.
+3) Set `gridBottomControl` default `Reverse=False`; driven by Reverse Reports toggle.
+
+### Test Plan (Separate Toggle Effects)
+- Toggle Reverse Reports: verify only top/bottom panels swap; side panels unchanged.
+- Toggle Align Right: verify only side panels swap; top/bottom unchanged.
+- Toggle both: verify expected independent behavior in both panel groups.
+
+## Change Log Addition (2025-01-11 – 1:1 Column Widths for Top/Side Panels)
+- Modified `ReversibleColumnsGrid.xaml` to use `* | 2 | *` column widths to enforce 1:1 sizing for left/right panels.
+- Affects `ReportInputsAndJsonPanel` used by `gridTopChild` and `gridSideTop`.
+- Matches layout behavior of `PreviousReportTextAndJsonPanel` (already `* | 2 | *`).
+
+### Test Plan (1:1 Column Widths)
+- Resize window and verify left and right areas under `gridTopChild` stay equal width.
+- Resize window and verify left and right areas under `gridSideTop` stay equal width.
 

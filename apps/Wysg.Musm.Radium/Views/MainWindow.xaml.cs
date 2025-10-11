@@ -123,9 +123,10 @@ namespace Wysg.Musm.Radium.Views
 
         private void UpdateGridSideLayout(bool right)
         {
-            // Toggle Reverse on composite panels
+            // Toggle Reverse on side panels only (landscape mode)
+            // Align Right should NOT affect top/bottom panels
             try { gridSideTop.Reverse = right; } catch { }
-            try { gridTopChild.Reverse = right; } catch { }
+            try { gridSideBottom.Reverse = right; } catch { }
         }
 
         private void OnForceGhost(object sender, RoutedEventArgs e)
@@ -153,6 +154,7 @@ namespace Wysg.Musm.Radium.Views
             var children = gridCenter.Children;
             var currentReportGrid = children[0] as UIElement;
             var previousReportGrid = children[2] as UIElement;
+
             if (currentReportGrid == null || previousReportGrid == null) return;
             if (reversed)
             {
@@ -165,9 +167,11 @@ namespace Wysg.Musm.Radium.Views
                 Grid.SetColumn(previousReportGrid, 2);
             }
 
-            // Flip top/side editors via Reverse
+            // Reverse Reports should ONLY affect top/bottom panels
             try { gridTopChild.Reverse = reversed; } catch { }
-            try { gridSideTop.Reverse = reversed; } catch { }
+            try { gridBottomControl.Reverse = !reversed; } catch { }
+
+            // Side panels are controlled by Align Right in UpdateGridSideLayout and are NOT affected here
         }
 
         private void OnReadBannerByHwnd(object sender, RoutedEventArgs e) { }

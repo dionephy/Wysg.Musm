@@ -1,6 +1,26 @@
 ﻿# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Added
+- [X] T572 Separate toggles: Reverse Reports affects only gridTopChild/gridBottomControl (portrait panels).
+- [X] T573 Separate toggles: Align Right affects only gridSideTop/gridSideBottom (landscape panels).
+- [X] T574 Update SwapReportEditors to toggle only portrait panel Reverse states.
+- [X] T575 Update UpdateGridSideLayout to toggle only landscape panel Reverse states.
+- [X] T576 Documentation updates (Spec/Plan/Tasks) for separated toggle behaviors.
+- [X] T577 Fix PreviousReportTextAndJsonPanel reverse: name left host as PART_LeftHost, apply Reverse on Loaded, and handle Reverse DP changed to swap columns.
+- [X] T578 Wire MainWindow toggles to update gridBottomControl and gridSideBottom Reverse states correctly.
+- [X] T579 Make gridTopChild/gridSideTop columns 1:1 by updating ReversibleColumnsGrid to star sizing both columns.
+- [X] T566 Create reusable PreviousReportTextAndJsonPanel UserControl to eliminate duplicate code in side and bottom panels (user request 2025-01-11).
+- [X] T567 Add HeaderAndFindingsText and JsonText dependency properties to PreviousReportTextAndJsonPanel for two-way binding (user request 2025-01-11).
+- [X] T568 Add Reverse property to PreviousReportTextAndJsonPanel to support column swapping when reports are reversed (user request 2025-01-11).
+- [X] T569 Replace duplicate XAML in gridSideBottom and gridBottomControl with PreviousReportTextAndJsonPanel instances (user request 2025-01-11).
+- [X] T570 Update SwapReportEditors method to handle Reverse property of new control instances (user request 2025-01-11).
+- [X] T571 Update Spec.md, Plan.md, and Tasks.md with PreviousReportTextAndJsonPanel control creation (cumulative documentation update).
+- [X] T560 Change PreviousReportJson field mapping from findings/conclusion to header_and_findings/final_conclusion (user request 2025-01-11).
+- [X] T561 Update MainViewModel.PreviousStudies properties: rename PreviousFindingsText to PreviousHeaderAndFindingsText, PreviousConclusionText to PreviousFinalConclusionText (user request 2025-01-11).
+- [X] T562 Update MainWindow.xaml previous editor bindings to use PreviousHeaderAndFindingsText and PreviousFinalConclusionText (user request 2025-01-11).
+- [X] T563 Add backward compatibility aliases PreviousFindingsText and PreviousConclusionText pointing to new property names (user request 2025-01-11).
+- [X] T564 Add txtPrevHeaderAndFindingsSide TextBox to the left of txtPrevJsonSide with GridSplitter; bind to PreviousHeaderAndFindingsText (user request 2025-01-11).
+- [X] T565 Update Spec.md, Plan.md, and Tasks.md with field mapping changes (cumulative documentation update).
 - [X] T544 Add four header component fields to MainViewModel.Editor: chief_complaint, patient_history, study_techniques, comparison (FR-386).
 - [X] T545 Implement UpdateFormattedHeader() method with conditional formatting logic per FR-387 (FR-387).
 - [X] T546 Change HeaderText setter to private; header is computed from component fields (FR-390).

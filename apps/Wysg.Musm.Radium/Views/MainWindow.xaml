@@ -294,17 +294,21 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="1*" />
+                    <RowDefinition Height="2" />
                     <RowDefinition Height="1*" />
                     <RowDefinition Height="auto" />
                 </Grid.RowDefinitions>
 
                 <rad:ReportInputsAndJsonPanel x:Name="gridSideTop" Grid.Row="0" />
-                
-                <TextBox x:Name="txtPrevJsonSide" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Row="1" 
-                         Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+
+                <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
+
+                <rad:PreviousReportTextAndJsonPanel x:Name="gridSideBottom" Grid.Row="2"
+                    HeaderAndFindingsText="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    JsonText="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
 
-                <rad:StatusPanel x:Name="gridStatusLandscape" Grid.Row="2" Margin="0,2,0,0">
+                <rad:StatusPanel x:Name="gridStatusLandscape" Grid.Row="3" Margin="0,2,0,0">
                     <rad:StatusPanel.TopContent>
                         <rad:StatusActionsBar />
                     </rad:StatusPanel.TopContent>
@@ -322,11 +326,15 @@
                     <Binding ElementName="gridCenter" Path="ActualHeight"/>
                 </MultiBinding>
             </Grid.Height>
-            <TextBox x:Name="txtPrevJson" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-          Padding="6" Margin="0" 
-          TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"
-          VerticalAlignment="Stretch"
-          />
+
+            
+            
+            <rad:PreviousReportTextAndJsonPanel x:Name="gridBottomControl"
+                HeaderAndFindingsText="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                JsonText="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Reverse="True"
+                />
+
+            
         </Grid>
 
         <!-- Central editing area -->
@@ -510,9 +518,9 @@
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
                 <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding PreviousHeaderText, Mode=TwoWay}"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="4" DocumentText="{Binding PreviousFindingsText, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="4" DocumentText="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay}" Cursor=""/>
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="6" DocumentText="{Binding PreviousConclusionText, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="6" DocumentText="{Binding PreviousFinalConclusionText, Mode=TwoWay}"/>
             </Grid>
         </Grid>
 

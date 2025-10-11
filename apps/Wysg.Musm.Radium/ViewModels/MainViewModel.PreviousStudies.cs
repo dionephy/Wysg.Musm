@@ -59,7 +59,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
         // ---------------- Selection + Reportified Toggle ----------------
         private PreviousStudyTab? _selectedPreviousStudy; public PreviousStudyTab? SelectedPreviousStudy
-        { get => _selectedPreviousStudy; set { var old = _selectedPreviousStudy; if (SetProperty(ref _selectedPreviousStudy, value)) { Debug.WriteLine($"[Prev] SelectedPreviousStudy set -> {(value==null?"<null>":value.Title)}"); foreach (var t in PreviousStudies) t.IsSelected = (value != null && t.Id == value.Id); HookPreviousStudy(old, value); ApplyPreviousReportifiedState(); OnPropertyChanged(nameof(PreviousHeaderText)); OnPropertyChanged(nameof(PreviousFindingsText)); OnPropertyChanged(nameof(PreviousConclusionText)); UpdatePreviousReportJson(); } } }
+        { get => _selectedPreviousStudy; set { var old = _selectedPreviousStudy; if (SetProperty(ref _selectedPreviousStudy, value)) { Debug.WriteLine($"[Prev] SelectedPreviousStudy set -> {(value==null?"<null>":value.Title)}"); foreach (var t in PreviousStudies) t.IsSelected = (value != null && t.Id == value.Id); HookPreviousStudy(old, value); ApplyPreviousReportifiedState(); OnPropertyChanged(nameof(PreviousHeaderText)); OnPropertyChanged(nameof(PreviousHeaderAndFindingsText)); OnPropertyChanged(nameof(PreviousFinalConclusionText)); UpdatePreviousReportJson(); } } }
         private bool _previousReportified; public bool PreviousReportified { get => _previousReportified; set { if (SetProperty(ref _previousReportified, value)) { Debug.WriteLine($"[Prev] PreviousReportified -> {value}"); ApplyPreviousReportifiedState(); } } }
 
         private void ApplyPreviousReportifiedState()
@@ -86,8 +86,8 @@ namespace Wysg.Musm.Radium.ViewModels
 
         // ---------------- Previous Editors (wrappers reusing underlying tab values) ----------------
         private string _prevHeaderCache = string.Empty;
-        private string _prevFindingsCache = string.Empty;
-        private string _prevConclusionCache = string.Empty;
+        private string _prevHeaderAndFindingsCache = string.Empty;
+        private string _prevFinalConclusionCache = string.Empty;
         public string PreviousHeaderText
         {
             get => SelectedPreviousStudy?.Header ?? _prevHeaderCache;
@@ -100,29 +100,41 @@ namespace Wysg.Musm.Radium.ViewModels
                 OnPropertyChanged(nameof(PreviousReportJson));
             }
         }
-        public string PreviousFindingsText
+        public string PreviousHeaderAndFindingsText
         {
-            get => SelectedPreviousStudy?.Findings ?? _prevFindingsCache;
+            get => SelectedPreviousStudy?.Findings ?? _prevHeaderAndFindingsCache;
             set
             {
                 if (SelectedPreviousStudy == null)
-                { if (value == _prevFindingsCache) return; _prevFindingsCache = value; OnPropertyChanged(); Debug.WriteLine($"[PrevEdit] Cache Findings len={value?.Length}"); }
-                else if (SelectedPreviousStudy.Findings != value) { SelectedPreviousStudy.Findings = value; Debug.WriteLine($"[PrevEdit] Tab Findings len={value?.Length}"); }
+                { if (value == _prevHeaderAndFindingsCache) return; _prevHeaderAndFindingsCache = value; OnPropertyChanged(); Debug.WriteLine($"[PrevEdit] Cache HeaderAndFindings len={value?.Length}"); }
+                else if (SelectedPreviousStudy.Findings != value) { SelectedPreviousStudy.Findings = value; Debug.WriteLine($"[PrevEdit] Tab HeaderAndFindings len={value?.Length}"); }
                 UpdatePreviousReportJson();
                 OnPropertyChanged(nameof(PreviousReportJson));
             }
         }
-        public string PreviousConclusionText
+        public string PreviousFinalConclusionText
         {
-            get => SelectedPreviousStudy?.Conclusion ?? _prevConclusionCache;
+            get => SelectedPreviousStudy?.Conclusion ?? _prevFinalConclusionCache;
             set
             {
                 if (SelectedPreviousStudy == null)
-                { if (value == _prevConclusionCache) return; _prevConclusionCache = value; OnPropertyChanged(); Debug.WriteLine($"[PrevEdit] Cache Conclusion len={value?.Length}"); }
-                else if (SelectedPreviousStudy.Conclusion != value) { SelectedPreviousStudy.Conclusion = value; Debug.WriteLine($"[PrevEdit] Tab Conclusion len={value?.Length}"); }
+                { if (value == _prevFinalConclusionCache) return; _prevFinalConclusionCache = value; OnPropertyChanged(); Debug.WriteLine($"[PrevEdit] Cache FinalConclusion len={value?.Length}"); }
+                else if (SelectedPreviousStudy.Conclusion != value) { SelectedPreviousStudy.Conclusion = value; Debug.WriteLine($"[PrevEdit] Tab FinalConclusion len={value?.Length}"); }
                 UpdatePreviousReportJson();
                 OnPropertyChanged(nameof(PreviousReportJson));
             }
+        }
+        
+        // Aliases for backward compatibility (if needed elsewhere)
+        public string PreviousFindingsText
+        {
+            get => PreviousHeaderAndFindingsText;
+            set => PreviousHeaderAndFindingsText = value;
+        }
+        public string PreviousConclusionText
+        {
+            get => PreviousFinalConclusionText;
+            set => PreviousFinalConclusionText = value;
         }
 
         // ---------------- JSON Sync for Previous Tabs ----------------
@@ -137,13 +149,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (tab == null)
                 {
                     // No selected tab yet: use cache fields so txtPrevJson mirrors user typing
-                    obj = new { header = _prevHeaderCache, findings = _prevFindingsCache, conclusion = _prevConclusionCache };
-                    Debug.WriteLine($"[PrevJson] Update (cache only) hLen={_prevHeaderCache?.Length} fLen={_prevFindingsCache?.Length} cLen={_prevConclusionCache?.Length}");
+                    obj = new { header = _prevHeaderCache, header_and_findings = _prevHeaderAndFindingsCache, final_conclusion = _prevFinalConclusionCache };
+                    Debug.WriteLine($"[PrevJson] Update (cache only) hLen={_prevHeaderCache?.Length} hfLen={_prevHeaderAndFindingsCache?.Length} fcLen={_prevFinalConclusionCache?.Length}");
                 }
                 else
                 {
-                    obj = new { header = tab.Header ?? string.Empty, findings = tab.Findings ?? string.Empty, conclusion = tab.Conclusion ?? string.Empty };
-                    Debug.WriteLine($"[PrevJson] Update (tab) hLen={tab.Header?.Length} fLen={tab.Findings?.Length} cLen={tab.Conclusion?.Length}");
+                    obj = new { header = tab.Header ?? string.Empty, header_and_findings = tab.Findings ?? string.Empty, final_conclusion = tab.Conclusion ?? string.Empty };
+                    Debug.WriteLine($"[PrevJson] Update (tab) hLen={tab.Header?.Length} hfLen={tab.Findings?.Length} fcLen={tab.Conclusion?.Length}");
                 }
                 var json = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true });
                 _updatingPrevFromEditors = true;
@@ -163,24 +175,24 @@ namespace Wysg.Musm.Radium.ViewModels
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
                 string newHeader = root.TryGetProperty("header", out var hEl) ? (hEl.GetString() ?? string.Empty) : string.Empty;
-                string newFindings = root.TryGetProperty("findings", out var fEl) ? (fEl.GetString() ?? string.Empty) : string.Empty;
-                string newConclusion = root.TryGetProperty("conclusion", out var cEl) ? (cEl.GetString() ?? string.Empty) : string.Empty;
+                string newHeaderAndFindings = root.TryGetProperty("header_and_findings", out var hfEl) ? (hfEl.GetString() ?? string.Empty) : string.Empty;
+                string newFinalConclusion = root.TryGetProperty("final_conclusion", out var fcEl) ? (fcEl.GetString() ?? string.Empty) : string.Empty;
                 _updatingPrevFromJson = true;
                 if (tab == null)
                 {
                     // Apply to caches when no tab selected yet
                     bool changed = false;
                     if (_prevHeaderCache != newHeader) { _prevHeaderCache = newHeader; OnPropertyChanged(nameof(PreviousHeaderText)); changed = true; }
-                    if (_prevFindingsCache != newFindings) { _prevFindingsCache = newFindings; OnPropertyChanged(nameof(PreviousFindingsText)); changed = true; }
-                    if (_prevConclusionCache != newConclusion) { _prevConclusionCache = newConclusion; OnPropertyChanged(nameof(PreviousConclusionText)); changed = true; }
+                    if (_prevHeaderAndFindingsCache != newHeaderAndFindings) { _prevHeaderAndFindingsCache = newHeaderAndFindings; OnPropertyChanged(nameof(PreviousHeaderAndFindingsText)); changed = true; }
+                    if (_prevFinalConclusionCache != newFinalConclusion) { _prevFinalConclusionCache = newFinalConclusion; OnPropertyChanged(nameof(PreviousFinalConclusionText)); changed = true; }
                     if (changed) UpdatePreviousReportJson(); else OnPropertyChanged(nameof(PreviousReportJson));
                 }
                 else
                 {
                     bool changed = false;
                     if (tab.Header != newHeader) { tab.Header = newHeader; changed = true; }
-                    if (tab.Findings != newFindings) { tab.Findings = newFindings; changed = true; }
-                    if (tab.Conclusion != newConclusion) { tab.Conclusion = newConclusion; changed = true; }
+                    if (tab.Findings != newHeaderAndFindings) { tab.Findings = newHeaderAndFindings; changed = true; }
+                    if (tab.Conclusion != newFinalConclusion) { tab.Conclusion = newFinalConclusion; changed = true; }
                     if (changed) UpdatePreviousReportJson(); else OnPropertyChanged(nameof(PreviousReportJson));
                 }
             }
@@ -199,8 +211,8 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 Debug.WriteLine($"[PrevTab] PropertyChanged -> {e.PropertyName}");
                 OnPropertyChanged(nameof(PreviousHeaderText));
-                OnPropertyChanged(nameof(PreviousFindingsText));
-                OnPropertyChanged(nameof(PreviousConclusionText));
+                OnPropertyChanged(nameof(PreviousHeaderAndFindingsText));
+                OnPropertyChanged(nameof(PreviousFinalConclusionText));
                 UpdatePreviousReportJson();
             }
         }
