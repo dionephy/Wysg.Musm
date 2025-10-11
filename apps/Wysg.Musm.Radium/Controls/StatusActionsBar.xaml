@@ -1,0 +1,39 @@
+<UserControl x:Class="Wysg.Musm.Radium.Controls.StatusActionsBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Loaded="OnLoaded">
+    <UserControl.Resources>
+        <!-- Fallback style used only if parent does not provide DarkToggleButtonStyle -->
+        <Style x:Key="_LocalDarkToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#D0D0D0"/>
+            <Setter Property="BorderBrush" Value="#3C3C3C"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+        </Style>
+    </UserControl.Resources>
+    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <Grid Margin="6,4,6,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" Grid.Column="0">
+                <Button Content="Manage studyname" Command="{Binding OpenStudynameMapCommand}"/>
+                <Separator Width="10"/>
+                <Button Content="Force Ghost" Click="OnForceGhost_Click"/>
+                <Button Content="Settings" Click="OnOpenSettings_Click"/>
+                <Button Content="Spy" Click="OnOpenSpy_Click"/>
+                <ToggleButton Content="Align Right" Style="{DynamicResource DarkToggleButtonStyle}" Margin="8,0,0,0"
+                              Checked="OnAlignRight_Toggled" Unchecked="OnAlignRight_Toggled"/>
+                <ToggleButton Content="Reverse Reports" Style="{DynamicResource DarkToggleButtonStyle}" Margin="8,0,0,0"
+                              Checked="OnReverseReports_Toggled" Unchecked="OnReverseReports_Toggled"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Grid.Column="1" HorizontalAlignment="Right">
+                <Button Content="Log out" Click="OnLogout_Click" Margin="12,0,6,0"/>
+                <TextBlock VerticalAlignment="Center" Foreground="#C8C8C8"/>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

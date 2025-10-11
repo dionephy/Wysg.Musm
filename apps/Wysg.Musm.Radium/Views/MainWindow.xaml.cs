@@ -17,6 +17,7 @@ namespace Wysg.Musm.Radium.Views
     public partial class MainWindow : Window
     {
         private bool _reportsReversed = false;
+        private bool _alignRight = false;
         private PacsService? _pacs;
 
         public MainWindow()
@@ -39,13 +40,8 @@ namespace Wysg.Musm.Radium.Views
 
             _pacs ??= new PacsService();
 
-            // Show current user email
-            try
-            {
-                var storage = ((App)Application.Current).Services.GetRequiredService<IAuthStorage>();
-                txtUserEmail.Text = string.IsNullOrWhiteSpace(storage.Email) ? "(unknown)" : storage.Email;
-            }
-            catch { txtUserEmail.Text = string.Empty; }
+            // Show current user email (optional: bind in VM/UI instead)
+            try { var _ = ((App)Application.Current).Services.GetRequiredService<IAuthStorage>(); } catch { }
 
             if (DataContext is not MainViewModel vm) return;
             try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Header"); InitEditor(vm, EditorHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Header: " + ex); throw; }
@@ -91,16 +87,18 @@ namespace Wysg.Musm.Radium.Views
             if (isLandscape)
             {
                 gridSide.VerticalAlignment = VerticalAlignment.Center;
-                gridSide.HorizontalAlignment = (tglAlignRight?.IsChecked == true)
+                gridSide.HorizontalAlignment = _alignRight
                     ? HorizontalAlignment.Left
                     : HorizontalAlignment.Right;
 
                 gridCenter.VerticalAlignment = VerticalAlignment.Center;
-                var horiz = (tglAlignRight?.IsChecked == true) ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+                var horiz = _alignRight ? HorizontalAlignment.Right : HorizontalAlignment.Left;
                 gridCenter.HorizontalAlignment = horiz;
 
                 gridStatusPortrait.Visibility = Visibility.Collapsed;
-                
+                gridStatusLandscape.Visibility = Visibility.Visible;
+
+
                 if (gridBottom != null) gridBottom.HorizontalAlignment = horiz; // mirror alignment for bottom overlay grid
                 if (gridTop != null) gridTop.HorizontalAlignment = horiz; // mirror alignment for top overlay grid
             }
@@ -112,32 +110,22 @@ namespace Wysg.Musm.Radium.Views
                 if (gridBottom != null) gridBottom.HorizontalAlignment = HorizontalAlignment.Center;
 
                 gridStatusPortrait.Visibility = Visibility.Visible;
+                gridStatusLandscape.Visibility = Visibility.Collapsed;
             }
         }
 
         private void OnAlignRightToggled(object sender, RoutedEventArgs e)
         {
+            _alignRight = !_alignRight;
             UpdateGridCenterPositioning();
-            UpdateGridSideLayout(tglAlignRight?.IsChecked==true);
+            UpdateGridSideLayout(_alignRight);
         }
 
         private void UpdateGridSideLayout(bool right)
         {
-            var children = gridSideTop.Children;
-            var gridHeaderEdit = children[0] as UIElement;
-            var gridJson = children[2] as UIElement;
-
-            if (gridHeaderEdit == null || gridJson == null) return;
-            if (right)
-            {               
-                Grid.SetColumn(gridHeaderEdit, 2);
-                Grid.SetColumn(gridJson, 0);
-            }
-            else
-            {               
-                Grid.SetColumn(gridHeaderEdit, 0);
-                Grid.SetColumn(gridJson, 2);
-            }
+            // Toggle Reverse on composite panels
+            try { gridSideTop.Reverse = right; } catch { }
+            try { gridTopChild.Reverse = right; } catch { }
         }
 
         private void OnForceGhost(object sender, RoutedEventArgs e)
@@ -156,33 +144,30 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnReverseReportsChecked(object sender, RoutedEventArgs e)
         {
-            _reportsReversed = chkReverseReports.IsChecked == true;
+            _reportsReversed = !_reportsReversed;
             SwapReportEditors(_reportsReversed);
         }
 
         private void SwapReportEditors(bool reversed)
         {
             var children = gridCenter.Children;
-            var children2 = gridTopChild.Children;
             var currentReportGrid = children[0] as UIElement;
             var previousReportGrid = children[2] as UIElement;
-            var gridHeaderEdit = children2[0] as UIElement;
-            var gridJson = children2[2] as UIElement;
-            if (currentReportGrid == null || previousReportGrid == null || gridHeaderEdit == null || gridJson == null) return;
+            if (currentReportGrid == null || previousReportGrid == null) return;
             if (reversed)
             {
                 Grid.SetColumn(currentReportGrid, 2);
                 Grid.SetColumn(previousReportGrid, 0);
-                Grid.SetColumn(gridHeaderEdit, 2);
-                Grid.SetColumn(gridJson, 0);
             }
             else
             {
                 Grid.SetColumn(currentReportGrid, 0);
                 Grid.SetColumn(previousReportGrid, 2);
-                Grid.SetColumn(gridHeaderEdit, 0);
-                Grid.SetColumn(gridJson, 2);
             }
+
+            // Flip top/side editors via Reverse
+            try { gridTopChild.Reverse = reversed; } catch { }
+            try { gridSideTop.Reverse = reversed; } catch { }
         }
 
         private void OnReadBannerByHwnd(object sender, RoutedEventArgs e) { }
@@ -197,7 +182,7 @@ namespace Wysg.Musm.Radium.Views
 
         private async void OnReadBannerOcrFast(object sender, RoutedEventArgs e)
         {
-            txtStatus.Text = "OCR(Fast) reading...";
+            if (DataContext is MainViewModel vm) vm.StatusText = "OCR(Fast) reading...";
             // No crop values available, so just show status or disable button
         }
 
@@ -205,12 +190,12 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnBookmarkSave(object sender, RoutedEventArgs e)
         {
-            txtStatus.Text = "Bookmark save not available.";
+            if (DataContext is MainViewModel vm) vm.StatusText = "Bookmark save not available.";
         }
 
         private void OnBookmarkResolve(object sender, RoutedEventArgs e)
         {
-            txtStatus.Text = "Bookmark resolve not available.";
+            if (DataContext is MainViewModel vm) vm.StatusText = "Bookmark resolve not available.";
         }
 
         protected override void OnInitialized(EventArgs e)
@@ -249,7 +234,7 @@ namespace Wysg.Musm.Radium.Views
                 storage.DisplayName = null;
                 storage.RememberMe = false;
 
-                txtUserEmail.Text = string.Empty;
+                // Clear UI email if needed (removed direct TextBlock reference)
 
                 await auth.SignOutAsync();
             }

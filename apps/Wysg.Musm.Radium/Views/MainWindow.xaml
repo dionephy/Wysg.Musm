@@ -280,51 +280,7 @@
                     <Binding ElementName="gridCenter" Path="ActualHeight"/>
                 </MultiBinding>
             </Grid.Height>
-            <Grid Name="gridTopChild" >
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="2"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Left inputs: remarks + header components (scrollable) -->
-                <ScrollViewer Grid.Column="0"
-                              Margin="0"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Orientation="Vertical" Margin="0" VerticalAlignment="Stretch">
-                        <TextBlock Text="Study Remark" Margin="0,0,0,4"/>
-                        <TextBox x:Name="txtStudyRemark" Text="{Binding StudyRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
-
-
-                        <TextBlock Text="Chief Complaint" Margin="0,0,0,4"/>
-                        <TextBox x:Name="txtChiefComplaint"
-                                 Text="{Binding ChiefComplaint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Padding="4" TextWrapping="Wrap" FontSize="12"/>
-
-                        <TextBlock Text="Patient Remark" Margin="0,0,0,4"/>
-                        <TextBox x:Name="txtPatientRemark" Text="{Binding PatientRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
-
-                        <TextBlock Text="Patient History" Margin="0,0,0,4"/>
-                        <TextBox x:Name="txtPatientHistory"
-                                 Text="{Binding PatientHistory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Padding="4" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                            <Button Content="Edit Study Technique" Margin="0,0,8,0"/>
-                            <Button Content="Edit Comparison"/>
-                        </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
-
-                <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
-
-                <!-- Right: JSON editor -->
-                <TextBox Grid.Column="2" x:Name="txtJson"  Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                         Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
-            </Grid>
+            <rad:ReportInputsAndJsonPanel x:Name="gridTopChild" />
            
         </Grid>
 
@@ -338,60 +294,22 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="1*" />
-                    <RowDefinition Height="1*" />                    
+                    <RowDefinition Height="1*" />
+                    <RowDefinition Height="auto" />
                 </Grid.RowDefinitions>
 
-                <Grid Name="gridSideTop"  Grid.Row="0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="2"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <ScrollViewer Grid.Column="0"
-              Margin="0"
-              VerticalScrollBarVisibility="Auto"
-              HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Orientation="Vertical" Margin="0" VerticalAlignment="Stretch">
-                            <TextBlock Text="Study Remark" Margin="0,0,0,4"/>
-                            <TextBox x:Name="txtStudyRemark2" Text="{Binding StudyRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                 Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
-
-
-                            <TextBlock Text="Chief Complaint" Margin="0,0,0,4"/>
-                            <TextBox x:Name="txtChiefComplaint2"
-                 Text="{Binding ChiefComplaint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                 Padding="4" TextWrapping="Wrap" FontSize="12"/>
-
-                            <TextBlock Text="Patient Remark" Margin="0,0,0,4"/>
-                            <TextBox x:Name="txtPatientRemark2" Text="{Binding PatientRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                 Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
-
-                            <TextBlock Text="Patient History" Margin="0,0,0,4"/>
-                            <TextBox x:Name="txtPatientHistory2"
-                 Text="{Binding PatientHistory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                 Padding="4" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
-
-                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                <Button Content="Edit Study Technique" Margin="0,0,8,0"/>
-                                <Button Content="Edit Comparison"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </ScrollViewer>
-
-                    <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
-
-                    <TextBox x:Name="txtJsonSide" Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2"
-Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
-
-                </Grid>
-                
-                
-                
+                <rad:ReportInputsAndJsonPanel x:Name="gridSideTop" Grid.Row="0" />
                 
                 <TextBox x:Name="txtPrevJsonSide" Text="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Row="1" 
                          Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
-                
+
+
+                <rad:StatusPanel x:Name="gridStatusLandscape" Grid.Row="2" Margin="0,2,0,0">
+                    <rad:StatusPanel.TopContent>
+                        <rad:StatusActionsBar />
+                    </rad:StatusPanel.TopContent>
+                </rad:StatusPanel>
+
             </Grid>
             
         </Grid>
@@ -599,50 +517,10 @@ Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Ho
         </Grid>
 
         <!-- Status bar (bottom) with two lines -->
-        <Grid x:Name="gridStatusPortrait" Grid.Row="2" Grid.ColumnSpan="2" Background="#1E1E1E" Margin="0,2,0,0" >
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <!-- Line 1: all buttons/toggles/inputs (trimmed after moving core actions above) -->
-            <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                <Grid Margin="6,4,6,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal" Grid.Column="0">
-                        <Button Content="Manage studyname" Command="{Binding OpenStudynameMapCommand}"/>
-                        <Separator Width="10"/>
-                        <Button Content="Force Ghost" Click="OnForceGhost"/>
-                        <Button Content="Settings" Click="OnOpenSettings"/>
-                        <Button Content="Spy" Click="OnOpenSpy"/>
-                        <ToggleButton x:Name="tglAlignRight" Content="Align Right" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnAlignRightToggled" Unchecked="OnAlignRightToggled"/>
-                        <ToggleButton x:Name="chkReverseReports" Content="Reverse Reports" Style="{StaticResource DarkToggleButtonStyle}" Margin="8,0,0,0" Checked="OnReverseReportsChecked" Unchecked="OnReverseReportsChecked"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Grid.Column="1" HorizontalAlignment="Right">
-                        <Button Content="Log out" Click="OnLogout" Margin="12,0,6,0"/>
-                        <TextBlock x:Name="txtUserEmail" VerticalAlignment="Center" Foreground="#C8C8C8"/>
-                    </StackPanel>
-                </Grid>
-            </ScrollViewer>
-
-            <!-- Line 2: copyable status text only -->
-            <TextBox x:Name="txtStatus"
-                     Grid.Row="1"
-                     Margin="6,0,6,6"
-                     IsReadOnly="True"
-                     Background="#1E1E1E"
-                     BorderBrush="#2D2D30"
-                     BorderThickness="1"
-                     TextWrapping="Wrap"
-                     AcceptsReturn="True"
-                     Height="60"
-                     VerticalScrollBarVisibility="Auto"
-                     HorizontalScrollBarVisibility="Disabled"
-                     Text="{Binding StatusText}"
-                     Foreground="{Binding StatusIsError, Converter={StaticResource BoolToBrushConverter}}"/>
-        </Grid>
+        <rad:StatusPanel x:Name="gridStatusPortrait" Grid.Row="2" Grid.ColumnSpan="2" Margin="0,2,0,0">
+            <rad:StatusPanel.TopContent>
+                <rad:StatusActionsBar />
+            </rad:StatusPanel.TopContent>
+        </rad:StatusPanel>
     </Grid>
 </Window>

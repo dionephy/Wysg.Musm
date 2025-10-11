@@ -1,0 +1,23 @@
+<UserControl x:Class="Wysg.Musm.Radium.Controls.ReversibleColumnsGrid"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="2"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left content -->
+        <ContentPresenter x:Name="PART_Left" Grid.Column="0"
+                          Content="{Binding Left, ElementName=Root}"/>
+
+        <!-- Splitter -->
+        <GridSplitter Grid.Column="1" Width="2" HorizontalAlignment="Stretch" Background="#2D2D30"/>
+
+        <!-- Right content -->
+        <ContentPresenter x:Name="PART_Right" Grid.Column="2"
+                          Content="{Binding Right, ElementName=Root}"/>
+    </Grid>
+</UserControl>
