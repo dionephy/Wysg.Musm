@@ -5,6 +5,7 @@ using System.Diagnostics; // added for debug logging
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Windows.Input; // Added for ICommand
 using Wysg.Musm.Infrastructure.ViewModels; // Added for BaseViewModel
 
 namespace Wysg.Musm.Radium.ViewModels
@@ -61,6 +62,19 @@ namespace Wysg.Musm.Radium.ViewModels
         private PreviousStudyTab? _selectedPreviousStudy; public PreviousStudyTab? SelectedPreviousStudy
         { get => _selectedPreviousStudy; set { var old = _selectedPreviousStudy; if (SetProperty(ref _selectedPreviousStudy, value)) { Debug.WriteLine($"[Prev] SelectedPreviousStudy set -> {(value==null?"<null>":value.Title)}"); foreach (var t in PreviousStudies) t.IsSelected = (value != null && t.Id == value.Id); HookPreviousStudy(old, value); ApplyPreviousReportifiedState(); OnPropertyChanged(nameof(PreviousHeaderText)); OnPropertyChanged(nameof(PreviousHeaderAndFindingsText)); OnPropertyChanged(nameof(PreviousFinalConclusionText)); UpdatePreviousReportJson(); } } }
         private bool _previousReportified; public bool PreviousReportified { get => _previousReportified; set { if (SetProperty(ref _previousReportified, value)) { Debug.WriteLine($"[Prev] PreviousReportified -> {value}"); ApplyPreviousReportifiedState(); } } }
+        private bool _previousReportSplitted; public bool PreviousReportSplitted { get => _previousReportSplitted; set { if (SetProperty(ref _previousReportSplitted, value)) { Debug.WriteLine($"[Prev] PreviousReportSplitted -> {value}"); } } }
+        
+        // Placeholder properties for split functionality
+        private bool _autoSplitHeader; public bool AutoSplitHeader { get => _autoSplitHeader; set => SetProperty(ref _autoSplitHeader, value); }
+        private bool _autoSplitConclusion; public bool AutoSplitConclusion { get => _autoSplitConclusion; set => SetProperty(ref _autoSplitConclusion, value); }
+        private bool _autoSplit; public bool AutoSplit { get => _autoSplit; set => SetProperty(ref _autoSplit, value); }
+        
+        // Placeholder commands for split functionality
+        public ICommand? SplitHeaderCommand { get; set; }
+        public ICommand? SplitConclusionCommand { get; set; }
+        public ICommand? SplitHeaderTopCommand { get; set; }
+        public ICommand? SplitHeaderBottomCommand { get; set; }
+        public ICommand? SplitFindingsCommand { get; set; }
 
         private void ApplyPreviousReportifiedState()
         {

@@ -305,6 +305,7 @@
 
                 <rad:PreviousReportTextAndJsonPanel x:Name="gridSideBottom" Grid.Row="2"
                     HeaderAndFindingsText="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    FinalConclusionText="{Binding PreviousFinalConclusionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                     JsonText="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
 
@@ -331,6 +332,7 @@
             
             <rad:PreviousReportTextAndJsonPanel x:Name="gridBottomControl"
                 HeaderAndFindingsText="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                FinalConclusionText="{Binding PreviousFinalConclusionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 JsonText="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Reverse="True"
                 />
 
@@ -497,6 +499,9 @@
                             </Grid.RowDefinitions>
                             <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,0,0,0">
                                 <Button Content="test button" FontSize="11" Margin="0,0,0,0" />
+                                <ToggleButton Content="Splitted" FontSize="11" Margin="4,0,0,0" 
+                                              Style="{StaticResource DarkToggleButtonStyle}" 
+                                              IsChecked="{Binding PreviousReportSplitted, Mode=TwoWay}"/>
                             </StackPanel>
                             <ComboBox Grid.Row="1" x:Name="cboPrevReport" Margin="0,1,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                       SelectedItem="{Binding SelectedPreviousStudy.SelectedReport, Mode=TwoWay}" MinWidth="200">

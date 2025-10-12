@@ -386,3 +386,59 @@ Backlog
 - Resize window and verify left and right areas under `gridTopChild` stay equal width.
 - Resize window and verify left and right areas under `gridSideTop` stay equal width.
 
+## Change Log Addition (2025-01-11 - Previous Report Split Controls & Final Conclusion)
+- Added "Splitted" toggle button next to test button in previous report area to enable split mode functionality.
+- Enhanced PreviousReportTextAndJsonPanel with split control UI:
+  - First set of split controls below "Previous Header and Findings" label: "Split Header" button, "Auto Split Header" toggle, "Split Conclusion" button, "Auto Split Conclusion" toggle, "Auto Split" toggle.
+  - "Final Conclusion" textbox added below the "Previous Header and Findings" textbox with two-way binding to PreviousFinalConclusionText.
+  - Second set of split controls below "Final Conclusion" textbox: "Split Header" button, "Split Conclusion" button, "Auto Split" toggle.
+- Added FinalConclusionText dependency property to PreviousReportTextAndJsonPanel for two-way binding support.
+- Updated both gridSideBottom and gridBottomControl to bind FinalConclusionText to PreviousFinalConclusionText in ViewModel.
+- Added ViewModel properties:
+  - PreviousReportSplitted (bool) for toggle state binding.
+  - AutoSplitHeader, AutoSplitConclusion, AutoSplit (bool) for auto-split toggle bindings.
+  - SplitHeaderCommand, SplitConclusionCommand (ICommand) as placeholders for split functionality implementation.
+- All split controls use dark theme styling consistent with existing UI controls.
+- Split functionality is non-functional (skeleton) awaiting implementation.
+
+### Approach (Previous Report Split Controls)
+1) Add "Splitted" toggle button in previous report area header row binding to PreviousReportSplitted property.
+2) Extend PreviousReportTextAndJsonPanel layout to include split control buttons and Final Conclusion textbox.
+3) Create FinalConclusionText dependency property for binding final_conclusion field.
+4) Add ViewModel properties and command placeholders for split functionality.
+5) Apply dark theme styling to new controls matching existing UI style.
+6) Bind all new controls to ViewModel properties using two-way binding where appropriate.
+
+### Test Plan (Previous Report Split Controls)
+- Toggle "Splitted" button → verify PreviousReportSplitted property updates in ViewModel.
+- Edit "Final Conclusion" textbox → verify PreviousFinalConclusionText property updates in ViewModel and JSON.
+- Toggle "Auto Split Header" → verify AutoSplitHeader property updates.
+- Toggle "Auto Split Conclusion" → verify AutoSplitConclusion property updates.
+- Toggle "Auto Split" → verify AutoSplit property updates.
+- Verify split control buttons are visible in both landscape (gridSideBottom) and portrait (gridBottomControl) modes.
+- Verify dark theme styling is applied to all new controls (buttons, toggles, textboxes).
+- Verify Final Conclusion content round-trips through JSON (PreviousReportJson).
+- Verify column swap behavior (Reverse property) still works correctly with new layout.
+
+### Risks / Mitigations (Previous Report Split Controls)
+- Split command functionality not yet implemented; buttons are placeholders → mitigated by documenting as skeleton awaiting implementation.
+- Additional controls increase visual complexity in previous report panel → mitigated by grouping controls logically and using consistent spacing.
+- FinalConclusionText property must properly round-trip through JSON → mitigated by following existing pattern for HeaderAndFindingsText binding.
+- Layout changes might affect column swap behavior (Reverse property) → mitigated by testing reverse functionality after changes.
+
+## Change Log Addition (2025-01-11 - Split Controls refinement)
+- Bound upper "Split Header" to `SplitHeaderTopCommand` and lower to `SplitHeaderBottomCommand`.
+- Changed lower "Split Conclusion" to "Split Findings" and bound it to `SplitFindingsCommand`.
+- Left existing `SplitConclusionCommand` intact for upper control group.
+
+### Approach
+1) Update PreviousReportTextAndJsonPanel XAML to use separate commands for upper vs lower Split Header.
+2) Change lower button text and bind it to a new SplitFindingsCommand.
+3) Add new ICommand properties in MainViewModel for bindings (skeleton, not implemented).
+
+### Test Plan
+- Verify clicking upper Split Header invokes SplitHeaderTopCommand.
+- Verify clicking lower Split Header invokes SplitHeaderBottomCommand.
+- Verify lower button text shows "Split Findings" and invokes SplitFindingsCommand.
+- Ensure bindings resolve without runtime errors in both side and bottom panels.
+

@@ -23,6 +23,20 @@ namespace Wysg.Musm.Radium.Controls
             set => SetValue(HeaderAndFindingsTextProperty, value);
         }
 
+        // Dependency Property for Final Conclusion Text
+        public static readonly DependencyProperty FinalConclusionTextProperty =
+            DependencyProperty.Register(
+                nameof(FinalConclusionText),
+                typeof(string),
+                typeof(PreviousReportTextAndJsonPanel),
+                new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
+
+        public string FinalConclusionText
+        {
+            get => (string)GetValue(FinalConclusionTextProperty);
+            set => SetValue(FinalConclusionTextProperty, value);
+        }
+
         // Dependency Property for JSON Text
         public static readonly DependencyProperty JsonTextProperty =
             DependencyProperty.Register(

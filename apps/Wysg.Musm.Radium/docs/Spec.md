@@ -623,3 +623,24 @@ Future
 ## Update: Tab accept on placeholder popup and Space suppression (2025-01-10)
 - FR-384 Placeholder completion popup MUST forward Tab to snippet handler (no literal tab in editor) and complete current placeholder when applicable (Mode 1/3).
 - FR-385 In the main completion window, pressing Space with a selected suggestion MUST commit the selection without inserting a space; otherwise Space is canceled.
+
+## Update: Previous Report Split Controls & Final Conclusion (2025-01-11)
+- **FR-415** Previous report area MUST include a "Splitted" toggle button next to the test button to enable/disable split mode for previous reports.
+- **FR-416** PreviousReportTextAndJsonPanel MUST display split control buttons below the "Previous Header and Findings" label: "Split Header", "Auto Split Header" toggle, "Split Conclusion", "Auto Split Conclusion" toggle, and "Auto Split" toggle.
+- **FR-417** PreviousReportTextAndJsonPanel MUST include a "Final Conclusion" textbox below the "Previous Header and Findings" textbox for displaying and editing the final conclusion content.
+- **FR-418** Final Conclusion textbox MUST bind two-way to PreviousFinalConclusionText property (maps to report.final_conclusion in JSON).
+- **FR-419** PreviousReportTextAndJsonPanel MUST display a second set of split control buttons below the "Final Conclusion" textbox: "Split Header", "Split Conclusion", and "Auto Split" toggle.
+- **FR-420** Split Header button MUST trigger SplitHeaderCommand to split the header_and_findings content into header and findings sections.
+- **FR-421** Split Conclusion button MUST trigger SplitConclusionCommand to split the findings content into findings and conclusion sections.
+- **FR-422** Auto Split Header toggle MUST bind to AutoSplitHeader property to enable automatic header splitting on content change.
+- **FR-423** Auto Split Conclusion toggle MUST bind to AutoSplitConclusion property to enable automatic conclusion splitting on content change.
+- **FR-424** Auto Split toggle MUST bind to AutoSplit property to enable automatic splitting for both header and conclusion.
+- **FR-425** All split controls MUST use dark theme styling consistent with other UI controls in the application.
+- **FR-426** FinalConclusionText dependency property MUST be exposed by PreviousReportTextAndJsonPanel for two-way binding to support final conclusion editing.
+- **FR-427** Both gridSideBottom and gridBottomControl instances MUST bind FinalConclusionText to PreviousFinalConclusionText in ViewModel.
+
+## Update: Previous Report Split Controls refinement (2025-01-11)
+- **FR-428** Upper "Split Header" button MUST bind to a distinct command `SplitHeaderTopCommand`.
+- **FR-429** Lower "Split Header" button MUST bind to a distinct command `SplitHeaderBottomCommand`.
+- **FR-430** Lower "Split Conclusion" button label MUST be changed to "Split Findings" and MUST bind to `SplitFindingsCommand`.
+- **FR-431** Existing `SplitConclusionCommand` remains for the upper-row button only; lower button no longer uses it.

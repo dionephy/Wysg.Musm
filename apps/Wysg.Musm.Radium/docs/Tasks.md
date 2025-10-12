@@ -1,6 +1,23 @@
 ﻿# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Added
+- [X] T580 Add "Splitted" toggle button next to test button in previous report area binding to PreviousReportSplitted property (FR-415).
+- [X] T581 Add first set of split controls to PreviousReportTextAndJsonPanel: Split Header button, Auto Split Header toggle, Split Conclusion button, Auto Split Conclusion toggle, Auto Split toggle (FR-416).
+- [X] T582 Add "Final Conclusion" textbox to PreviousReportTextAndJsonPanel below Previous Header and Findings with two-way binding (FR-417).
+- [X] T583 Create FinalConclusionText dependency property in PreviousReportTextAndJsonPanel for two-way binding (FR-418, FR-426).
+- [X] T584 Add second set of split controls below Final Conclusion textbox: Split Header button, Split Conclusion button, Auto Split toggle (FR-419).
+- [X] T585 Update gridSideBottom and gridBottomControl instances to bind FinalConclusionText to PreviousFinalConclusionText (FR-427).
+- [X] T586 Add PreviousReportSplitted property to MainViewModel for toggle state binding (FR-415).
+- [X] T587 Add AutoSplitHeader, AutoSplitConclusion, AutoSplit properties to MainViewModel for toggle bindings (FR-422, FR-423, FR-424).
+- [X] T588 Add SplitHeaderCommand and SplitConclusionCommand placeholders to MainViewModel (FR-420, FR-421).
+- [X] T589 Apply dark theme styling to split control buttons and toggles in PreviousReportTextAndJsonPanel (FR-425).
+- [X] T590 Add using System.Windows.Input to MainViewModel.PreviousStudies.cs for ICommand support.
+- [X] T591 Update Spec.md with FR-415..FR-427 documenting Previous Report Split Controls functionality (cumulative).
+- [X] T592 Update Plan.md with change log entry for Previous Report Split Controls including approach, test plan, and risks (cumulative).
+- [X] T593 Update Tasks.md with completed Previous Report Split Controls tasks (this file, cumulative).
+- [ ] T594 Implement SplitHeaderCommand functionality to split header_and_findings content into header and findings sections (future work).
+- [ ] T595 Implement SplitConclusionCommand functionality to split findings content into findings and conclusion sections (future work).
+- [ ] T596 Implement auto-split functionality for AutoSplitHeader, AutoSplitConclusion, and AutoSplit toggles (future work).
 - [X] T572 Separate toggles: Reverse Reports affects only gridTopChild/gridBottomControl (portrait panels).
 - [X] T573 Separate toggles: Align Right affects only gridSideTop/gridSideBottom (landscape panels).
 - [X] T574 Update SwapReportEditors to toggle only portrait panel Reverse states.
@@ -110,6 +127,9 @@
 - [X] T541 Tab accepts selected item and completes placeholder in Mode 1/3 (FR-383).
 - [X] T542 Forward Tab from placeholder popup to SnippetInputHandler and complete Mode 1/3 (FR-384).
 - [X] T543 Cancel Space and commit selection in main completion window (FR-385).
+- [X] T597 Bind upper Split Header to SplitHeaderTopCommand, lower Split Header to SplitHeaderBottomCommand (FR-428, FR-429).
+- [X] T598 Change lower Split Conclusion to Split Findings and bind to SplitFindingsCommand (FR-430).
+- [X] T599 Add ICommand properties SplitHeaderTopCommand, SplitHeaderBottomCommand, SplitFindingsCommand to MainViewModel (skeleton) (FR-428..FR-430).
 
 ## Added (previous)
 - [X] T366 Remove global semaphore serialization in PhraseService (per-account only) (FR-261).
