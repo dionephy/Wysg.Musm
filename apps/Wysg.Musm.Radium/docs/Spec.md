@@ -644,3 +644,51 @@ Future
 - **FR-429** Lower "Split Header" button MUST bind to a distinct command `SplitHeaderBottomCommand`.
 - **FR-430** Lower "Split Conclusion" button label MUST be changed to "Split Findings" and MUST bind to `SplitFindingsCommand`.
 - **FR-431** Existing `SplitConclusionCommand` remains for the upper-row button only; lower button no longer uses it.
+
+## Update: Previous Report Splitter Offsets Storage (2025-10-12)
+- FR-432 When pressing Upper "Split Header" under Previous Header and Findings:
+  - If no selection: set `PrevReport.header_and_findings_header_splitter_from` and `_to` to the caret index of `Previous Header and Findings` textbox.
+  - If selection exists: set `_from` to selection start and `_to` to selection end offsets.
+- FR-433 When pressing Upper "Split Conclusion" under Previous Header and Findings:
+  - If `_to` from FR-432 exists and caret/selection offsets are less than `_to`, the system MUST show an error and not update fields.
+  - Otherwise: set `PrevReport.header_and_findings_conclusion_splitter_from/_to` from caret or selection as above.
+- FR-434 When pressing Lower "Split Header" under Final Conclusion:
+  - Set `PrevReport.final_conclusion_header_splitter_from/_to` from caret or selection in the Final Conclusion textbox.
+- FR-435 When pressing Lower "Split Findings" under Final Conclusion:
+  - If `final_conclusion_header_splitter_to` exists and caret/selection offsets are less than it, show error and do not update.
+  - Otherwise set `PrevReport.final_conclusion_findings_splitter_from/_to` from caret or selection in the Final Conclusion textbox.
+- FR-436 Splitter fields MUST be included in `PreviousReportJson` under `PrevReport` object using exact snake_case names above and update live as values change.
+- FR-437 Parsing `PreviousReportJson` MUST recognize the optional `PrevReport` object and populate the ViewModel fields accordingly without throwing when absent.
+- FR-438 Error display MUST use status text mechanism (red state) and leave existing splitter values unchanged.
+
+## Update: Previous Report Split View Binding (2025-10-12)
+- FR-439 When `Splitted` toggle is ON, default null splitter pairs as follows:
+  - header_and_findings_header_splitter_from/to → 0/0
+  - header_and_findings_conclusion_splitter_from/to → len(header_and_findings)
+  - final_conclusion_header_splitter_from/to → 0/0
+  - final_conclusion_findings_splitter_from/to → 0/0
+- FR-440 When `Splitted` is ON, the right panel editors bind to computed strings:
+  - EditorPreviousHeader: header_and_findings[0..header_from] + NewLine + final_conclusion[0..final_header_from]
+  - EditorPreviousFindings: header_and_findings[header_to..conclusion_from] + NewLine + final_conclusion[final_header_to..final_findings_from]
+  - EditorPreviousConclusion: header_and_findings[conclusion_to..end] + NewLine + final_conclusion[final_findings_to..end]
+- FR-441 While `Splitted` is ON the three editors are read-only and update automatically on caret/selection split changes.
+- FR-442 Each segment (header/findings/conclusion pieces) MUST be Trim()-ed before concatenating with a newline.
+- FR-443 The final concatenated split string MUST also be Trim()-ed to remove leading/trailing newlines and spaces.
+
+## Update: Previous Report Extended Fields (2025-10-12)
+- FR-444 PrevReport JSON must include: `study_remark`, `patient_remark`, `chief_complaint`, `patient_history`, `study_techniques`, `comparison`.
+- FR-445 Side/bottom Previous panel must expose editable textboxes bound two-way to SelectedPreviousStudy fields for: `chief_complaint`, `patient_history`, `study_techniques`, `comparison`.
+
+## Update: Auto/Generate Controls and Proofread Toggles (2025-10-12)
+- FR-446 For current report inputs, system MUST display an "auto" toggle and a "generate" button next to labels:
+  - Chief Complaint (top and side top)
+  - Patient History (top and side top)
+  - Conclusion (top)
+- FR-447 For previous report extra inputs, system MUST display an "auto" toggle and a "generate" button next to labels:
+  - Study Techniques (bottom panel)
+  - Comparison (bottom panel)
+- FR-448 For all labels containing "(proofread)" in mid columns (both current and previous panels), system MUST display an "auto" toggle and a "generate" button.
+- FR-449 System MUST expose a single `GenerateFieldCommand` accepting a string parameter identifying the target field; the initial implementation may just set status text (skeleton).
+- FR-450 System MUST expose auto-toggle properties per field to allow future background generation hooks; initial behavior is UI-only state.
+- FR-451 Next to the "Splitted" toggle, system MUST add two toggles: "Proofread" and "Reportified" controlling previous panel modes (bind to `PreviousProofreadMode` and `PreviousReportified`).
+- FR-452 Next to the "Test NewStudy Proc" button, system MUST add two toggles: "Proofread" and "Reportified" controlling current panel modes (bind to `ProofreadMode` and `Reportified`).

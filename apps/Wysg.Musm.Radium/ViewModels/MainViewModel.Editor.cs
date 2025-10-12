@@ -39,6 +39,14 @@ namespace Wysg.Musm.Radium.ViewModels
                 } 
             } 
         }
+
+        // Proofread fields for current report (root JSON)
+        private string _chiefComplaintProofread = string.Empty; public string ChiefComplaintProofread { get => _chiefComplaintProofread; set { if (SetProperty(ref _chiefComplaintProofread, value ?? string.Empty)) UpdateCurrentReportJson(); } }
+        private string _patientHistoryProofread = string.Empty; public string PatientHistoryProofread { get => _patientHistoryProofread; set { if (SetProperty(ref _patientHistoryProofread, value ?? string.Empty)) UpdateCurrentReportJson(); } }
+        private string _studyTechniquesProofread = string.Empty; public string StudyTechniquesProofread { get => _studyTechniquesProofread; set { if (SetProperty(ref _studyTechniquesProofread, value ?? string.Empty)) UpdateCurrentReportJson(); } }
+        private string _comparisonProofread = string.Empty; public string ComparisonProofread { get => _comparisonProofread; set { if (SetProperty(ref _comparisonProofread, value ?? string.Empty)) UpdateCurrentReportJson(); } }
+        private string _findingsProofread = string.Empty; public string FindingsProofread { get => _findingsProofread; set { if (SetProperty(ref _findingsProofread, value ?? string.Empty)) UpdateCurrentReportJson(); } }
+        private string _conclusionProofread = string.Empty; public string ConclusionProofread { get => _conclusionProofread; set { if (SetProperty(ref _conclusionProofread, value ?? string.Empty)) UpdateCurrentReportJson(); } }
         
         private string _patientHistory = string.Empty; 
         public string PatientHistory 
@@ -257,7 +265,13 @@ namespace Wysg.Musm.Radium.ViewModels
                     chief_complaint = _chiefComplaint,
                     patient_history = _patientHistory,
                     study_techniques = _studyTechniques,
-                    comparison = _comparison
+                    comparison = _comparison,
+                    chief_complaint_proofread = _chiefComplaintProofread,
+                    patient_history_proofread = _patientHistoryProofread,
+                    study_techniques_proofread = _studyTechniquesProofread,
+                    comparison_proofread = _comparisonProofread,
+                    findings_proofread = _findingsProofread,
+                    conclusion_proofread = _conclusionProofread
                 };
                 _updatingFromEditors = true;
                 CurrentReportJson = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true });
@@ -281,6 +295,12 @@ namespace Wysg.Musm.Radium.ViewModels
                 string newStudyTechniques = root.TryGetProperty("study_techniques", out var stEl) ? (stEl.GetString() ?? string.Empty) : string.Empty;
                 string newComparison = root.TryGetProperty("comparison", out var compEl) ? (compEl.GetString() ?? string.Empty) : string.Empty;
                 string newPatientRemark = root.TryGetProperty("patient_remark", out var pEl) ? (pEl.GetString() ?? string.Empty) : string.Empty;
+                string newChiefComplaintPf = root.TryGetProperty("chief_complaint_proofread", out var ccpEl) ? (ccpEl.GetString() ?? string.Empty) : string.Empty;
+                string newPatientHistoryPf = root.TryGetProperty("patient_history_proofread", out var phpEl) ? (phpEl.GetString() ?? string.Empty) : string.Empty;
+                string newStudyTechniquesPf = root.TryGetProperty("study_techniques_proofread", out var stpEl) ? (stpEl.GetString() ?? string.Empty) : string.Empty;
+                string newComparisonPf = root.TryGetProperty("comparison_proofread", out var cpEl) ? (cpEl.GetString() ?? string.Empty) : string.Empty;
+                string newFindingsPf = root.TryGetProperty("findings_proofread", out var fpEl) ? (fpEl.GetString() ?? string.Empty) : string.Empty;
+                string newConclusionPf = root.TryGetProperty("conclusion_proofread", out var clpEl) ? (clpEl.GetString() ?? string.Empty) : string.Empty;
                 _updatingFromJson = true;
                 _rawFindings = newFindings; _rawConclusion = newConclusion; // keep raw updated
                 StudyRemark = newStudyRemark; // round-trippable
@@ -290,6 +310,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 _patientHistory = newPatientHistory; OnPropertyChanged(nameof(PatientHistory));
                 _studyTechniques = newStudyTechniques; OnPropertyChanged(nameof(StudyTechniques));
                 _comparison = newComparison; OnPropertyChanged(nameof(Comparison));
+                // Proofread fields
+                _chiefComplaintProofread = newChiefComplaintPf; OnPropertyChanged(nameof(ChiefComplaintProofread));
+                _patientHistoryProofread = newPatientHistoryPf; OnPropertyChanged(nameof(PatientHistoryProofread));
+                _studyTechniquesProofread = newStudyTechniquesPf; OnPropertyChanged(nameof(StudyTechniquesProofread));
+                _comparisonProofread = newComparisonPf; OnPropertyChanged(nameof(ComparisonProofread));
+                _findingsProofread = newFindingsPf; OnPropertyChanged(nameof(FindingsProofread));
+                _conclusionProofread = newConclusionPf; OnPropertyChanged(nameof(ConclusionProofread));
                 // Recompute HeaderText from component fields even during JSON updates
                 UpdateFormattedHeader();
                 // Do not assign PatientRemark here; it is updated by automation AcquirePatientRemarkAsync only

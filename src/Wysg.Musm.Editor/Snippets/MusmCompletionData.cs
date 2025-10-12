@@ -76,16 +76,27 @@ public sealed class MusmCompletionData : ICompletionData
 
     public void Complete(TextArea area, ISegment completionSegment, EventArgs insertionRequestEventArgs)
     {
+        var doc = area.Document;
+        // Guard against stale completionSegment when document changed during popup
+        int baseOffset = completionSegment.Offset;
+        if (baseOffset < 0) baseOffset = 0;
+        if (baseOffset > doc.TextLength) baseOffset = doc.TextLength;
+        int replaceLength = completionSegment.Length;
+        if (replaceLength < 0) replaceLength = 0;
+        if (baseOffset + replaceLength > doc.TextLength) replaceLength = Math.Max(0, doc.TextLength - baseOffset);
+
         if (IsSnippet)
         {
             var (expanded, map) = _snippet!.Expand();
-            area.Document.Replace(completionSegment, string.Empty);
-            area.Caret.Offset = completionSegment.Offset;
+            doc.Replace(baseOffset, replaceLength, string.Empty);
+            area.Caret.Offset = Math.Min(baseOffset, doc.TextLength);
             SnippetInputHandler.Start(area, expanded, map);
             return;
         }
 
-        area.Document.Replace(completionSegment, Replacement);
-        area.Caret.Offset = completionSegment.Offset + Replacement.Length;
+        doc.Replace(baseOffset, replaceLength, Replacement);
+        int newCaret = baseOffset + Replacement.Length;
+        if (newCaret > doc.TextLength) newCaret = doc.TextLength;
+        area.Caret.Offset = newCaret;
     }
 }

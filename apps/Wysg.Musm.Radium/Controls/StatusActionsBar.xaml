@@ -25,6 +25,7 @@
                 <Button Content="Force Ghost" Click="OnForceGhost_Click"/>
                 <Button Content="Settings" Click="OnOpenSettings_Click"/>
                 <Button Content="Spy" Click="OnOpenSpy_Click"/>
+                <Button Content="Add Dummy Previous" Click="OnAddDummyPrev_Click" Margin="8,0,0,0"/>
                 <ToggleButton Content="Align Right" Style="{DynamicResource DarkToggleButtonStyle}" Margin="8,0,0,0"
                               Checked="OnAlignRight_Toggled" Unchecked="OnAlignRight_Toggled"/>
                 <ToggleButton Content="Reverse Reports" Style="{DynamicResource DarkToggleButtonStyle}" Margin="8,0,0,0"

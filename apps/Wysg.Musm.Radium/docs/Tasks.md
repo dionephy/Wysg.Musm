@@ -130,6 +130,27 @@
 - [X] T597 Bind upper Split Header to SplitHeaderTopCommand, lower Split Header to SplitHeaderBottomCommand (FR-428, FR-429).
 - [X] T598 Change lower Split Conclusion to Split Findings and bind to SplitFindingsCommand (FR-430).
 - [X] T599 Add ICommand properties SplitHeaderTopCommand, SplitHeaderBottomCommand, SplitFindingsCommand to MainViewModel (skeleton) (FR-428..FR-430).
+- [X] T600 Pass TextBox as CommandParameter for split buttons to get caret/selection (XAML change) (FR-432..FR-435).
+- [X] T601 Implement ViewModel fields for splitter offsets on PreviousStudyTab (HfHeader*, HfConclusion*, FcHeader*, FcFindings*) (FR-432..FR-435).
+- [X] T602 Implement command handlers to capture caret/selection and set fields with validation (FR-432..FR-435).
+- [X] T603 Serialize splitter fields under PrevReport in PreviousReportJson and update live (FR-436).
+- [X] T604 Parse PrevReport splitter fields from PreviousReportJson when present (FR-437).
+- [X] T605 On validation failure show error via status text and do not modify fields (FR-438).
+- [X] T606 Default split pairs on Splitted=ON per spec (0/0 and len/len) (FR-439).
+- [X] T607 Add computed properties for PreviousHeader/Findings/Conclusion split views (FR-440).
+- [X] T608 Bind previous editors to split view via DataTriggers and set read-only while active (FR-441).
+- [X] T609 Trim each split segment before merging with newline (FR-442).
+- [X] T610 Change defaulting: final_conclusion_findings_splitter_from/to → 0/0 when null on Splitted ON (FR-439 updated).
+- [X] T611 Trim final concatenated split results (FR-443).
+- [X] T612 Add extended fields to PrevReport JSON and VM (FR-444).
+- [X] T613 Add four editors in PreviousReportTextAndJsonPanel and bind to SelectedPreviousStudy (FR-445).
+- [X] T614 Add auto + generate buttons next to Chief Complaint, Patient History (top/side top), Conclusion (top) (FR-446).
+- [X] T615 Add auto + generate buttons next to Study Techniques and Comparison in bottom panel (FR-447).
+- [X] T616 Add auto + generate buttons next to all (proofread) labels (current + previous panels) (FR-448).
+- [X] T617 Add GenerateFieldCommand in MainViewModel and wire CommandParameter keys (skeleton) (FR-449).
+- [X] T618 Add auto-* boolean properties to MainViewModel for each field, bind in XAML (FR-450).
+- [X] T619 Add Proofread and Reportified toggles next to Splitted (bind to PreviousProofreadMode, PreviousReportified) (FR-451).
+- [X] T620 Add Proofread and Reportified toggles next to Test NewStudy Proc (bind to ProofreadMode, Reportified) (FR-452).
 
 ## Added (previous)
 - [X] T366 Remove global semaphore serialization in PhraseService (per-account only) (FR-261).

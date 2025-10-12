@@ -1,18 +1,67 @@
 <UserControl x:Class="Wysg.Musm.Radium.Controls.ReportInputsAndJsonPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:rad="clr-namespace:Wysg.Musm.Radium.Controls">
-    <rad:ReversibleColumnsGrid Reverse="{Binding Reverse, RelativeSource={RelativeSource AncestorType=UserControl}}">
-        <rad:ReversibleColumnsGrid.Left>
-            <ScrollViewer Margin="0"
-                          VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Orientation="Vertical" Margin="0" VerticalAlignment="Stretch">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="DarkToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#D0D0D0"/>
+            <Setter Property="BorderBrush" Value="#3C3C3C"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#3C3C3C"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#2F65C8"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#2F65C8"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1*" />
+            <ColumnDefinition Width="2" />
+            <ColumnDefinition Width="1*" />
+            <ColumnDefinition Width="2" />
+            <ColumnDefinition Width="1*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Left: current report inputs -->
+        <ScrollViewer x:Name="PART_InputHost" Grid.Column="0" Margin="0"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Orientation="Vertical" Margin="0" VerticalAlignment="Stretch">
                     <TextBlock Text="Study Remark" Margin="0,0,0,4"/>
                     <TextBox Text="{Binding StudyRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
-                    <TextBlock Text="Chief Complaint" Margin="0,0,0,4"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Chief Complaint" VerticalAlignment="Center"/>
+                        <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
+                                      IsChecked="{Binding AutoChiefComplaint, Mode=TwoWay}"/>
+                        <Button Content="generate" Margin="4,0,0,0" Width="72"
+                                Command="{Binding GenerateFieldCommand}"
+                                CommandParameter="chief_complaint"/>
+                    </StackPanel>
                     <TextBox Text="{Binding ChiefComplaint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              Padding="4" TextWrapping="Wrap" FontSize="12"/>
 
@@ -20,20 +69,115 @@
                     <TextBox Text="{Binding PatientRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
-                    <TextBlock Text="Patient History" Margin="0,0,0,4"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Patient History" VerticalAlignment="Center"/>
+                        <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
+                                      IsChecked="{Binding AutoPatientHistory, Mode=TwoWay}"/>
+                        <Button Content="generate" Margin="4,0,0,0" Width="72"
+                                Command="{Binding GenerateFieldCommand}"
+                                CommandParameter="patient_history"/>
+                    </StackPanel>
                     <TextBox Text="{Binding PatientHistory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              Padding="4" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button Content="Edit Study Technique" Margin="0,0,8,0"/>
-                        <Button Content="Edit Comparison"/>
-                    </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="Edit Study Technique" Margin="0,0,8,0"/>
+                    <Button Content="Edit Comparison"/>
                 </StackPanel>
-            </ScrollViewer>
-        </rad:ReversibleColumnsGrid.Left>
-        <rad:ReversibleColumnsGrid.Right>
-            <TextBox Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
-        </rad:ReversibleColumnsGrid.Right>
-    </rad:ReversibleColumnsGrid>
+
+                <!-- Findings and Conclusion editors below buttons -->
+                <TextBlock Text="Findings" Margin="0,8,0,4"/>
+                <TextBox Text="{Binding FindingsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <TextBlock Text="Conclusion" VerticalAlignment="Center"/>
+                    <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
+                                  IsChecked="{Binding AutoConclusion, Mode=TwoWay}"/>
+                    <Button Content="generate" Margin="4,0,0,0" Width="72"
+                            Command="{Binding GenerateFieldCommand}"
+                            CommandParameter="conclusion"/>
+                </StackPanel>
+                <TextBox Text="{Binding ConclusionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Splitter between left and mid -->
+        <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+
+        <!-- Mid: Proofread column -->
+        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <TextBlock Text="Proofread" Margin="6,0,0,8" FontWeight="Bold"/>
+                <StackPanel Orientation="Horizontal" Margin="6,0,0,2">
+                    <TextBlock Text="Chief Complaint (proofread)" VerticalAlignment="Center"/>
+                    <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
+                                  IsChecked="{Binding AutoChiefComplaintProofread, Mode=TwoWay}"/>
+                    <Button Content="generate" Margin="4,0,0,0" Width="72"
+                            Command="{Binding GenerateFieldCommand}"
+                            CommandParameter="chief_complaint_proofread"/>
+                </StackPanel>
+                <TextBox Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                         Text="{Binding ChiefComplaintProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <StackPanel Orientation="Horizontal" Margin="6,6,0,2">
+                    <TextBlock Text="Patient History (proofread)" VerticalAlignment="Center"/>
+                    <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
+                                  IsChecked="{Binding AutoPatientHistoryProofread, Mode=TwoWay}"/>
+                    <Button Content="generate" Margin="4,0,0,0" Width="72"
+                            Command="{Binding GenerateFieldCommand}"
+                            CommandParameter="patient_history_proofread"/>
+                </StackPanel>
+                <TextBox Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                         Text="{Binding PatientHistoryProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <StackPanel Orientation="Horizontal" Margin="6,6,0,2">
+                    <TextBlock Text="Study Techniques (proofread)" VerticalAlignment="Center"/>
+                    <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
+                                  IsChecked="{Binding AutoStudyTechniquesProofread, Mode=TwoWay}"/>
+                    <Button Content="generate" Margin="4,0,0,0" Width="72"
+                            Command="{Binding GenerateFieldCommand}"
+                            CommandParameter="study_techniques_proofread"/>
+                </StackPanel>
+                <TextBox Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                         Text="{Binding StudyTechniquesProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <StackPanel Orientation="Horizontal" Margin="6,6,0,2">
+                    <TextBlock Text="Comparison (proofread)" VerticalAlignment="Center"/>
+                    <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
+                                  IsChecked="{Binding AutoComparisonProofread, Mode=TwoWay}"/>
+                    <Button Content="generate" Margin="4,0,0,0" Width="72"
+                            Command="{Binding GenerateFieldCommand}"
+                            CommandParameter="comparison_proofread"/>
+                </StackPanel>
+                <TextBox Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                         Text="{Binding ComparisonProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <StackPanel Orientation="Horizontal" Margin="6,6,0,2">
+                    <TextBlock Text="Findings (proofread)" VerticalAlignment="Center"/>
+                    <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
+                                  IsChecked="{Binding AutoFindingsProofread, Mode=TwoWay}"/>
+                    <Button Content="generate" Margin="4,0,0,0" Width="72"
+                            Command="{Binding GenerateFieldCommand}"
+                            CommandParameter="findings_proofread"/>
+                </StackPanel>
+                <TextBox Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                         Text="{Binding FindingsProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <StackPanel Orientation="Horizontal" Margin="6,6,0,2">
+                    <TextBlock Text="Conclusion (proofread)" VerticalAlignment="Center"/>
+                    <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
+                                  IsChecked="{Binding AutoConclusionProofread, Mode=TwoWay}"/>
+                    <Button Content="generate" Margin="4,0,0,0" Width="72"
+                            Command="{Binding GenerateFieldCommand}"
+                            CommandParameter="conclusion_proofread"/>
+                </StackPanel>
+                <TextBox Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                         Text="{Binding ConclusionProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Splitter between mid and right -->
+        <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+
+        <!-- Right: JSON -->
+        <TextBox x:Name="txtCurrentJson" Grid.Column="4" Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+    </Grid>
 </UserControl>

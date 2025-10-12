@@ -80,6 +80,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 
                 Debug.WriteLine("[MainViewModel] Initializing commands...");
                 InitializeCommands(); // implemented in Commands partial
+                // Initialize split commands for previous report panel
+                try { InitializePreviousSplitCommands(); } catch { }
                 
                 Debug.WriteLine("[MainViewModel] Setting initialization flag...");
                 // Mark as initialized after all construction is complete

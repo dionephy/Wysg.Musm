@@ -22,6 +22,28 @@ namespace Wysg.Musm.Radium.ViewModels
         public ICommand SendReportCommand { get; private set; } = null!;
         public ICommand SelectPreviousStudyCommand { get; private set; } = null!;
         public ICommand OpenStudynameMapCommand { get; private set; } = null!;
+        public ICommand GenerateFieldCommand { get; private set; } = null!;
+
+        // UI mode toggles
+        private bool _proofreadMode; public bool ProofreadMode { get => _proofreadMode; set => SetProperty(ref _proofreadMode, value); }
+        private bool _previousProofreadMode; public bool PreviousProofreadMode { get => _previousProofreadMode; set => SetProperty(ref _previousProofreadMode, value); }
+
+        // Auto toggles for generation on current report fields
+        private bool _autoChiefComplaint; public bool AutoChiefComplaint { get => _autoChiefComplaint; set => SetProperty(ref _autoChiefComplaint, value); }
+        private bool _autoPatientHistory; public bool AutoPatientHistory { get => _autoPatientHistory; set => SetProperty(ref _autoPatientHistory, value); }
+        private bool _autoConclusion; public bool AutoConclusion { get => _autoConclusion; set => SetProperty(ref _autoConclusion, value); }
+
+        // Auto toggles for previous/bottom extra fields
+        private bool _autoStudyTechniques; public bool AutoStudyTechniques { get => _autoStudyTechniques; set => SetProperty(ref _autoStudyTechniques, value); }
+        private bool _autoComparison; public bool AutoComparison { get => _autoComparison; set => SetProperty(ref _autoComparison, value); }
+
+        // Auto toggles for proofread fields
+        private bool _autoChiefComplaintProofread; public bool AutoChiefComplaintProofread { get => _autoChiefComplaintProofread; set => SetProperty(ref _autoChiefComplaintProofread, value); }
+        private bool _autoPatientHistoryProofread; public bool AutoPatientHistoryProofread { get => _autoPatientHistoryProofread; set => SetProperty(ref _autoPatientHistoryProofread, value); }
+        private bool _autoStudyTechniquesProofread; public bool AutoStudyTechniquesProofread { get => _autoStudyTechniquesProofread; set => SetProperty(ref _autoStudyTechniquesProofread, value); }
+        private bool _autoComparisonProofread; public bool AutoComparisonProofread { get => _autoComparisonProofread; set => SetProperty(ref _autoComparisonProofread, value); }
+        private bool _autoFindingsProofread; public bool AutoFindingsProofread { get => _autoFindingsProofread; set => SetProperty(ref _autoFindingsProofread, value); }
+        private bool _autoConclusionProofread; public bool AutoConclusionProofread { get => _autoConclusionProofread; set => SetProperty(ref _autoConclusionProofread, value); }
 
         // Patient locked state influences several command CanExecute states
         private bool _patientLocked; public bool PatientLocked
@@ -48,6 +70,7 @@ namespace Wysg.Musm.Radium.ViewModels
             SendReportCommand = new DelegateCommand(_ => OnSendReport(), _ => PatientLocked);
             SelectPreviousStudyCommand = new DelegateCommand(o => OnSelectPrevious(o), _ => PatientLocked);
             OpenStudynameMapCommand = new DelegateCommand(_ => Views.StudynameLoincWindow.Open());
+            GenerateFieldCommand = new DelegateCommand(p => OnGenerateField(p));
         }
 
         // ------------- Handlers -------------
@@ -108,6 +131,16 @@ namespace Wysg.Musm.Radium.ViewModels
                 return;
             }
             SelectedPreviousStudy = tab;
+        }
+
+        private void OnGenerateField(object? param)
+        {
+            try
+            {
+                var key = (param as string) ?? string.Empty;
+                SetStatus(string.IsNullOrWhiteSpace(key) ? "Generate requested" : $"Generate {key} requested");
+            }
+            catch { }
         }
 
         private async void OnAddStudy()

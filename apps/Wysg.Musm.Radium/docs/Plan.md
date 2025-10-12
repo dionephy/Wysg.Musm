@@ -1,5 +1,60 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
+## Change Log Addition (2025-10-12 – Auto/Generate Buttons and Proofread/Reportified Toggles)
+- Added auto toggles and generate buttons next to specified labels:
+  - Chief Complaint (top/side top), Patient History (top/side top), Conclusion (top).
+  - Study Techniques (bottom), Comparison (bottom).
+  - All proofread labels in mid columns for both current and previous panels.
+- Added `GenerateFieldCommand` in MainViewModel (skeleton) and per-field auto boolean properties.
+- Added top toolbar toggles next to Test NewStudy Proc: Proofread, Reportified.
+- Added right-panel header toggles next to Splitted: Proofread, Reportified.
+
+### Approach (Auto/Generate + Toggles)
+1) Introduce lightweight properties in MainViewModel for auto flags and proofread modes.
+2) Add a single command `GenerateFieldCommand` that accepts field keys; stub sets status.
+3) Update ReportInputsAndJsonPanel and PreviousReportTextAndJsonPanel XAML to place StackPanels wrapping labels with added buttons/toggles.
+4) Wire bindings using Window DataContext for bottom/side controls.
+
+### Test Plan (UI Wiring)
+- Verify buttons render next to all specified labels in top, side top, bottom, and proofread sections.
+- Clicking Generate sets status message with the key reported.
+- Toggling auto flags changes bound properties (inspect via debugger / status text).
+- New Proofread/Reportified toggles bind to VM properties and preserve state.
+
+### Risks / Mitigations
+- Many bindings referencing Window DataContext could break if visual tree changes → mitigated by AncestorType=Window binding where needed.
+- Command skeleton not functional → documented as placeholder.
+
+## Change Log Addition (2025-10-12 – PrevReport Extended Fields + UI)
+- Added fields to PreviousStudyTab: StudyRemark, PatientRemark, ChiefComplaint, PatientHistory, StudyTechniques, Comparison.
+- Serialize/deserialize these inside `PrevReport` object in PreviousReportJson.
+- PreviousReportTextAndJsonPanel: added four editors (chief complaint, patient history, study techniques, comparison) below final conclusion.
+- Exposed DPs on the control and bound them in MainWindow to SelectedPreviousStudy.*.
+
+### Test Plan (PrevReport Extended Fields)
+- Add dummy, toggle Splitted → verify JSON includes new fields (empty strings initially).
+- Type into the four new editors → verify JSON PrevReport fields update live and bindings round-trip.
+- Edit JSON PrevReport fields → verify editors update.
+- Switch tabs → verify values persist per tab.
+## Change Log Addition (2025-10-12 – Previous Report Split View)
+- Added computed properties in VM for split view: `PreviousHeaderSplitView`, `PreviousFindingsSplitView`, `PreviousConclusionSplitView`.
+- On `PreviousReportSplitted` ON:
+  - If any split pair null, default per spec (header pairs 0/0, conclusion pairs len/len) using EnsureSplitDefaultsIfNeeded().
+  - Bind previous editors to computed strings via DataTriggers; set `IsReadOnly=True` while split is active.
+
+### Approach (Split View Bindings)
+1) Implement clamp-safe substring helper and computed properties.
+2) Hook notifications on text/split changes and Splitted toggle.
+3) Update XAML bindings using style triggers without altering base layout.
+
+### Test Plan (Split View)
+- Toggle Splitted ON with all split fields null → verify defaults applied and editors show expected composed strings.
+- Change split offsets via buttons → verify computed views refresh immediately.
+- Toggle Splitted OFF → editors revert to normal two-way bindings and become editable.
+- Edge cases: zero-length texts; offsets at bounds; mismatched ranges still clamped safely (no exceptions).
+- Verify trimming: surrounding whitespace of each segment is removed before newline merge (no leading/trailing blanks).
+ - Verify final trimming: the merged string has no leading/trailing whitespace/newlines after concatenation.
+- Verify default change: final_conclusion_findings_splitter_from/to default to 0/0 when null on Splitted ON.
 ## Change Log Addition (2025-01-11 - PreviousReportTextAndJsonPanel Reusable Control)
 - Created reusable UserControl `PreviousReportTextAndJsonPanel` to eliminate duplicate XAML code in side and bottom panels.
 - Control structure:
@@ -441,4 +496,34 @@ Backlog
 - Verify clicking lower Split Header invokes SplitHeaderBottomCommand.
 - Verify lower button text shows "Split Findings" and invokes SplitFindingsCommand.
 - Ensure bindings resolve without runtime errors in both side and bottom panels.
+
+## Change Log Addition (2025-10-12 – Previous Report Splitter Offsets)
+- Implemented storage and commands for splitter offsets as per user request:
+  - Upper group operates on `Previous Header and Findings` textbox; buttons pass the `TextBox` via CommandParameter to capture caret/selection.
+  - Lower group operates on `Final Conclusion` textbox similarly.
+  - Validation enforces ordering: conclusion split must be at or after header split end per section.
+- ViewModel changes:
+  - Added fields on `PreviousStudyTab`: `HfHeaderFrom/To`, `HfConclusionFrom/To`, `FcHeaderFrom/To`, `FcFindingsFrom/To`.
+  - Included these in `PreviousReportJson` under nested `PrevReport`.
+  - Parsing of `PreviousReportJson` populates these fields when `PrevReport` exists.
+  - Added command implementations `SplitHeaderTopCommand`, `SplitConclusionCommand`, `SplitHeaderBottomCommand`, `SplitFindingsCommand`.
+- XAML changes:
+  - Added `CommandParameter` bindings to pass `txtHeaderAndFindings` and `txtFinalConclusion` as parameters to buttons.
+
+### Approach (Splitter Offsets)
+1) Capture caret/selection from `TextBox` (SelectionStart/SelectionLength or CaretIndex).
+2) Validate relative to prior header split end where required; on violation, set status error and abort.
+3) Store into strongly-typed nullable ints on the selected previous tab.
+4) Serialize/deserialize inside `PrevReport` object for isolation.
+
+### Test Plan (Splitter Offsets)
+- With no selection, click Upper Split Header: verify both from/to equal caret index; JSON shows PrevReport.header_and_findings_header_splitter_*.
+- With selection, click Upper Split Header: verify from/to reflect selection range.
+- Click Upper Split Conclusion with offsets less than header_to: verify error status and no JSON change.
+- Click Lower Split Header/Findings with/without selection: verify fields set correctly; findings requires offsets >= header_to.
+- Edit JSON manually to include PrevReport values: verify VM fields update and UI continues to work.
+
+### Risks / Mitigations
+- WPF `TextBox` indices rely on current text state; if bindings lag, indices can be off. Kept simple by using live control values.
+- JSON bloat: nested object keeps addition optional and backward compatible.
 

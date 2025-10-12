@@ -306,7 +306,16 @@
                 <rad:PreviousReportTextAndJsonPanel x:Name="gridSideBottom" Grid.Row="2"
                     HeaderAndFindingsText="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                     FinalConclusionText="{Binding PreviousFinalConclusionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    JsonText="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    JsonText="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    HeaderTemp="{Binding PreviousHeaderTemp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    SplitFindings="{Binding PreviousSplitFindings, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    SplitConclusion="{Binding PreviousSplitConclusion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    ChiefComplaintProofread="{Binding SelectedPreviousStudy.ChiefComplaintProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    PatientHistoryProofread="{Binding SelectedPreviousStudy.PatientHistoryProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    StudyTechniquesProofread="{Binding SelectedPreviousStudy.StudyTechniquesProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    ComparisonProofread="{Binding SelectedPreviousStudy.ComparisonProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    FindingsProofread="{Binding SelectedPreviousStudy.FindingsProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    ConclusionProofread="{Binding SelectedPreviousStudy.ConclusionProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
 
                 <rad:StatusPanel x:Name="gridStatusLandscape" Grid.Row="3" Margin="0,2,0,0">
@@ -334,7 +343,15 @@
                 HeaderAndFindingsText="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 FinalConclusionText="{Binding PreviousFinalConclusionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 JsonText="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Reverse="True"
-                />
+                HeaderTemp="{Binding PreviousHeaderTemp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                SplitFindings="{Binding PreviousSplitFindings, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                SplitConclusion="{Binding PreviousSplitConclusion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                ChiefComplaintProofread="{Binding SelectedPreviousStudy.ChiefComplaintProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                PatientHistoryProofread="{Binding SelectedPreviousStudy.PatientHistoryProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                StudyTechniquesProofread="{Binding SelectedPreviousStudy.StudyTechniquesProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                ComparisonProofread="{Binding SelectedPreviousStudy.ComparisonProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                FindingsProofread="{Binding SelectedPreviousStudy.FindingsProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                ConclusionProofread="{Binding SelectedPreviousStudy.ConclusionProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
             
         </Grid>
@@ -374,6 +391,8 @@
                         <Button Content="Send Report" Command="{Binding SendReportCommand}"   Margin="2,2,0,2"/>
                         <Button Content="Extract Phrases" Click="OnExtractPhrases"  Margin="2,2,0,2"/>
                         <Button Content="Test NewStudy Proc" Command="{Binding TestNewStudyProcedureCommand}" Margin="2,2,0,2"/>
+                        <ToggleButton Content="Proofread" Margin="4,2,0,2" Style="{StaticResource DarkToggleButtonStyle}" IsChecked="{Binding ProofreadMode, Mode=TwoWay}"/>
+                        <ToggleButton Content="Reportified" Margin="4,2,0,2" Style="{StaticResource DarkToggleButtonStyle}" IsChecked="{Binding Reportified, Mode=TwoWay}"/>
                     </StackPanel>
 
                     <!-- Lower row: toggles and label -->
@@ -502,6 +521,12 @@
                                 <ToggleButton Content="Splitted" FontSize="11" Margin="4,0,0,0" 
                                               Style="{StaticResource DarkToggleButtonStyle}" 
                                               IsChecked="{Binding PreviousReportSplitted, Mode=TwoWay}"/>
+                                <ToggleButton Content="Proofread" FontSize="11" Margin="4,0,0,0" 
+                                              Style="{StaticResource DarkToggleButtonStyle}" 
+                                              IsChecked="{Binding PreviousProofreadMode, Mode=TwoWay}"/>
+                                <ToggleButton Content="Reportified" FontSize="11" Margin="4,0,0,0" 
+                                              Style="{StaticResource DarkToggleButtonStyle}" 
+                                              IsChecked="{Binding PreviousReportified, Mode=TwoWay}"/>
                             </StackPanel>
                             <ComboBox Grid.Row="1" x:Name="cboPrevReport" Margin="0,1,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                       SelectedItem="{Binding SelectedPreviousStudy.SelectedReport, Mode=TwoWay}" MinWidth="200">
@@ -521,11 +546,53 @@
                 
 
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding PreviousHeaderText, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70">
+                    <editor:EditorControl.Style>
+                        <Style TargetType="editor:EditorControl" BasedOn="{StaticResource {x:Type editor:EditorControl}}">
+                            <Setter Property="IsReadOnly" Value="True"/>
+                            <Setter Property="DocumentText" Value=""/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PreviousReportSplitted}" Value="True">
+                                    <Setter Property="DocumentText" Value="{Binding PreviousHeaderTemp, Mode=TwoWay}"/>
+                                    <Setter Property="IsReadOnly" Value="False"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding PreviousReportSplitted}" Value="False">
+                                    <Setter Property="DocumentText" Value=""/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </editor:EditorControl.Style>
+                </editor:EditorControl>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="4" DocumentText="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay}" Cursor=""/>
+                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="4" Cursor="">
+                    <editor:EditorControl.Style>
+                        <Style TargetType="editor:EditorControl" BasedOn="{StaticResource {x:Type editor:EditorControl}}">
+                            <Setter Property="IsReadOnly" Value="True"/>
+                            <Setter Property="DocumentText" Value="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PreviousReportSplitted}" Value="True">
+                                    <Setter Property="DocumentText" Value="{Binding PreviousSplitFindings, Mode=TwoWay}"/>
+                                    <Setter Property="IsReadOnly" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </editor:EditorControl.Style>
+                </editor:EditorControl>
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="6" DocumentText="{Binding PreviousFinalConclusionText, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="6">
+                    <editor:EditorControl.Style>
+                        <Style TargetType="editor:EditorControl" BasedOn="{StaticResource {x:Type editor:EditorControl}}">
+                            <Setter Property="IsReadOnly" Value="True"/>
+                            <Setter Property="DocumentText" Value="{Binding PreviousFinalConclusionText, Mode=TwoWay}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PreviousReportSplitted}" Value="True">
+                                    <Setter Property="DocumentText" Value="{Binding PreviousSplitConclusion, Mode=TwoWay}"/>
+                                    <Setter Property="IsReadOnly" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </editor:EditorControl.Style>
+                </editor:EditorControl>
             </Grid>
         </Grid>
 

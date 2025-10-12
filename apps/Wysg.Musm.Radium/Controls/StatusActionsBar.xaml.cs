@@ -41,6 +41,7 @@ namespace Wysg.Musm.Radium.Controls
         private void OnForceGhost_Click(object sender, RoutedEventArgs e) => RaiseEventToWindow("OnForceGhost", sender, e);
         private void OnOpenSettings_Click(object sender, RoutedEventArgs e) => RaiseEventToWindow("OnOpenSettings", sender, e);
         private void OnOpenSpy_Click(object sender, RoutedEventArgs e) => RaiseEventToWindow("OnOpenSpy", sender, e);
+        private void OnAddDummyPrev_Click(object sender, RoutedEventArgs e) => RaiseEventToWindow("OnAddDummyPrevious", sender, e);
         private void OnAlignRight_Toggled(object sender, RoutedEventArgs e) => RaiseEventToWindow("OnAlignRightToggled", sender, e);
         private void OnReverseReports_Toggled(object sender, RoutedEventArgs e) => RaiseEventToWindow("OnReverseReportsChecked", sender, e);
         private void OnLogout_Click(object sender, RoutedEventArgs e) => RaiseEventToWindow("OnLogout", sender, e);
