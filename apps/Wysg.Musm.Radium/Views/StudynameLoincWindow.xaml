@@ -208,6 +208,8 @@
 
         <StackPanel Grid.Row="2" Grid.ColumnSpan="5" Orientation="Horizontal" HorizontalAlignment="Right">
             <TextBox Width="520" Margin="0,0,12,0" Text="{Binding StatusMessage}" IsReadOnly="True"/>
+            <Button Content="Manage Default Technique" Margin="0,0,8,0"
+                    Click="OnManageDefaultTechniqueClick"/>
             <Button Content="Save" Command="{Binding SaveCommand}"/>
             <Button Content="Close" Click="OnCloseClick"/>
         </StackPanel>

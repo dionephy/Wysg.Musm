@@ -692,3 +692,21 @@ Future
 - FR-450 System MUST expose auto-toggle properties per field to allow future background generation hooks; initial behavior is UI-only state.
 - FR-451 Next to the "Splitted" toggle, system MUST add two toggles: "Proofread" and "Reportified" controlling previous panel modes (bind to `PreviousProofreadMode` and `PreviousReportified`).
 - FR-452 Next to the "Test NewStudy Proc" button, system MUST add two toggles: "Proofread" and "Reportified" controlling current panel modes (bind to `ProofreadMode` and `Reportified`).
+
+## Update: Study Technique Feature (2025-01-12)
+- **FR-453** System MUST support study technique management with three component types: prefix (e.g., "axial", "coronal", "sagittal", "3D", "intracranial", "neck", blank), tech (e.g., "T1", "T2", "GRE", "SWI", "DWI", "CE-T1", "TOF-MRA", "CE-MRA", "3T"), and suffix (e.g., "of sellar fossa", blank).
+- **FR-454** A single technique MUST be composed of one prefix (optional/nullable), one tech (required), and one suffix (optional/nullable), stored in `med.technique` table with unique constraint on (prefix_id, tech_id, suffix_id).
+- **FR-455** A technique combination MUST be a collection of multiple individual techniques with ordering, stored in `med.technique_combination` and linked via `med.technique_combination_item` with sequence_order field.
+- **FR-456** Technique combinations MUST be linkable to studynames via `med.rad_studyname_technique_combination` table with many-to-many relationship and optional is_default flag (zero or one default per studyname).
+- **FR-457** Individual studies MUST be linkable to technique combinations via `med.rad_study_technique_combination` table with zero-or-one relationship (unique constraint on study_id).
+- **FR-458** A study MUST have zero technique_combination rows if: (a) its studyname has no default technique_combination, OR (b) the study's technique_combination matches the studyname's default technique_combination.
+- **FR-459** A study MUST have exactly one technique_combination row if its technique_combination does NOT match the studyname's default technique_combination.
+- **FR-460** Database schema MUST include tables: `med.technique_prefix`, `med.technique_tech`, `med.technique_suffix` (lookup tables with display_order), `med.technique` (composite), `med.technique_combination`, `med.technique_combination_item` (join table), `med.rad_studyname_technique_combination`, `med.rad_study_technique_combination`.
+- **FR-461** System MUST provide view `med.v_technique_display` that displays individual techniques as "prefix tech suffix" with proper spacing and trimming (e.g., "axial T1", "T2 of sellar fossa", "3D TOF-MRA").
+- **FR-462** System MUST provide view `med.v_technique_combination_display` that displays technique combinations as joined technique names with " + " separator (e.g., "axial T1 + axial T2 + coronal T2 + sagittal T1 of sellar fossa").
+- **FR-463** Prefix and suffix components MUST support empty string ("") as a valid value representing blank/no prefix/suffix; tech component MUST NOT be empty.
+- **FR-464** All technique component tables MUST have display_order field for UI dropdown ordering and created_at timestamp for audit trail.
+- **FR-465** Technique combination MUST have optional combination_name field for user-friendly identification separate from the auto-generated display string.
+- **FR-466** System MUST seed common prefixes (blank, axial, coronal, sagittal, 3D, intracranial, neck), techs (T1, T2, GRE, SWI, DWI, CE-T1, TOF-MRA, CE-MRA, 3T), and suffixes (blank, "of sellar fossa") during initial setup.
+- **FR-467** Foreign key constraints MUST use CASCADE delete for studyname and study links, and RESTRICT delete for technique component links to prevent orphaned combinations.
+- **FR-468** Indexes MUST be created on: technique.tech_id, technique_combination_item join columns (combination_id, technique_id), studyname_technique_combination join columns (studyname_id, combination_id), study_technique_combination.study_id.

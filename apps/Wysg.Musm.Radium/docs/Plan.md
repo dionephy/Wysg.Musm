@@ -1,5 +1,42 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
+## Change Log Addition (2025-01-12 – Study Technique Feature Database Schema)
+- Designed and implemented database schema for study technique management feature.
+- Created 8 new tables in med schema to support technique component management:
+  - Lookup tables: technique_prefix, technique_tech, technique_suffix (with display_order)
+  - Composite table: technique (combines prefix + tech + suffix with unique constraint)
+  - Combination tables: technique_combination, technique_combination_item (many-to-many with sequencing)
+  - Link tables: rad_studyname_technique_combination (with is_default flag), rad_study_technique_combination (zero-or-one)
+- Created 2 helper views for display: v_technique_display (formatted "prefix tech suffix"), v_technique_combination_display (joined with " + ")
+- Seeded common values: 7 prefixes, 9 techs, 2 suffixes
+- Implemented proper referential integrity: CASCADE for study/studyname links, RESTRICT for component links
+- Added appropriate indexes on foreign keys and join columns for query performance
+
+### Approach (Study Technique Schema)
+1) Normalize technique components into separate lookup tables (prefix, tech, suffix) with display_order
+2) Create composite technique table enforcing uniqueness on (prefix_id, tech_id, suffix_id)
+3) Model combinations as separate entity with join table for many-to-many + ordering
+4) Link combinations to studynames (many-to-many with optional default) and studies (zero-or-one)
+5) Provide display views that format techniques and combinations for UI consumption
+6) Use nullable FKs for optional components (prefix, suffix) and NOT NULL for required (tech)
+
+### Test Plan (Database Schema)
+- Insert sample prefixes, techs, suffixes → verify unique constraints work
+- Create techniques with various component combinations → verify composite unique constraint
+- Create technique combinations with multiple items → verify sequencing and joins
+- Link combinations to studynames with default flag → verify only one default per studyname
+- Link combinations to studies → verify unique study_id constraint (zero-or-one)
+- Query v_technique_display → verify proper formatting with spacing and trimming
+- Query v_technique_combination_display → verify proper " + " joining and sequencing
+- Test CASCADE delete: delete studyname → verify studyname_technique_combination rows deleted
+- Test RESTRICT delete: attempt to delete tech in use → verify constraint prevents deletion
+
+### Risks / Mitigations (Study Technique Schema)
+- Complex joins may impact query performance → mitigated by adding indexes on all FK columns and join columns
+- Empty string vs NULL for blank prefix/suffix could cause confusion → documented clearly; empty string is valid
+- Default flag enforcement per studyname not database-constrained → will need application-level validation in future UI
+- Combination name optional may lead to unlabeled combinations → display view provides auto-generated name fallback
+
 ## Change Log Addition (2025-10-12 – Auto/Generate Buttons and Proofread/Reportified Toggles)
 - Added auto toggles and generate buttons next to specified labels:
   - Chief Complaint (top/side top), Patient History (top/side top), Conclusion (top).

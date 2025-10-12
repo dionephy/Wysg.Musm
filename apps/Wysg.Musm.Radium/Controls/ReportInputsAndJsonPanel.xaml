@@ -81,7 +81,8 @@
                              Padding="4" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                    <Button Content="Edit Study Technique" Margin="0,0,8,0"/>
+                    <Button Content="Edit Study Technique" Margin="0,0,8,0"
+                            Command="{Binding EditStudyTechniqueCommand}"/>
                     <Button Content="Edit Comparison"/>
                 </StackPanel>
 

@@ -23,6 +23,7 @@ namespace Wysg.Musm.Radium.ViewModels
         public ICommand SelectPreviousStudyCommand { get; private set; } = null!;
         public ICommand OpenStudynameMapCommand { get; private set; } = null!;
         public ICommand GenerateFieldCommand { get; private set; } = null!;
+        public ICommand OpenEditStudyTechniqueCommand { get; private set; } = null!;
 
         // UI mode toggles
         private bool _proofreadMode; public bool ProofreadMode { get => _proofreadMode; set => SetProperty(ref _proofreadMode, value); }
@@ -71,6 +72,7 @@ namespace Wysg.Musm.Radium.ViewModels
             SelectPreviousStudyCommand = new DelegateCommand(o => OnSelectPrevious(o), _ => PatientLocked);
             OpenStudynameMapCommand = new DelegateCommand(_ => Views.StudynameLoincWindow.Open());
             GenerateFieldCommand = new DelegateCommand(p => OnGenerateField(p));
+            OpenEditStudyTechniqueCommand = new DelegateCommand(_ => Views.StudyTechniqueWindow.Open());
         }
 
         // ------------- Handlers -------------

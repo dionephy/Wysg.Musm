@@ -112,6 +112,22 @@ namespace Wysg.Musm.Radium.Views
             Close();
         }
 
+        private void OnManageDefaultTechniqueClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (DataContext is StudynameLoincViewModel vm && vm.SelectedStudyname != null)
+                {
+                    StudynameTechniqueWindow.Open(vm.SelectedStudyname.Id, vm.SelectedStudyname.Studyname);
+                }
+                else
+                {
+                    StudynameTechniqueWindow.Open(null, null);
+                }
+            }
+            catch { }
+        }
+
         public static void Open(string? preselectStudyname = null)
         {
             var app = (App)Application.Current;

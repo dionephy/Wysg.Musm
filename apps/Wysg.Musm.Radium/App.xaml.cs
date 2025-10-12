@@ -232,6 +232,7 @@ namespace Wysg.Musm.Radium
             });
             services.AddSingleton<IStudynameLoincRepository, StudynameLoincRepository>();    // Mapping study names to LOINC codes
             services.AddSingleton<IRadStudyRepository, RadStudyRepository>();                // Local study + report persistence
+            services.AddSingleton<ITechniqueRepository, TechniqueRepository>();              // Technique feature repository (Postgres)
             services.AddSingleton<PacsService>();                                             // PACS interaction abstraction
 
             // Procedures (automation) ----------------------------------------------------------
@@ -243,6 +244,8 @@ namespace Wysg.Musm.Radium
             services.AddTransient<SignUpViewModel>();
             services.AddTransient<MainViewModel>();
             services.AddTransient<StudynameLoincViewModel>();
+            services.AddTransient<StudynameTechniqueViewModel>();
+            services.AddTransient<StudyTechniqueViewModel>();
             services.AddTransient<PhrasesViewModel>();
             services.AddTransient<PhraseExtractionViewModel>();
             services.AddTransient<GlobalPhrasesViewModel>(); // Global phrases admin UI (account_id=1 only)

@@ -1,6 +1,32 @@
 ﻿# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Added
+- [X] T621 Design study technique database schema with 8 tables in med schema: technique_prefix, technique_tech, technique_suffix, technique, technique_combination, technique_combination_item, rad_studyname_technique_combination, rad_study_technique_combination (FR-453..FR-460).
+- [X] T622 Create technique_prefix table with id, prefix_text (unique), display_order, created_at (FR-453, FR-464).
+- [X] T623 Create technique_tech table with id, tech_text (unique), display_order, created_at (FR-453, FR-464).
+- [X] T624 Create technique_suffix table with id, suffix_text (unique), display_order, created_at (FR-453, FR-464).
+- [X] T625 Create technique table with id, prefix_id (nullable FK), tech_id (required FK), suffix_id (nullable FK), created_at, unique constraint on (prefix_id, tech_id, suffix_id) (FR-454, FR-463).
+- [X] T626 Create technique_combination table with id, combination_name (nullable), created_at (FR-455, FR-465).
+- [X] T627 Create technique_combination_item join table with id, combination_id (FK), technique_id (FK), sequence_order, created_at, unique constraint on (combination_id, technique_id, sequence_order) (FR-455).
+- [X] T628 Create rad_studyname_technique_combination table with id, studyname_id (FK), combination_id (FK), is_default (bool), created_at, unique constraint on (studyname_id, combination_id) (FR-456, FR-458).
+- [X] T629 Create rad_study_technique_combination table with id, study_id (FK unique), combination_id (FK), created_at (FR-457, FR-459).
+- [X] T630 Add foreign key constraints with CASCADE delete for studyname/study links and RESTRICT delete for technique component links (FR-467).
+- [X] T631 Create indexes on: technique.tech_id, technique_combination_item.combination_id, technique_combination_item.technique_id, rad_studyname_technique_combination.studyname_id, rad_studyname_technique_combination.combination_id (FR-468).
+- [X] T632 Create view med.v_technique_display with formatted display as "prefix tech suffix" using TRIM and CONCAT_WS (FR-461).
+- [X] T633 Create view med.v_technique_combination_display with STRING_AGG joining techniques with " + " separator ordered by sequence_order (FR-462).
+- [X] T634 Seed common prefixes: blank, axial, coronal, sagittal, 3D, intracranial, neck with display_order (FR-466).
+- [X] T635 Seed common techs: T1, T2, GRE, SWI, DWI, CE-T1, TOF-MRA, CE-MRA, 3T with display_order (FR-466).
+- [X] T636 Seed common suffixes: blank, "of sellar fossa" with display_order (FR-466).
+- [X] T637 Create SQL file db\schema\technique_tables.sql with all table definitions, views, indexes, and seed data (FR-453..FR-468).
+- [X] T638 Add table and column comments documenting purpose and special handling (e.g., empty string vs NULL) (FR-463).
+- [X] T639 Update Spec.md with FR-453..FR-468 documenting study technique feature requirements (cumulative).
+- [X] T640 Update Plan.md with change log entry for study technique database schema including approach, test plan, and risks (cumulative).
+- [X] T641 Update Tasks.md with completed study technique database schema tasks (this file, cumulative).
+- [ ] T642 Implement repository methods for technique component CRUD operations (future work).
+- [ ] T643 Implement service layer for technique management business logic (future work).
+- [ ] T644 Create UI for technique management and assignment to studynames (future work).
+- [ ] T645 Wire technique display in report header and study list views (future work).
+- [ ] T646 Add validation logic to enforce one default per studyname in application layer (future work).
 - [X] T580 Add "Splitted" toggle button next to test button in previous report area binding to PreviousReportSplitted property (FR-415).
 - [X] T581 Add first set of split controls to PreviousReportTextAndJsonPanel: Split Header button, Auto Split Header toggle, Split Conclusion button, Auto Split Conclusion toggle, Auto Split toggle (FR-416).
 - [X] T582 Add "Final Conclusion" textbox to PreviousReportTextAndJsonPanel below Previous Header and Findings with two-way binding (FR-417).
