@@ -232,6 +232,7 @@
                 <ComboBoxItem Tag="StudyList">Study list</ComboBoxItem>
                 <ComboBoxItem Tag="StudyRemark">Study remark</ComboBoxItem>
                 <ComboBoxItem Tag="PatientRemark">Patient remark</ComboBoxItem>
+                <ComboBoxItem Tag="TestInvoke">Test invoke</ComboBoxItem>
                 <ComboBoxItem Tag="ViewerToolbar">Viewer toolbar</ComboBoxItem>
                 <ComboBoxItem Tag="ViewerWindow">Viewer window</ComboBoxItem>
                 <ComboBoxItem Tag="WorklistListsPane">Worklist lists pane</ComboBoxItem>
@@ -243,6 +244,8 @@
             <Button Content="Map" Margin="6,0,0,0" Click="OnMapSelected"/>
             <Button Content="Resolve" Margin="6,0,0,0" Click="OnResolveSelected"/>
             <Button Content="Reload" Margin="6,0,0,0" Click="OnReload"/>
+            <!-- Picked screen coordinates (X,Y) shown after Pick -->
+            <TextBox x:Name="txtPickedPoint" Width="120" IsReadOnly="True" Margin="12,0,0,0" ToolTip="Picked point (X,Y)"/>
             <CheckBox x:Name="chkEnableTree" Content="Enable Tree" Margin="12,0,0,0" IsChecked="False"/>
         </StackPanel>
 
@@ -426,6 +429,9 @@
                         <ComboBoxItem Tag="GetCurrentFindings2">Get current findings 2</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentConclusion2">Get current conclusion 2</ComboBoxItem>
                         <ComboBoxItem Tag="InvokeOpenStudy">Invoke open study</ComboBoxItem>
+                        <!-- Custom mouse click procedures -->
+                        <ComboBoxItem Tag="CustomMouseClick1">Custom mouse click 1</ComboBoxItem>
+                        <ComboBoxItem Tag="CustomMouseClick2">Custom mouse click 2</ComboBoxItem>
                     </ComboBox>
                     <Button Content="Add" Click="OnAddProcRow"/>
                     <Button Content="Save" Margin="6,0,0,0" Click="OnSaveProcedure"/>
@@ -456,6 +462,7 @@
                                         <ComboBoxItem Content="ToDateTime"/>
                                         <ComboBoxItem Content="Replace"/>
                                         <ComboBoxItem Content="GetHTML"/>
+                                        <ComboBoxItem Content="MouseClick"/>
                                     </ComboBox>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>

@@ -134,6 +134,33 @@
                 </Grid>
             </TabItem>
 
+            <!-- Keyboard -->
+            <TabItem Header="Keyboard" x:Name="tabKeyboard">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Global Hotkeys" FontWeight="Bold" Foreground="{StaticResource BrushTextPrimary}"/>
+                    <StackPanel Grid.Row="1" Orientation="Vertical" Margin="0,8,0,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Open study:" Width="140" VerticalAlignment="Center" Foreground="{StaticResource BrushTextPrimary}"/>
+                            <TextBox x:Name="txtHotkeyOpenStudy" Width="220" Text="{Binding OpenStudyHotkey, UpdateSourceTrigger=PropertyChanged}" PreviewKeyDown="OnHotkeyTextBoxPreviewKeyDown"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Send study:" Width="140" VerticalAlignment="Center" Foreground="{StaticResource BrushTextPrimary}"/>
+                            <TextBox x:Name="txtHotkeySendStudy" Width="220" Text="{Binding SendStudyHotkey, UpdateSourceTrigger=PropertyChanged}" PreviewKeyDown="OnHotkeyTextBoxPreviewKeyDown"/>
+                        </StackPanel>
+                        <TextBlock Text="Tip: Click a box and press a key combination (Ctrl/Alt/Win + key)." Foreground="#9AA0A6"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Save" Width="100" Command="{Binding SaveKeyboardCommand}"/>
+                        <Button Content="Close" Width="90" IsCancel="True" Margin="8,0,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
             <!-- Automation -->
             <TabItem Header="Automation" x:Name="tabAutomation">
                 <Grid Margin="8">
@@ -149,22 +176,46 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{StaticResource BrushSurface}" Margin="0,0,8,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Grid.Column="0" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{StaticResource BrushSurface}" Margin="0,0,8,8">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="New Study" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{StaticResource BrushTextPrimary}"/>
                                 <ListBox x:Name="lstNewStudy" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="NewStudy" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
                             </DockPanel>
                         </Border>
-                        <Border Grid.Column="1" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{StaticResource BrushSurface}" Margin="0,0,8,0">
+                        <Border Grid.Row="0" Grid.Column="1" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{StaticResource BrushSurface}" Margin="0,0,8,8">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="Add Study" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{StaticResource BrushTextPrimary}"/>
                                 <ListBox x:Name="lstAddStudy" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="AddStudy" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
                             </DockPanel>
                         </Border>
-                        <Border Grid.Column="2" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{StaticResource BrushSurface}">
+                        <Border Grid.Row="0" Grid.Column="2" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{StaticResource BrushSurface}">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="Available Modules" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{StaticResource BrushTextPrimary}"/>
                                 <ListBox x:Name="lstLibrary" PreviewMouseMove="OnProcDrag" DragLeave="OnListDragLeave" Tag="Library" ItemTemplate="{StaticResource LibraryModuleTemplate}"/>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- New Shortcut panes -->
+                        <Border Grid.Row="1" Grid.Column="0" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{StaticResource BrushSurface}" Margin="0,0,8,0">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Shortcut: Open study (new)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{StaticResource BrushTextPrimary}"/>
+                                <ListBox x:Name="lstShortcutOpenNew" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutOpenNew" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                            </DockPanel>
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="1" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{StaticResource BrushSurface}" Margin="0,0,8,0">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Shortcut: Open study (add)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{StaticResource BrushTextPrimary}"/>
+                                <ListBox x:Name="lstShortcutOpenAdd" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutOpenAdd" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                            </DockPanel>
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="2" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{StaticResource BrushSurface}">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Shortcut: Open study (after open)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{StaticResource BrushTextPrimary}"/>
+                                <ListBox x:Name="lstShortcutOpenAfterOpen" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutOpenAfterOpen" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
                             </DockPanel>
                         </Border>
                     </Grid>

@@ -29,6 +29,9 @@ namespace Wysg.Musm.Radium.ViewModels
         private bool _proofreadMode; public bool ProofreadMode { get => _proofreadMode; set => SetProperty(ref _proofreadMode, value); }
         private bool _previousProofreadMode; public bool PreviousProofreadMode { get => _previousProofreadMode; set => SetProperty(ref _previousProofreadMode, value); }
 
+        // Study opened toggle (set when OpenStudy module runs)
+        private bool _studyOpened; public bool StudyOpened { get => _studyOpened; set => SetProperty(ref _studyOpened, value); }
+
         // Auto toggles for generation on current report fields
         private bool _autoChiefComplaint; public bool AutoChiefComplaint { get => _autoChiefComplaint; set => SetProperty(ref _autoChiefComplaint, value); }
         private bool _autoPatientHistory; public bool AutoPatientHistory { get => _autoPatientHistory; set => SetProperty(ref _autoPatientHistory, value); }
@@ -121,6 +124,9 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunAddPreviousStudyModuleAsync(); }
                 else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { AcquireStudyRemarkAsync(); }
                 else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { AcquirePatientRemarkAsync(); }
+                else if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunOpenStudyAsync(); }
+                else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick1Async(); }
+                else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick2Async(); }
             }
         }
 
@@ -191,6 +197,54 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunNewStudyProcedureAsync(); }
                 else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _lockStudyProc != null) { _ = _lockStudyProc.ExecuteAsync(this); }
+                else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { AcquireStudyRemarkAsync(); }
+                else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { AcquirePatientRemarkAsync(); }
+                else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunAddPreviousStudyModuleAsync(); }
+                else if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunOpenStudyAsync(); }
+                else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick1Async(); }
+                else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick2Async(); }
+            }
+        }
+
+        private async Task RunOpenStudyAsync()
+        {
+            try
+            {
+                await _pacs.InvokeOpenStudyAsync();
+                StudyOpened = true;
+                SetStatus("Open study invoked");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[Automation] OpenStudy error: " + ex.Message);
+                SetStatus("Open study failed", true);
+            }
+        }
+
+        // Executes configured modules for OpenStudy shortcut depending on lock/opened state
+        public void RunOpenStudyShortcut()
+        {
+            string seqRaw;
+            if (!PatientLocked)
+            {
+                seqRaw = _localSettings?.AutomationShortcutOpenNew ?? string.Empty;
+            }
+            else if (PatientLocked && !StudyOpened)
+            {
+                seqRaw = _localSettings?.AutomationShortcutOpenAdd ?? string.Empty;
+            }
+            else
+            {
+                seqRaw = _localSettings?.AutomationShortcutOpenAfterOpen ?? string.Empty;
+            }
+
+            var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (modules.Length == 0) return;
+            foreach (var m in modules)
+            {
+                if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunOpenStudyAsync(); }
+                else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick1Async(); }
+                else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick2Async(); }
                 else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { AcquireStudyRemarkAsync(); }
                 else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { AcquirePatientRemarkAsync(); }
                 else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunAddPreviousStudyModuleAsync(); }

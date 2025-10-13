@@ -144,6 +144,20 @@ namespace Wysg.Musm.Radium.Services
                     new ProcOpRow { Op = "Invoke", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.SelectedStudyInSearch.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
                 };
             }
+            if (string.Equals(methodTag, "CustomMouseClick1", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "MouseClick", Arg1 = new ProcArg { Type = nameof(ArgKind.Number), Value = "0" }, Arg2 = new ProcArg { Type = nameof(ArgKind.Number), Value = "0" }, Arg1Enabled = true, Arg2Enabled = true, Arg3Enabled = false }
+                };
+            }
+            if (string.Equals(methodTag, "CustomMouseClick2", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "MouseClick", Arg1 = new ProcArg { Type = nameof(ArgKind.Number), Value = "0" }, Arg2 = new ProcArg { Type = nameof(ArgKind.Number), Value = "0" }, Arg1Enabled = true, Arg2Enabled = true, Arg3Enabled = false }
+                };
+            }
             return new List<ProcOpRow>();
         }
 
@@ -203,6 +217,7 @@ namespace Wysg.Musm.Radium.Services
                 case "GetText":
                 case "GetTextOCR":
                 case "Invoke":
+                case "MouseClick":
                 case "GetValueFromSelection":
                 case "ToDateTime":
                 case "TakeLast":
@@ -324,6 +339,13 @@ namespace Wysg.Musm.Radium.Services
                             return (html ?? string.Empty, html);
                         }
                         catch (Exception ex) { return ($"(error) {ex.Message}", null); }
+                    }
+                    case "MouseClick":
+                    {
+                        var xs = ResolveString(row.Arg1, vars); var ys = ResolveString(row.Arg2, vars);
+                        if (!int.TryParse(xs, out var x) || !int.TryParse(ys, out var y)) return ("(invalid coords)", null);
+                        try { NativeMouseHelper.ClickScreen(x, y); return ($"(clicked {x},{y})", null); }
+                        catch { return ("(error)", null); }
                     }
                 }
             }

@@ -128,6 +128,12 @@
 - [X] T731 PacsService: add `InvokeOpenStudyAsync()` that executes `InvokeOpenStudy` procedure (FR-517).
 - [X] T732 ProcedureExecutor: auto-seed default for `InvokeOpenStudy` with single `Invoke` op on `SelectedStudyInSearch` (FR-518).
 - [X] T733 Custom Procedure op `Invoke`: ensure Arg1 Type preset to `Element` and Arg2/Arg3 disabled in editor; support in headless executor (FR-519..FR-521).
+- [X] T734 UI Spy: add KnownControl `TestInvoke` and Map-to dropdown item "Test invoke" (FR-522..FR-524).
+- [X] T735 Add PACS methods "Custom mouse click 1/2" to SpyWindow Custom Procedures list (FR-525).
+- [X] T736 Add operation `MouseClick` to procedures editor and execution (Arg1=X, Arg2=Y) (FR-526, FR-527).
+- [X] T737 Add auto-seed fallback for CustomMouseClick1/2 with a single MouseClick row (FR-529).
+- [X] T738 PacsService: add wrappers `CustomMouseClick1Async` and `CustomMouseClick2Async` (FR-528).
+- [X] T739 SpyWindow: add read-only `txtPickedPoint` to show picked screen coordinates (FR-530, FR-531).
 
 ## Verification
 - [X] V190 Resize Edit Study Technique window; verify groups and list stretch with window.
@@ -137,6 +143,10 @@
 - [X] V200 SpyWindow shows "Invoke open study" in PACS Method list; selecting it loads/saves steps.
 - [X] V201 Running the procedure invokes UIA `Invoke` (or `Toggle`) on selected row; viewer opens where supported.
 - [X] V202 PacsService.InvokeOpenStudyAsync() returns without exception and triggers the action.
+- [X] V203 SpyWindow Map-to shows "Test invoke"; mapping saves/loads and Invoke works against it.
+- [X] V204 Custom mouse click 1/2 appear in PACS method combo; saving/running with MouseClick(X,Y) triggers a click at coordinates.
+- [X] V205 Selecting operation `MouseClick` enables numeric Arg1/Arg2; Arg3 disabled.
+- [X] V206 After Pick, `txtPickedPoint` shows coordinates in "X,Y" format and is selectable.
 
 ## Previously Added
 - [X] T707 Fix short scrollbar length (remove along-axis size in Thumb style) (FR-476).
@@ -154,3 +164,26 @@
 - [X] T722 Autofill current study `StudyTechniques` in NewStudyProcedure after PACS fetch using default combination (if present).
 - [X] T723 Add `MainViewModel.RefreshStudyTechniqueFromDefaultAsync` and call after closing StudynameTechniqueWindow and after saving new default.
 - [X] T724 Prevent duplicate (prefix,tech,suffix) within a single combination in `StudyTechniqueViewModel` at add-time and save-time.
+
+### New (2025-10-13 – Automation Modules + Keyboard + Toggles)
+- [X] T740 Add modules to library in `SettingsViewModel`: OpenStudy, MouseClick1, MouseClick2 (apps/Wysg.Musm.Radium/ViewModels/SettingsViewModel.cs).
+- [X] T741 Map modules in `MainViewModel.Commands`: call PacsService for clicks and OpenStudy; set `StudyOpened=true` (apps/Wysg.Musm.Radium/ViewModels/MainViewModel.Commands.cs).
+- [X] T742 Add `StudyOpened` property to VM and bind to new toggle (apps/Wysg.Musm.Radium/ViewModels/MainViewModel.Commands.cs).
+- [X] T743 Replace icon "Reportified" toggle near Study locked with text "Study opened" toggle (apps/Wysg.Musm.Radium/Views/MainWindow.xaml).
+- [X] T744 Remove icon-only Reportified toggle in previous report area (apps/Wysg.Musm.Radium/Views/MainWindow.xaml).
+- [X] T745 Add Keyboard tab UI with two capture TextBoxes and Save button (apps/Wysg.Musm.Radium/Views/SettingsWindow.xaml).
+- [X] T746 Implement capture handler `OnHotkeyTextBoxPreviewKeyDown` (apps/Wysg.Musm.Radium/Views/SettingsWindow.xaml.cs).
+- [X] T747 Add local settings keys for hotkeys in `IRadiumLocalSettings` and `RadiumLocalSettings` (apps/Wysg.Musm.Radium/Services/IRadiumLocalSettings.cs, .../RadiumLocalSettings.cs).
+- [X] T748 Add `SaveKeyboardCommand` and VM properties `OpenStudyHotkey`, `SendStudyHotkey` (apps/Wysg.Musm.Radium/ViewModels/SettingsViewModel.cs).
+- [X] T749 Docs: Update Spec.md and Plan.md with FR-540..FR-544 and keyboard capture behavior.
+
+### New (2025-10-13 – Open Study Shortcut Panes)
+- [X] T750 Add three panes in Settings → Automation (apps/Wysg.Musm.Radium/Views/SettingsWindow.xaml):
+  - Shortcut: Open study (new) ListBox `lstShortcutOpenNew`
+  - Shortcut: Open study (add) ListBox `lstShortcutOpenAdd`
+  - Shortcut: Open study (after open) ListBox `lstShortcutOpenAfterOpen`
+- [X] T751 Wire ListBoxes to VM collections in code-behind (apps/Wysg.Musm.Radium/Views/SettingsWindow.xaml.cs).
+- [X] T752 Add VM collections and load/save logic (apps/Wysg.Musm.Radium/ViewModels/SettingsViewModel.cs).
+- [X] T753 Add local settings keys in interface and implementation (apps/Wysg.Musm.Radium/Services/IRadiumLocalSettings.cs, .../RadiumLocalSettings.cs).
+- [X] T754 Add `MainViewModel.RunOpenStudyShortcut()` to execute proper sequence (apps/Wysg.Musm.Radium/ViewModels/MainViewModel.Commands.cs).
+- [X] T755 Docs: Update Spec.md with FR-545..FR-547 and Plan.md with approach/test/risks.

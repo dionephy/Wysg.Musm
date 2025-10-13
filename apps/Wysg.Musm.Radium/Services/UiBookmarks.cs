@@ -39,7 +39,8 @@ public sealed class UiBookmarks
         OpenWorklistButton,
         ReportCommitButton,
         StudyRemark, // existing
-        PatientRemark // new: distinct bookmark for patient remark field
+        PatientRemark, // new: distinct bookmark for patient remark field
+        TestInvoke // new: generic target for testing Invoke operation
     }
 
     public enum MapMethod { Chain = 0, AutomationIdOnly = 1 }

@@ -26,5 +26,15 @@ namespace Wysg.Musm.Radium.Services
         string? AutomationNewStudySequence { get; set; }
         /// <summary>Ordered modules executed when adding a study (comma/semicolon delimited).</summary>
         string? AutomationAddStudySequence { get; set; }
+        /// <summary>Ordered modules executed when global hotkey OpenStudy pressed and patient locked is OFF.</summary>
+        string? AutomationShortcutOpenNew { get; set; }
+        /// <summary>Ordered modules executed when global hotkey OpenStudy pressed and patient locked is ON but study opened is OFF.</summary>
+        string? AutomationShortcutOpenAdd { get; set; }
+        /// <summary>Ordered modules executed when global hotkey OpenStudy pressed and patient locked is ON and study opened is ON.</summary>
+        string? AutomationShortcutOpenAfterOpen { get; set; }
+
+        // Global hotkeys (user local)
+        string? GlobalHotkeyOpenStudy { get; set; }
+        string? GlobalHotkeySendStudy { get; set; }
     }
 }

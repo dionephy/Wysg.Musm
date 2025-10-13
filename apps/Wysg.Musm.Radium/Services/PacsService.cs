@@ -98,6 +98,18 @@ namespace Wysg.Musm.Radium.Services
             return true; // success assumed; procedure is best-effort
         }
 
+        // New: Custom mouse click procedures (coordinate-driven)
+        public async Task<bool> CustomMouseClick1Async()
+        {
+            await ExecCustom("CustomMouseClick1");
+            return true;
+        }
+        public async Task<bool> CustomMouseClick2Async()
+        {
+            await ExecCustom("CustomMouseClick2");
+            return true;
+        }
+
         public async Task<bool> IsViewerWindowAsync(IntPtr hwnd)
         {
             using var mfc = MfcUi.Attach(_proc);

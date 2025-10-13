@@ -121,6 +121,9 @@ namespace Wysg.Musm.Radium.Views
             if (FindName("lstLibrary") is ListBox lib) lib.ItemsSource = vm.AvailableModules;
             if (FindName("lstNewStudy") is ListBox ns) ns.ItemsSource = vm.NewStudyModules;
             if (FindName("lstAddStudy") is ListBox add) add.ItemsSource = vm.AddStudyModules;
+            if (FindName("lstShortcutOpenNew") is ListBox s1) s1.ItemsSource = vm.ShortcutOpenNewModules;
+            if (FindName("lstShortcutOpenAdd") is ListBox s2) s2.ItemsSource = vm.ShortcutOpenAddModules;
+            if (FindName("lstShortcutOpenAfterOpen") is ListBox s3) s3.ItemsSource = vm.ShortcutOpenAfterOpenModules;
             vm.LoadAutomation();
         }
 
@@ -238,6 +241,9 @@ namespace Wysg.Musm.Radium.Views
                     "lstLibrary" => vm.AvailableModules,
                     "lstNewStudy" => vm.NewStudyModules,
                     "lstAddStudy" => vm.AddStudyModules,
+                    "lstShortcutOpenNew" => vm.ShortcutOpenNewModules,
+                    "lstShortcutOpenAdd" => vm.ShortcutOpenAddModules,
+                    "lstShortcutOpenAfterOpen" => vm.ShortcutOpenAfterOpenModules,
                     _ => null
                 };
                 if (list == null)
@@ -488,6 +494,32 @@ namespace Wysg.Musm.Radium.Views
         {
             var win = new SpyWindow { Owner = this };
             win.Show();
+        }
+
+        // Keyboard hotkey capture: capture modifiers + key and write as string into bound TextBox
+        private void OnHotkeyTextBoxPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (sender is not TextBox tb) return;
+            e.Handled = true; // prevent beep / text input
+
+            // Determine modifiers and key
+            var mods = new System.Collections.Generic.List<string>();
+            if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl)) mods.Add("Ctrl");
+            if (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt)) mods.Add("Alt");
+            if (Keyboard.IsKeyDown(Key.LWin) || Keyboard.IsKeyDown(Key.RWin)) mods.Add("Win");
+
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt || key == Key.LWin || key == Key.RWin)
+            {
+                // Only modifier pressed; keep showing mods only
+                tb.Text = string.Join("+", mods);
+                return;
+            }
+            var keyStr = key.ToString();
+            // Normalize OEM keys if needed
+            if (key >= Key.A && key <= Key.Z) keyStr = keyStr.ToUpperInvariant();
+            var combo = mods.Count > 0 ? string.Join("+", mods) + "+" + keyStr : keyStr;
+            tb.Text = combo;
         }
     }
 }

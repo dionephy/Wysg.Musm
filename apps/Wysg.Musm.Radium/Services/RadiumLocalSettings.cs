@@ -47,6 +47,13 @@ namespace Wysg.Musm.Radium.Services
 
         public string? AutomationNewStudySequence { get => ReadSecret("auto_newstudy"); set => WriteSecret("auto_newstudy", value ?? string.Empty); }
         public string? AutomationAddStudySequence { get => ReadSecret("auto_addstudy"); set => WriteSecret("auto_addstudy", value ?? string.Empty); }
+        public string? AutomationShortcutOpenNew { get => ReadSecret("auto_shortcut_open_new"); set => WriteSecret("auto_shortcut_open_new", value ?? string.Empty); }
+        public string? AutomationShortcutOpenAdd { get => ReadSecret("auto_shortcut_open_add"); set => WriteSecret("auto_shortcut_open_add", value ?? string.Empty); }
+        public string? AutomationShortcutOpenAfterOpen { get => ReadSecret("auto_shortcut_open_after_open"); set => WriteSecret("auto_shortcut_open_after_open", value ?? string.Empty); }
+
+        // Global hotkeys
+        public string? GlobalHotkeyOpenStudy { get => ReadSecret("hotkey_open_study"); set => WriteSecret("hotkey_open_study", value ?? string.Empty); }
+        public string? GlobalHotkeySendStudy { get => ReadSecret("hotkey_send_study"); set => WriteSecret("hotkey_send_study", value ?? string.Empty); }
 
         /// <summary>
         /// Decrypts settings file (if present) and returns the value for a key. Failures are swallowed to avoid

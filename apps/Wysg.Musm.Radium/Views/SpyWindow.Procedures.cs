@@ -502,6 +502,12 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
                             row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
+                        case "MouseClick":
+                            // Arg1: Number (X), Arg2: Number (Y)
+                            row.Arg1.Type = nameof(ArgKind.Number); row.Arg1Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg1.Value)) row.Arg1.Value = "0";
+                            row.Arg2.Type = nameof(ArgKind.Number); row.Arg2Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg2.Value)) row.Arg2.Value = "0";
+                            row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
+                            break;
                         case "TakeLast":
                         case "Trim":
                         case "ToDateTime":
@@ -682,6 +688,18 @@ namespace Wysg.Musm.Radium.Views
                     if (TryParseYmdOrYmdHms(s2.Trim(), out var dt)) { valueToStore = dt.ToString("o"); preview = dt.ToString("yyyy-MM-dd HH:mm:ss"); }
                     else { preview = "(parse fail)"; }
                     break;
+                case "MouseClick":
+                    // Perform a mouse click at screen coordinates (X,Y)
+                    var xStr = ResolveString(row.Arg1, vars);
+                    var yStr = ResolveString(row.Arg2, vars);
+                    if (!int.TryParse(xStr, out var px) || !int.TryParse(yStr, out var py)) { preview = "(invalid coords)"; break; }
+                    try
+                    {
+                        NativeMouseHelper.ClickScreen(px, py);
+                        preview = $"(clicked {px},{py})";
+                    }
+                    catch { preview = "(error)"; }
+                    break;
                 default: preview = "(unsupported)"; break;
             }
             return (preview, valueToStore);
@@ -720,6 +738,7 @@ namespace Wysg.Musm.Radium.Views
                     return ("(error)", null);
                 }
             }
+
             return ExecuteSingle(row, vars);
         }
 

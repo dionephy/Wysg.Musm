@@ -49,4 +49,43 @@
 - FR-520 SpyWindow op editor MUST preconfigure Arg1 Type=`Element` and disable Arg2/Arg3 for `Invoke`.
 - FR-521 Headless `ProcedureExecutor` MUST support `Invoke` with same behavior as SpyWindow.
 
+## Update: UI Spy Map-to Bookmark – Test invoke (2025-10-13)
+- FR-522 UI Spy MUST include a new KnownControl `TestInvoke` to allow mapping any arbitrary element for Invoke testing.
+- FR-523 SpyWindow Map-to dropdown MUST list "Test invoke" and save/load its mapping like other known controls.
+- FR-524 No additional logic required beyond existing Map/Resolve/Invoke flows; this is a convenience target.
+
+## Update: PACS Custom Mouse Clicks + Procedure Operation (2025-10-13)
+- FR-525 Add new PACS methods in Custom Procedures: "Custom mouse click 1" and "Custom mouse click 2".
+- FR-526 Add new operation `MouseClick` to Custom Procedures with Arg1=X (Number), Arg2=Y (Number). Action: move cursor to screen X,Y and perform a left click.
+- FR-527 Headless `ProcedureExecutor` MUST support `MouseClick` with identical behavior.
+- FR-528 `PacsService` MUST expose wrappers `CustomMouseClick1Async()` and `CustomMouseClick2Async()` to run the respective procedures.
+- FR-529 Provide auto-seeded defaults for both click methods consisting of a single `MouseClick` op with 0,0 coordinates (user will edit).
+
+## Update: SpyWindow Picked Point Display (2025-10-13)
+- FR-530 Add a read-only selectable TextBox to the left of the "Enable Tree" checkbox to display picked point screen coordinates.
+- FR-531 After performing Pick, show the captured mouse position as "X,Y" in the new TextBox.
+
 [Other existing sections unchanged]
+
+## Update: Settings → Automation modules and Keyboard (2025-10-13)
+- FR-540 Add three new Automation modules to library: `OpenStudy`, `MouseClick1`, `MouseClick2`.
+  - `OpenStudy` executes PACS procedure tag `InvokeOpenStudy` (headless: PacsService.InvokeOpenStudyAsync()).
+  - `MouseClick1`/`MouseClick2` execute their respective procedure tags (headless wrappers in PacsService).
+- FR-541 Settings window MUST include a new tab named "Keyboard".
+  - Provide two capture TextBoxes: "Open study" and "Send study".
+  - When focused, pressing a key combination (Ctrl/Alt/Win + key allowed) MUST render human-readable text in the TextBox (e.g., "Ctrl+Alt+S").
+  - Clicking Save persists values to local settings as `hotkey_open_study` and `hotkey_send_study`.
+  - Note: only capture+persist is implemented; global system-wide hook/registration occurs in a later increment.
+
+## Update: Settings → Automation panes for Open Study Shortcut (2025-10-13)
+- FR-545 Add three new panes under Automation tab to configure sequences for the Open Study global hotkey:
+  - Shortcut: Open study (new) → executes when PatientLocked == false.
+  - Shortcut: Open study (add) → executes when PatientLocked == true and StudyOpened == false.
+  - Shortcut: Open study (after open) → executes when PatientLocked == true and StudyOpened == true.
+- FR-546 Persist sequences locally: `auto_shortcut_open_new`, `auto_shortcut_open_add`, `auto_shortcut_open_after_open`.
+- FR-547 MainViewModel MUST expose `RunOpenStudyShortcut()` that selects and executes the appropriate sequence.
+
+## Update: Main Window Toggles (2025-10-13)
+- FR-542 Replace the small icon-only toggle next to "Study locked" with a text toggle "Study opened" bound to `StudyOpened`.
+- FR-543 `StudyOpened` MUST be toggled on programmatically when module `OpenStudy` runs.
+- FR-544 Remove the icon-only "reportified" toggle in the previous report area; keep the text "Reportified" toggle elsewhere unchanged.

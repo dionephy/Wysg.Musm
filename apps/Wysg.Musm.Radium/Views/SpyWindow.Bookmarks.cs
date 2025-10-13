@@ -138,6 +138,7 @@ namespace Wysg.Musm.Radium.Views
             if (!int.TryParse(txtDelay.Text?.Trim(), out var delay)) delay = 600;
             txtStatus.Text = $"Pick arming... move mouse to target ({delay}ms)";
             await Task.Delay(delay);
+            GetCursorPos(out var pt);
             var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: false);
             txtStatus.Text = msg;
             if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName;
@@ -146,6 +147,7 @@ namespace Wysg.Musm.Radium.Views
             ShowBookmarkDetails(b, "Captured chain");
             foreach (var n in b.Chain) n.UseIndex = false; // default: disable index after capture
             GridChain.ItemsSource = null; GridChain.ItemsSource = b.Chain;
+            try { if (FindName("txtPickedPoint") is System.Windows.Controls.TextBox tb) tb.Text = $"{pt.X},{pt.Y}"; } catch { }
         }
         private (UiBookmarks.Bookmark? bookmark, string? procName, string message) CaptureUnderMouse(bool preferAutomationId)
         {

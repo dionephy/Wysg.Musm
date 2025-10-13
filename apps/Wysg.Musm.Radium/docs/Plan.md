@@ -1,5 +1,51 @@
 ﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
+## Change Log Addition (2025-10-13 – Open Study Shortcut Panes)
+- Added three Automation panes to configure Open Study hotkey action lists by state: (new/add/after open).
+- Persisted sequences to local settings as `auto_shortcut_open_new`, `auto_shortcut_open_add`, `auto_shortcut_open_after_open`.
+- Implemented `MainViewModel.RunOpenStudyShortcut()` to choose the proper sequence based on `PatientLocked` and `StudyOpened`.
+
+### Approach
+1) Extend Settings UI with three ListBoxes and wire drag/drop using existing handlers.
+2) Add three ObservableCollections in SettingsViewModel and load/save via `IRadiumLocalSettings`.
+3) Implement VM method `RunOpenStudyShortcut()` to parse and run modules similarly to existing flows.
+
+### Test Plan
+- Configure each pane with distinct modules; save. Restart and verify they reload correctly.
+- Toggle PatientLocked/StudyOpened combinations and call `RunOpenStudyShortcut()`; verify the correct sequence runs.
+- Unknown modules ignored; known modules execute (OpenStudy, MouseClick1/2, AddPreviousStudy, GetStudy/PatientRemark).
+
+### Risks / Mitigations
+- Overlapping modules could produce unexpected order; user config governs. Drag-and-drop reordering supported.
+
+## Change Log Addition (2025-10-13 – Automation Modules + Keyboard Tab + Study Opened Toggle)
+- Added new Automation modules to Settings → Automation library: `OpenStudy`, `MouseClick1`, `MouseClick2`.
+- Implemented handlers in MainViewModel to run these during New/Add sequences:
+  - `OpenStudy` → PacsService.InvokeOpenStudyAsync(); sets `StudyOpened=true` on success.
+  - `MouseClick1` / `MouseClick2` → PacsService wrappers to run respective procedures.
+- Added a new "Keyboard" tab in Settings with two fields (Open study, Send study) that capture pressed combinations and save to local settings.
+- Replaced the small icon-only toggle next to "Study locked" with a text toggle "Study opened" bound to VM `StudyOpened`.
+- Removed the icon-only Reportified toggle in the Previous Report area (kept the text toggle elsewhere).
+
+### Approach
+1) Extend `SettingsViewModel.AvailableModules` with new module names; wire in `MainViewModel.Commands` to execute via PacsService.
+2) Add `StudyOpened` boolean property to VM; set when OpenStudy runs.
+3) Add Keyboard tab XAML and a PreviewKeyDown handler to capture modifiers + key; persist via IRadiumLocalSettings new keys.
+4) Update `IRadiumLocalSettings` and `RadiumLocalSettings` to store `hotkey_open_study` and `hotkey_send_study`.
+5) Update MainWindow XAML to replace the icon toggle and remove previous area icon toggle.
+
+### Test Plan
+- Settings → Automation: verify library lists `OpenStudy`, `MouseClick1`, `MouseClick2`; drag into sequences; Save Automation.
+- New/Add sequence run containing `OpenStudy`: verify `StudyOpened` toggles on and status updated.
+- MouseClick1/2: ensure procedures exist; running sequence triggers clicks (visually validated).
+- Settings → Keyboard: focus each TextBox and press combinations like Ctrl+Alt+S; verify text shown and saved to disk; restart app verifies persistence.
+- MainWindow: confirm "Study opened" toggle appears next to "Study locked" and is initially off.
+- Previous report area: confirm removal of icon-only Reportified toggle while text toggle remains elsewhere.
+
+### Risks / Mitigations
+- Global hotkey registration not implemented in this increment → documented; only capture+persist now.
+- Procedure tags may be missing → headless executor auto-seeds defaults; status messaging handles failures.
+- UI real estate changes could shift layout → kept consistent DarkToggleButtonStyle and text label for clarity.
 ## Change Log Addition (2025-01-12 – Study Technique Feature Database Schema)
 - Designed and implemented database schema for study technique management feature.
 - Created 8 new tables in med schema to support technique component management:
@@ -337,4 +383,46 @@
 ### Risks / Mitigations
 - Different PACS may require invoking a different element (e.g., Worklist or Related list) → users can edit the procedure to point to another KnownControl via SpyWindow.
 - Some lists do not support Invoke but respond to Toggle or selection-change → executor falls back to Toggle pattern.
+
+## Change Log Addition (2025-10-13 – UI Spy: Add 'Test invoke' Map-to Bookmark)
+- Added a new KnownControl entry `TestInvoke` for mapping an arbitrary UI element specifically to test the Invoke operation.
+- SpyWindow Map-to dropdown now includes "Test invoke". Users can map/capture any clickable element and validate with the Crawl Editor's Invoke button.
+
+### Approach (Test invoke bookmark)
+1) Extend `UiBookmarks.KnownControl` with `TestInvoke`.
+2) Add `<ComboBoxItem Tag="TestInvoke">Test invoke</ComboBoxItem>` to `SpyWindow.xaml` Map-to list.
+3) No changes required elsewhere; existing mapping/resolve/Invoke flows support any KnownControl.
+
+### Test Plan (Test invoke)
+- Open SpyWindow, select Map to → Test invoke, click Map and capture a UI element.
+- Click Invoke in the Crawl Editor toolbar → verify the element action occurs (or Toggle fallback).
+- Save mapping and resolve later; ensure it highlights and invokes correctly.
+
+### Risks / Mitigations
+- Unmapped `TestInvoke` will simply resolve to null; UI already reports friendly status. No breaking changes.
+
+## Change Log Addition (2025-10-13 – PACS: Custom Mouse Clicks + MouseClick Operation + Picked Point Display)
+- Added two new PACS methods in SpyWindow Custom Procedures: "Custom mouse click 1" and "Custom mouse click 2".
+- Added new operation `MouseClick` (Arg1=X Number, Arg2=Y Number) which sets cursor position and performs left click.
+- Implemented support in headless `ProcedureExecutor` for `MouseClick`, including auto-seeded defaults for the two new methods.
+- Added `PacsService.CustomMouseClick1Async()` and `CustomMouseClick2Async()` wrappers.
+- UI: Added read-only TextBox (`txtPickedPoint`) left of "Enable Tree" to display picked coordinates, set after Pick.
+
+### Approach
+1) SpyWindow.xaml: add the two PACS methods to the Custom Procedures combo; add `MouseClick` to operations list; add `txtPickedPoint` TextBox.
+2) SpyWindow.Procedures.cs: configure op editor for `MouseClick` to enable Arg1/Arg2 as Number; implement Execute paths calling NativeMouseHelper.ClickScreen.
+3) ProcedureExecutor: add fallback seed for both click methods; implement `MouseClick` in executor; ensure encoding helpers intact.
+4) PacsService: add two wrapper methods executing the new procedures.
+5) SpyWindow.Bookmarks.cs: after Pick, write screen coordinates into `txtPickedPoint`.
+
+### Test Plan
+- In SpyWindow, select "Custom mouse click 1" → Add row `MouseClick` with X=100, Y=100 → Save → Run → verify mouse clicks at (100,100).
+- Repeat for "Custom mouse click 2".
+- Verify op editor presets: selecting `MouseClick` enables Arg1/Arg2 Numbers, Arg3 disabled.
+- Pick a control; after delay, verify `txtPickedPoint` shows coordinates like "1234,567" and text is selectable.
+- Delete ui-procedures.json and re-open: both custom mouse click methods auto-seed with a `MouseClick` row.
+
+### Risks / Mitigations
+- Moving mouse programmatically is disruptive → operation is explicit; not run automatically.
+- DPI/coordinate mismatch → using screen coordinates (SetCursorPos/mouse_event); users can tune values.
 

@@ -33,11 +33,17 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         [ObservableProperty]
-        private ObservableCollection<string> availableModules = new(new[] { "NewStudy", "LockStudy", "GetStudyRemark", "GetPatientRemark", "AddPreviousStudy" });
+        private ObservableCollection<string> availableModules = new(new[] { "NewStudy", "LockStudy", "GetStudyRemark", "GetPatientRemark", "AddPreviousStudy", "OpenStudy", "MouseClick1", "MouseClick2" });
         [ObservableProperty]
         private ObservableCollection<string> newStudyModules = new();
         [ObservableProperty]
         private ObservableCollection<string> addStudyModules = new();
+        [ObservableProperty]
+        private ObservableCollection<string> shortcutOpenNewModules = new();
+        [ObservableProperty]
+        private ObservableCollection<string> shortcutOpenAddModules = new();
+        [ObservableProperty]
+        private ObservableCollection<string> shortcutOpenAfterOpenModules = new();
 
         // ===== Reportify Settings (manual properties) =====
         private bool _removeExcessiveBlanks = true; public bool RemoveExcessiveBlanks { get => _removeExcessiveBlanks; set { if (SetProperty(ref _removeExcessiveBlanks, value)) UpdateReportifyJson(); } }
@@ -68,6 +74,13 @@ namespace Wysg.Musm.Radium.ViewModels
         public IRelayCommand SaveAutomationCommand { get; }
         public IRelayCommand ShowReportifySampleCommand { get; }
         public IRelayCommand SaveReportifySettingsCommand { get; }
+        public IRelayCommand SaveKeyboardCommand { get; }
+
+        // Keyboard (global hotkeys) settings
+        private string? _openStudyHotkey;
+        public string? OpenStudyHotkey { get => _openStudyHotkey; set => SetProperty(ref _openStudyHotkey, value); }
+        private string? _sendStudyHotkey;
+        public string? SendStudyHotkey { get => _sendStudyHotkey; set => SetProperty(ref _sendStudyHotkey, value); }
 
         private readonly IReportifySettingsService? _reportifySvc;
         private readonly ITenantContext? _tenant;
@@ -89,6 +102,7 @@ namespace Wysg.Musm.Radium.ViewModels
             SaveAutomationCommand = new RelayCommand(SaveAutomation);
             ShowReportifySampleCommand = new RelayCommand<string?>(ShowSample);
             SaveReportifySettingsCommand = new AsyncRelayCommand(SaveReportifySettingsAsync, CanPersistSettings);
+            SaveKeyboardCommand = new RelayCommand(SaveKeyboard);
             UpdateReportifyJson();
             if (_tenant != null)
             {
@@ -102,6 +116,10 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 ApplyReportifyJson(_tenant.ReportifySettingsJson);
             }
+
+            // Load keyboard hotkeys from local settings
+            OpenStudyHotkey = _local.GlobalHotkeyOpenStudy;
+            SendStudyHotkey = _local.GlobalHotkeySendStudy;
         }
 
         private bool CanPersistSettings() => _reportifySvc != null && _tenant != null && _tenant.AccountId > 0;
@@ -149,10 +167,17 @@ namespace Wysg.Musm.Radium.ViewModels
         public void LoadAutomation()
         {
             newStudyModules.Clear(); addStudyModules.Clear();
+            shortcutOpenNewModules.Clear(); shortcutOpenAddModules.Clear(); shortcutOpenAfterOpenModules.Clear();
             var ns = _local.AutomationNewStudySequence;
             if (!string.IsNullOrWhiteSpace(ns)) foreach (var m in ns.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) newStudyModules.Add(m.Trim());
             var ad = _local.AutomationAddStudySequence;
             if (!string.IsNullOrWhiteSpace(ad)) foreach (var m in ad.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) addStudyModules.Add(m.Trim());
+            var s1 = _local.AutomationShortcutOpenNew;
+            if (!string.IsNullOrWhiteSpace(s1)) foreach (var m in s1.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) shortcutOpenNewModules.Add(m.Trim());
+            var s2 = _local.AutomationShortcutOpenAdd;
+            if (!string.IsNullOrWhiteSpace(s2)) foreach (var m in s2.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) shortcutOpenAddModules.Add(m.Trim());
+            var s3 = _local.AutomationShortcutOpenAfterOpen;
+            if (!string.IsNullOrWhiteSpace(s3)) foreach (var m in s3.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) shortcutOpenAfterOpenModules.Add(m.Trim());
         }
 
         private void Save()
@@ -167,7 +192,17 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             _local.AutomationNewStudySequence = string.Join(",", NewStudyModules);
             _local.AutomationAddStudySequence = string.Join(",", AddStudyModules);
+            _local.AutomationShortcutOpenNew = string.Join(",", ShortcutOpenNewModules);
+            _local.AutomationShortcutOpenAdd = string.Join(",", ShortcutOpenAddModules);
+            _local.AutomationShortcutOpenAfterOpen = string.Join(",", ShortcutOpenAfterOpenModules);
             MessageBox.Show("Automation saved.", "Automation", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void SaveKeyboard()
+        {
+            _local.GlobalHotkeyOpenStudy = OpenStudyHotkey ?? string.Empty;
+            _local.GlobalHotkeySendStudy = SendStudyHotkey ?? string.Empty;
+            MessageBox.Show("Keyboard hotkeys saved.", "Keyboard", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private async Task TestLocalAsync() => await TestAsync(LocalConnectionString, "Local");
