@@ -136,7 +136,21 @@ namespace Wysg.Musm.Radium.Services
                     new ProcOpRow { Op = "GetText", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.StudyRemark.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false, OutputVar = "var1" }
                 };
             }
+            // New: default for invoke open study ? attempt to Invoke the selected row in search results (opens viewer in many PACS)
+            if (string.Equals(methodTag, "InvokeOpenStudy", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "Invoke", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.SelectedStudyInSearch.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
+                };
+            }
             return new List<ProcOpRow>();
+        }
+
+        private static string UnescapeUserText(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+            try { return Regex.Unescape(s); } catch { return s; }
         }
 
         private static (string preview, string? value) ExecuteRow(ProcOpRow row, Dictionary<string, string?> vars)
@@ -148,10 +162,32 @@ namespace Wysg.Musm.Radium.Services
                 case "Split":
                 {
                     var input = ResolveString(row.Arg1, vars);
-                    var sep = ResolveString(row.Arg2, vars) ?? string.Empty;
+                    var sepRaw = ResolveString(row.Arg2, vars) ?? string.Empty;
                     var indexStr = ResolveString(row.Arg3, vars);
                     if (input == null) { return ("(null)", null); }
-                    var parts = input.Split(new[] { sep }, StringSplitOptions.None);
+
+                    string[] parts;
+                    // Regex mode: prefix with re: or regex:
+                    if (sepRaw.StartsWith("re:", StringComparison.OrdinalIgnoreCase) || sepRaw.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var pattern = sepRaw.StartsWith("re:", StringComparison.OrdinalIgnoreCase) ? sepRaw.Substring(3) : sepRaw.Substring(6);
+                        if (string.IsNullOrEmpty(pattern)) { return ("(empty pattern)", null); }
+                        try { parts = Regex.Split(input, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase); }
+                        catch (Exception ex) { return ($"(regex error: {ex.Message})", null); }
+                    }
+                    else
+                    {
+                        // Support C#-style escapes like \n, \r\n, \t in separator
+                        var sep = UnescapeUserText(sepRaw);
+                        parts = input.Split(new[] { sep }, StringSplitOptions.None);
+                        // Best-effort: if user wrote only LF but input uses CRLF, try again
+                        if (parts.Length == 1 && sep.Contains('\n') && !sep.Contains("\r\n"))
+                        {
+                            var crlfSep = sep.Replace("\n", "\r\n");
+                            parts = input.Split(new[] { crlfSep }, StringSplitOptions.None);
+                        }
+                    }
+
                     if (!string.IsNullOrWhiteSpace(indexStr) && int.TryParse(indexStr.Trim(), out var idx))
                     {
                         if (idx >= 0 && idx < parts.Length) { valueToStore = parts[idx]; preview = valueToStore ?? string.Empty; }

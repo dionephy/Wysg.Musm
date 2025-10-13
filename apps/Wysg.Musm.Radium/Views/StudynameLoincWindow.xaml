@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:Wysg.Musm.Radium.ViewModels"
         xmlns:conv="clr-namespace:Wysg.Musm.Radium.Converters"
+        xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
         mc:Ignorable="d"
         Title="Studyname &#8596; LOINC Parts"
         Height="880" Width="1420"
@@ -55,6 +56,14 @@
             </GroupBox>
         </DataTemplate>
         <conv:CountToVisibilityConverter x:Key="CountToVisibilityConverter" Minimum="2"/>
+
+        <!-- Sorted view for Preview list (order by PartSequenceOrder) -->
+        <CollectionViewSource x:Key="SelectedPartsView" Source="{Binding SelectedParts}">
+            <CollectionViewSource.SortDescriptions>
+                <scm:SortDescription PropertyName="PartSequenceOrder" Direction="Ascending"/>
+                <scm:SortDescription PropertyName="PartDisplay" Direction="Ascending"/>
+            </CollectionViewSource.SortDescriptions>
+        </CollectionViewSource>
     </Window.Resources>
 
     <Grid Margin="8">
@@ -155,7 +164,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <ListBox Grid.Row="0" ItemsSource="{Binding SelectedParts}">
+                <ListBox Grid.Row="0" ItemsSource="{Binding Source={StaticResource SelectedPartsView}}">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
                             <EventSetter Event="MouseDoubleClick" Handler="OnPreviewItemDoubleClick"/>

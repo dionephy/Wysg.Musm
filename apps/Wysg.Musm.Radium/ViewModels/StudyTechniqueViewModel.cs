@@ -5,7 +5,7 @@ using Wysg.Musm.Radium.Services;
 
 namespace Wysg.Musm.Radium.ViewModels
 {
-    public sealed class StudyTechniqueViewModel : BaseViewModel
+    public sealed partial class StudyTechniqueViewModel : BaseViewModel
     {
         private readonly ITechniqueRepository _repo;
         private readonly IRadStudyRepository? _studies;
@@ -17,11 +17,32 @@ namespace Wysg.Musm.Radium.ViewModels
             AddTechniqueCommand = new RelayCommand(_ =>
             {
                 if (SelectedTech == null) return;
+
+                // Prevent duplicate (prefix, tech, suffix) within the in-memory combination
+                long? candP = SelectedPrefix?.Id;
+                long candT = SelectedTech.Id;
+                long? candS = SelectedSuffix?.Id;
+                foreach (var e in CurrentCombinationItems)
+                {
+                    if (e.PrefixId == candP && e.TechId == candT && e.SuffixId == candS)
+                    {
+                        // Duplicate; ignore add
+                        return;
+                    }
+                }
+
                 var prefixText = SelectedPrefix?.Text?.Trim() ?? string.Empty;
                 var suffixText = SelectedSuffix?.Text?.Trim() ?? string.Empty;
                 var display = string.Join(" ", new[] { string.IsNullOrWhiteSpace(prefixText) ? null : prefixText, SelectedTech.Text, string.IsNullOrWhiteSpace(suffixText) ? null : suffixText }.Where(s => !string.IsNullOrWhiteSpace(s))) ?? SelectedTech.Text;
                 var seq = CurrentCombinationItems.Count + 1;
-                CurrentCombinationItems.Add(new CombinationItem { SequenceOrder = seq, TechniqueDisplay = display });
+                CurrentCombinationItems.Add(new CombinationItem
+                {
+                    SequenceOrder = seq,
+                    TechniqueDisplay = display,
+                    PrefixId = candP,
+                    TechId = candT,
+                    SuffixId = candS
+                });
             });
             SetDefaultForStudynameCommand = new RelayCommand(async _ =>
             {
@@ -29,27 +50,30 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     await _repo.SetDefaultForStudynameAsync(StudynameId.Value, SelectedCombination.CombinationId);
                     // refresh list
-                    StudynameCombinations.Clear();
-                    var rows = await _repo.GetCombinationsForStudynameAsync(StudynameId.Value);
-                    foreach (var c in rows) StudynameCombinations.Add(new CombinationRow { CombinationId = c.CombinationId, Display = c.Display, IsDefault = c.IsDefault });
+                    await ReloadStudynameCombinationsAsync();
                 }
             });
             SaveForStudyAndStudynameCommand = new RelayCommand(async _ =>
             {
                 if (StudynameId == null || CurrentCombinationItems.Count == 0) return;
-                // Ensure technique rows and build list for insert
+
+                // Deduplicate (prefix, tech, suffix) across the combination before save, preserving first occurrence order
+                var seen = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
                 var items = new System.Collections.Generic.List<(long techniqueId, int seq)>();
+                int seq = 1;
                 foreach (var ci in CurrentCombinationItems)
                 {
-                    // naive parse: match back to Selected* of last add; for v1 we simply use current selections
-                    // A more complete UI would store picked ids per row; keeping simple here
-                    if (SelectedTech == null) continue;
-                    long? pId = SelectedPrefix?.Id;
-                    long tId = SelectedTech.Id;
-                    long? sId = SelectedSuffix?.Id;
+                    var key = $"{ci.PrefixId?.ToString() ?? "_"}|{ci.TechId}|{ci.SuffixId?.ToString() ?? "_"}";
+                    if (!seen.Add(key)) continue; // skip duplicates
+
+                    long? pId = ci.PrefixId;
+                    long tId = ci.TechId;
+                    long? sId = ci.SuffixId;
                     var techId = await _repo.EnsureTechniqueAsync(pId, tId, sId);
-                    items.Add((techId, ci.SequenceOrder));
+                    items.Add((techId, seq++));
                 }
+                if (items.Count == 0) return;
+
                 var combId = await _repo.CreateCombinationAsync(null);
                 await _repo.AddCombinationItemsAsync(combId, items);
                 if (SetAsDefaultAfterSave)
@@ -60,12 +84,19 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     await _repo.LinkStudynameCombinationAsync(StudynameId.Value, combId, isDefault: false);
                 }
-                // reload combos list
-                StudynameCombinations.Clear();
-                var rows = await _repo.GetCombinationsForStudynameAsync(StudynameId.Value);
-                foreach (var c in rows) StudynameCombinations.Add(new CombinationRow { CombinationId = c.CombinationId, Display = c.Display, IsDefault = c.IsDefault });
+                await ReloadStudynameCombinationsAsync();
                 CurrentCombinationItems.Clear();
+                // Notify main VM to refresh study_techniques from new default (if applicable)
+                try { await NotifyDefaultChangedAsync(); } catch { }
             });
+        }
+
+        private async System.Threading.Tasks.Task ReloadStudynameCombinationsAsync()
+        {
+            if (!StudynameId.HasValue) return;
+            StudynameCombinations.Clear();
+            var rows = await _repo.GetCombinationsForStudynameAsync(StudynameId.Value);
+            foreach (var c in rows) StudynameCombinations.Add(new CombinationRow { CombinationId = c.CombinationId, Display = c.Display, IsDefault = c.IsDefault });
         }
 
         // When true, SaveForStudyAndStudynameCommand will set the newly created combination
@@ -102,15 +133,40 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             StudynameId = id; Studyname = studyname;
             // Load lookup lists minimal (skeleton)
+            await ReloadLookupsAsync();
+            // Load combos
+            await ReloadStudynameCombinationsAsync();
+        }
+
+        public async System.Threading.Tasks.Task ReloadLookupsAsync()
+        {
             Prefixes.Clear(); foreach (var p in await _repo.GetPrefixesAsync()) Prefixes.Add(new TechText { Id = p.Id, Text = p.Text });
             Techs.Clear(); foreach (var t in await _repo.GetTechsAsync()) Techs.Add(new TechText { Id = t.Id, Text = t.Text });
             Suffixes.Clear(); foreach (var s in await _repo.GetSuffixesAsync()) Suffixes.Add(new TechText { Id = s.Id, Text = s.Text });
-            // Load combos
-            StudynameCombinations.Clear(); foreach (var c in await _repo.GetCombinationsForStudynameAsync(id)) StudynameCombinations.Add(new CombinationRow { CombinationId = c.CombinationId, Display = c.Display, IsDefault = c.IsDefault });
+        }
+
+        // Helpers used by window for inline add
+        public async System.Threading.Tasks.Task AddPrefixAndSelectAsync(string text)
+        {
+            var id = await _repo.AddPrefixAsync(text.Trim());
+            await ReloadLookupsAsync();
+            SelectedPrefix = Prefixes.FirstOrDefault(p => p.Id == id) ?? Prefixes.FirstOrDefault(p => p.Text == text) ?? SelectedPrefix;
+        }
+        public async System.Threading.Tasks.Task AddTechAndSelectAsync(string text)
+        {
+            var id = await _repo.AddTechAsync(text.Trim());
+            await ReloadLookupsAsync();
+            SelectedTech = Techs.FirstOrDefault(p => p.Id == id) ?? Techs.FirstOrDefault(p => p.Text == text) ?? SelectedTech;
+        }
+        public async System.Threading.Tasks.Task AddSuffixAndSelectAsync(string text)
+        {
+            var id = await _repo.AddSuffixAsync(text.Trim());
+            await ReloadLookupsAsync();
+            SelectedSuffix = Suffixes.FirstOrDefault(p => p.Id == id) ?? Suffixes.FirstOrDefault(p => p.Text == text) ?? SelectedSuffix;
         }
 
         public sealed class TechText { public long Id { get; set; } public string Text { get; set; } = string.Empty; }
-        public sealed class CombinationItem { public int SequenceOrder { get; set; } public string TechniqueDisplay { get; set; } = string.Empty; }
+        public sealed class CombinationItem { public int SequenceOrder { get; set; } public string TechniqueDisplay { get; set; } = string.Empty; public long? PrefixId { get; set; } public long TechId { get; set; } public long? SuffixId { get; set; } }
         public sealed class CombinationRow { public long CombinationId { get; set; } public string Display { get; set; } = string.Empty; public bool IsDefault { get; set; } }
 
         private sealed class RelayCommand : ICommand

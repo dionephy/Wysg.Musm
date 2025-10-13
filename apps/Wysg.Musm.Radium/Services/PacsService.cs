@@ -91,6 +91,13 @@ namespace Wysg.Musm.Radium.Services
         public Task<string?> GetCurrentStudyRemarkAsync() => ExecWithRetry("GetCurrentStudyRemark");
         public Task<string?> GetCurrentPatientRemarkAsync() => ExecWithRetry("GetCurrentPatientRemark");
 
+        // New: Procedure to invoke open study (no value expected)
+        public async Task<bool> InvokeOpenStudyAsync()
+        {
+            await ExecCustom("InvokeOpenStudy");
+            return true; // success assumed; procedure is best-effort
+        }
+
         public async Task<bool> IsViewerWindowAsync(IntPtr hwnd)
         {
             using var mfc = MfcUi.Attach(_proc);

@@ -425,6 +425,7 @@
                         <ComboBoxItem Tag="GetCurrentConclusion">Get current conclusion</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentFindings2">Get current findings 2</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentConclusion2">Get current conclusion 2</ComboBoxItem>
+                        <ComboBoxItem Tag="InvokeOpenStudy">Invoke open study</ComboBoxItem>
                     </ComboBox>
                     <Button Content="Add" Click="OnAddProcRow"/>
                     <Button Content="Save" Margin="6,0,0,0" Click="OnSaveProcedure"/>

@@ -37,6 +37,31 @@
 - Default flag enforcement per studyname not database-constrained → will need application-level validation in future UI
 - Combination name optional may lead to unlabeled combinations → display view provides auto-generated name fallback
 
+## Change Log Addition (2025-10-12 – Fix: Patient Remark mismatch on New Study due to Split parity)
+- Problem: Patient remark captured during New Study included trailing HTML markup compared to the PACS method "Get current patient remark" executed from SpyWindow. Root cause: headless `ProcedureExecutor.Split` lacked regex and escape support used by user-authored procedures, so the final split step was not applied.
+- Fix: Updated `ProcedureExecutor.Split` to achieve full parity with SpyWindow:
+  - Supports `re:`/`regex:` prefix to split using `Regex.Split` with Singleline | IgnoreCase.
+  - Supports C#-style escapes (e.g., `\n`, `\r\n`, `\t`) for literal separators via `Regex.Unescape`.
+  - Best-effort CRLF retry when only LF is provided but input uses Windows `\r\n`.
+  - Preserves Arg3 index behavior (select specific part) else joins with U+001F.
+- Effect: New Study automation now returns exactly the same `patient_remark` string as running the procedure in SpyWindow (after Trim). Example HTML tail ("</TR></TABLE></BR>...</HTML>") is no longer included when the procedure uses a regex split boundary.
+
+### Approach (Split parity)
+1) Port SpyWindow Split logic into `ProcedureExecutor` (regex mode, escape handling, CRLF retry).
+2) Keep existing Replace/GetHTML parity already implemented; no change to other ops.
+3) Do not alter persistence or PACS wrappers; fix contained to `ProcedureExecutor`.
+
+### Test Plan (Patient Remark Split)
+- Author a `GetCurrentPatientRemark` procedure in SpyWindow that ends with:
+  - `Split(Arg1=varN, Arg2=regex:</TR>\s*</TABLE></BR>\s*</CENTER>\s*</BODY>\s*</HTML>, Arg3=0)`
+- Run in SpyWindow → capture preview.
+- Run New Study automation with `GetPatientRemark` module → verify `PatientRemark` equals the SpyWindow result (string-equal after Trim()).
+- Verify non-regex separator with `\r\n` and only `\n` in Arg2 → both split correctly due to retry.
+
+### Risks / Mitigations
+- Regex patterns authored by users could be invalid → handled by returning `(regex error: ...)` preview in SpyWindow; in headless executor we safely return null part for that step. Users can adjust patterns in UI.
+- Potential behavior change for existing procedures relying on legacy behavior → documented; parity with UI is the intended contract.
+
 ## Change Log Addition (2025-10-12 – Auto/Generate Buttons and Proofread/Reportified Toggles)
 - Added auto toggles and generate buttons next to specified labels:
   - Chief Complaint (top/side top), Patient History (top/side top), Conclusion (top).
@@ -73,6 +98,7 @@
 - Type into the four new editors → verify JSON PrevReport fields update live and bindings round-trip.
 - Edit JSON PrevReport fields → verify editors update.
 - Switch tabs → verify values persist per tab.
+
 ## Change Log Addition (2025-10-12 – Previous Report Split View)
 - Added computed properties in VM for split view: `PreviousHeaderSplitView`, `PreviousFindingsSplitView`, `PreviousConclusionSplitView`.
 - On `PreviousReportSplitted` ON:
@@ -91,7 +117,8 @@
 - Edge cases: zero-length texts; offsets at bounds; mismatched ranges still clamped safely (no exceptions).
 - Verify trimming: surrounding whitespace of each segment is removed before newline merge (no leading/trailing blanks).
  - Verify final trimming: the merged string has no leading/trailing whitespace/newlines after concatenation.
-- Verify default change: final_conclusion_findings_splitter_from/to default to 0/0 when null on Splitted ON.
+ - Verify default change: final_conclusion_findings_splitter_from/to default to 0/0 when null on Splitted ON.
+
 ## Change Log Addition (2025-01-11 - PreviousReportTextAndJsonPanel Reusable Control)
 - Created reusable UserControl `PreviousReportTextAndJsonPanel` to eliminate duplicate XAML code in side and bottom panels.
 - Control structure:
@@ -167,400 +194,147 @@
 - JSON parsing of old data with `findings`/`conclusion` fields will fail → mitigated by updating parsing logic to expect new field names (migration may be needed for existing saved reports).
 - UI layout complexity with additional TextBox → mitigated by using GridSplitter for flexible sizing.
 
-## Change Log Addition (2025-01-10 - Report Header Component Fields & Real-Time Formatting)
-- Added four new header component fields to report JSON: `chief_complaint`, `patient_history`, `comparison`, `study_techniques`.
-- Implemented real-time header formatting in `MainViewModel.Editor.cs`:
-  - Added public properties for the four component fields with change notification and JSON update triggers.
-  - Changed `HeaderText` setter to private; header is now automatically computed from component fields.
-  - Implemented `UpdateFormattedHeader()` method applying all formatting rules:
-    - Clinical information line shown with "NA" when chief_complaint is empty but patient_history exists.
-    - Patient history lines prefixed with "- ".
-    - Techniques line shown only when study_techniques is not empty.
-    - Comparison shown as "NA" when empty but other header content exists; omitted entirely when all header content is empty.
-    - Final header is trimmed.
-- Updated `UpdateCurrentReportJson()` to serialize new fields.
-- Updated `ApplyJsonToEditors()` to deserialize and apply new fields, triggering header formatting update.
-- Header updates are real-time: any change to component fields immediately updates the formatted header display.
+## Change Log Addition (2025-10-12 – Dark Theme Scrollbar UX)
+- Implemented dark, more intuitive scrollbars across the app.
+- Added dedicated track/thumb colors and hover/drag states; rounded thumbs.
+- Increased thickness to 12px for easier grasping; ensured paging on track click.
+- Applied globally to `ScrollBar` and `ScrollViewer` so TextBox, DataGrid, editors, and combo popups inherit.
 
-## Change Log Addition (2025-10-11 - JSON-driven Header Recompute)
-- Adjusted header update pipeline so that editing `CurrentReportJson` directly and changing any of the header component fields recomputes `HeaderText` immediately.
-- Removed suppression that prevented `UpdateFormattedHeader()` during JSON apply; header now refreshes in real time on JSON edits.
-- Safeguards remain to prevent recursion and maintain `_raw*` backing fields integrity for findings/conclusion.
+### Approach (Scrollbars)
+1) Define new dark colors/brushes for track, thumb, hover, active, and border in `DarkTheme.xaml`.
+2) Create `Thumb` style with rounded corners and hover/drag visual states.
+3) Template vertical and horizontal `ScrollBar` with `Track` + transparent `RepeatButton` page areas.
+4) Apply a global `ScrollBar` style that switches template based on `Orientation` and sets width/height.
+5) Add `ScrollViewer` style to set Auto visibility and panning with transparent background.
 
-### Approach
-1) In `UpdateFormattedHeader()`, remove early return that skipped updates when `_updatingFromJson` was true.
-2) Keep `ApplyJsonToEditors()` calling `UpdateFormattedHeader()` after setting the component backing fields.
-3) Preserve private setter for `HeaderText` to keep it computed-only.
+### Test Plan (Scrollbars)
+- Verify vertical and horizontal scrollbars appear with dark track and rounded thumb in:
+  - TextBox editors (current/previous, JSON boxes)
+  - DataGrid lists (phrases/hotkeys/procedures)
+  - ComboBox dropdown list popup
+- Hover thumb → color lightens; drag → color further lightens.
+- Click on empty track → content pages up/down/left/right.
+- Confirm thickness ≈ 12px and thumb min size respected.
+- Build passes with no XAML errors.
 
-### Test Plan
-- Edit `CurrentReportJson` in the side/bottom JSON editor to set: 
-  - only `chief_complaint` → header shows Clinical information.
-  - only `patient_history` (multi-line) → header shows Clinical information: NA and lines with “- ” prefix.
-  - empty `comparison` with other content → shows "Comparison: NA".
-  - empty `comparison` with no other header content → no Comparison line.
-- Verify header updates immediately as JSON is edited (PropertyChanged).
+### Risks / Mitigations (Scrollbars)
+- Some third-party controls might override templates → global styles still cover WPF primitives; adjust per control if gaps reported.
+- Very small scrollable areas could render oversized thumbs → enforced MinLength only; WPF scales appropriately.
 
-## Change Log Addition (2025-10-11 - Header UI Inputs + Read-only Header)
-- Added UI editors in `MainWindow.xaml` for: Study Remark, Patient Remark, Chief Complaint, Patient History; placed in a left column next to the JSON editor.
-- Set `EditorHeader` to read-only to prevent direct edits; header remains computed from component fields.
-- Bound editors two-way to `StudyRemark`, `PatientRemark`, `ChiefComplaint`, `PatientHistory`.
-- Turned off line numbers on the two mini editors.
-- Added `Edit Study Technique` and `Edit Comparison` buttons as entry points for future dialogs.
+## Change Log Addition (2025-10-13 – Edit Study Technique Window UX)
+- Problem 1: Group panels were too small and did not stretch with the window, making the preview cramped.
+- Problem 2: ComboBox selected area showed CLR type name (e.g., "Wysg.Musm.Radium....") instead of the `Text` property of the selected item.
+- Problem 3: No way to add Prefix/Tech/Suffix from the window, forcing DB pre-seed.
+
+- Fixes:
+  - Layout: Converted window body to a 3-column Grid (left panel [3*], splitter [Auto], right panel [2*]). Left panel uses Grid with `Add Technique` (Auto) and `Current Combination` (*). This ensures proportional stretch. Increased default window size.
+  - ComboBox display: In the global dark `ComboBox` template, replaced the selection `ContentPresenter` with a `TextBlock` bound via `PriorityBinding` to `SelectedItem.Text` → `Text` → `SelectionBoxItem`, and set `TextSearch.TextPath=Text`.
+  - Inline add: Added "+" buttons next to Prefix/Tech/Suffix ComboBoxes. Buttons open a small prompt dialog, then call `StudyTechniqueViewModel.AddPrefixAndSelectAsync`, `AddTechAndSelectAsync`, `AddSuffixAndSelectAsync`. On success, lookups reload and the new item is auto-selected.
+  - Studyname combinations: Added right panel `GroupBox` listing combinations for the selected studyname with a `Set Default` button bound to `SetDefaultForStudynameCommand`.
 
 ### Approach
-1) Expose `IsReadOnly` and `ShowLineNumbers` DPs on `EditorControl`; bind through to inner `MusmEditor`.
-2) Update `MainWindow.xaml` top area: split into a 3-column grid (left editors, splitter, right JSON).
-3) Mark `EditorHeader` as `IsReadOnly=True`.
-4) Keep existing JSON bindings; header recompute continues to run on property and JSON changes.
+1) Restructure `StudyTechniqueWindow.xaml.cs`: build body grid, left/right panels, and splitter; bind lists and commands from `StudyTechniqueViewModel`.
+2) Enhance `DarkTheme.xaml` ComboBox template: use `TextBlock` with `PriorityBinding` for selection text and set `TextSearch.TextPath=Text`.
+3) Implement a lightweight prompt dialog inside `StudyTechniqueWindow` for adding new lookup items (prefix/tech/suffix).
+4) Wire add buttons to VM async add methods which already persist and reload via repository.
 
 ### Test Plan
-- Typing in Chief Complaint / Patient History editors updates HeaderText in real time.
-- Editing StudyRemark/PatientRemark updates JSON fields accordingly.
-- The header editor cannot be edited (no caret insertion or text change).
-- Line numbers are hidden for Chief Complaint and Patient History editors.
-
-## Approach (Header Component Fields)
-1) Store component fields separately instead of free-form header text.
-2) Compute formatted header on-demand using conditional logic for each section.
-3) Round-trip component fields through JSON for persistence.
-4) Prevent direct editing of HeaderText (computed property).
-
-## Test Plan (Header Component Fields)
-- Set chief_complaint only → verify "Clinical information: {text}" appears.
-- Set patient_history only → verify "Clinical information: NA" appears with history lines prefixed by "- ".
-- Set both chief_complaint and patient_history → verify chief_complaint shown first, then history lines.
-- Set study_techniques → verify "Techniques: {text}" appears.
-- Set comparison → verify "Comparison: {text}" appears.
-- Leave comparison empty with other content → verify "Comparison: NA" appears.
-- Leave all fields empty → verify header is empty (no "Comparison: " line).
-- Verify round-trip: set fields, check JSON, parse JSON, verify fields restored.
-- Verify multi-line patient_history → each line prefixed with "- ".
-
-## Risks / Mitigations (Header Component Fields)
-- Users cannot directly edit the header text; must edit component fields. Consider adding UI controls for each field or allow editing via JSON view.
-- Formatting logic must be kept in sync with user expectations; any changes to formatting rules require code update.
-- Multi-line patient_history uses simple line split; complex formatting (nested bullets, etc.) not supported initially.
-- **Crash Fix (2025-01-10)**: Added initialization guard (`_isInitialized` flag) to prevent `UpdateFormattedHeader()` and `UpdateCurrentReportJson()` from executing during ViewModel construction. The flag is set to `true` at the end of the constructor, and safe wrapper methods (`SafeUpdateJson()`, `SafeUpdateHeader()`) check this flag before executing.
-
-## Change Log Addition (2025-01-10 - Snippet Empty Text Option Support)
-- Fixed snippet option parsing to allow empty text values (e.g., `0^` for empty string choice).
-- Modified `CodeSnippet.ParseOptions()` to:
-  - Accept options where the text portion is empty string (text after `^` separator).
-  - Only require non-empty key (before `^` separator).
-  - Handle edge cases like `0^|1^and the pons` where first option has key "0" and empty text "".
-- Example use case: `${1^pons=0^|1^and the pons}` now correctly provides two options:
-  - Key "0" → empty string (nothing inserted)
-  - Key "1" → "and the pons"
-- Previous behavior: Empty text options were skipped entirely due to `if (key.Length > 0 && text.Length > 0)` check.
-- New behavior: Empty text allowed, only key must be non-empty via `if (key.Length > 0)` check.
-
-## Approach (Empty Text Options)
-1) Modified ParseOptions to handle `^` separator with optional trailing text.
-2) Extract text using substring with bounds check: `(idx < tok.Length - 1) ? tok.Substring(idx + 1).Trim() : string.Empty`.
-3) Accept option when key is non-empty regardless of text length.
-4) Empty text options insert nothing (empty string) when selected in mode 1/3, or contribute nothing to joined output in mode 2.
-
-## Test Plan (Empty Text Options)
-- Create snippet: `${1^severity=1^mild|2^moderate|3^severe} degree of microangiopathy in the bilateral cerebral white matter ${1^pons=0^|1^and the pons}`
-- Insert snippet and navigate to second placeholder (pons).
-- Press '0' → verify empty string is inserted (nothing appears).
-- Insert snippet again, press '1' → verify "and the pons" is inserted.
-- Verify both options appear in popup with keys "0" and "1".
-
-## Risks / Mitigations (Empty Text Options)
-- Empty text might be confusing to users; consider UI feedback showing "(nothing)" for empty options in popup.
-- Current implementation shows empty string as-is which is acceptable for medical report templates where omission is intentional.
-
-## Change Log Addition (2025-01-10 - Snippet Logic Implementation Fixes)
-- Fixed snippet completion display to show "{trigger} → {description}" instead of "{trigger} → {snippet text}":
-  - Updated `MusmCompletionData.Snippet` factory to use `snippet.Shortcut` and `snippet.Description` in content string.
-  - Updated `EditorCompletionData.ForSnippet` to use same format pattern.
-  - ToString() method now returns the properly formatted display string.
-- Implemented proper mode extraction from placeholder syntax:
-  - Mode number is now extracted from the index prefix (1^, 2^, 3^) in placeholder definitions.
-  - Modified `CodeSnippet.Expand()` to parse mode from first digit of index for indices like 1, 2, 3, or 10-39, or 100+.
-  - Mode determines placeholder behavior: 1=immediate single choice, 2=multi-choice with joiner, 3=multi-char single replace.
-- Fixed free text placeholder fallback logic:
-  - Added tracking in `Session` class to record whether current placeholder was modified during typing.
-  - `SelectPlaceholder` now records original text and resets modification flag when switching placeholders.
-  - `OnDocumentChanged` detects edits within free-text placeholder bounds and marks as modified.
-  - `ApplyFallbackAndEnd` only applies "[ ]" replacement for unmodified free text; keeps typed text if modified.
-- Improved mode-specific key handling:
-  - Mode 1: Single alphanumeric key immediately selects matching option and completes placeholder.
-  - Mode 3: Accumulates multi-char keys in buffer until Tab is pressed for matching.
-  - Free text: Allows normal typing without interference (key events not handled by snippet mode).
-  - Mode 2: Space or matching letter toggles selection in multi-choice popup.
-- Enhanced placeholder navigation:
-  - Tab completes current placeholder with appropriate logic per mode and moves to next.
-  - Enter exits snippet mode with fallback and moves caret to next line.
-  - Escape exits snippet mode with fallback and moves caret to end of inserted snippet.
-  - Arrow keys, Home, End are blocked to keep caret within active placeholder bounds.
-
-## Approach (Snippet Logic)
-1) Mode extraction: Parse first digit of placeholder index to determine behavior mode (1, 2, or 3).
-2) Modification tracking: Track document changes within placeholder bounds to determine if user typed vs left default.
-3) Smart fallback: Apply "[ ]" only for unmodified free text; preserve user typing otherwise.
-4) Mode-specific input: Handle single-key immediate (mode 1), multi-char buffered (mode 3), and multi-select toggle (mode 2).
-5) Cursor confinement: Prevent navigation outside active placeholder during snippet mode.
-
-## Test Plan (Snippet Logic)
-- Free text placeholder:
-  - Insert snippet with `${free text}` placeholder.
-  - Type some text → Tab → verify typed text is kept and cursor moves to next placeholder or end.
-  - Insert again, don't type → Esc → verify "[ ]" is inserted for unfilled placeholder.
-- Mode 1 (immediate single choice):
-  - Insert snippet with `${1^fruit=a^apple|b^banana}`.
-  - Press 'a' → verify immediate replacement with "apple" and completion.
-  - Insert again, press neither → Esc → verify first option "apple" is used as fallback.
-- Mode 2 (multi-choice):
-  - Insert snippet with `${2^items^or=a^cola|b^cider|c^juice}`.
-  - Press 'a' Space 'c' Tab → verify "cola or juice" is inserted.
-  - Insert again, press nothing → Esc → verify all options joined with "or" are inserted.
-- Mode 3 (multi-char single replace):
-  - Insert snippet with `${3^code=aa^apple|bb^banana}`.
-  - Type 'aa' Tab → verify "apple" is inserted.
-  - Insert again, type 'zz' Tab → verify first option "apple" is used (no match).
-  - Insert again, type nothing → Esc → verify first option "apple" is used as fallback.
-
-## Risks / Mitigations (Snippet Logic)
-- If placeholder syntax is malformed, mode may default to 0 (free text behavior).
-- If user types partial match in mode 3 then exits without Tab, first option is used as safe fallback.
-- Modification tracking depends on document change events firing within placeholder bounds; robust for normal typing scenarios.
-
-## Change Log Addition (2025-10-10 - Automation modules: Study/Patient Remarks)
-- Added two automation modules to Settings → Automation:
-  - GetStudyRemark: fetches PACS method "Get current study remark" and updates `study_remark` in current report JSON.
-  - GetPatientRemark: fetches PACS method "Get current patient remark" and updates `patient_remark` in current report JSON.
-- Extended `SettingsViewModel.AvailableModules` to include `GetStudyRemark` and `GetPatientRemark` so users can drag them into sequences.
-- `MainViewModel`:
-  - Added properties `StudyRemark`, `PatientRemark` and wired them into `CurrentReportJson` serialization.
-  - In New Study automation executor, recognized the two modules and fetch via `PacsService.GetCurrentStudyRemarkAsync()` / `GetCurrentPatientRemarkAsync()` and set the properties.
-- Remarks update status messages for quick visual feedback.
-
-## Change Log Addition (2025-10-10 - Fix: Patient Remark bookmark)
-- Introduced a distinct known control `PatientRemark` in `UiBookmarks.KnownControl` and exposed it in SpyWindow → Known controls combo.
-- Reason: Previously only `StudyRemark` existed, leading to "Get current patient remark" procedures accidentally using the study remark bookmark.
-- Result: Users can now map the patient remark UI element separately and reference it in the `GetCurrentPatientRemark` procedure.
-
-## Change Log Addition (2025-10-10 - Auto-seed key procedures for Remarks)
-- Implemented auto-seeding in `ProcedureExecutor`:
-  - When `GetCurrentPatientRemark` has no saved procedure, the system creates and persists a default procedure with a single `GetText` step on Element=`PatientRemark`.
-  - Similarly, if `GetCurrentStudyRemark` is missing, auto-seed with `GetText` on Element=`StudyRemark`.
-- Effect: "GetPatientRemark" module always has a working key procedure by default and remains user-editable in SpyWindow.
-
-## Change Log Addition (2025-10-10 - Enforcement of patient_remark source)
-- Enforced that `patient_remark` is only populated from the `GetCurrentPatientRemark` procedure result by ignoring `patient_remark` edits in `CurrentReportJson` parsing; `StudyRemark` remains round-trippable.
-
-## Change Log Addition (2025-10-10 - ProcedureExecutor GetHTML + Replace + early-return bug)
-- Implemented `Replace` op and `GetHTML` op in the procedure executor for parity with the SpyWindow Custom Procedures UI.
-- Fixed an early return in `ExecuteInternal` that prevented fallback auto-seeding and could lead to returning the previous step’s value when `GetHTML` was present.
-- Registered `CodePagesEncodingProvider` and added light-weight charset handling to decode HTML using header/meta charsets.
-
-## Change Log Addition (2025-01-10 - Snippet Completion Display)
-- Updated completion item formatting to use "{trigger} → {description}" consistently.
-- Applied in `MusmCompletionData.Snippet` and `EditorCompletionData.ForSnippet` (content + ToString override).
-- Tooltip continues to show the full snippet template; preview shows first placeholder preview.
-
-## Change Log Addition (2025-01-10 - Completion uses Snippet Description + Enter handling)
-- Completion provider now pulls snippet `description` from DB and displays "{trigger} → {description}"; falls back to first line of template when description is empty.
-- Enter key on completion window now commits the selected item without inserting a raw newline; if no selection, Enter closes and inserts newline.
-- Updated service contract to return description alongside text and AST.
-
-## Change Log Addition (2025-01-10 - Enter handling + Exit snippet mode)
-- MusmCompletionWindow + EditorControl intercept Enter to commit selected completion items and cancel raw newline.
-- When no selection: if snippet mode active, delegate Enter to SnippetInputHandler; else insert newline and close popup.
-- SnippetInputHandler already ends snippet mode on Enter (ApplyFallbackAndEnd(moveToNextLine: true)).
-
-Tests
-- Invoke completion, select a snippet, press Enter → snippet inserts, no extra newline.
-- With popup open and no selection, press Enter → newline and close (unless snippet mode active, then snippet handler ends mode and moves to next line).
-- During snippet mode, press Enter → mode ends and caret moves to next line.
-
-## Change Log Addition (2025-01-10 - Apply-all placeholder fallbacks)
-- Implemented apply-all fallback replacements when exiting snippet mode (Enter/Esc).
-- Mode 1 fallback uses first option text even when empty (e.g., `${1^pons=0^|1^and the pons}` falls back to empty string).
-
-Test Plan (Apply-all)
-- Insert `${1^severity=1^mild|2^moderate|3^severe} ... ${1^pons=0^|1^and the pons}`
-  - Press Enter immediately: result uses "mild" and "" for pons; caret on next line.
-  - Press Esc immediately: same replacements; caret at end of snippet.
-- Insert with free-text placeholders; without modifying current free-text, press Esc → current and other free-text replaced with "[ ]"; if current was modified, keep its content.
-
-## Change Log Addition (2025-01-10 - Enter newline at end + Mode 1 key handling)
-- Enter now moves caret to end of snippet and inserts a newline; caret ends on next line.
-- Mode 1 accepts numpad digits for selection.
-- Mode 1 ignores non-matching keys; placeholder text remains unchanged.
-
-Test Plan
-- Insert a snippet and immediately press Enter → all placeholders receive fallbacks; caret moves to end, newline inserted, caret on next line.
-- Mode 1 options with numeric keys: press NumPad1/NumPad2 → correct selection and completion.
-- Mode 1: press a letter not in options → nothing changes; caret remains; placeholder unchanged.
-
-## Change Log Addition (2025-01-10 - Caret anchor + Mode 1 ignore)
-- Introduced TextAnchor at snippet end to correctly place caret after all programmatic replacements.
-- Mode 1 key handling ignores non-matching keys (consumes event; no mutation).
-
-Test Plan
-- Snippet with two Mode 1 placeholders, select '1' then '1' → "mild ... and the pons"; caret must be exactly after "pons".
-- Mode 1: press 'a' during placeholder → placeholder remains unchanged; event consumed; no stray "a" appears.
-
-## Change Log Addition (2025-01-10 - Key locking + Dark popup + Tab accept)
-- Implemented key lock for Mode 1/3 placeholders to consume non-navigation/non-control keys.
-- Styled PlaceholderCompletionWindow to dark theme.
-- Tab now accepts selected item for Mode 1/3.
-
-Test Plan
-- Mode 1/3 placeholder: press punctuation or letters not in options → no text appears; event consumed.
-- Popup is dark (bg ~ #1E1E1E, fg ~ #DCDCDC).
-- With popup open on Mode 1/3, press Tab → selected option inserts and current placeholder completes; caret moves to next placeholder or snippet end.
-
-## Change Log Addition (2025-01-10 - Placeholder Tab + Completion Space)
-- Placeholder popup: Tab is forwarded to snippet handler and no raw tab is inserted; Mode 1/3 complete with selected item.
-- Main completion: Space key commits selection and is not inserted into the editor.
-
-Test Plan
-- Mode 1/3 placeholder: open placeholder popup; press Tab → inserts selected item; moves to next placeholder.
-- Completion window: with an item selected, press Space → inserts suggestion; no space is inserted into document.
-
-## Approach
-1) Surface modules in Automation library list (already bound).
-2) Procedure-first design via `PacsService` that executes procedure tags with retry.
-3) Auto-seed default procedures at first invocation when missing and persist to `ui-procedures.json`.
-4) Distinct bookmarks `StudyRemark` and `PatientRemark` avoid cross-reading.
-5) Enforce patient remark provenance: JSON Apply ignores `patient_remark` to prevent accidental overwrite.
-6) Ensure `GetHTML` op executes and returns the fetched HTML instead of preserving prior step output.
-
-## Notes
-- After update, open Spy → map `PatientRemark` to the patient remark field.
-- The system will create the default `GetCurrentPatientRemark` procedure on first run if none exists. You can modify it later in SpyWindow → Custom Procedures.
-
-## Test Plan (Manual)
-- Procedures grid:
-  - Create steps: [Arg1 Var=var1] [Op=Replace] to form a URL in var2 (optional) → [Op=GetHTML, Arg1 Type=Var, Value=var2] → Verify final output shows HTML content.
-  - Ensure Arg1 Type=Var references the correct prior variable name, e.g., `var2`.
-- Verify fallback:
-  - Delete `%APPDATA%\Wysg.Musm\Radium\ui-procedures.json`, run GetPatientRemark module; confirm `GetCurrentPatientRemark` is auto-created and persisted.
-- Verify enforcement:
-  - Edit `CurrentReportJson` to change `patient_remark`; check that the bound PatientRemark value does not change and is only set when the automation module runs.
-
-## Risks / Mitigations
-- If the bookmark for `PatientRemark` is not mapped, `GetCurrentPatientRemark` returns `(no element)`. Map once in SpyWindow.
-- If `GetHTML` URL is not http/https or empty, the step returns `(no url)` to signal misconfiguration.
-
-Backlog
-- Wire Add Study sequence execution path to honor the modules (T507).
-
-## Change Log Addition (2025-01-11 – Separate Toggle Effects)
-- Reverse Reports now affects ONLY portrait panels (top/bottom):
-  - `gridTopChild.Reverse = reversed`
-  - `gridBottomControl.Reverse = reversed`
-- Align Right now affects ONLY side panels (landscape):
-  - `gridSideTop.Reverse = right`
-  - `gridSideBottom.Reverse = right`
-- Removed prior cross-effects so toggles are independent.
-
-### Approach (Separate Toggle Effects)
-1) Update `UpdateGridSideLayout` to flip only side panels.
-2) Update `SwapReportEditors` to flip only top/bottom panels.
-3) Set `gridBottomControl` default `Reverse=False`; driven by Reverse Reports toggle.
-
-### Test Plan (Separate Toggle Effects)
-- Toggle Reverse Reports: verify only top/bottom panels swap; side panels unchanged.
-- Toggle Align Right: verify only side panels swap; top/bottom unchanged.
-- Toggle both: verify expected independent behavior in both panel groups.
-
-## Change Log Addition (2025-01-11 – 1:1 Column Widths for Top/Side Panels)
-- Modified `ReversibleColumnsGrid.xaml` to use `* | 2 | *` column widths to enforce 1:1 sizing for left/right panels.
-- Affects `ReportInputsAndJsonPanel` used by `gridTopChild` and `gridSideTop`.
-- Matches layout behavior of `PreviousReportTextAndJsonPanel` (already `* | 2 | *`).
-
-### Test Plan (1:1 Column Widths)
-- Resize window and verify left and right areas under `gridTopChild` stay equal width.
-- Resize window and verify left and right areas under `gridSideTop` stay equal width.
-
-## Change Log Addition (2025-01-11 - Previous Report Split Controls & Final Conclusion)
-- Added "Splitted" toggle button next to test button in previous report area to enable split mode functionality.
-- Enhanced PreviousReportTextAndJsonPanel with split control UI:
-  - First set of split controls below "Previous Header and Findings" label: "Split Header" button, "Auto Split Header" toggle, "Split Conclusion" button, "Auto Split Conclusion" toggle, "Auto Split" toggle.
-  - "Final Conclusion" textbox added below the "Previous Header and Findings" textbox with two-way binding to PreviousFinalConclusionText.
-  - Second set of split controls below "Final Conclusion" textbox: "Split Header" button, "Split Conclusion" button, "Auto Split" toggle.
-- Added FinalConclusionText dependency property to PreviousReportTextAndJsonPanel for two-way binding support.
-- Updated both gridSideBottom and gridBottomControl to bind FinalConclusionText to PreviousFinalConclusionText in ViewModel.
-- Added ViewModel properties:
-  - PreviousReportSplitted (bool) for toggle state binding.
-  - AutoSplitHeader, AutoSplitConclusion, AutoSplit (bool) for auto-split toggle bindings.
-  - SplitHeaderCommand, SplitConclusionCommand (ICommand) as placeholders for split functionality implementation.
-- All split controls use dark theme styling consistent with existing UI controls.
-- Split functionality is non-functional (skeleton) awaiting implementation.
-
-### Approach (Previous Report Split Controls)
-1) Add "Splitted" toggle button in previous report area header row binding to PreviousReportSplitted property.
-2) Extend PreviousReportTextAndJsonPanel layout to include split control buttons and Final Conclusion textbox.
-3) Create FinalConclusionText dependency property for binding final_conclusion field.
-4) Add ViewModel properties and command placeholders for split functionality.
-5) Apply dark theme styling to new controls matching existing UI style.
-6) Bind all new controls to ViewModel properties using two-way binding where appropriate.
-
-### Test Plan (Previous Report Split Controls)
-- Toggle "Splitted" button → verify PreviousReportSplitted property updates in ViewModel.
-- Edit "Final Conclusion" textbox → verify PreviousFinalConclusionText property updates in ViewModel and JSON.
-- Toggle "Auto Split Header" → verify AutoSplitHeader property updates.
-- Toggle "Auto Split Conclusion" → verify AutoSplitConclusion property updates.
-- Toggle "Auto Split" → verify AutoSplit property updates.
-- Verify split control buttons are visible in both landscape (gridSideBottom) and portrait (gridBottomControl) modes.
-- Verify dark theme styling is applied to all new controls (buttons, toggles, textboxes).
-- Verify Final Conclusion content round-trips through JSON (PreviousReportJson).
-- Verify column swap behavior (Reverse property) still works correctly with new layout.
-
-### Risks / Mitigations (Previous Report Split Controls)
-- Split command functionality not yet implemented; buttons are placeholders → mitigated by documenting as skeleton awaiting implementation.
-- Additional controls increase visual complexity in previous report panel → mitigated by grouping controls logically and using consistent spacing.
-- FinalConclusionText property must properly round-trip through JSON → mitigated by following existing pattern for HeaderAndFindingsText binding.
-- Layout changes might affect column swap behavior (Reverse property) → mitigated by testing reverse functionality after changes.
-
-## Change Log Addition (2025-01-11 - Split Controls refinement)
-- Bound upper "Split Header" to `SplitHeaderTopCommand` and lower to `SplitHeaderBottomCommand`.
-- Changed lower "Split Conclusion" to "Split Findings" and bound it to `SplitFindingsCommand`.
-- Left existing `SplitConclusionCommand` intact for upper control group.
-
-### Approach
-1) Update PreviousReportTextAndJsonPanel XAML to use separate commands for upper vs lower Split Header.
-2) Change lower button text and bind it to a new SplitFindingsCommand.
-3) Add new ICommand properties in MainViewModel for bindings (skeleton, not implemented).
-
-### Test Plan
-- Verify clicking upper Split Header invokes SplitHeaderTopCommand.
-- Verify clicking lower Split Header invokes SplitHeaderBottomCommand.
-- Verify lower button text shows "Split Findings" and invokes SplitFindingsCommand.
-- Ensure bindings resolve without runtime errors in both side and bottom panels.
-
-## Change Log Addition (2025-10-12 – Previous Report Splitter Offsets)
-- Implemented storage and commands for splitter offsets as per user request:
-  - Upper group operates on `Previous Header and Findings` textbox; buttons pass the `TextBox` via CommandParameter to capture caret/selection.
-  - Lower group operates on `Final Conclusion` textbox similarly.
-  - Validation enforces ordering: conclusion split must be at or after header split end per section.
-- ViewModel changes:
-  - Added fields on `PreviousStudyTab`: `HfHeaderFrom/To`, `HfConclusionFrom/To`, `FcHeaderFrom/To`, `FcFindingsFrom/To`.
-  - Included these in `PreviousReportJson` under nested `PrevReport`.
-  - Parsing of `PreviousReportJson` populates these fields when `PrevReport` exists.
-  - Added command implementations `SplitHeaderTopCommand`, `SplitConclusionCommand`, `SplitHeaderBottomCommand`, `SplitFindingsCommand`.
-- XAML changes:
-  - Added `CommandParameter` bindings to pass `txtHeaderAndFindings` and `txtFinalConclusion` as parameters to buttons.
-
-### Approach (Splitter Offsets)
-1) Capture caret/selection from `TextBox` (SelectionStart/SelectionLength or CaretIndex).
-2) Validate relative to prior header split end where required; on violation, set status error and abort.
-3) Store into strongly-typed nullable ints on the selected previous tab.
-4) Serialize/deserialize inside `PrevReport` object for isolation.
-
-### Test Plan (Splitter Offsets)
-- With no selection, click Upper Split Header: verify both from/to equal caret index; JSON shows PrevReport.header_and_findings_header_splitter_*.
-- With selection, click Upper Split Header: verify from/to reflect selection range.
-- Click Upper Split Conclusion with offsets less than header_to: verify error status and no JSON change.
-- Click Lower Split Header/Findings with/without selection: verify fields set correctly; findings requires offsets >= header_to.
-- Edit JSON manually to include PrevReport values: verify VM fields update and UI continues to work.
+- Resize window: verify both panels resize proportionally; combination list stretches vertically.
+- Select items in Prefix/Tech/Suffix: selected text shows friendly value, not type name.
+- Open dropdowns: list items remain correct and unchanged.
+- Click "+" on each row: enter value, confirm appears in list and becomes selected.
+- Add several techniques and click "Add Item": items appear in Current Combination with increasing sequence order.
+- If `StudynameId` is set, right panel lists existing combinations; select one and click "Set Default" updates IsDefault (verify refresh).
+- Save for Study & Studyname: persists combination and links to studyname (or sets default if flagged by StudynameTechnique window).
+- Build succeeds.
 
 ### Risks / Mitigations
-- WPF `TextBox` indices rely on current text state; if bindings lag, indices can be off. Kept simple by using live control values.
-- JSON bloat: nested object keeps addition optional and backward compatible.
+- Global ComboBox template change could affect other ComboBoxes that expect complex content in the selection box. Mitigation: PriorityBinding falls back to `SelectionBoxItem` if `SelectedItem.Text` is not present; dropdown ItemTemplate remains unchanged.
+- Prompt dialog is simple and modal; acceptable for admin-like add operations.
+- Studyname combinations default star indicator not fully templated; acceptable minimal UX for now.
+
+## Change Log Addition (2025-10-13 – Technique Combination Grouped String + Autofill + Refresh)
+- Implemented grouped display logic for technique combinations (FR-500..FR-503):
+  - New helper `TechniqueFormatter.BuildGroupedDisplay(IEnumerable<TechniqueGroupItem>)` groups by (prefix, suffix) preserving first-seen group order by `sequence_order` and joins techs with ", ", groups with "; ".
+- New repository extensions (FR-506):
+  - `GetStudynameIdByNameAsync(string studyname)`
+  - `GetDefaultCombinationForStudynameAsync(long studynameId)`
+  - `GetCombinationItemsAsync(long combinationId)` returning (prefix, tech, suffix, seq) for rendering.
+- New Study procedure integration (FR-504, FR-505):
+  - After PACS selection fetch completes, auto-populate `StudyTechniques` with grouped display when default exists for current studyname.
+- Default-change live refresh (FR-507, FR-508):
+  - Added `MainViewModel.RefreshStudyTechniqueFromDefaultAsync()` and invoked from `StudynameTechniqueWindow.OnClosed()` and after `StudyTechniqueViewModel.SaveForStudyAndStudynameCommand` to refresh the current study technique string.
+- Duplicate prevention in Edit Study Technique window (FR-509, FR-510):
+  - Prevent duplicates at add time and deduplicate on save prior to persistence.
+
+### Approach
+1) Create a small pure function for grouping/formatting to keep UI and repositories simple.
+2) Extend TechniqueRepository via partials to avoid touching core file too much; keep SQL straightforward and ordered by sequence.
+3) Hook New Study flow after PACS fetch to avoid missing studyname; use repo methods to resolve id and default.
+4) Provide a public VM method to refresh techniques so diverse UI flows (window close, set default, save) can call consistently.
+5) Ensure DI wiring compiles: `NewStudyProcedure` made partial and extended; DI container already provides `ITechniqueRepository`.
+
+### Test Plan
+- Unit-ish manual checks:
+  - Build `TechniqueGroupItem` list for sample scenario → verify output equals: `axial T1, T2; sagittal T1; coronal T1, T2, CE-T1 of sellar fossa; sagittal T1, CE-T1 of sellar fossa`.
+  - Insert combination rows in DB, mark default for a studyname, run New Study → `StudyTechniques` auto-filled accordingly.
+  - Open Edit Study Technique, add duplicate item → prevented; add distinct items → allowed; save as default → current study `StudyTechniques` updates after window close.
+  - Change default via Set Default list → window close triggers refresh; confirm updated display.
+
+### Risks / Mitigations
+- Studyname text from PACS might not match DB exactly → repo resolves by exact match; if mismatch occurs, no autofill; can enhance later with normalization.
+- Multiple windows might try to refresh concurrently → idempotent setter on `StudyTechniques` handles fine.
+- Performance: extra queries on window close → negligible and async.
+
+## Change Log Addition (2025-10-13 – Add Previous Study Automation + '+' Mapping)
+- Implemented new automation module `AddPreviousStudy` and wired Automation → AddStudy sequence to the small `+` button in Previous Reports area.
+- Behavior:
+  - Validates current patient by comparing `GetCurrentPatientNumber` with app `PatientNumber` (normalized alphanumerics uppercased).
+  - Reads Related Studies list metadata: studyname, study datetime, radiologist, report datetime.
+  - Reads current report text via dual getters for findings and conclusion, picks the longer variant.
+  - Persists as local previous study report and selects it; sets `PreviousReportified=true`.
+- Settings → Automation tab:
+  - Added `AddPreviousStudy` to Available Modules. Users can compose `AddStudy` sequence using drag and drop.
+  - Clicking the small `+` button now executes modules from `AutomationAddStudySequence` in order.
+
+### Approach
+1) Extend `SettingsViewModel.AvailableModules` to include `AddPreviousStudy`.
+2) In `MainViewModel.Commands`, add `OnRunAddStudyAutomation()` that iterates `AutomationAddStudySequence` and executes known modules.
+3) Implement `RunAddPreviousStudyModuleAsync()` that performs the steps above, reusing `PacsService` operations and existing persistence methods.
+4) Keep existing `OnAddStudy()` for backward compatibility; '+' now calls the automation runner.
+
+### Test Plan
+- Compose AddStudy sequence = `AddPreviousStudy` only. Click `+`:
+  - When related patient matches current → new previous study tab appears and is selected; status "Previous study added".
+  - When patient mismatch → status shows error; no tab added.
+- Compose AddStudy sequence = `AddPreviousStudy,GetStudyRemark,GetPatientRemark`. Click `+`:
+  - Verify previous study is added first, then `StudyRemark`/`PatientRemark` fields update.
+- Unknown module names in the sequence are ignored; no crash.
+- Settings: ensure `AddPreviousStudy` appears in Available Modules list and can be dragged into AddStudy.
+
+### Risks / Mitigations
+- PACS getters may fail or return empty → handled with safe try/catch and status messages; operation aborts gracefully.
+- Time parsing differences from PACS → validated with `DateTime.TryParse`; abort add when invalid.
+- Running automation out of UI thread → methods are async and use awaited calls; no blocking UI expected.
+
+## Change Log Addition (2025-10-13 – PACS: Invoke Open Study + Custom Procedure Invoke Op)
+- Added SpyWindow Custom Procedures PACS method `InvokeOpenStudy` (UI label: "Invoke open study").
+- Added `PacsService.InvokeOpenStudyAsync()` that executes the procedure tag `InvokeOpenStudy`.
+- Added default auto-seed for `InvokeOpenStudy` in `ProcedureExecutor`: single `Invoke` op targeting `SelectedStudyInSearch` element.
+- Ensured both SpyWindow and headless executor support `Invoke` operation with Arg1 as `Element`.
+
+### Approach
+1) SpyWindow.xaml: extend `cmbProcMethod` items to include `InvokeOpenStudy`.
+2) PacsService: implement `InvokeOpenStudyAsync()` that calls `ProcedureExecutor.ExecuteAsync("InvokeOpenStudy")` best-effort.
+3) ProcedureExecutor: extend `TryCreateFallbackProcedure` to auto-seed `InvokeOpenStudy` with `Invoke` op on `SelectedStudyInSearch`.
+4) Verify SpyWindow.Procedures supports op `Invoke` with Arg1 Element; it already existed; kept editor presets.
+
+### Test Plan
+- Open SpyWindow → Custom Procedures → select "Invoke open study"; click Add to add an `Invoke` row; Save; Run → PACS should open viewer for selected study (where PACS supports it).
+- Delete/rename ui-procedures.json to force auto-seed → Run should still perform an Invoke on `SelectedStudyInSearch`.
+- Programmatic: call `await new PacsService().InvokeOpenStudyAsync()` and ensure no exceptions; observe PACS behavior.
+
+### Risks / Mitigations
+- Different PACS may require invoking a different element (e.g., Worklist or Related list) → users can edit the procedure to point to another KnownControl via SpyWindow.
+- Some lists do not support Invoke but respond to Toggle or selection-change → executor falls back to Toggle pattern.
 

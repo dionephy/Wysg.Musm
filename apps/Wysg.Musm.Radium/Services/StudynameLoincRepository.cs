@@ -223,7 +223,7 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
                 try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn); }
                 catch (Exception openEx) { LogNetworkException("Open", openEx); throw; }
                 var tbl = await GetMapTableAsync(cn);
-                await using var cmd = new NpgsqlCommand($"SELECT part_number, part_sequence_order FROM {tbl} WHERE studyname_id=@id ORDER BY part_number", cn);
+                await using var cmd = new NpgsqlCommand($"SELECT part_number, part_sequence_order FROM {tbl} WHERE studyname_id=@id ORDER BY part_sequence_order, part_number", cn);
                 cmd.Parameters.AddWithValue("@id", studynameId);
                 await using var rd = await cmd.ExecuteReaderAsync();
                 while (await rd.ReadAsync()) list.Add(new MappingRow(rd.GetString(0), rd.GetString(1)));

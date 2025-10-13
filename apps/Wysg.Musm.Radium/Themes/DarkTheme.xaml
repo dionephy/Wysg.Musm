@@ -12,6 +12,13 @@
   <Color x:Key="Dark.Color.Foreground">#D0D0D0</Color>
   <Color x:Key="Dark.Color.ForegroundDim">#A0A0A0</Color>
 
+  <!-- New: Scrollbar specific colors -->
+  <Color x:Key="Dark.Color.Scrollbar.Track">#2A2A2A</Color>
+  <Color x:Key="Dark.Color.Scrollbar.Thumb">#505050</Color>
+  <Color x:Key="Dark.Color.Scrollbar.ThumbHover">#5E5E5E</Color>
+  <Color x:Key="Dark.Color.Scrollbar.ThumbActive">#6C6C6C</Color>
+  <Color x:Key="Dark.Color.Scrollbar.Border">#3A3A3A</Color>
+
   <SolidColorBrush x:Key="Dark.Brush.Background" Color="{StaticResource Dark.Color.Background}"/>
   <SolidColorBrush x:Key="Dark.Brush.Panel" Color="{StaticResource Dark.Color.Panel}"/>
   <SolidColorBrush x:Key="Dark.Brush.PanelAlt" Color="{StaticResource Dark.Color.PanelAlt}"/>
@@ -22,6 +29,13 @@
   <SolidColorBrush x:Key="Dark.Brush.Selection" Color="{StaticResource Dark.Color.Selection}"/>
   <SolidColorBrush x:Key="Dark.Brush.Foreground" Color="{StaticResource Dark.Color.Foreground}"/>
   <SolidColorBrush x:Key="Dark.Brush.ForegroundDim" Color="{StaticResource Dark.Color.ForegroundDim}"/>
+
+  <!-- New: Scrollbar Brushes -->
+  <SolidColorBrush x:Key="Dark.Brush.Scrollbar.Track" Color="{StaticResource Dark.Color.Scrollbar.Track}"/>
+  <SolidColorBrush x:Key="Dark.Brush.Scrollbar.Thumb" Color="{StaticResource Dark.Color.Scrollbar.Thumb}"/>
+  <SolidColorBrush x:Key="Dark.Brush.Scrollbar.ThumbHover" Color="{StaticResource Dark.Color.Scrollbar.ThumbHover}"/>
+  <SolidColorBrush x:Key="Dark.Brush.Scrollbar.ThumbActive" Color="{StaticResource Dark.Color.Scrollbar.ThumbActive}"/>
+  <SolidColorBrush x:Key="Dark.Brush.Scrollbar.Border" Color="{StaticResource Dark.Color.Scrollbar.Border}"/>
 
   <!-- Global Monospace Font -->
   <FontFamily x:Key="Dark.MonoFont">pack://application:,,,/Wysg.Musm.Radium;component/Fonts/#D2Coding</FontFamily>
@@ -99,110 +113,6 @@
 		<Setter Property="Padding" Value="4"/>
 	</Style>
 
-
-
-
-    <Style TargetType="ComboBox">
-        <Setter Property="SnapsToDevicePixels" Value="True"/>
-        <Setter Property="Background" Value="{StaticResource Dark.Brush.PanelAlt}"/>
-        <Setter Property="Foreground" Value="{StaticResource Dark.Brush.Foreground}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource Dark.Brush.Border}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="4,2,28,2"/>
-        <Setter Property="FontFamily" Value="{StaticResource Dark.MonoFont}"/>
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
-        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
-        <Setter Property="Template">
-          <Setter.Value>
-            <ControlTemplate TargetType="ComboBox">
-              <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="22"/>
-                </Grid.ColumnDefinitions>
-                <Border x:Name="Bd" Grid.ColumnSpan="2" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="2"/>
-                <Grid Grid.Column="0" Margin="2,0,2,0">
-                  <ContentPresenter x:Name="ContentSite" Margin="4,0,2,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" Content="{TemplateBinding SelectionBoxItem}" ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"/>
-                  <!-- Overlay toggle: minimal template, Arrow cursor -->
-                  <ToggleButton x:Name="FullSurfaceToggle" Background="Transparent" BorderThickness="0" Focusable="False" IsHitTestVisible="True" Cursor="Arrow" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
-                    <ToggleButton.Template>
-                      <ControlTemplate TargetType="ToggleButton">
-                        <Border Background="Transparent" />
-                      </ControlTemplate>
-                    </ToggleButton.Template>
-                  </ToggleButton>
-                </Grid>
-                <ToggleButton x:Name="DropDownToggle" Grid.Column="1" Focusable="False" Background="Transparent" BorderThickness="0" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Width="22" Padding="0" Cursor="Arrow">
-                  <Grid>
-                    <Path HorizontalAlignment="Center" VerticalAlignment="Center" Data="M 0 0 L 4 4 L 8 0 Z" Fill="{StaticResource Dark.Brush.Foreground}"/>
-                  </Grid>
-                </ToggleButton>
-                <Popup x:Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
-                  <Border x:Name="DropDownBorder" Background="{StaticResource Dark.Brush.Panel}" BorderBrush="{StaticResource Dark.Brush.Border}" BorderThickness="1" CornerRadius="2" 
-                          Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
-                    <ScrollViewer Margin="0" SnapsToDevicePixels="True">
-                      <StackPanel IsItemsHost="True"/>
-                    </ScrollViewer>
-                  </Border>
-                </Popup>
-              </Grid>
-              <ControlTemplate.Triggers>
-                <Trigger Property="HasItems" Value="False">
-                  <Setter TargetName="DropDownBorder" Property="MinHeight" Value="40"/>
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                  <Setter Property="Foreground" Value="{StaticResource Dark.Brush.ForegroundDim}"/>
-                  <Setter TargetName="Bd" Property="Opacity" Value="0.55"/>
-                </Trigger>
-                <!-- Hover now only changes border (keep background same to avoid bright flash) -->
-                <Trigger Property="IsMouseOver" Value="True">
-                  <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Dark.Brush.AccentAlt}"/>
-                </Trigger>
-                <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                  <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Dark.Brush.AccentAlt}"/>
-                </Trigger>
-                <Trigger Property="IsDropDownOpen" Value="True">
-                  <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Dark.Brush.Accent}"/>
-                  <Setter TargetName="Bd" Property="Background" Value="{StaticResource Dark.Brush.Panel}"/>
-                </Trigger>
-              </ControlTemplate.Triggers>
-            </ControlTemplate>
-          </Setter.Value>
-        </Setter>
-      </Style>
-    <Style TargetType="ComboBoxItem">
-        <Setter Property="Background" Value="#1E1E1E"/>
-        <Setter Property="Foreground" Value="#D0D0D0"/>
-        <Setter Property="Padding" Value="4,2"/>
-        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ComboBoxItem">
-                    <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter VerticalAlignment="Center"/>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#2A2A2A"/>
-                        </Trigger>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#333842"/>
-                            <Setter Property="Foreground" Value="#FFFFFF"/>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Foreground" Value="#555"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-
-
-
-    <!--
   <Style TargetType="ComboBox">
     <Setter Property="SnapsToDevicePixels" Value="True"/>
     <Setter Property="Background" Value="{StaticResource Dark.Brush.PanelAlt}"/>
@@ -214,6 +124,7 @@
     <Setter Property="FontSize" Value="11"/>
     <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
     <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+    <Setter Property="TextSearch.TextPath" Value="Text"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ComboBox">
@@ -223,18 +134,34 @@
               <ColumnDefinition Width="22"/>
             </Grid.ColumnDefinitions>
             <Border x:Name="Bd" Grid.ColumnSpan="2" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="2"/>
-            
-            <ContentPresenter Grid.Column="0" Margin="6,0,4,0" VerticalAlignment="Center" HorizontalAlignment="Stretch" Content="{TemplateBinding SelectionBoxItem}" ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"/>
-            
-            <ToggleButton x:Name="DropDownToggle" Grid.Column="1" Focusable="False" Background="Transparent" BorderThickness="0" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Width="22" Padding="0">
+            <Grid Grid.Column="0" Margin="2,0,2,0">
+              <!-- Display selected item text explicitly, avoid default SelectionBoxItem presenter to prevent overlap -->
+              <TextBlock x:Name="ContentText" Margin="4,0,2,0" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+                <TextBlock.Text>
+                  <PriorityBinding>
+                    <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectedItem.Text"/>
+                    <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Text"/>
+                    <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectionBoxItem"/>
+                  </PriorityBinding>
+                </TextBlock.Text>
+              </TextBlock>
+              <!-- Overlay toggle: minimal template, Arrow cursor -->
+              <ToggleButton x:Name="FullSurfaceToggle" Background="Transparent" BorderThickness="0" Focusable="False" IsHitTestVisible="True" Cursor="Arrow" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                <ToggleButton.Template>
+                  <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="Transparent" />
+                  </ControlTemplate>
+                </ToggleButton.Template>
+              </ToggleButton>
+            </Grid>
+            <ToggleButton x:Name="DropDownToggle" Grid.Column="1" Focusable="False" Background="Transparent" BorderThickness="0" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Width="22" Padding="0" Cursor="Arrow">
               <Grid>
                 <Path HorizontalAlignment="Center" VerticalAlignment="Center" Data="M 0 0 L 4 4 L 8 0 Z" Fill="{StaticResource Dark.Brush.Foreground}"/>
               </Grid>
             </ToggleButton>
-            
-            <ToggleButton Grid.Column="0" Background="Transparent" BorderThickness="0" Focusable="False" IsHitTestVisible="True" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" ToolTip="Click to expand" />
             <Popup x:Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
-              <Border x:Name="DropDownBorder" Background="{StaticResource Dark.Brush.Panel}" BorderBrush="{StaticResource Dark.Brush.Border}" BorderThickness="1" CornerRadius="2" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+              <Border x:Name="DropDownBorder" Background="{StaticResource Dark.Brush.Panel}" BorderBrush="{StaticResource Dark.Brush.Border}" BorderThickness="1" CornerRadius="2" 
+                      Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                 <ScrollViewer Margin="0" SnapsToDevicePixels="True">
                   <StackPanel IsItemsHost="True"/>
                 </ScrollViewer>
@@ -251,7 +178,6 @@
             </Trigger>
             <Trigger Property="IsMouseOver" Value="True">
               <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Dark.Brush.AccentAlt}"/>
-              <Setter TargetName="Bd" Property="Background" Value="{StaticResource Dark.Brush.PanelAlt}"/>
             </Trigger>
             <Trigger Property="IsKeyboardFocusWithin" Value="True">
               <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Dark.Brush.AccentAlt}"/>
@@ -266,18 +192,32 @@
     </Setter>
   </Style>
   <Style TargetType="ComboBoxItem">
-    <Setter Property="Background" Value="{StaticResource Dark.Brush.Panel}"/>
-    <Setter Property="Foreground" Value="{StaticResource Dark.Brush.Foreground}"/>
-    <Style.Triggers>
-      <Trigger Property="IsMouseOver" Value="True">
-        <Setter Property="Background" Value="{StaticResource Dark.Brush.PanelAlt}"/>
-      </Trigger>
-      <Trigger Property="IsSelected" Value="True">
-        <Setter Property="Background" Value="{StaticResource Dark.Brush.Selection}"/>
-      </Trigger>
-    </Style.Triggers>
+    <Setter Property="Background" Value="#1E1E1E"/>
+    <Setter Property="Foreground" Value="#D0D0D0"/>
+    <Setter Property="Padding" Value="4,2"/>
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ComboBoxItem">
+          <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter VerticalAlignment="Center"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsHighlighted" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="#2A2A2A"/>
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="#333842"/>
+              <Setter Property="Foreground" Value="#FFFFFF"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="#555"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
-    -->
 
   <Style TargetType="CheckBox">
     <Setter Property="Foreground" Value="{StaticResource Dark.Brush.Foreground}"/>
@@ -353,9 +293,134 @@
     </Style.Triggers>
   </Style>
 
-  <Style TargetType="ScrollBar">
-    <Setter Property="Background" Value="{StaticResource Dark.Brush.PanelAlt}"/>
+  <!-- Add: Dark ListBox styles -->
+  <Style TargetType="ListBox">
+    <Setter Property="Background" Value="{StaticResource Dark.Brush.Panel}"/>
+    <Setter Property="Foreground" Value="{StaticResource Dark.Brush.Foreground}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource Dark.Brush.Border}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+  </Style>
+  <Style TargetType="ListBoxItem">
+    <Setter Property="Background" Value="{StaticResource Dark.Brush.Panel}"/>
+    <Setter Property="Foreground" Value="{StaticResource Dark.Brush.Foreground}"/>
+    <Setter Property="Padding" Value="4,2"/>
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Background" Value="{StaticResource Dark.Brush.PanelAlt}"/>
+      </Trigger>
+      <Trigger Property="IsSelected" Value="True">
+        <Setter Property="Background" Value="{StaticResource Dark.Brush.Selection}"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+      </Trigger>
+      <Trigger Property="IsEnabled" Value="False">
+        <Setter Property="Foreground" Value="{StaticResource Dark.Brush.ForegroundDim}"/>
+      </Trigger>
+    </Style.Triggers>
   </Style>
 
- 
+  <!-- New: Modern Dark Scrollbar Styles -->
+  <!-- Thumb styling (do not set fixed Height/Width to keep length proportional) -->
+  <Style x:Key="Dark.Scrollbar.ThumbStyle" TargetType="Thumb">
+    <Setter Property="Background" Value="{StaticResource Dark.Brush.Scrollbar.Thumb}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource Dark.Brush.Scrollbar.Border}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Thumb">
+          <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6"/>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{StaticResource Dark.Brush.Scrollbar.ThumbHover}"/>
+            </Trigger>
+            <Trigger Property="IsDragging" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{StaticResource Dark.Brush.Scrollbar.ThumbActive}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.0"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Line buttons (page areas) kept transparent to allow page scrolling without arrows) -->
+  <Style x:Key="Dark.Scrollbar.LineButtonStyle" TargetType="RepeatButton">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RepeatButton">
+          <Border Background="Transparent"/>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Horizontal ScrollBar Template -->
+  <ControlTemplate x:Key="Dark.Scrollbar.HorizontalTemplate" TargetType="ScrollBar">
+    <Border Background="{StaticResource Dark.Brush.Scrollbar.Track}" CornerRadius="6">
+      <Track x:Name="PART_Track" IsDirectionReversed="False">
+        <Track.DecreaseRepeatButton>
+          <RepeatButton Style="{StaticResource Dark.Scrollbar.LineButtonStyle}" Command="ScrollBar.PageLeftCommand"/>
+        </Track.DecreaseRepeatButton>
+        <Track.Thumb>
+          <!-- Thickness across axis, min length along axis -->
+          <Thumb Style="{StaticResource Dark.Scrollbar.ThumbStyle}" Height="8" MinWidth="36"/>
+        </Track.Thumb>
+        <Track.IncreaseRepeatButton>
+          <RepeatButton Style="{StaticResource Dark.Scrollbar.LineButtonStyle}" Command="ScrollBar.PageRightCommand"/>
+        </Track.IncreaseRepeatButton>
+      </Track>
+    </Border>
+  </ControlTemplate>
+
+  <!-- Vertical ScrollBar Template -->
+  <ControlTemplate x:Key="Dark.Scrollbar.VerticalTemplate" TargetType="ScrollBar">
+    <Border Background="{StaticResource Dark.Brush.Scrollbar.Track}" CornerRadius="6">
+      <Track x:Name="PART_Track" IsDirectionReversed="True">
+        <Track.DecreaseRepeatButton>
+          <RepeatButton Style="{StaticResource Dark.Scrollbar.LineButtonStyle}" Command="ScrollBar.PageUpCommand"/>
+        </Track.DecreaseRepeatButton>
+        <Track.Thumb>
+          <!-- Thickness across axis, min length along axis -->
+          <Thumb Style="{StaticResource Dark.Scrollbar.ThumbStyle}" Width="8" MinHeight="36"/>
+        </Track.Thumb>
+        <Track.IncreaseRepeatButton>
+          <RepeatButton Style="{StaticResource Dark.Scrollbar.LineButtonStyle}" Command="ScrollBar.PageDownCommand"/>
+        </Track.IncreaseRepeatButton>
+      </Track>
+    </Border>
+  </ControlTemplate>
+
+  <!-- Apply ScrollBar Style globally -->
+  <Style TargetType="ScrollBar">
+    <Setter Property="Background" Value="{StaticResource Dark.Brush.Scrollbar.Track}"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="Opacity" Value="0.95"/>
+    <Setter Property="Margin" Value="0"/>
+    <Setter Property="Template" Value="{StaticResource Dark.Scrollbar.VerticalTemplate}"/>
+    <Style.Triggers>
+      <Trigger Property="Orientation" Value="Horizontal">
+        <Setter Property="Height" Value="12"/>
+        <Setter Property="Template" Value="{StaticResource Dark.Scrollbar.HorizontalTemplate}"/>
+      </Trigger>
+      <Trigger Property="Orientation" Value="Vertical">
+        <Setter Property="Width" Value="12"/>
+        <Setter Property="Template" Value="{StaticResource Dark.Scrollbar.VerticalTemplate}"/>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- Optional: ScrollViewer tweaks for consistency -->
+  <Style TargetType="ScrollViewer">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="CanContentScroll" Value="False"/>
+    <Setter Property="PanningMode" Value="Both"/>
+    <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+    <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+  </Style>
+
 </ResourceDictionary>

@@ -110,212 +110,47 @@
 - [X] T512 Fix `ProcedureExecutor` early-return that bypassed fallback/auto-seed and caused previous-value to persist when `GetHTML` executed.
 - [X] T513 Support reading/writing procedure variables by both implicit `var{i}` and custom `OutputVar` names so `GetHTML` Arg1 Type=Var can use named variables.
 - [X] T514 Register encoding provider in `ProcedureExecutor` and apply basic header/meta charset handling when decoding HTML.
-- [X] T404 Merge account and global phrases in Phrases tab (VM loads both lists; rows keep AccountId for scope-aware toggles) (FR-283).
-- [X] T405 Ensure Convert-to-global immediately updates UI lists and caches (GlobalPhrasesViewModel refresh + backend snapshot/caches) (FR-279, FR-281).
-- [X] T406 Add Select All button to Account Phrases grid (Global Phrases tab) with command `SelectAllAccountPhrasesCommand` (FR-285).
-- [X] T407 Add `Global` boolean column in Settings → Phrases tab bound to `PhraseRow.IsGlobal` (FR-284).
-- [X] T393 Add Global Phrases admin tab UI (SettingsWindow) with add, load-by-account, convert-selected, toggle active (FR-279).
-- [X] T394 Implement GlobalPhrasesViewModel: AccountPhrases list, SearchAccountPhrasesCommand, ConvertSelectedCommand wired to IPhraseService.ConvertToGlobalPhrasesAsync (FR-279).
-- [X] T395 Wire SettingsWindow AccountId binding and restrict Global Phrases tab visibility to AccountId==1 (temporary admin gate) (FR-279).
-- [X] T396 Ensure PhraseService snapshots and caches are updated after conversion; clear both account and global caches (FR-279).
-- [ ] T397 Update PhraseCompletionProvider to prefer combined phrases (global + account) by default and add tests.
-- [ ] T398 Add unit/integration tests for ConvertToGlobalPhrasesAsync covering: existing global dedupe path and create-global-then-delete-duplicates path.
-- [X] T399 Default non-global listing on Global Phrases tab (cross-account) using IPhraseService.GetAllNonGlobalPhraseMetaAsync (FR-280).
-- [X] T400 Enable Convert Selected button by default; handler validates selection at runtime (UI) (FR-279).
-- [X] T401 Implement failsafe duplicate purge when creating/upserting global: delete all non-global duplicates with same text across accounts (FR-281).
-- [X] T402 Remove manual account filter inputs from Global Phrases tab and add read-only AccountId column to Account Phrases grid (FR-282).
-- [X] T403 Fix selection checkbox binding in Account Phrases grid by making grid editable for that column (two-way IsChecked), ensuring Convert Selected works (FR-279, FR-282).
-- [X] T501 Enable multi-line input for Custom Procedures Arg1/Arg2/Arg3 String editors by setting `AcceptsReturn=True` in `SpyWindow.xaml` (FR-342).
-- [X] T502 Update Spec.md and Plan.md with FR-342 and add to Validation Checklist; update Tasks.md (this file) cumulatively.
-- [X] T503 Add automation modules to library: `GetStudyRemark`, `GetPatientRemark` (FR-348).
-- [X] T504 Wire New Study automation executor to handle `GetStudyRemark` and `GetPatientRemark` by calling PacsService and updating VM properties (FR-349, FR-350).
-- [X] T505 Add VM properties `StudyRemark` and `PatientRemark` and round-trip in `CurrentReportJson` (serialize and parse) (FR-351).
-- [X] T506 Add status messages and error-safe guards for remark acquisition (FR-352).
-- [ ] T507 Extend Add Study automation executor to honor the modules, including remark modules (backlog).
-- [X] T508 Add distinct known control `PatientRemark` in `UiBookmarks.KnownControl` and surface in SpyWindow Known controls combo (FR-353, FR-354).
-- [X] T509 Document requirement for `GetCurrentPatientRemark` procedure to target Element=`PatientRemark` to avoid accidentally reading `StudyRemark` (FR-355).
-- [X] T510 Auto-seed default procedure when missing: `GetCurrentPatientRemark` → single-step `GetText` on Element=`PatientRemark` (FR-356, FR-357).
-- [X] T511 Auto-seed default procedure when missing: `GetCurrentStudyRemark` → single-step `GetText` on Element=`StudyRemark` (FR-358).
-- [X] T527 Fix completion to show snippet description from DB, fallback to first line when blank (FR-372).
-- [X] T528 Change ISnippetService.GetActiveSnippetsAsync to return description and update caller (EditorInit) (FR-372).
-- [X] T529 Prevent raw newline on Enter when a completion item is selected; commit insertion instead (FR-373).
-- [X] T530 Cancel Enter key when selecting a snippet from completion; commit insertion instead (FR-373).
-- [X] T531 Ensure Enter ends snippet mode and moves caret to next line (FR-374).
-- [X] T532 Apply fallback replacement to all uncompleted placeholders on Enter/Esc per snippet_logic.md (FR-375).
-- [X] T533 Ensure Mode 1 fallback uses first option text even when empty (e.g., pons empty) (FR-375).
-- [X] T534 Enter inserts newline at end-of-snippet and moves caret to next line (FR-376).
-- [X] T535 Mode 1 accepts numpad digits for selection (FR-377).
-- [X] T536 Mode 1 ignores non-matching keys; does not overwrite placeholder text (FR-378).
-- [X] T537 Mode 1 ignore non-matching keys (consume event, no mutation) (FR-379).
-- [X] T538 Use dynamic end TextAnchor to place caret after fully resolved snippet (FR-380).
-- [X] T539 Lock special characters and general typing in Mode 1/3 placeholders (FR-381).
-- [X] T540 Apply dark theme to PlaceholderCompletionWindow (FR-382).
-- [X] T541 Tab accepts selected item and completes placeholder in Mode 1/3 (FR-383).
-- [X] T542 Forward Tab from placeholder popup to SnippetInputHandler and complete Mode 1/3 (FR-384).
-- [X] T543 Cancel Space and commit selection in main completion window (FR-385).
-- [X] T597 Bind upper Split Header to SplitHeaderTopCommand, lower Split Header to SplitHeaderBottomCommand (FR-428, FR-429).
-- [X] T598 Change lower Split Conclusion to Split Findings and bind to SplitFindingsCommand (FR-430).
-- [X] T599 Add ICommand properties SplitHeaderTopCommand, SplitHeaderBottomCommand, SplitFindingsCommand to MainViewModel (skeleton) (FR-428..FR-430).
-- [X] T600 Pass TextBox as CommandParameter for split buttons to get caret/selection (XAML change) (FR-432..FR-435).
-- [X] T601 Implement ViewModel fields for splitter offsets on PreviousStudyTab (HfHeader*, HfConclusion*, FcHeader*, FcFindings*) (FR-432..FR-435).
-- [X] T602 Implement command handlers to capture caret/selection and set fields with validation (FR-432..FR-435).
-- [X] T603 Serialize splitter fields under PrevReport in PreviousReportJson and update live (FR-436).
-- [X] T604 Parse PrevReport splitter fields from PreviousReportJson when present (FR-437).
-- [X] T605 On validation failure show error via status text and do not modify fields (FR-438).
-- [X] T606 Default split pairs on Splitted=ON per spec (0/0 and len/len) (FR-439).
-- [X] T607 Add computed properties for PreviousHeader/Findings/Conclusion split views (FR-440).
-- [X] T608 Bind previous editors to split view via DataTriggers and set read-only while active (FR-441).
-- [X] T609 Trim each split segment before merging with newline (FR-442).
-- [X] T610 Change defaulting: final_conclusion_findings_splitter_from/to → 0/0 when null on Splitted ON (FR-439 updated).
-- [X] T611 Trim final concatenated split results (FR-443).
-- [X] T612 Add extended fields to PrevReport JSON and VM (FR-444).
-- [X] T613 Add four editors in PreviousReportTextAndJsonPanel and bind to SelectedPreviousStudy (FR-445).
-- [X] T614 Add auto + generate buttons next to Chief Complaint, Patient History (top/side top), Conclusion (top) (FR-446).
-- [X] T615 Add auto + generate buttons next to Study Techniques and Comparison in bottom panel (FR-447).
-- [X] T616 Add auto + generate buttons next to all (proofread) labels (current + previous panels) (FR-448).
-- [X] T617 Add GenerateFieldCommand in MainViewModel and wire CommandParameter keys (skeleton) (FR-449).
-- [X] T618 Add auto-* boolean properties to MainViewModel for each field, bind in XAML (FR-450).
-- [X] T619 Add Proofread and Reportified toggles next to Splitted (bind to PreviousProofreadMode, PreviousReportified) (FR-451).
-- [X] T620 Add Proofread and Reportified toggles next to Test NewStudy Proc (bind to ProofreadMode, Reportified) (FR-452).
+- [X] T700 Procedure Split Parity: Update `ProcedureExecutor.Split` to support `re:`/`regex:` prefix, C#-style escape decoding, and CRLF retry to match SpyWindow behavior (FR-343..FR-346, acceptance: patient remark parity).
+- [X] T701 Validate Patient Remark parity: With a procedure that trims trailing HTML via regex split, verify New Study "GetPatientRemark" result equals SpyWindow preview (after Trim). Document in Plan/Spec and set sample.
+- [X] T702 Design dark, intuitive scrollbar UX and enumerate FR-469..FR-475 in Spec.md.
+- [X] T703 Implement dark ScrollBar templates and Thumb style in `Themes/DarkTheme.xaml` with hover/drag states.
+- [X] T704 Apply global `ScrollBar` and `ScrollViewer` styles so TextBox/DataGrid/Editor/Combo popup inherit styling.
+- [X] T705 Validate paging on track click, 12px thickness, rounded thumb, and contrast across common controls; fix any XAML issues.
+- [X] T706 Update Spec.md, Plan.md, and Tasks.md with scrollbar UX changes (cumulative docs update).
+- [X] T707 Fix short scrollbar length: remove fixed along-axis size from `Dark.Scrollbar.ThumbStyle` and keep only cross-axis thickness in orientation templates (FR-476).
+- [X] T708 Increase minimum thumb length: set `MinHeight` (vertical) and `MinWidth` (horizontal) to 36px in templates to improve usability while keeping proportional behavior (FR-477).
+- [X] T709 Edit Study Technique layout: convert to left/right panels with GridSplitter; left uses rows (Add Technique [Auto], Current Combination [*]); right shows studyname combinations with Set Default (FR-478, FR-479).
+- [X] T710 Fix ComboBox selected text: update dark ComboBox template to use SelectedItem.Text via PriorityBinding and set TextSearch.TextPath=Text (FR-480).
+- [X] T711 Inline add for Prefix/Tech/Suffix: add "+" buttons with prompt, call VM methods to persist and reload, auto-select new item (FR-481, FR-482).
+- [X] T725 Add `AddPreviousStudy` to Settings → Automation available modules.
+- [X] T726 Implement `RunAddPreviousStudyModuleAsync` and map small `+` to run `AutomationAddStudySequence` (known modules only).
+- [X] T730 SpyWindow: add PACS method `InvokeOpenStudy` (label: "Invoke open study") to Custom Procedures combo (FR-516).
+- [X] T731 PacsService: add `InvokeOpenStudyAsync()` that executes `InvokeOpenStudy` procedure (FR-517).
+- [X] T732 ProcedureExecutor: auto-seed default for `InvokeOpenStudy` with single `Invoke` op on `SelectedStudyInSearch` (FR-518).
+- [X] T733 Custom Procedure op `Invoke`: ensure Arg1 Type preset to `Element` and Arg2/Arg3 disabled in editor; support in headless executor (FR-519..FR-521).
 
-## Added (previous)
-- [X] T366 Remove global semaphore serialization in PhraseService (per-account only) (FR-261).
-- [X] T367 Eliminate manual per-command CancellationTokenSource in toggle/upsert (FR-262).
-- [X] T368 Tune connection string (MaxPoolSize<=50, KeepAlive=30s) & simplify retry (FR-263).
+## Verification
+- [X] V190 Resize Edit Study Technique window; verify groups and list stretch with window.
+- [X] V191 Select combo items; verify selected area shows friendly text.
+- [X] V192 Add new prefix/tech/suffix; verify row persists and selection applied.
+- [X] V193 Save combination then set default for studyname; verify refresh.
+- [X] V200 SpyWindow shows "Invoke open study" in PACS Method list; selecting it loads/saves steps.
+- [X] V201 Running the procedure invokes UIA `Invoke` (or `Toggle`) on selected row; viewer opens where supported.
+- [X] V202 PacsService.InvokeOpenStudyAsync() returns without exception and triggers the action.
 
-## Added (previous legacy)
-- [X] T358 Implement synchronous phrase database interaction flow (FR-258) ensuring stability under rapid clicks and network latency.
-- [X] T359 Add per-account update locks to PhraseService to prevent UI state corruption during database operations (FR-259).
-- [X] T360 Enhance PhrasesViewModel to display snapshot state instead of optimistic UI state (FR-260).
-- [X] T361 Implement automatic consistency recovery via snapshot refresh when phrase operations fail (FR-260).
-- [X] T362 Add UI toggle prevention during active database operations to ensure atomicity (FR-259).
-
-**Input**: Spec.md & Plan.md (cumulative)  
-**Prerequisites**: Plan.md completed; research & design pending for new pipeline (some legacy features done)  
-
-Legend:  
-- [P] = Parallel-safe (different files / no dependency)  
-- (FR-xxx) = Links to Functional Requirement  
-- Legacy tasks already completed retained for traceability (Done)
-
----
-## Phase 0 – Research (New)
-- [ ] T100 Establish LLM provider contract doc (timeout, error schema) (Spec Ambiguity 1,4)  
-- [ ] T101 Research PACS field length constraints; document validation policy (Ambiguity 2)  
-- [ ] T102 Define technique derivation rule from LOINC parts (Ambiguity 3)  
-- [ ] T103 Decide local persistence mechanism (file or table) + atomic write approach  
-- [ ] T104 Define logging schema (stage, correlation id, duration, status, error_code)  
-- [ ] T105 Determine ghost acceptance span rule (line remainder vs token) (Ambiguity 5)
-
-## Phase 1 – Design & Contracts
-- [ ] T110 [P] Create data-model.md with entities & field rationale (Report, PrevReport, Study, MappingPart, GhostSuggestion)  
-- [ ] T111 [P] Create contracts/ICurrentStudyProvider.md (interface & semantics)  
-- [ ] T112 [P] Create contracts/IPreviousStudyProvider.md  
-- [ ] T113 [P] Create contracts/IStudynameMappingService.md (mapping & cache invalidation)  
-- [ ] T114 [P] Create contracts/ILlmClient.md (methods: ParseRemarks, SplitHeader Findings, ParseHeader, ProofreadBatch, GenerateConclusion)  
-- [ ] T115 [P] Create contracts/IReportifier.md & INumberer.md  
-- [ ] T116 [P] Create contracts/IPacsSubmissionService.md (ValidateAsync, SubmitAsync)  
-- [ ] T117 [P] Create contracts/IReportPipeline.cs (RunStageAsync, composite state)  
-- [ ] T118 Quickstart.md steps (select study → pipeline stages → edit → postprocess → PACS send)  
-- [ ] T119 Add agent-file updates (append new tech & FR mapping)  
-
-## Phase 1 – Contract Tests (Fail First)
-- [ ] T120 [P] Test ICurrentStudyProvider returns metadata model (mock source)  
-- [ ] T121 [P] Test IPreviousStudyProvider returns raw previous report text  
-- [ ] T122 [P] Test ILlmClient.SplitHeaderFindings returns split_index invariants  
-- [ ] T123 [P] Test ILlmClient.ProofreadBatch returns same count outputs preserving original  
-- [ ] T124 [P] Test Reportifier enforces deterministic formatting rules (skeleton)  
-- [ ] T125 [P] Test Numberer enumerates lines in conclusion_reportified  
-- [ ] T126 [P] Test IPacsSubmissionService.ValidateAsync blocks on mismatched banner  
-- [ ] T127 Orchestrator test: sequence stages populating FR-001..FR-017 fields (mocks)  
-- [ ] T128 Failure path test: LLM failure marks only affected fields & continues (FR-122)  
-- [ ] T129 OCR op test: engine unavailable path returns "(ocr unavailable)" (FR-098/FR-123)  
-
-## Phase 2 – Models & Infrastructure
-- [ ] T130 Implement entity classes (ReportState DTO) in src/.../Reporting/Models  
-- [ ] T131 Implement mapping cache with invalidation on save (FR-090, FR-094)  
-- [ ] T132 Persistence adapter (file or table) decision implementation (depends T103)  
-- [ ] T133 Logging schema implementation (Serilog enrichers) (depends T104)  
-- [ ] T134 First-chance Postgres sampler already implemented (legacy FR-120) – verify test coverage  
-
-## Phase 2 – Service Implementations
-- [ ] T140 Implement CurrentStudyProvider (PACS + UI integration)  
-- [ ] T141 Implement PreviousStudyProvider  
-- [ ] T142 Implement LlmClient adapter (retry, timeout)  
-- [ ] T143 Implement Reportifier (rule engine hook)  
-- [ ] T144 Implement Numberer  
-- [ ] T145 Implement PacsSubmissionService (ValidateAsync, SubmitAsync)  
-- [ ] T146 Implement StudynameMappingService (playbook suggestions already legacy) unify interface  
-- [ ] T147 Implement ReportPipeline orchestrator (stage enum + idempotent transitions)  
-- [ ] T148 Add PacsService banner extraction tests (patient number & study datetime) (FR-099)  
-
-## Phase 2 – Editor Integration Enhancements
-- [ ] T150 Add ghost acceptance span policy implementation (depends T105) (FR-056)  
-- [ ] T151 Add import previous findings context menu → transformation call (FR-058)  
-- [ ] T152 Snippet placeholder navigation validation tests (FR-057)  
-- [ ] T153 Completion popup test: exact match only selection (FR-052)  
-- [ ] T154 Idle closure + ghost trigger test (FR-055)  
-- [X] T155 Completion cache invalidation test: verify Clear() called on phrase add/modify (FR-124)
-- [X] T156 Keyboard navigation test: verify Down/Up keys change selection in completion popup (FR-127)
-- [X] T157 Service injection test: verify PhraseExtractionViewModel resolves from DI with all dependencies (FR-126)
-- [X] T158 Navigation reliability test: verify Up/Down keys work consistently in completion popup (FR-127)
-- [X] T159 Selection guard recursion test: verify multiple selection events don't cause infinite recursion (FR-128)
-- [X] T160 Multiple event handling test: verify SelectionChanged event patterns are analyzed correctly (FR-129)
-- [X] T161 Navigation state tracking test: verify first Down key always selects first item (FR-130)
-- [X] T162 Recursive guard protection test: verify guard flag prevents infinite loops during programmatic changes (FR-132)
-- [X] T486 Ensure snippet completion items display and stringify as "{trigger} → {description}" across providers (EditorCompletionData, MusmCompletionData).
-- [X] T487 Verify tooltip shows template and preview uses placeholder-first text.
-
-## Phase 3 – Pipeline Wiring (UI)
-- [ ] T163 Hook UI command: Load Current Study → invoke pipeline stages 1–5 automatically (FR-001..FR-005)  
-- [ ] T164 Integrate previous study retrieval + comparison selection UI (FR-007..FR-012)  
-- [ ] T165 Wire postprocess command invoking FR-014..FR-017 sequence (LLM + RBM)  
-- [ ] T166 Display proofread vs original toggles  
-- [ ] T167 Error banner for individual stage failures (FR-122)  
-
-## Phase 3 – PACS & Persistence
-- [ ] T170 Validate banner vs metadata prior to send (FR-018)  
-- [ ] T171 Submit formatted sections & await acknowledgment (FR-019)  
-- [ ] T172 Atomic persistence of final report JSON (FR-020)  
-- [ ] T173 Field length pre-validation (depends T101, FR-018)  
-
-## Phase 3 – Mapping UI Consolidation
-- [ ] T180 Integrate technique derivation post save (depends T102)  
-- [ ] T181 Add mapping cache hot-reload on save (FR-094)  
-- [ ] T182 Add optional remove/reorder buttons (legacy TODO)  
-
-## Phase 4 – Reliability & Observability
-- [ ] T190 Implement correlation id propagation across pipeline logs  
-- [ ] T191 Add duration metrics for each stage (timing decorator)  
-- [ ] T192 Failure injection tests (simulate LLM timeout)  
-- [ ] T193 Snapshot tests for reportifier + numberer outputs  
-- [ ] T194 Performance test harness (measure idle→ghost dispatch latency)  
-- [ ] T195 Performance test for completion cache refresh latency (target <50ms) (FR-124)
-- [ ] T196 Performance test for keyboard navigation response time (target <50ms) (FR-127)
-- [ ] T197 Performance test for selection guard event handling (target <10ms) (FR-128)
-- [ ] T198 Performance test for multiple event processing (target <5ms) (FR-129)
-- [ ] T199 Performance test for navigation state tracking (target <1ms) (FR-130)
-- [ ] T200 Performance test for recursive guard protection (target <1ms) (FR-132)
-- [ ] T363 Performance test for phrase database operations (target <2s normal network) (FR-258)
-- [ ] T364 Performance test for phrase snapshot updates (target <100ms) (FR-258)
-- [ ] T365 Stress test for rapid phrase toggles under network latency (FR-259)
+## Previously Added
+- [X] T707 Fix short scrollbar length (remove along-axis size in Thumb style) (FR-476).
+- [X] T708 Increase min thumb length (MinHeight/MinWidth = 36px) (FR-477).
 
 ---
 ## Validation Checklist
-- [X] FR-339 documented and implemented (Crawl Editor Get HTML button).
-- [X] FR-340 documented and implemented (KR charset decode + CP949 fallback for Get HTML).
-- [X] FR-135 documented and implemented (Split Arg3 index).
-- [X] New PACS method and operations documented and implemented (FR-336, FR-337, FR-338).
-- [X] FR-342 documented and implemented (Procedures grid multiline args for string types).
-- [X] FR-348..FR-352 documented and implemented (Automation modules for remarks + JSON round-trip + error handling).
-- [X] FR-353..FR-355 documented and implemented (Distinct PatientRemark bookmark + mapping list + procedure usage).
-- [X] FR-356..FR-358 documented and implemented (Auto-seed default key procedures for remarks).
-- [X] FR-360..FR-361 documented and implemented (ProcedureExecutor supports GetHTML/Replace and fixed early-return).
-- [X] FR-362..FR-370 documented and implemented (Snippet logic fixes: completion display, mode extraction, modification tracking, placeholder handling).
-- [X] All FR-001..FR-020 have at least one test task
-- [X] All FR-050..FR-058 have editor test or impl task
-- [X] All FR-090..FR-099 mapping & procedure tasks enumerated
-- [X] All FR-120..FR-132 reliability, completion, and bug fix tasks covered
-- [X] All FR-258..FR-260 phrase database stability tasks implemented
-- [ ] No unresolved dependency loops
-- [X] Each task has concrete output (file(s) or behavior)
+- [X] FR-478..FR-482 implemented; window resizes properly; selection text fixed; inline add works.
+- [X] DarkTheme ComboBox change verified in Edit Study Technique; no regressions detected in other common ComboBoxes (to be observed).
+- [X] Build passes.
+
+## New (2025-10-13)
+- [X] T720 Implement `TechniqueFormatter.BuildGroupedDisplay` to group by (prefix, suffix) and join techs with ","; join groups by ";".
+- [X] T721 Extend TechniqueRepository with `GetDefaultCombinationForStudynameAsync`, `GetCombinationItemsAsync`, and `GetStudynameIdByNameAsync`.
+- [X] T722 Autofill current study `StudyTechniques` in NewStudyProcedure after PACS fetch using default combination (if present).
+- [X] T723 Add `MainViewModel.RefreshStudyTechniqueFromDefaultAsync` and call after closing StudynameTechniqueWindow and after saving new default.
+- [X] T724 Prevent duplicate (prefix,tech,suffix) within a single combination in `StudyTechniqueViewModel` at add-time and save-time.

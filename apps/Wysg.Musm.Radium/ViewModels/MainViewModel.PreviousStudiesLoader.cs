@@ -43,7 +43,23 @@ namespace Wysg.Musm.Radium.ViewModels
                             var root = doc.RootElement;
                             if (root.TryGetProperty("header_and_findings", out var hf)) headerFind = hf.GetString() ?? string.Empty;
                             if (root.TryGetProperty("findings", out var ff)) findings = ff.GetString() ?? headerFind; else findings = headerFind;
-                            if (root.TryGetProperty("conclusion", out var cc)) conclusion = cc.GetString() ?? string.Empty;
+
+                            // Prefer new mapping: root.final_conclusion
+                            if (root.TryGetProperty("final_conclusion", out var fc))
+                            {
+                                conclusion = fc.GetString() ?? string.Empty;
+                            }
+                            else if (root.TryGetProperty("conclusion", out var cc))
+                            {
+                                // Legacy mapping used root.conclusion as the main conclusion
+                                conclusion = cc.GetString() ?? string.Empty;
+                            }
+                            else if (root.TryGetProperty("PrevReport", out var pr) && pr.ValueKind == JsonValueKind.Object)
+                            {
+                                // Back-compat: some older payloads may have nested PrevReport.final_conclusion
+                                if (pr.TryGetProperty("final_conclusion", out var pfc)) conclusion = pfc.GetString() ?? string.Empty;
+                                else if (pr.TryGetProperty("conclusion", out var pcc)) conclusion = pcc.GetString() ?? string.Empty;
+                            }
                         }
                         catch (Exception ex) { Debug.WriteLine("[PrevLoad] JSON parse error: " + ex.Message); }
                         var choice = new PreviousReportChoice

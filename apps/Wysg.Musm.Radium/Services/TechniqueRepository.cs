@@ -3,11 +3,14 @@ using System.Threading.Tasks;
 
 namespace Wysg.Musm.Radium.Services
 {
-    public interface ITechniqueRepository
+    public partial interface ITechniqueRepository
     {
         Task<IReadOnlyList<SimpleTextRow>> GetPrefixesAsync();
         Task<IReadOnlyList<SimpleTextRow>> GetTechsAsync();
         Task<IReadOnlyList<SimpleTextRow>> GetSuffixesAsync();
+        Task<long> AddPrefixAsync(string text);
+        Task<long> AddTechAsync(string text);
+        Task<long> AddSuffixAsync(string text);
         Task<IReadOnlyList<StudynameCombinationRow>> GetCombinationsForStudynameAsync(long studynameId);
         Task SetDefaultForStudynameAsync(long studynameId, long combinationId);
         Task<long> EnsureTechniqueAsync(long? prefixId, long techId, long? suffixId);

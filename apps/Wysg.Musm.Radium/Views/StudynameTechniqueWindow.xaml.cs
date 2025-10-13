@@ -1,13 +1,14 @@
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using Microsoft.Extensions.DependencyInjection;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
+using Microsoft.Extensions.DependencyInjection;
 using Wysg.Musm.Radium.ViewModels;
 
 namespace Wysg.Musm.Radium.Views
 {
-    public class StudynameTechniqueWindow : Window
+    public partial class StudynameTechniqueWindow : Window
     {
         public StudynameTechniqueWindow(StudynameTechniqueViewModel vm)
         {
@@ -39,10 +40,10 @@ namespace Wysg.Musm.Radium.Views
                 {
                     // Open builder and flag it to set as default after save
                     var app = (App)Application.Current;
-                    var vm = app.Services.GetRequiredService<StudyTechniqueViewModel>();
-                    vm.InitializeForStudyname(vm1.StudynameIdPublic.Value, vm1.Header.Replace("Studyname: ", string.Empty));
-                    vm.SetAsDefaultAfterSave = true;
-                    var w = new StudyTechniqueWindow(vm) { Owner = Application.Current?.Windows.OfType<Window>().FirstOrDefault(x => x.IsActive) };
+                    var vmB = app.Services.GetRequiredService<StudyTechniqueViewModel>();
+                    vmB.InitializeForStudyname(vm1.StudynameIdPublic.Value, vm1.Header.Replace("Studyname: ", string.Empty));
+                    vmB.SetAsDefaultAfterSave = true;
+                    var w = new StudyTechniqueWindow(vmB) { Owner = Application.Current?.Windows.OfType<Window>().FirstOrDefault(x => x.IsActive) };
                     w.Show();
                     await System.Threading.Tasks.Task.Delay(200);
                     await vm1.ReloadAsync();
@@ -50,13 +51,12 @@ namespace Wysg.Musm.Radium.Views
                 else
                 {
                     var app = (App)Application.Current;
-                    var vm = app.Services.GetRequiredService<StudyTechniqueViewModel>();
-                    vm.SetAsDefaultAfterSave = true;
-                    var w = new StudyTechniqueWindow(vm) { Owner = Application.Current?.Windows.OfType<Window>().FirstOrDefault(x => x.IsActive) };
+                    var vmB = app.Services.GetRequiredService<StudyTechniqueViewModel>();
+                    vmB.SetAsDefaultAfterSave = true;
+                    var w = new StudyTechniqueWindow(vmB) { Owner = Application.Current?.Windows.OfType<Window>().FirstOrDefault(x => x.IsActive) };
                     w.Show();
                 }
             };
-            // Deprecated direct selection flow removed; default is set on save from builder
             var btnClose = new Button { Content = "Close" };
             btnClose.Click += (_, __) => Close();
             footer.Children.Add(btnAdd);
@@ -66,6 +66,7 @@ namespace Wysg.Musm.Radium.Views
 
             Content = root;
         }
+
         public static void Open(long studynameId, string studyname)
         {
             var app = (App)Application.Current;

@@ -4,7 +4,7 @@ using Npgsql;
 
 namespace Wysg.Musm.Radium.Services
 {
-    public sealed class TechniqueRepository : ITechniqueRepository
+    public sealed partial class TechniqueRepository : ITechniqueRepository
     {
         private readonly IRadiumLocalSettings _settings;
         public TechniqueRepository(IRadiumLocalSettings settings) { _settings = settings; }
@@ -20,6 +20,18 @@ namespace Wysg.Musm.Radium.Services
             await using var rd = await cmd.ExecuteReaderAsync();
             while (await rd.ReadAsync()) list.Add(new SimpleTextRow(rd.GetInt64(0), rd.IsDBNull(1) ? string.Empty : rd.GetString(1)));
             return list;
+        }
+
+        public async Task<long> AddPrefixAsync(string text)
+        {
+            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            const string sql = @"INSERT INTO med.technique_prefix(prefix_text) VALUES (@t)
+ON CONFLICT (prefix_text) DO UPDATE SET prefix_text = EXCLUDED.prefix_text
+RETURNING id";
+            await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@t", text);
+            var o = await cmd.ExecuteScalarAsync();
+            return o is long l ? l : 0L;
         }
 
         public async Task<long> EnsureTechniqueAsync(long? prefixId, long techId, long? suffixId)
@@ -98,6 +110,18 @@ ON CONFLICT (studyname_id, combination_id) DO UPDATE SET is_default = EXCLUDED.i
             return list;
         }
 
+        public async Task<long> AddTechAsync(string text)
+        {
+            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            const string sql = @"INSERT INTO med.technique_tech(tech_text) VALUES (@t)
+ON CONFLICT (tech_text) DO UPDATE SET tech_text = EXCLUDED.tech_text
+RETURNING id";
+            await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@t", text);
+            var o = await cmd.ExecuteScalarAsync();
+            return o is long l ? l : 0L;
+        }
+
         public async Task<IReadOnlyList<SimpleTextRow>> GetSuffixesAsync()
         {
             var list = new List<SimpleTextRow>();
@@ -107,6 +131,18 @@ ON CONFLICT (studyname_id, combination_id) DO UPDATE SET is_default = EXCLUDED.i
             await using var rd = await cmd.ExecuteReaderAsync();
             while (await rd.ReadAsync()) list.Add(new SimpleTextRow(rd.GetInt64(0), rd.IsDBNull(1) ? string.Empty : rd.GetString(1)));
             return list;
+        }
+
+        public async Task<long> AddSuffixAsync(string text)
+        {
+            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            const string sql = @"INSERT INTO med.technique_suffix(suffix_text) VALUES (@t)
+ON CONFLICT (suffix_text) DO UPDATE SET suffix_text = EXCLUDED.suffix_text
+RETURNING id";
+            await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@t", text);
+            var o = await cmd.ExecuteScalarAsync();
+            return o is long l ? l : 0L;
         }
 
         public async Task<IReadOnlyList<StudynameCombinationRow>> GetCombinationsForStudynameAsync(long studynameId)

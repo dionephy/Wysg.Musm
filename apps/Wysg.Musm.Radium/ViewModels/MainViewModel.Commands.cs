@@ -66,7 +66,7 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             NewStudyCommand = new DelegateCommand(_ => OnNewStudy());
             TestNewStudyProcedureCommand = new DelegateCommand(async _ => await RunNewStudyProcedureAsync());
-            AddStudyCommand = new DelegateCommand(_ => OnAddStudy(), _ => PatientLocked);
+            AddStudyCommand = new DelegateCommand(_ => OnRunAddStudyAutomation(), _ => PatientLocked);
             SendReportPreviewCommand = new DelegateCommand(_ => OnSendReportPreview(), _ => PatientLocked);
             SendReportCommand = new DelegateCommand(_ => OnSendReport(), _ => PatientLocked);
             SelectPreviousStudyCommand = new DelegateCommand(o => OnSelectPrevious(o), _ => PatientLocked);
@@ -111,6 +111,77 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
+        private void OnRunAddStudyAutomation()
+        {
+            var seqRaw = _localSettings?.AutomationAddStudySequence ?? string.Empty;
+            var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (modules.Length == 0) return;
+            foreach (var m in modules)
+            {
+                if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunAddPreviousStudyModuleAsync(); }
+                else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { AcquireStudyRemarkAsync(); }
+                else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { AcquirePatientRemarkAsync(); }
+            }
+        }
+
+        private async Task RunAddPreviousStudyModuleAsync()
+        {
+            try
+            {
+                // 1) Ensure PACS current patient equals application's current patient number
+                var pacsCurrent = await _pacs.GetCurrentPatientNumberAsync();
+                string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : Regex.Replace(s, "[^A-Za-z0-9]", "").ToUpperInvariant();
+                if (Normalize(pacsCurrent) != Normalize(PatientNumber)) { SetStatus("Patient mismatch cannot add", true); return; }
+
+                // Optional: also verify selected related study belongs to same patient
+                var relatedSelected = await _pacs.GetSelectedIdFromRelatedStudiesAsync();
+                if (!string.IsNullOrWhiteSpace(relatedSelected) && Normalize(relatedSelected) != Normalize(PatientNumber))
+                { SetStatus("Related study not for current patient", true); return; }
+
+                // 2) Fetch metadata from related studies list
+                var studyName = await _pacs.GetSelectedStudynameFromRelatedStudiesAsync();
+                var dtStr = await _pacs.GetSelectedStudyDateTimeFromRelatedStudiesAsync();
+                var radiologist = await _pacs.GetSelectedRadiologistFromRelatedStudiesAsync();
+                var reportDateStr = await _pacs.GetSelectedReportDateTimeFromRelatedStudiesAsync();
+
+                // 3) Fetch findings/conclusion from current report editors using dual getters and pick longer
+                var f1Task = _pacs.GetCurrentFindingsAsync();
+                var f2Task = _pacs.GetCurrentFindings2Async();
+                var c1Task = _pacs.GetCurrentConclusionAsync();
+                var c2Task = _pacs.GetCurrentConclusion2Async();
+                await Task.WhenAll(f1Task, f2Task, c1Task, c2Task);
+                string PickLonger(string? a, string? b) => (b?.Length ?? 0) > (a?.Length ?? 0) ? (b ?? string.Empty) : (a ?? string.Empty);
+                string findings = PickLonger(f1Task.Result, f2Task.Result);
+                string conclusion = PickLonger(c1Task.Result, c2Task.Result);
+
+                // 4) Persist as previous study via existing repo methods
+                var dt = DateTime.TryParse(dtStr, out var studyDt) ? studyDt : (DateTime?)null;
+                var reportDt = DateTime.TryParse(reportDateStr, out var rdt) ? rdt : (DateTime?)null;
+                if (dt == null) { SetStatus("Related study datetime invalid", true); return; }
+                if (_studyRepo == null) return;
+                var studyId = await _studyRepo.EnsureStudyAsync(PatientNumber, PatientName, PatientSex, null, studyName, dt);
+                if (studyId == null) { SetStatus("Study save failed", true); return; }
+
+                var reportObj = new
+                {
+                    header_and_findings = findings,
+                    final_conclusion = conclusion
+                };
+                string json = JsonSerializer.Serialize(reportObj);
+                await _studyRepo.UpsertPartialReportAsync(studyId.Value, radiologist, reportDt, json, isMine: false, isCreated: false);
+                await LoadPreviousStudiesForPatientAsync(PatientNumber);
+                var newTab = PreviousStudies.FirstOrDefault(t => t.StudyDateTime == dt.Value);
+                if (newTab != null) SelectedPreviousStudy = newTab;
+                PreviousReportified = true;
+                SetStatus("Previous study added");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[AddPreviousStudyModule] error: " + ex.Message);
+                SetStatus("Add previous study module failed", true);
+            }
+        }
+
         private void OnNewStudy()
         {
             var seqRaw = _localSettings?.AutomationNewStudySequence ?? string.Empty;
@@ -122,8 +193,10 @@ namespace Wysg.Musm.Radium.ViewModels
                 else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _lockStudyProc != null) { _ = _lockStudyProc.ExecuteAsync(this); }
                 else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { AcquireStudyRemarkAsync(); }
                 else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { AcquirePatientRemarkAsync(); }
+                else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunAddPreviousStudyModuleAsync(); }
             }
         }
+
         private void OnSelectPrevious(object? o)
         {
             if (o is not PreviousStudyTab tab) return;
@@ -145,6 +218,7 @@ namespace Wysg.Musm.Radium.ViewModels
             catch { }
         }
 
+        // existing OnAddStudy retained for direct action flows if used elsewhere
         private async void OnAddStudy()
         {
             if (_studyRepo == null) return;
@@ -185,7 +259,8 @@ namespace Wysg.Musm.Radium.ViewModels
                     history = string.Empty,
                     history_proofread = string.Empty,
                     header_and_findings = findings,
-                    conclusion,
+                    final_conclusion = conclusion,
+                    // keep split outputs empty initially; do not misuse root 'conclusion' for main conclusion
                     split_index = 0,
                     comparison = string.Empty,
                     technique_proofread = string.Empty,

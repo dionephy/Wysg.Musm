@@ -115,7 +115,9 @@ FROM med.rad_study rs
 JOIN med.patient p ON p.id = rs.patient_id AND p.patient_number = @num
 JOIN med.rad_studyname sn ON sn.id = rs.studyname_id
 JOIN med.rad_report rr ON rr.study_id = rs.id
-WHERE (rr.report ->> 'header_and_findings') IS NOT NULL OR (rr.report ->> 'conclusion') IS NOT NULL
+WHERE (rr.report ->> 'header_and_findings') IS NOT NULL
+   OR (rr.report ->> 'final_conclusion') IS NOT NULL
+   OR (rr.report ->> 'conclusion') IS NOT NULL
 ORDER BY rs.study_datetime DESC, rr.report_datetime DESC NULLS LAST;", cn);
                 cmd.Parameters.AddWithValue("@num", patientNumber);
                 await using var reader = await cmd.ExecuteReaderAsync();
