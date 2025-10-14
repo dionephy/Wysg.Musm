@@ -55,6 +55,9 @@ namespace Wysg.Musm.Radium.Services
         public string? GlobalHotkeyOpenStudy { get => ReadSecret("hotkey_open_study"); set => WriteSecret("hotkey_open_study", value ?? string.Empty); }
         public string? GlobalHotkeySendStudy { get => ReadSecret("hotkey_send_study"); set => WriteSecret("hotkey_send_study", value ?? string.Empty); }
 
+        // Window placement (left,top,width,height,state)
+        public string? MainWindowPlacement { get => ReadSecret("main_window_placement"); set => WriteSecret("main_window_placement", value ?? string.Empty); }
+
         /// <summary>
         /// Decrypts settings file (if present) and returns the value for a key. Failures are swallowed to avoid
         /// disruptive UX (caller sees null and can prompt for settings).

@@ -23,7 +23,6 @@ namespace Wysg.Musm.Radium.ViewModels
             public bool CollapseWhitespace { get; init; } = true;
             public bool NumberConclusionParagraphs { get; init; } = true;
             public bool IndentContinuationLines { get; init; } = true;
-            public bool PreserveKnownTokens { get; init; } = true;
             public string Arrow { get; init; } = "-->";
             public string ConclusionNumbering { get; init; } = "1."; // seed only; we auto increment
             public string DetailingPrefix { get; init; } = "-";
@@ -31,7 +30,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private ReportifyConfig? _reportifyConfig;
         private string? _reportifyConfigJsonApplied;
-        private HashSet<string>? _keepCapsFirstTokens; private bool _capsLoaded; // added back (used by dereportify + caps preservation)
+        // Removed: known token caps preservation
         private void EnsureReportifyConfig()
         {
             var json = _tenant.ReportifySettingsJson;
@@ -60,7 +59,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     CollapseWhitespace = B("collapse_whitespace", true),
                     NumberConclusionParagraphs = B("number_conclusion_paragraphs", true),
                     IndentContinuationLines = B("indent_continuation_lines", true),
-                    PreserveKnownTokens = B("preserve_known_tokens", true),
+                    // preserve_known_tokens removed (deprecated)
                     Arrow = Def("arrow", "-->"),
                     ConclusionNumbering = Def("conclusion_numbering", "1."),
                     DetailingPrefix = Def("detailing_prefix", "-")
@@ -197,33 +196,8 @@ namespace Wysg.Musm.Radium.ViewModels
             line = Regex.Replace(line, @"^ {1,4}", string.Empty);
             line = Regex.Replace(line, @"^\s*--?>\s*", "-->");
             if (line.EndsWith('.') && !line.EndsWith("..")) line = line[..^1];
-            if (_keepCapsFirstTokens != null) line = DecapUnlessDictionary(line);
             return line.TrimEnd();
         }
-        private string DecapUnlessDictionary(string line)
-        {
-            if (string.IsNullOrEmpty(line)) return line;
-            int idx = 0; while (idx < line.Length && char.IsWhiteSpace(line[idx])) idx++;
-            if (idx >= line.Length) return line; char c = line[idx]; if (!char.IsUpper(c)) return line;
-            int end = idx; while (end < line.Length && char.IsLetter(line[end])) end++;
-            var token = line.Substring(idx, end - idx);
-            if (_keepCapsFirstTokens != null && _keepCapsFirstTokens.Contains(token)) return line;
-            var lowered = char.ToLower(c) + line[(idx + 1)..];
-            return idx == 0 ? lowered : line[..idx] + lowered;
-        }
-        private async Task EnsureCapsAsync()
-        {
-            if (_capsLoaded) return;
-            try
-            {
-                var list = await _phrases.GetPhrasesForAccountAsync(_tenant.AccountId).ConfigureAwait(false);
-                _keepCapsFirstTokens = new HashSet<string>(list.Select(p => FirstToken(p)).Where(t => t.Length > 0 && char.IsUpper(t[0])), StringComparer.OrdinalIgnoreCase);
-            }
-            catch { _keepCapsFirstTokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase); }
-            finally { _capsLoaded = true; }
-        }
-        private static string FirstToken(string s)
-        { if (string.IsNullOrWhiteSpace(s)) return string.Empty; int i = 0; while (i < s.Length && !char.IsWhiteSpace(s[i])) i++; return s[..i]; }
         private static readonly Regex _rxModality = new(@"\b(CT|MRI|MR|XR|CR|DX|US|PET[- ]?CT|PETCT|PET|MAMMO|MMG|DXA|NM)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private string ExtractModality(string? studyName)
         {

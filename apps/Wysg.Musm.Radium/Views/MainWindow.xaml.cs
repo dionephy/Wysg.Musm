@@ -12,6 +12,8 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
 using Microsoft.Extensions.DependencyInjection;
+using System.Windows.Media;
+using WF = System.Windows.Forms;
 
 namespace Wysg.Musm.Radium.Views
 {
@@ -31,6 +33,7 @@ namespace Wysg.Musm.Radium.Views
             InitializeComponent();
             Loaded += OnLoaded;
             SizeChanged += OnWindowSizeChanged;
+            Closing += OnClosing;
         }
 
         private void InitEditor(MainViewModel vm, EditorControl ctl)
@@ -63,6 +66,71 @@ namespace Wysg.Musm.Radium.Views
             UpdateGridCenterSize();
             UpdateGridCenterPositioning();
             System.Diagnostics.Debug.WriteLine("[MainWindow] OnLoaded COMPLETE");
+        }
+
+        private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            TrySaveWindowPlacement();
+        }
+
+        private void TryRestoreWindowPlacement()
+        {
+            try
+            {
+                var app = (App)Application.Current;
+                var local = app.Services.GetService<IRadiumLocalSettings>();
+                var s = local?.MainWindowPlacement;
+                if (string.IsNullOrWhiteSpace(s)) return;
+                var parts = s.Split(',');
+                if (parts.Length < 5) return;
+                if (double.TryParse(parts[0], out double left)) Left = left;
+                if (double.TryParse(parts[1], out double top)) Top = top;
+                if (double.TryParse(parts[2], out double width)) Width = width;
+                if (double.TryParse(parts[3], out double height)) Height = height;
+                var stateStr = parts[4];
+                WindowState st = WindowState.Normal;
+                if (Enum.TryParse<WindowState>(stateStr, true, out var parsed)) st = parsed;
+                // Multi-monitor, per?monitor DPI aware: convert DIP rect -> pixel rect and verify it intersects any screen
+                Rect dipRect = new Rect(Left, Top, Width, Height);
+                var dpi = VisualTreeHelper.GetDpi(this);
+                var pxRect = new System.Drawing.Rectangle(
+                    (int)Math.Floor(dipRect.X * dpi.DpiScaleX),
+                    (int)Math.Floor(dipRect.Y * dpi.DpiScaleY),
+                    Math.Max(1, (int)Math.Ceiling(dipRect.Width * dpi.DpiScaleX)),
+                    Math.Max(1, (int)Math.Ceiling(dipRect.Height * dpi.DpiScaleY)));
+                bool intersects = false;
+                foreach (var screen in WF.Screen.AllScreens)
+                {
+                    if (pxRect.IntersectsWith(screen.WorkingArea) || pxRect.IntersectsWith(screen.Bounds)) { intersects = true; break; }
+                }
+                if (!intersects)
+                {
+                    // Fallback: place near primary screen working area top-left (keep size)
+                    var pwa = WF.Screen.PrimaryScreen.WorkingArea;
+                    // Convert a safe pixel point back to DIP
+                    Left = (pwa.Left + 50) / dpi.DpiScaleX;
+                    Top = (pwa.Top + 50) / dpi.DpiScaleY;
+                }
+                WindowState = st;
+            }
+            catch { }
+        }
+
+        private void TrySaveWindowPlacement()
+        {
+            try
+            {
+                var app = (App)Application.Current;
+                var local = app.Services.GetService<IRadiumLocalSettings>();
+                if (local == null) return;
+                // If window is minimized, we save as Normal
+                var st = this.WindowState == WindowState.Minimized ? WindowState.Normal : this.WindowState;
+                // Use RestoreBounds when maximized
+                Rect r = st == WindowState.Maximized ? this.RestoreBounds : new Rect(Left, Top, Width, Height);
+                string value = string.Join(',', r.Left, r.Top, r.Width, r.Height, st.ToString());
+                local.MainWindowPlacement = value;
+            }
+            catch { }
         }
 
         private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
@@ -241,6 +309,9 @@ namespace Wysg.Musm.Radium.Views
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
+            // Apply saved placement before first paint; set manual startup to avoid CenterScreen overriding.
+            this.WindowStartupLocation = WindowStartupLocation.Manual;
+            TryRestoreWindowPlacement();
             // Register global hotkey for Open Study (if configured) after HWND exists
             TryRegisterOpenStudyHotkey();
         }

@@ -576,6 +576,30 @@
 - From Main window, press Ctrl+Alt+O → “Test” message box appears.
 - Toggle PatientLocked/StudyOpened and verify it picks “add” or “after open” sequences accordingly.
 
+## Change Log Addition (2025-10-14 – Window Placement Persistence)
+- Persist MainWindow placement to local settings on close and restore on load; ensure visibility safeguards and state handling.
+
+### Approach
+1) Add `MainWindowPlacement` key to `IRadiumLocalSettings`/`RadiumLocalSettings`.
+2) Serialize as "Left,Top,Width,Height,State"; use `RestoreBounds` when maximized; save minimized as Normal.
+3) Restore during `MainWindow.OnLoaded()` and clamp to `SystemParameters.WorkArea` if restored rect is off-screen.
+
+### Test Plan
+- Move/resize window, maximize; close and restart → restored position/size/state.
+- Place window partially off-screen (multi-monitor remove) → next start clamps to visible area.
+
+## Change Log Addition (2025-10-14 – Reportify Clarification and Removal)
+- Clarified difference between RemoveExcessiveBlanks and CollapseWhitespace.
+- Removed "Preserve known tokens" option from UI model and processing; JSON parse now ignores it.
+
+### Approach
+1) Remove `PreserveKnownTokens` property from `SettingsViewModel` JSON production; ignore on parse.
+2) Remove related processing in `MainViewModel.ReportifyHelpers` (config flag and decap dictionary logic).
+
+### Test Plan
+- Reportify JSON generated no longer contains `preserve_known_tokens`.
+- Prior stored JSON with the key loads without error and does not affect output.
+
 ### Approach
 1) In App startup, set `ProcedureExecutor.SetProcPathOverride` and `UiBookmarks.GetStorePathOverride` based on current pacs key.
 2) In SettingsViewModel.PacsProfiles selection handler, update both overrides when PACS changes.

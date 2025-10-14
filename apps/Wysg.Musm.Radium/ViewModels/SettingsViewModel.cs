@@ -62,7 +62,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private bool _collapseWhitespace = true; public bool CollapseWhitespace { get => _collapseWhitespace; set { if (SetProperty(ref _collapseWhitespace, value)) UpdateReportifyJson(); } }
         private bool _numberConclusionParagraphs = true; public bool NumberConclusionParagraphs { get => _numberConclusionParagraphs; set { if (SetProperty(ref _numberConclusionParagraphs, value)) UpdateReportifyJson(); } }
         private bool _indentContinuationLines = true; public bool IndentContinuationLines { get => _indentContinuationLines; set { if (SetProperty(ref _indentContinuationLines, value)) UpdateReportifyJson(); } }
-        private bool _preserveKnownTokens = true; public bool PreserveKnownTokens { get => _preserveKnownTokens; set { if (SetProperty(ref _preserveKnownTokens, value)) UpdateReportifyJson(); } }
+        // Removed: PreserveKnownTokens (deprecated)
 
         private string _defaultArrow = "-->"; public string DefaultArrow { get => _defaultArrow; set { if (SetProperty(ref _defaultArrow, value)) UpdateReportifyJson(); } }
         private string _defaultConclusionNumbering = "1."; public string DefaultConclusionNumbering { get => _defaultConclusionNumbering; set { if (SetProperty(ref _defaultConclusionNumbering, value)) UpdateReportifyJson(); } }
@@ -166,7 +166,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 CollapseWhitespace = GetBool("collapse_whitespace", CollapseWhitespace);
                 NumberConclusionParagraphs = GetBool("number_conclusion_paragraphs", NumberConclusionParagraphs);
                 IndentContinuationLines = GetBool("indent_continuation_lines", IndentContinuationLines);
-                PreserveKnownTokens = GetBool("preserve_known_tokens", PreserveKnownTokens);
+                // Deprecated: ignore preserve_known_tokens from stored JSON
                 DefaultArrow = GetDef("arrow", DefaultArrow);
                 DefaultConclusionNumbering = GetDef("conclusion_numbering", DefaultConclusionNumbering);
                 DefaultDetailingPrefix = GetDef("detailing_prefix", DefaultDetailingPrefix);
@@ -296,7 +296,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 collapse_whitespace = CollapseWhitespace,
                 number_conclusion_paragraphs = NumberConclusionParagraphs,
                 indent_continuation_lines = IndentContinuationLines,
-                preserve_known_tokens = PreserveKnownTokens,
+                // preserve_known_tokens removed (deprecated)
                 defaults = new
                 {
                     arrow = DefaultArrow,
@@ -337,7 +337,7 @@ namespace Wysg.Musm.Radium.ViewModels
             ["collapse_whitespace"] = ("Kidney   cortex   smooth", "Kidney cortex smooth"),
             ["number_conclusion_paragraphs"] = ("Para A\n\nPara B", "1. Para A\n\n2. Para B"),
             ["indent_continuation_lines"] = ("1. First line\nSecond line", "1. First line\n   Second line"),
-            ["preserve_known_tokens"] = ("Hepatic artery normal", "Hepatic artery normal (token 'Hepatic' preserved)")
+            // preserve_known_tokens sample removed
         };
     }
 }

@@ -45,8 +45,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     // Preload snippets snapshot
                     await _snippets.PreloadAsync(accountId);
                     System.Diagnostics.Debug.WriteLine("[EditorInit] Snippets preloaded");
-                    await EnsureCapsAsync();
-                    System.Diagnostics.Debug.WriteLine("[EditorInit] EnsureCaps done");
+                    // Removed: EnsureCapsAsync (Preserve known tokens feature deprecated)
                 }
                 catch (Exception ex)
                 {

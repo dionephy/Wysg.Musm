@@ -36,5 +36,8 @@ namespace Wysg.Musm.Radium.Services
         // Global hotkeys (user local)
         string? GlobalHotkeyOpenStudy { get; set; }
         string? GlobalHotkeySendStudy { get; set; }
+
+        // Window placement (MainWindow): serialized as "Left,Top,Width,Height,State" where State=Normal|Maximized
+        string? MainWindowPlacement { get; set; }
     }
 }

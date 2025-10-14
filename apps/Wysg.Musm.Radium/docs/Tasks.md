@@ -243,3 +243,11 @@
 - [X] T800 Register global Open Study hotkey from Settings and handle WM_HOTKEY in MainWindow to call `RunOpenStudyShortcut()`.
 - [X] V245 With “Shortcut: Open study (new)” containing `ShowTestMessage`, pressing the configured hotkey pops the “Test” box.
 - [X] V246 Verify switching to locked state or after-open state picks the corresponding shortcut pane.
+
+## New (2025-10-14 – Window Placement Persistence)
+- [X] T805 Add `MainWindowPlacement` to local settings and implement save on close and restore on load (with safe clamping and state handling).
+- [X] V250 Verify window restores position/size/state after restart; off-screen corrected.
+
+## New (2025-10-14 – Reportify Clarification and Removal)
+- [X] T808 Remove `PreserveKnownTokens` from SettingsViewModel and MainViewModel.ReportifyHelpers; ignore legacy key when parsing.
+- [X] V251 Confirm new Reportify JSON omits `preserve_known_tokens` and app behavior unchanged.
