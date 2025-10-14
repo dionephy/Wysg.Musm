@@ -301,7 +301,15 @@ namespace Wysg.Musm.Editor.Completion
                 e.Handled = true;
                 if (CompletionList.ListBox.SelectedIndex >= 0)
                 {
+                    // Request insertion, then append a space at caret
                     CompletionList.RequestInsertion(e);
+                    try
+                    {
+                        var off = _editor.CaretOffset;
+                        _editor.Document.Insert(off, " ");
+                        _editor.CaretOffset = off + 1;
+                    }
+                    catch { }
                 }
                 return;
             }

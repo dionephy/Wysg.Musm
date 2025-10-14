@@ -616,3 +616,37 @@
 ### Risks / Mitigations
 - Rapid PACS switching during Spy edits could race file writes → minimal risk; user-driven; save operations are small; last write wins is acceptable.
 
+## Change Log Addition (2025-01-14 – Editor Phrase-Based Syntax Highlighting)
+- Implemented real-time phrase-based syntax highlighting in the editor control.
+- Added `PhraseHighlightRenderer` class that highlights phrases based on a snapshot list.
+- Phrases in the snapshot are highlighted with #4A4A4A (Dark.Color.BorderLight).
+- Phrases NOT in the snapshot are highlighted with red color.
+- EditorControl now exposes `PhraseSnapshot` dependency property for ViewModel binding.
+- Highlighting updates automatically when phrase snapshot changes.
+
+### Approach
+1) Create `PhraseHighlightRenderer` class implementing `IBackgroundRenderer` in `src/Wysg.Musm.Editor/Ui/`.
+2) Implement tokenization logic to find words and multi-word phrases (up to 5 words) in visible text.
+3) Add case-insensitive phrase matching using `HashSet<string>` for O(1) lookup.
+4) Draw semi-transparent backgrounds behind matched phrases using different colors for existing vs. missing phrases.
+5) Add `PhraseSnapshot` dependency property to `EditorControl` with change notification to invalidate view.
+6) Initialize renderer in `EditorControl` constructor and wire to TextView's background renderers.
+7) Dispose renderer properly in `OnUnloaded` to prevent memory leaks.
+
+### Test Plan
+- Load phrase snapshot into EditorControl via binding.
+- Type text containing phrases from snapshot → verify they highlight with #4A4A4A color.
+- Type text containing phrases NOT in snapshot → verify they highlight with red color.
+- Type multi-word phrases (2-5 words) → verify entire phrase highlights as single unit.
+- Update phrase snapshot at runtime → verify highlighting updates immediately.
+- Verify highlighting only occurs in visible viewport (scroll to verify lazy evaluation).
+- Check that text remains readable with background highlighting (no foreground color changes).
+- Verify no performance issues with large documents or many phrases.
+- Future: Colors will be diversified based on SNOMED CT concept links (not implemented yet).
+
+### Risks / Mitigations
+- Performance with large phrase lists → mitigated by using HashSet for O(1) lookup and only processing visible text.
+- Multi-word phrase matching complexity → limited to 5 words maximum to balance accuracy and performance.
+- Color contrast for readability → using semi-transparent backgrounds to preserve text visibility.
+- Memory leaks from renderer → mitigated by proper disposal in OnUnloaded.
+

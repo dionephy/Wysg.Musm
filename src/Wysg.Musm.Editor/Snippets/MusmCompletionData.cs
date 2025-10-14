@@ -94,8 +94,14 @@ public sealed class MusmCompletionData : ICompletionData
             return;
         }
 
+        // Insert replacement
         doc.Replace(baseOffset, replaceLength, Replacement);
         int newCaret = baseOffset + Replacement.Length;
+        // If triggered by Space, append trailing space after the inserted token
+        if (insertionRequestEventArgs is System.Windows.Input.KeyEventArgs ke && ke.Key == System.Windows.Input.Key.Space)
+        {
+            try { doc.Insert(newCaret, " "); newCaret += 1; } catch { }
+        }
         if (newCaret > doc.TextLength) newCaret = doc.TextLength;
         area.Caret.Offset = newCaret;
     }

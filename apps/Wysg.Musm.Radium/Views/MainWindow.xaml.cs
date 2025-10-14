@@ -42,7 +42,7 @@ namespace Wysg.Musm.Radium.Views
             ctl.EnableGhostDebugAnchors(false);
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private async void OnLoaded(object sender, RoutedEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("[MainWindow] OnLoaded START");
             TryEnableDarkTitleBar();
@@ -65,6 +65,15 @@ namespace Wysg.Musm.Radium.Views
 
             UpdateGridCenterSize();
             UpdateGridCenterPositioning();
+            try
+            {
+                await vm.LoadPhrasesAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] LoadPhrasesAsync EX: " + ex.Message);
+            }
+
             System.Diagnostics.Debug.WriteLine("[MainWindow] OnLoaded COMPLETE");
         }
 

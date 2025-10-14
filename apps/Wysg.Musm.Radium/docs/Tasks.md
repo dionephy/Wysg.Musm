@@ -251,3 +251,32 @@
 ## New (2025-10-14 – Reportify Clarification and Removal)
 - [X] T808 Remove `PreserveKnownTokens` from SettingsViewModel and MainViewModel.ReportifyHelpers; ignore legacy key when parsing.
 - [X] V251 Confirm new Reportify JSON omits `preserve_known_tokens` and app behavior unchanged.
+
+## New (2025-01-14 – Editor Phrase-Based Syntax Highlighting)
+- [X] T810 Create `PhraseHighlightRenderer` class in `src/Wysg.Musm.Editor/Ui/` implementing `IBackgroundRenderer` (FR-700).
+- [X] T811 Implement phrase tokenization logic to find words and multi-word phrases up to 5 words (FR-706).
+- [X] T812 Add case-insensitive phrase matching using HashSet for O(1) lookup performance (FR-705).
+- [X] T813 Implement phrase highlighting with #4A4A4A for existing phrases and red for missing phrases (FR-701, FR-702).
+- [X] T814 Add `PhraseSnapshot` dependency property to EditorControl with change notification (FR-703).
+- [X] T815 Initialize `PhraseHighlightRenderer` in EditorControl constructor and wire to TextView (FR-707).
+- [X] T816 Implement proper disposal of renderer in OnUnloaded to prevent memory leaks (FR-708).
+- [X] T817 Update EditorControl.View.cs to add phrase snapshot property and renderer lifecycle (FR-703, FR-704).
+- [X] T818 Update Spec.md with FR-700..FR-709 documenting phrase-based syntax highlighting (cumulative).
+- [X] T819 Update Plan.md with change log entry for phrase highlighting including approach, test plan, and risks (cumulative).
+- [X] T820 Update Tasks.md with completed phrase highlighting tasks (this file, cumulative).
+- [X] V252 Build passes with no errors after adding PhraseHighlightRenderer.
+
+## Verification (2025-01-14 – Phrase Highlighting)
+- [ ] V253 Load phrase snapshot into EditorControl → verify phrases highlight with correct colors.
+- [ ] V254 Type text with snapshot phrases → verify #4A4A4A highlighting.
+- [ ] V255 Type text with non-snapshot phrases → verify red highlighting.
+- [ ] V256 Type multi-word phrases (2-5 words) → verify entire phrase highlights as single unit.
+- [ ] V257 Update phrase snapshot at runtime → verify highlighting updates immediately.
+- [ ] V258 Scroll document → verify highlighting only processes visible text regions.
+- [ ] V259 Verify text remains readable with background highlighting active.
+- [ ] V260 Test performance with large documents (1000+ lines) and many phrases (500+).
+
+## Future Enhancement
+- [ ] T821 Integrate SNOMED CT concept colors for phrase highlighting (FR-709, future work).
+- [ ] T822 Add phrase highlighting configuration UI in Settings window (future work).
+- [ ] T823 Implement phrase hover tooltips showing SNOMED CT information (future work).

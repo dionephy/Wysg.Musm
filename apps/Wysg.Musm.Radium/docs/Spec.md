@@ -141,3 +141,15 @@
 ## Update: Global Hotkey – Open Study Shortcut Execution (2025-10-14)
 - FR-660 Application registers a global hotkey from Settings (Keyboard → Open study). When pressed, it MUST invoke `MainViewModel.RunOpenStudyShortcut()`.
 - FR-661 The invoked shortcut sequence MUST honor the PACS-scoped `automation.json` panes (new/add/after open). Modules like `ShowTestMessage` must execute if present.
+
+## Update: Editor Phrase-Based Syntax Highlighting (2025-01-14)
+- FR-700 Editor MUST provide real-time syntax highlighting based on phrase snapshots from the database.
+- FR-701 Phrases present in the current phrase snapshot MUST be highlighted with color #4A4A4A (Dark.Color.BorderLight from DarkTheme.xaml).
+- FR-702 Phrases NOT present in the phrase snapshot MUST be highlighted with red color to indicate they are not in the vocabulary.
+- FR-703 The EditorControl MUST expose a `PhraseSnapshot` dependency property accepting an `IReadOnlyList<string>` for binding to the ViewModel.
+- FR-704 Phrase highlighting MUST update in real-time when the phrase snapshot changes.
+- FR-705 Phrase matching MUST be case-insensitive for better user experience.
+- FR-706 Multi-word phrases MUST be detected and highlighted as a single unit (up to 5 words).
+- FR-707 Highlighting MUST be implemented using a background renderer (KnownLayer.Background) so text remains readable.
+- FR-708 Phrase highlighting MUST only affect visible text regions for performance (no full-document scan).
+- FR-709 Future enhancement: phrase colors will be diversified using SNOMED CT concepts linked to each phrase.

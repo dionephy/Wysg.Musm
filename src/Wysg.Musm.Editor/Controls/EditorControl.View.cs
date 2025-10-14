@@ -123,6 +123,11 @@ namespace Wysg.Musm.Editor.Controls
             DependencyProperty.Register(nameof(SnippetProvider), typeof(ISnippetProvider), typeof(EditorControl),
                 new PropertyMetadata(null));
 
+        // Phrase snapshot for syntax highlighting
+        public static readonly DependencyProperty PhraseSnapshotProperty =
+            DependencyProperty.Register(nameof(PhraseSnapshot), typeof(System.Collections.Generic.IReadOnlyList<string>), typeof(EditorControl),
+                new PropertyMetadata(null, OnPhraseSnapshotChanged));
+
         // CLR wrappers
         public string DocumentText { get => (string)GetValue(DocumentTextProperty); set => SetValue(DocumentTextProperty, value); }
         public bool AiEnabled { get => (bool)GetValue(AiEnabledProperty); set => SetValue(AiEnabledProperty, value); }
@@ -135,6 +140,7 @@ namespace Wysg.Musm.Editor.Controls
         public string StudyHeader { get => (string)GetValue(StudyHeaderProperty); set => SetValue(StudyHeaderProperty, value); }
         public string StudyInfo { get => (string)GetValue(StudyInfoProperty); set => SetValue(StudyInfoProperty, value); }
         public ISnippetProvider? SnippetProvider { get => (ISnippetProvider?)GetValue(SnippetProviderProperty); set => SetValue(SnippetProviderProperty, value); }
+        public System.Collections.Generic.IReadOnlyList<string>? PhraseSnapshot { get => (System.Collections.Generic.IReadOnlyList<string>?)GetValue(PhraseSnapshotProperty); set => SetValue(PhraseSnapshotProperty, value); }
 
         // ===== Timers / state =====
         private readonly DispatcherTimer _debounce;          // short debounce (typing/caret)
@@ -146,6 +152,7 @@ namespace Wysg.Musm.Editor.Controls
         // ===== Popup & Renderer handles (implemented elsewhere) =====
         private MusmCompletionWindow? _completionWindow;     // used by Popup partial
         private MultiLineGhostRenderer? _ghostRenderer;      // ghost renderer
+        private PhraseColorizer? _phraseColorizer; // phrase foreground colorizer
 
         // ===== Idle event for VM =====
         public event EventHandler? IdleElapsed;
@@ -216,6 +223,10 @@ namespace Wysg.Musm.Editor.Controls
                 getFontSize: () => Editor.FontSize,
                 showAnchors: false);
             _ghostRenderer.Attach();
+
+            // Initialize phrase foreground colorizer (line transformer)
+            _phraseColorizer = new PhraseColorizer(() => PhraseSnapshot ?? System.Array.Empty<string>());
+            Editor.TextArea.TextView.LineTransformers.Add(_phraseColorizer);
 
             Editor.TextArea.PreviewMouseLeftButtonDown += (s,e) => {
                 _mouseDownSelecting = true; _suppressHighlight = false; // allow native selection highlight start
@@ -354,6 +365,23 @@ namespace Wysg.Musm.Editor.Controls
 
             _ghostRenderer?.Detach();
             _ghostRenderer = null;
+
+            if (_phraseColorizer != null)
+            {
+                try { Editor.TextArea.TextView.LineTransformers.Remove(_phraseColorizer); } catch { }
+                _phraseColorizer = null;
+            }
+        }
+
+        private static void OnPhraseSnapshotChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var self = (EditorControl)d;
+            // Invalidate text layer to force re-colorization with new snapshot
+            var tv = self.Editor?.TextArea?.TextView;
+            if (tv != null)
+            {
+                try { tv.InvalidateLayer(KnownLayer.Text); } catch { tv.InvalidateVisual(); }
+            }
         }
 
         // Fires only after 2s of no input (popup will be closed here)

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Input;
 using ICSharpCode.AvalonEdit.CodeCompletion;
 using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Editing;
@@ -92,5 +93,14 @@ public sealed class EditorCompletionData : ICompletionData
     public override string ToString() => _content?.ToString() ?? base.ToString();
 
     public void Complete(TextArea textArea, ISegment completionSegment, EventArgs insertionRequestEventArgs)
-        => _onComplete(textArea, completionSegment);
+    {
+        _onComplete(textArea, completionSegment);
+        // If the insertion was triggered by Space key, append a trailing space for smoother typing
+        if (insertionRequestEventArgs is KeyEventArgs ke && ke.Key == Key.Space)
+        {
+            var doc = textArea.Document;
+            int off = textArea.Caret.Offset;
+            try { doc.Insert(off, " "); textArea.Caret.Offset = off + 1; } catch { }
+        }
+    }
 }

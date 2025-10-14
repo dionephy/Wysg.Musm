@@ -437,11 +437,11 @@
                 </Grid>
 
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding HeaderText, Mode=OneWay}" IsReadOnly="True"/>
+                <editor:EditorControl x:Name="EditorHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding HeaderText, Mode=OneWay}" IsReadOnly="True" PhraseSnapshot="{Binding CurrentPhraseSnapshot}"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorFindings" Grid.Row="4" DocumentText="{Binding FindingsText, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorFindings" Grid.Row="4" DocumentText="{Binding FindingsText, Mode=TwoWay}" PhraseSnapshot="{Binding CurrentPhraseSnapshot}"/>
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorConclusion" Grid.Row="6" DocumentText="{Binding ConclusionText, Mode=TwoWay}"/>
+                <editor:EditorControl x:Name="EditorConclusion" Grid.Row="6" DocumentText="{Binding ConclusionText, Mode=TwoWay}" PhraseSnapshot="{Binding CurrentPhraseSnapshot}"/>
             </Grid>
 
             <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
@@ -515,7 +515,7 @@
                 
 
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70">
+                <editor:EditorControl x:Name="EditorPreviousHeader" Grid.Row="2" MinHeight="70" PhraseSnapshot="{Binding CurrentPhraseSnapshot}">
                     <editor:EditorControl.Style>
                         <Style TargetType="editor:EditorControl" BasedOn="{StaticResource {x:Type editor:EditorControl}}">
                             <Setter Property="IsReadOnly" Value="True"/>
@@ -533,7 +533,7 @@
                     </editor:EditorControl.Style>
                 </editor:EditorControl>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="4" Cursor="">
+                <editor:EditorControl x:Name="EditorPreviousFindings" Grid.Row="4" Cursor="" PhraseSnapshot="{Binding CurrentPhraseSnapshot}">
                     <editor:EditorControl.Style>
                         <Style TargetType="editor:EditorControl" BasedOn="{StaticResource {x:Type editor:EditorControl}}">
                             <Setter Property="IsReadOnly" Value="True"/>
@@ -548,7 +548,7 @@
                     </editor:EditorControl.Style>
                 </editor:EditorControl>
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="6">
+                <editor:EditorControl x:Name="EditorPreviousConclusion" Grid.Row="6" PhraseSnapshot="{Binding CurrentPhraseSnapshot}">
                     <editor:EditorControl.Style>
                         <Style TargetType="editor:EditorControl" BasedOn="{StaticResource {x:Type editor:EditorControl}}">
                             <Setter Property="IsReadOnly" Value="True"/>

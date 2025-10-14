@@ -29,6 +29,8 @@
   <SolidColorBrush x:Key="Dark.Brush.Selection" Color="{StaticResource Dark.Color.Selection}"/>
   <SolidColorBrush x:Key="Dark.Brush.Foreground" Color="{StaticResource Dark.Color.Foreground}"/>
   <SolidColorBrush x:Key="Dark.Brush.ForegroundDim" Color="{StaticResource Dark.Color.ForegroundDim}"/>
+  <!-- Optional: Phrase missing color (used by PhraseColorizer if present) -->
+  <SolidColorBrush x:Key="Dark.Brush.PhraseMissing" Color="#FF0000"/>
 
   <!-- New: Scrollbar Brushes -->
   <SolidColorBrush x:Key="Dark.Brush.Scrollbar.Track" Color="{StaticResource Dark.Color.Scrollbar.Track}"/>
