@@ -53,6 +53,12 @@ namespace Wysg.Musm.Radium.ViewModels
             var current = _pacsProfileManager.GetCurrentProfile();
             _selectedPacsProfileName = current?.Name;
             OnPropertyChanged(nameof(SelectedPacsProfileName));
+            
+            // Update PACS display
+            if (current != null)
+            {
+                CurrentPacsDisplay = $"PACS: {current.Name}";
+            }
         }
 
         private void OnPacsProfileChanged(string? pacsName)
@@ -76,7 +82,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 _localSettings.AutomationShortcutOpenAfterOpen = profile.AutomationShortcutOpenAfterOpen ?? string.Empty;
             }
 
-            try { StatusText = $"Switched to PACS: {pacsName}"; } catch { }
+            // Update PACS display in status bar
+            try 
+            { 
+                StatusText = $"Switched to PACS: {pacsName}";
+                CurrentPacsDisplay = $"PACS: {pacsName}";
+            } 
+            catch { }
         }
 
         public PacsProfileManager? GetPacsProfileManager() => _pacsProfileManager;

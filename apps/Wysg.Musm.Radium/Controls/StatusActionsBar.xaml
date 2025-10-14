@@ -32,15 +32,14 @@
                               Checked="OnReverseReports_Toggled" Unchecked="OnReverseReports_Toggled"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Grid.Column="1" HorizontalAlignment="Right">
-                <!-- PACS Selector -->
-                <TextBlock Text="PACS:" VerticalAlignment="Center" Foreground="#C8C8C8" Margin="0,0,6,0"/>
-                <ComboBox x:Name="cmbPacsSelector" Width="150" Margin="0,0,12,0"
-                          ItemsSource="{Binding PacsProfiles}"
-                          DisplayMemberPath="Name"
-                          SelectedValue="{Binding SelectedPacsProfileName, Mode=TwoWay}"
-                          SelectedValuePath="Name"/>
+                <!-- Current User and PACS Display -->
+                <TextBlock Text="{Binding CurrentUserDisplay, FallbackValue='User: user@example.com'}" 
+                           VerticalAlignment="Center" Foreground="#C8C8C8" Margin="0,0,12,0"
+                           FontSize="11"/>
+                <TextBlock Text="{Binding CurrentPacsDisplay, FallbackValue='PACS: default_pacs'}" 
+                           VerticalAlignment="Center" Foreground="#C8C8C8" Margin="0,0,12,0"
+                           FontSize="11"/>
                 <Button Content="Log out" Click="OnLogout_Click" Margin="0,0,6,0"/>
-                <TextBlock VerticalAlignment="Center" Foreground="#C8C8C8"/>
             </StackPanel>
         </Grid>
     </ScrollViewer>

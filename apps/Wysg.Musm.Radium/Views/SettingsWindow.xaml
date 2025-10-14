@@ -106,8 +106,8 @@
         </Grid.Resources>
 
         <TabControl Background="#1E1E1E" x:Name="tabsRoot">
-            <!-- General (renamed from Database) -->
-            <TabItem Header="General" x:Name="tabGeneral">
+            <!-- Database -->
+            <TabItem Header="Database" x:Name="tabDatabase">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="8">
                         <!-- Database Pane -->
@@ -139,8 +139,14 @@
                                 </StackPanel>
                             </Grid>
                         </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
 
-                        <!-- PACS Pane -->
+            <!-- PACS -->
+            <TabItem Header="PACS" x:Name="tabPacs">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8">
                         <GroupBox Header="PACS" Padding="8">
                             <GroupBox.HeaderTemplate>
                                 <DataTemplate>
@@ -168,22 +174,11 @@
                                         <DataGridTextColumn Header="Process" Binding="{Binding ProcessName}" Width="120"/>
                                         <DataGridTextColumn Header="Created" Binding="{Binding CreatedAt, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
                                         <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedAt, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
-                                        <DataGridTemplateColumn Header="Actions" Width="200">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <Button Content="Rename" Width="70" Margin="2" Command="{Binding DataContext.RenamePacsProfileCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}"/>
-                                                        <Button Content="Remove" Width="70" Margin="2" Command="{Binding DataContext.RemovePacsProfileCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}"/>
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
                                     </DataGrid.Columns>
                                 </DataGrid>
 
                                 <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
                                     <Button Content="Add PACS" Width="100" Command="{Binding AddPacsProfileCommand}"/>
-                                    <Button Content="Close" Width="90" IsCancel="True" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Grid>
                         </GroupBox>
@@ -228,19 +223,13 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     
-                    <!-- PACS Selection -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="PACS Profile:" VerticalAlignment="Center" Foreground="{StaticResource BrushTextPrimary}" Margin="0,0,8,0"/>
-                        <ComboBox x:Name="cmbPacsAutomation" Width="200" 
-                                  ItemsSource="{Binding PacsProfiles}" 
-                                  DisplayMemberPath="Name"
-                                  SelectedValue="{Binding SelectedPacsForAutomation, Mode=TwoWay}"
-                                  SelectedValuePath="Name"/>
-                        <TextBlock Text="(Changes apply only to selected PACS)" VerticalAlignment="Center" Foreground="{StaticResource BrushTextSecondary}" Margin="12,0,0,0"/>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Stretch">
+                        <TextBlock Text="Drag modules between panes to configure execution order (duplicates allowed)." FontWeight="Bold" Foreground="{StaticResource BrushTextPrimary}"/>
+                        <TextBlock Text="  |  " Margin="8,0" Foreground="{StaticResource BrushTextSecondary}"/>
+                        <TextBlock Text="PACS: " Foreground="{StaticResource BrushTextSecondary}"/>
+                        <TextBlock Foreground="{StaticResource BrushTextPrimary}" Text="{Binding CurrentPacsKey, RelativeSource={RelativeSource AncestorType=Window}}"/>
                     </StackPanel>
-
-                    <TextBlock Grid.Row="1" Text="Drag modules between panes to configure execution order (duplicates allowed)." FontWeight="Bold" Foreground="{StaticResource BrushTextPrimary}"/>
-                    <Grid Grid.Row="2" Margin="0,8,0,0">
+                    <Grid Grid.Row="1" Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
@@ -289,7 +278,7 @@
                             </DockPanel>
                         </Border>
                     </Grid>
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
                         <Button Content="Save Automation" Command="{Binding SaveAutomationCommand}" Width="140" Margin="0,0,8,0"/>
                         <Button Content="Spy" Width="90" Margin="0,0,8,0" Click="OnOpenSpy"/>
                         <Button Content="Close" Width="90" IsCancel="True"/>

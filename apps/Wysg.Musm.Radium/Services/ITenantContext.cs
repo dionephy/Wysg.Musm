@@ -22,5 +22,7 @@ namespace Wysg.Musm.Radium.Services
         string? ReportifySettingsJson { get; set; }
         /// <summary>Event fired after the tenant/account id actually changes value. Args=(oldId,newId).</summary>
         event System.Action<long,long>? AccountIdChanged;
+        /// <summary>Event fired after the current PACS key changes. Args=(oldKey,newKey).</summary>
+        event System.Action<string,string>? PacsKeyChanged;
     }
 }

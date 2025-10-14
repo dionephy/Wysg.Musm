@@ -60,6 +60,11 @@ namespace Wysg.Musm.Radium.ViewModels
                 System.IO.Directory.CreateDirectory(baseDir);
                 var spyPath = System.IO.Path.Combine(baseDir, "ui-procedures.json");
                 ProcedureExecutor.SetProcPathOverride(() => spyPath);
+                var bookmarksPath = System.IO.Path.Combine(baseDir, "bookmarks.json");
+                UiBookmarks.GetStorePathOverride = () => bookmarksPath;
+
+                // Immediately switch Automation tab to the selected PACS
+                SelectedPacsForAutomation = pacsKey;
             }
         }
 

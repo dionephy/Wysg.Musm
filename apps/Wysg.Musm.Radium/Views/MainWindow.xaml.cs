@@ -11,6 +11,7 @@ using Wysg.Musm.Radium.Views;
 using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Wysg.Musm.Radium.Views
 {
@@ -19,6 +20,11 @@ namespace Wysg.Musm.Radium.Views
         private bool _reportsReversed = false;
         private bool _alignRight = false;
         private PacsService? _pacs;
+
+        // Global hotkey (system-wide) for Open Study Shortcut
+        private const int HOTKEY_ID_OPEN_STUDY = 0xB001;
+        private uint _openStudyMods;
+        private uint _openStudyVk;
 
         public MainWindow()
         {
@@ -45,8 +51,8 @@ namespace Wysg.Musm.Radium.Views
 
             if (DataContext is not MainViewModel vm) return;
             
-            // Initialize PACS profiles
-            vm.InitializePacsProfilesForMain();
+            // PACS profiles are now managed via Settings -> PACS and ITenantContext.CurrentPacsKey.
+            // Do not initialize legacy local profiles here.
             
             try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Header"); InitEditor(vm, EditorHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Header: " + ex); throw; }
             try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Findings"); InitEditor(vm, EditorFindings); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Findings: " + ex); throw; }
@@ -206,6 +212,12 @@ namespace Wysg.Musm.Radium.Views
             if (DataContext is MainViewModel vm) vm.StatusText = "Bookmark resolve not available.";
         }
 
+        private HwndSource? _hotkeyHwndSource;
+
+        // NOTE (Fix): Previously we attempted to register the global hotkey in OnInitialized.
+        // At that time the window HWND often isn't created yet, so RegisterHotKey silently fails.
+        // We now keep OnInitialized only for local key handlers and move registration to OnSourceInitialized
+        // (after the HwndSource exists) to ensure the OS-level hotkey is registered successfully.
         protected override void OnInitialized(EventArgs e)
         {
             base.OnInitialized(e);
@@ -221,6 +233,16 @@ namespace Wysg.Musm.Radium.Views
                     win.Show();
                 }
             };
+        }
+
+        // Fix: Register the OS-level hotkey after the window handle is created.
+        // This guarantees that RegisterHotKey receives a valid HWND (via HwndSource)
+        // and the global shortcut (e.g., Ctrl+Alt+O) can be received by this window.
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            // Register global hotkey for Open Study (if configured) after HWND exists
+            TryRegisterOpenStudyHotkey();
         }
 
         private void OnOpenSpy(object sender, RoutedEventArgs e)
@@ -363,6 +385,122 @@ namespace Wysg.Musm.Radium.Views
         private static int TryParse(string s, int fallback)
         {
             return int.TryParse(s?.Trim(), out int v) ? v : fallback;
+        }
+
+        // ------------- Global Hotkey Registration (Open Study) -------------
+        [DllImport("user32.dll")]
+        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+        [DllImport("user32.dll")]
+        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+        // Modifiers (user32)
+        private const uint MOD_ALT = 0x0001;
+        private const uint MOD_CONTROL = 0x0002;
+        private const uint MOD_SHIFT = 0x0004;
+        private const uint MOD_WIN = 0x0008;
+        private const int WM_HOTKEY = 0x0312;
+
+        private void TryRegisterOpenStudyHotkey()
+        {
+            try
+            {
+                var app = (App)Application.Current;
+                var local = app.Services.GetService<IRadiumLocalSettings>();
+                var text = local?.GlobalHotkeyOpenStudy;
+                if (string.IsNullOrWhiteSpace(text)) return;
+
+                // Parse persisted hotkey text (e.g., "Ctrl+Alt+O") into user32 modifiers + virtual key.
+                // Previous issue: weak parsing and too-early registration led to no WM_HOTKEY events.
+                if (!TryParseHotkey(text!, out _openStudyMods, out _openStudyVk)) return;
+
+                // Acquire current HwndSource for this window; it exists only after OnSourceInitialized.
+                _hotkeyHwndSource = (HwndSource?)PresentationSource.FromVisual(this);
+                if (_hotkeyHwndSource == null) return;
+                _hotkeyHwndSource.AddHook(WndProc);
+                // Defensive: ensure previous registration is cleared to avoid duplicate-id registration.
+                try { UnregisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_OPEN_STUDY); } catch { }
+                var ok = RegisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_OPEN_STUDY, _openStudyMods, _openStudyVk);
+                System.Diagnostics.Debug.WriteLine(ok
+                    ? $"[Hotkey] Registered OpenStudy hotkey '{text}' mods=0x{_openStudyMods:X} vk=0x{_openStudyVk:X}"
+                    : $"[Hotkey] Failed to register OpenStudy hotkey '{text}' (may be in use) mods=0x{_openStudyMods:X} vk=0x{_openStudyVk:X}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[Hotkey] Register exception: " + ex.Message);
+            }
+        }
+
+        // Parse hotkey text (e.g., "Ctrl+Alt+O") to user32 fsModifiers + vk.
+        // Fix: Use WPF KeyConverter first, then explicit A?Z/0?9 fallback.
+        // The previous fallback used Windows Forms constants incorrectly; this could yield vk=0 and prevent registration.
+        private bool TryParseHotkey(string text, out uint mods, out uint vk)
+        {
+            mods = 0; vk = 0;
+            try
+            {
+                var parts = text.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (parts.Length == 0) return false;
+                string keyPart = parts[^1];
+                for (int i = 0; i < parts.Length - 1; i++)
+                {
+                    var p = parts[i];
+                    if (p.Equals("Ctrl", StringComparison.OrdinalIgnoreCase) || p.Equals("Control", StringComparison.OrdinalIgnoreCase)) mods |= MOD_CONTROL;
+                    else if (p.Equals("Alt", StringComparison.OrdinalIgnoreCase)) mods |= MOD_ALT;
+                    else if (p.Equals("Shift", StringComparison.OrdinalIgnoreCase)) mods |= MOD_SHIFT;
+                    else if (p.Equals("Win", StringComparison.OrdinalIgnoreCase) || p.Equals("Windows", StringComparison.OrdinalIgnoreCase)) mods |= MOD_WIN;
+                }
+                // Convert key string to virtual key code
+                var kc = new System.Windows.Input.KeyConverter();
+                var keyObj = kc.ConvertFromString(keyPart);
+                if (keyObj is Key key && key != Key.None)
+                {
+                    vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+                    return vk != 0;
+                }
+                // Fallback: try letters/digits explicitly
+                if (keyPart.Length == 1)
+                {
+                    char c = char.ToUpperInvariant(keyPart[0]);
+                    if (c >= 'A' && c <= 'Z') { vk = (uint)c; return true; }
+                    if (c >= '0' && c <= '9') { vk = (uint)c; return true; }
+                }
+                return false;
+            }
+            catch { return false; }
+        }
+
+        // Global message hook to receive WM_HOTKEY from user32.
+        // When our registered id fires, route to ViewModel.RunOpenStudyShortcut() which executes the
+        // correct PACS-scoped shortcut sequence (new/add/after open).
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_HOTKEY)
+            {
+                int id = wParam.ToInt32();
+                if (id == HOTKEY_ID_OPEN_STUDY)
+                {
+                    if (DataContext is MainViewModel vm)
+                        vm.RunOpenStudyShortcut();
+                    handled = true;
+                }
+            }
+            return IntPtr.Zero;
+        }
+
+        // Properly unregister and unhook on close to avoid leaking a system-wide hotkey registration.
+        protected override void OnClosed(EventArgs e)
+        {
+            try
+            {
+                if (_hotkeyHwndSource != null)
+                {
+                    UnregisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_OPEN_STUDY);
+                    _hotkeyHwndSource.RemoveHook(WndProc);
+                }
+            }
+            catch { }
+            base.OnClosed(e);
         }
     }
 }

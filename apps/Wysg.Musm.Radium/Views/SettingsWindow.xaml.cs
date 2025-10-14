@@ -40,11 +40,24 @@ namespace Wysg.Musm.Radium.Views
         private Border? _dragGhost; private string? _dragItem; private ListBox? _dragSource; private Border? _dropIndicator;
         private readonly bool _databaseOnly;
         private readonly ITenantContext? _tenantContext;
+        private string _currentPacsKey = "default_pacs";
 
         // Expose AccountId for binding
         public long AccountId => _tenantContext?.AccountId ?? 0;
 
         public event PropertyChangedEventHandler? PropertyChanged;
+        public string CurrentPacsKey
+        {
+            get => _currentPacsKey;
+            private set
+            {
+                if (!string.Equals(_currentPacsKey, value, StringComparison.Ordinal))
+                {
+                    _currentPacsKey = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentPacsKey)));
+                }
+            }
+        }
 
         public SettingsWindow(bool databaseOnly = false)
         {
@@ -61,11 +74,13 @@ namespace Wysg.Musm.Radium.Views
                 
                 // Point ProcedureExecutor to current PACS-specific spy path
                 TryApplyCurrentPacsSpyPath();
+                try { CurrentPacsKey = string.IsNullOrWhiteSpace(_tenantContext?.CurrentPacsKey) ? "default_pacs" : _tenantContext!.CurrentPacsKey; } catch { }
 
                 // Subscribe to account changes to update visibility
                 if (_tenantContext != null)
                 {
                     _tenantContext.AccountIdChanged += OnAccountIdChanged;
+                    _tenantContext.PacsKeyChanged += OnPacsKeyChanged;
                 }
             }
             else DataContext = new SettingsViewModel();
@@ -89,11 +104,13 @@ namespace Wysg.Musm.Radium.Views
                 _ = vm.LoadPacsProfilesAsync();
                 
                 TryApplyCurrentPacsSpyPath();
+                try { CurrentPacsKey = string.IsNullOrWhiteSpace(_tenantContext?.CurrentPacsKey) ? "default_pacs" : _tenantContext!.CurrentPacsKey; } catch { }
 
                 // Subscribe to account changes
                 if (_tenantContext != null)
                 {
                     _tenantContext.AccountIdChanged += OnAccountIdChanged;
+                    _tenantContext.PacsKeyChanged += OnPacsKeyChanged;
                 }
             }
         }
@@ -127,6 +144,21 @@ namespace Wysg.Musm.Radium.Views
             // Notify that AccountId property has changed
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AccountId)));
             Debug.WriteLine($"[SettingsWindow] AccountId changed from {oldId} to {newId}");
+        }
+
+        private void OnPacsKeyChanged(string oldKey, string newKey)
+        {
+            Debug.WriteLine($"[SettingsWindow] PACS key changed from '{oldKey}' to '{newKey}'");
+            CurrentPacsKey = string.IsNullOrWhiteSpace(newKey) ? "default_pacs" : newKey;
+            TryApplyCurrentPacsSpyPath();
+            try
+            {
+                if (DataContext is SettingsViewModel vm)
+                {
+                    vm.SelectedPacsForAutomation = CurrentPacsKey;
+                }
+            }
+            catch { }
         }
 
         private void ApplyDatabaseOnlyMode()

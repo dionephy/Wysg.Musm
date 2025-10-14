@@ -110,6 +110,13 @@ namespace Wysg.Musm.Radium.Services
             return true;
         }
 
+        // New: InvokeTest wrapper (runs custom procedure 'InvokeTest')
+        public async Task<bool> InvokeTestAsync()
+        {
+            await ExecCustom("InvokeTest");
+            return true;
+        }
+
         public async Task<bool> IsViewerWindowAsync(IntPtr hwnd)
         {
             using var mfc = MfcUi.Attach(_proc);

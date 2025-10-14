@@ -154,6 +154,13 @@ namespace Wysg.Musm.Radium.Services
                     new ProcOpRow { Op = "MouseClick", Arg1 = new ProcArg { Type = nameof(ArgKind.Number), Value = "0" }, Arg2 = new ProcArg { Type = nameof(ArgKind.Number), Value = "0" }, Arg1Enabled = true, Arg2Enabled = true, Arg3Enabled = false }
                 };
             }
+            if (string.Equals(methodTag, "InvokeTest", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "Invoke", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.TestInvoke.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
+                };
+            }
             return new List<ProcOpRow>();
         }
 

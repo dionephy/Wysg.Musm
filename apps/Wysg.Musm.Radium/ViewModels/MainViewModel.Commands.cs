@@ -116,7 +116,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private void OnRunAddStudyAutomation()
         {
-            var seqRaw = _localSettings?.AutomationAddStudySequence ?? string.Empty;
+            var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.AddStudySequence);
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
             foreach (var m in modules)
@@ -127,6 +127,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 else if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunOpenStudyAsync(); }
                 else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick1Async(); }
                 else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick2Async(); }
+                else if (string.Equals(m, "TestInvoke", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.InvokeTestAsync(); }
+                else if (string.Equals(m, "ShowTestMessage", StringComparison.OrdinalIgnoreCase)) { System.Windows.MessageBox.Show("Test", "Test", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information); }
             }
         }
 
@@ -190,7 +192,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private void OnNewStudy()
         {
-            var seqRaw = _localSettings?.AutomationNewStudySequence ?? string.Empty;
+            var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.NewStudySequence);
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
             foreach (var m in modules)
@@ -203,6 +205,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 else if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunOpenStudyAsync(); }
                 else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick1Async(); }
                 else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick2Async(); }
+                else if (string.Equals(m, "TestInvoke", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.InvokeTestAsync(); }
+                else if (string.Equals(m, "ShowTestMessage", StringComparison.OrdinalIgnoreCase)) { System.Windows.MessageBox.Show("Test", "Test", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information); }
             }
         }
 
@@ -225,18 +229,9 @@ namespace Wysg.Musm.Radium.ViewModels
         public void RunOpenStudyShortcut()
         {
             string seqRaw;
-            if (!PatientLocked)
-            {
-                seqRaw = _localSettings?.AutomationShortcutOpenNew ?? string.Empty;
-            }
-            else if (PatientLocked && !StudyOpened)
-            {
-                seqRaw = _localSettings?.AutomationShortcutOpenAdd ?? string.Empty;
-            }
-            else
-            {
-                seqRaw = _localSettings?.AutomationShortcutOpenAfterOpen ?? string.Empty;
-            }
+            if (!PatientLocked) seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenNew);
+            else if (!StudyOpened) seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenAdd);
+            else seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenAfterOpen);
 
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
@@ -248,6 +243,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { AcquireStudyRemarkAsync(); }
                 else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { AcquirePatientRemarkAsync(); }
                 else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunAddPreviousStudyModuleAsync(); }
+                else if (string.Equals(m, "TestInvoke", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.InvokeTestAsync(); }
+                else if (string.Equals(m, "ShowTestMessage", StringComparison.OrdinalIgnoreCase)) { System.Windows.MessageBox.Show("Test", "Test", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information); }
             }
         }
 
@@ -347,6 +344,46 @@ namespace Wysg.Musm.Radium.ViewModels
             public bool CanExecute(object? parameter) => _can?.Invoke(parameter) ?? true;
             public void Execute(object? parameter) => _exec(parameter);
             public event EventHandler? CanExecuteChanged; public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        // -------- PACS-scoped automation loader (replaces obsolete IRadiumLocalSettings sequences) --------
+        // Fix summary:
+        // Previously, automation sequences (New/Add/Shortcuts) were read from legacy IRadiumLocalSettings keys.
+        // That caused stale or unintended modules (e.g., LockStudy) to run even when not present in the UI pane.
+        // We now read from the PACS-scoped automation.json in %AppData%/Wysg.Musm/Radium/Pacs/{pacs_key}/automation.json,
+        // ensuring the active PACS profile's saved sequences are the only ones executed.
+        private string GetAutomationSequenceForCurrentPacs(Func<AutomationSettings, string?> selector)
+        {
+            try
+            {
+                var pacsKey = string.IsNullOrWhiteSpace(_tenant.CurrentPacsKey) ? "default_pacs" : _tenant.CurrentPacsKey;
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var path = System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey), "automation.json");
+                if (!System.IO.File.Exists(path)) return string.Empty;
+                var json = System.IO.File.ReadAllText(path);
+                var settings = System.Text.Json.JsonSerializer.Deserialize<AutomationSettings>(json);
+                var seq = settings != null ? selector(settings) : null;
+                return seq ?? string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static string SanitizeFileName(string name)
+        {
+            var invalid = System.IO.Path.GetInvalidFileNameChars();
+            return string.Join("_", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
+        }
+
+        private sealed class AutomationSettings
+        {
+            public string? NewStudySequence { get; set; }
+            public string? AddStudySequence { get; set; }
+            public string? ShortcutOpenNew { get; set; }
+            public string? ShortcutOpenAdd { get; set; }
+            public string? ShortcutOpenAfterOpen { get; set; }
         }
     }
 }

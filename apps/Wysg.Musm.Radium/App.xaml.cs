@@ -245,7 +245,18 @@ namespace Wysg.Musm.Radium
             // ViewModels (transient) -----------------------------------------------------------
             services.AddTransient<SplashLoginViewModel>();
             services.AddTransient<SignUpViewModel>();
-            services.AddTransient<MainViewModel>();
+            services.AddTransient<MainViewModel>(sp => new MainViewModel(
+                sp.GetRequiredService<IPhraseService>(),
+                sp.GetRequiredService<ITenantContext>(),
+                sp.GetRequiredService<IPhraseCache>(),
+                sp.GetRequiredService<IHotkeyService>(),
+                sp.GetRequiredService<ISnippetService>(),
+                sp.GetService<IRadStudyRepository>(),
+                sp.GetService<Wysg.Musm.Radium.Services.Procedures.INewStudyProcedure>(),
+                sp.GetService<IRadiumLocalSettings>(),
+                sp.GetService<Wysg.Musm.Radium.Services.Procedures.ILockStudyProcedure>(),
+                sp.GetService<IAuthStorage>()
+            ));
             services.AddTransient<StudynameLoincViewModel>();
             services.AddTransient<StudynameTechniqueViewModel>();
             services.AddTransient<StudyTechniqueViewModel>();
@@ -288,6 +299,8 @@ namespace Wysg.Musm.Radium
                     Directory.CreateDirectory(baseDir);
                     string spyPath = Path.Combine(baseDir, "ui-procedures.json");
                     ProcedureExecutor.SetProcPathOverride(() => spyPath);
+                    string bookmarksPath = Path.Combine(baseDir, "bookmarks.json");
+                    UiBookmarks.GetStorePathOverride = () => bookmarksPath;
 
                     BackgroundTask.Run("PhrasePreload", async () =>
                     {

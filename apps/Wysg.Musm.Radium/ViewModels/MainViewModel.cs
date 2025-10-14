@@ -55,6 +55,15 @@ namespace Wysg.Musm.Radium.ViewModels
         private void SetStatus(string message, bool isError = false) { StatusText = message; StatusIsError = isError; }
 
         // ------------------------------------------------------------------
+        // Current user and PACS display for status bar
+        // ------------------------------------------------------------------
+        private string _currentUserDisplay = "User: (not logged in)";
+        public string CurrentUserDisplay { get => _currentUserDisplay; set => SetProperty(ref _currentUserDisplay, value); }
+        
+        private string _currentPacsDisplay = "PACS: (not set)";
+        public string CurrentPacsDisplay { get => _currentPacsDisplay; set => SetProperty(ref _currentPacsDisplay, value); }
+
+        // ------------------------------------------------------------------
         // Constructor wires commands (definitions in Commands partial) & loads caches in Editor partial.
         // ------------------------------------------------------------------
         public MainViewModel(
@@ -66,7 +75,8 @@ namespace Wysg.Musm.Radium.ViewModels
             IRadStudyRepository? studyRepo = null,
             INewStudyProcedure? newStudyProc = null,
             IRadiumLocalSettings? localSettings = null,
-            ILockStudyProcedure? lockStudyProc = null)
+            ILockStudyProcedure? lockStudyProc = null,
+            IAuthStorage? authStorage = null)
         {
             Debug.WriteLine("[MainViewModel] Constructor START");
             try
@@ -82,6 +92,29 @@ namespace Wysg.Musm.Radium.ViewModels
                 InitializeCommands(); // implemented in Commands partial
                 // Initialize split commands for previous report panel
                 try { InitializePreviousSplitCommands(); } catch { }
+                
+                // Set current user display from auth storage
+                try
+                {
+                    if (authStorage != null && !string.IsNullOrWhiteSpace(authStorage.Email))
+                    {
+                        CurrentUserDisplay = $"User: {authStorage.Email}";
+                    }
+                }
+                catch { }
+
+                // Initialize current PACS display from tenant context
+                try
+                {
+                    var pacsKey = string.IsNullOrWhiteSpace(_tenant.CurrentPacsKey) ? "default_pacs" : _tenant.CurrentPacsKey;
+                    CurrentPacsDisplay = $"PACS: {pacsKey}";
+                    _tenant.PacsKeyChanged += (oldKey, newKey) =>
+                    {
+                        var key = string.IsNullOrWhiteSpace(newKey) ? "default_pacs" : newKey;
+                        CurrentPacsDisplay = $"PACS: {key}";
+                    };
+                }
+                catch { }
                 
                 Debug.WriteLine("[MainViewModel] Setting initialization flag...");
                 // Mark as initialized after all construction is complete

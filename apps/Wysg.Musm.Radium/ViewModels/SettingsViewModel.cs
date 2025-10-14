@@ -37,7 +37,7 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         [ObservableProperty]
-        private ObservableCollection<string> availableModules = new(new[] { "NewStudy", "LockStudy", "GetStudyRemark", "GetPatientRemark", "AddPreviousStudy", "OpenStudy", "MouseClick1", "MouseClick2" });
+        private ObservableCollection<string> availableModules = new(new[] { "NewStudy", "LockStudy", "GetStudyRemark", "GetPatientRemark", "AddPreviousStudy", "OpenStudy", "MouseClick1", "MouseClick2", "TestInvoke", "ShowTestMessage" });
         [ObservableProperty]
         private ObservableCollection<string> newStudyModules = new();
         [ObservableProperty]

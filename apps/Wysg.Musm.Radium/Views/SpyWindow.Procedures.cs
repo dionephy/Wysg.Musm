@@ -21,6 +21,11 @@ namespace Wysg.Musm.Radium.Views
 {
     public partial class SpyWindow
     {
+        private static string SanitizeFileName(string name)
+        {
+            var invalid = System.IO.Path.GetInvalidFileNameChars();
+            return string.Join("_", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
+        }
         static SpyWindow()
         {
             TryRegisterCodePages();
@@ -751,9 +756,43 @@ namespace Wysg.Musm.Radium.Views
 
         private static string GetProcPath()
         {
-            var dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Wysg.Musm", "Radium");
-            System.IO.Directory.CreateDirectory(dir);
-            return System.IO.Path.Combine(dir, "ui-procedures.json");
+            try
+            {
+                // Prefer per-PACS directory based on UiBookmarks store override (same folder)
+                if (UiBookmarks.GetStorePathOverride != null)
+                {
+                    var bookmarkPath = UiBookmarks.GetStorePathOverride.Invoke();
+                    if (!string.IsNullOrWhiteSpace(bookmarkPath))
+                    {
+                        var baseDir = System.IO.Path.GetDirectoryName(bookmarkPath);
+                        if (!string.IsNullOrEmpty(baseDir))
+                        {
+                            System.IO.Directory.CreateDirectory(baseDir);
+                            return System.IO.Path.Combine(baseDir, "ui-procedures.json");
+                        }
+                    }
+                }
+
+                // Next, attempt to resolve using current PACS key from tenant context
+                if (System.Windows.Application.Current is Wysg.Musm.Radium.App app)
+                {
+                    try
+                    {
+                        var tenant = (Wysg.Musm.Radium.Services.ITenantContext?)app.Services.GetService(typeof(Wysg.Musm.Radium.Services.ITenantContext));
+                        var pacsKey = string.IsNullOrWhiteSpace(tenant?.CurrentPacsKey) ? "default_pacs" : tenant!.CurrentPacsKey;
+                        var dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey));
+                        System.IO.Directory.CreateDirectory(dir);
+                        return System.IO.Path.Combine(dir, "ui-procedures.json");
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            // Legacy fallback (non-PACS-scoped)
+            var legacyDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Wysg.Musm", "Radium");
+            System.IO.Directory.CreateDirectory(legacyDir);
+            return System.IO.Path.Combine(legacyDir, "ui-procedures.json");
         }
         private static ProcStore LoadProcStore()
         {

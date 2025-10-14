@@ -218,14 +218,9 @@
 
         <!-- Top bar -->
         <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
-            <!-- PACS selector -->
             <TextBlock Text="PACS:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <ComboBox x:Name="cmbPacsSpy" Width="180" Margin="0,0,12,0"
-                      ItemsSource="{Binding PacsProfiles}"
-                      DisplayMemberPath="Name"
-                      SelectedValuePath="Name"
-                      SelectedValue="{Binding SelectedPacsName, Mode=TwoWay}"/>
-
+            <TextBlock x:Name="txtPacsKey" Width="160" VerticalAlignment="Center"/>
+            <TextBlock Text="  |  " VerticalAlignment="Center" Margin="6,0,6,0"/>
             <TextBlock Text="Process:" VerticalAlignment="Center" Margin="0,0,6,0"/>
             <TextBox x:Name="txtProcess" Width="160" Text=""/>
             <TextBlock Text="Delay(ms):" VerticalAlignment="Center" Margin="8,0,4,0"/>
@@ -445,6 +440,7 @@
                         <ComboBoxItem Tag="GetCurrentFindings2">Get current findings 2</ComboBoxItem>
                         <ComboBoxItem Tag="GetCurrentConclusion2">Get current conclusion 2</ComboBoxItem>
                         <ComboBoxItem Tag="InvokeOpenStudy">Invoke open study</ComboBoxItem>
+                        <ComboBoxItem Tag="InvokeTest">Invoke test</ComboBoxItem>
                         <!-- Custom mouse click procedures -->
                         <ComboBoxItem Tag="CustomMouseClick1">Custom mouse click 1</ComboBoxItem>
                         <ComboBoxItem Tag="CustomMouseClick2">Custom mouse click 2</ComboBoxItem>

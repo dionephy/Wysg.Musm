@@ -201,3 +201,45 @@
 - [X] T768 Update `GetStudynameIdByNameAsync` to filter by tenant.
 - [X] T769 Docs: Update Spec.md (FR-600..FR-609) and Plan.md with approach/test/risks for tenancy and technique renames.
 - [X] V210 Build passes after repository and schema name changes.
+
+## New (2025-10-14 – PACS Display Source + Settings PACS Tab Simplification)
+- [X] T780 Bind status bar PACS display to `ITenantContext.CurrentPacsKey` with fallback to `default_pacs` and subscribe to `PacsKeyChanged`.
+- [X] T781 Add `PacsKeyChanged` event to `ITenantContext` and raise in `TenantContext` when `CurrentPacsKey` changes.
+- [X] T782 Remove legacy local PACS profile initialization in MainWindow to avoid showing "Default PACS".
+- [X] T783 Settings → PACS tab: remove unsupported Actions column (Rename/Remove buttons).
+- [X] T784 Settings → PACS tab: remove Close button below grid; rely on window close.
+- [X] V220 Verify status bar shows "PACS: default_pacs" on startup and updates on selection change.
+- [X] V221 Verify PACS grid has no Rename/Remove, only Add PACS, and row selection applies current PACS.
+
+## New (2025-10-14 – Instant PACS Switch + PACS Text Display)
+- [X] T785 Automation: set `SelectedPacsForAutomation` in `OnSelectedPacsProfileChanged` to reload sequences immediately.
+- [X] T786 SettingsWindow: expose `CurrentPacsKey` property and subscribe to `ITenantContext.PacsKeyChanged`; update spy path and VM selection.
+- [X] T787 SpyWindow: show PACS key in top bar and subscribe to `PacsKeyChanged` for live updates.
+- [X] T788 Automation tab: add PACS label bound to `SettingsWindow.CurrentPacsKey`.
+- [X] V230 Change PACS selection and verify Automation panes reload and label updates instantly.
+- [X] V231 Open SpyWindow and change PACS in Settings; verify label updates instantly and procedures save under new PACS path.
+
+## New (2025-10-14 – Per-PACS Spy Persistence + Invoke Test)
+- [X] T789 Persist UiBookmarks per PACS by setting `UiBookmarks.GetStorePathOverride` on login and on PACS change.
+- [X] T790 Persist Procedures per PACS by setting `ProcedureExecutor.SetProcPathOverride` on login and on PACS change.
+- [X] T791 Add new custom method `InvokeTest` to SpyWindow ComboBox and seed default procedure in ProcedureExecutor.
+- [X] T792 Add new Automation module `TestInvoke` to Available Modules.
+- [X] T793 Wire `TestInvoke` execution in MainViewModel to call `PacsService.InvokeTestAsync()`.
+- [X] V232 Verify each PACS has its own `bookmarks.json` and `ui-procedures.json` directory and files after editing/saving in Spy.
+- [X] V233 Verify Automation `TestInvoke` triggers an Invoke on the element mapped to `TestInvoke` KnownControl.
+ - [X] V234 Verify SpyWindow loads/saves procedures from the PACS-scoped `ui-procedures.json` and no longer uses legacy global file during a session.
+
+## New (2025-10-14 – Test Automation Module ShowTestMessage)
+- [X] T794 Add `ShowTestMessage` to SettingsViewModel.AvailableModules.
+- [X] T795 Handle `ShowTestMessage` in MainViewModel automation runner (New/Add/Shortcut) to display a MessageBox("Test").
+- [X] V240 Verify running sequences containing `ShowTestMessage` displays the modal box with title/content "Test".
+
+## New (2025-10-14 – PACS-scoped Automation Execution Fix)
+- [X] T796 Replace reads of `_localSettings.Automation*` with PACS-scoped `automation.json` loader.
+- [X] V241 New Study pane set to only `ShowTestMessage` → pressing New shows the message and does not lock study.
+- [X] V242 Add `LockStudy` to New Study pane explicitly → pressing New locks study as designed.
+
+## New (2025-10-14 – Global Hotkey routes to Shortcut Sequences)
+- [X] T800 Register global Open Study hotkey from Settings and handle WM_HOTKEY in MainWindow to call `RunOpenStudyShortcut()`.
+- [X] V245 With “Shortcut: Open study (new)” containing `ShowTestMessage`, pressing the configured hotkey pops the “Test” box.
+- [X] V246 Verify switching to locked state or after-open state picks the corresponding shortcut pane.

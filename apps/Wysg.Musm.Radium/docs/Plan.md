@@ -456,3 +456,139 @@
 - Existing data in old `med.technique_*` tables: migration not automated here; keep a separate migration script or dual-compat views if needed.
 - Accidental mixed-account references in combinations: combinations include `account_id` through their items; ensure UI only allows using items from same account (enforced by filtering).
 
+## Change Log Addition (2025-01-14 – Multi-PACS UI Refactoring)
+- Removed PACS selection combobox from MainWindow; PACS selection now managed exclusively in Settings window.
+- Added current user email and current PACS name display next to the logout button in the status bar for visibility.
+- Settings window General tab already divided into "Database" and "PACS" tabs (previous implementation).
+- Removed PACS profile combobox from Automation tab; automation settings now automatically load for the currently selected PACS from the PACS tab.
+- Removed PACS combobox from SpyWindow; spy settings automatically use the currently selected PACS from settings.
+- PACS-specific spy and automation settings are stored per-PACS on disk in isolated directories under `%AppData%\Wysg.Musm\Radium\Pacs\{pacs_key}\`.
+
+### Approach (Multi-PACS UI)
+1) Remove `cmbPacsSelector` from `StatusActionsBar.xaml` and replace with two TextBlocks showing current user and PACS.
+2) Add `CurrentUserDisplay` and `CurrentPacsDisplay` properties to `MainViewModel` with bindings to `IAuthStorage.Email` and `ITenantContext.CurrentPacsKey`.
+3) Update `MainViewModel` constructor to accept `IAuthStorage` and set `CurrentUserDisplay` from stored email.
+4) Update `OnPacsProfileChanged` in `MainViewModel.PacsProfiles.cs` to set `CurrentPacsDisplay` when PACS changes.
+5) Remove PACS combobox from `SpyWindow.xaml` top bar.
+6) Remove PACS profile management fields and methods from `SpyWindow.xaml.cs`; spy settings path already set globally in `App.xaml.cs` after login.
+7) Settings window automation tab already uses `SelectedPacsForAutomation` to load/save settings per-PACS (no changes needed).
+8) Update documentation (Plan.md, Spec.md, Tasks.md) with cumulative entries for the UI refactoring.
+
+### Test Plan (Multi-PACS UI)
+- Verify MainWindow status bar shows current user email (e.g., "User: user@example.com") next to logout button.
+- Verify MainWindow status bar shows current PACS name (e.g., "PACS: default_pacs") next to user display.
+- Open Settings → PACS tab, select a different PACS profile → verify MainWindow PACS display updates.
+- Open Settings → Automation tab → verify automation sequences load for the currently selected PACS from PACS tab.
+- Change PACS in Settings → Automation tab → verify sequences change to reflect the new PACS profile.
+- Open SpyWindow → verify no PACS combobox is visible; spy settings automatically use current PACS from settings.
+- Create/edit/save spy procedures → verify they save to the correct per-PACS directory under `%AppData%\Wysg.Musm\Radium\Pacs\{pacs_key}\ui-procedures.json`.
+- Log out and log back in → verify user and PACS displays restore correctly on MainWindow.
+
+### Risks / Mitigations (Multi-PACS UI)
+- User may forget which PACS is currently selected → mitigated by always showing current PACS in status bar.
+- Switching PACS in Settings does not immediately reload spy procedures in an open SpyWindow → acceptable; SpyWindow loads settings on open, users can close and reopen if needed.
+- Current user email may not be available at MainViewModel construction time if using silent refresh → fall back to default text until login completes; status bar updates reactively.
+
+## Change Log Addition (2025-10-14 – PACS Display Source + Settings PACS Tab Simplification)
+- Fixed PACS display source to use tenant DB `pacs_key` (e.g., "default_pacs") instead of legacy local profile name ("Default PACS").
+- Bound status bar `CurrentPacsDisplay` to `ITenantContext.CurrentPacsKey` with fallback to `default_pacs`; listens to `PacsKeyChanged`.
+- Settings → PACS tab: removed unsupported actions `Rename` and `Remove` from the grid.
+- Settings → PACS tab: removed `Close` button for consistency; selection is applied by row selection, and window-level close remains available.
+
+### Approach (PACS Display + Simplification)
+1) Add `PacsKeyChanged` event to `ITenantContext` and raise from `TenantContext` when `CurrentPacsKey` changes.
+2) Initialize `CurrentPacsDisplay` from `_tenant.CurrentPacsKey` with default fallback; update on `PacsKeyChanged`.
+3) Remove Actions column in `SettingsWindow.xaml` PACS grid and drop the `Close` button in that tab.
+4) Keep row selection (`SelectedPacsProfile`) as the way to select active PACS (updates `ITenantContext`).
+
+### Test Plan (PACS Display + Simplification)
+- Start app with a tenant whose `pacs_key = default_pacs`: status bar shows "PACS: default_pacs".
+- Change selection in Settings → PACS: status bar updates to "PACS: {selected_key}" immediately.
+- Verify no Rename/Remove buttons appear in the PACS grid; only Add PACS button remains.
+- Verify Close button is removed from PACS tab while window-level close still works.
+
+### Risks / Mitigations
+- Users needing rename/remove: not supported in this increment; Add PACS remains; DB-level tenant delete can be handled from admin tools.
+
+## Change Log Addition (2025-10-14 – Instant PACS Switch for Automation and Spy + PACS Text Display)
+- Automation tab switches context immediately when PACS selection changes by updating `SelectedPacsForAutomation` and reloading sequences.
+- SpyWindow listens to `ITenantContext.PacsKeyChanged` and updates its top-bar PACS text instantly. Procedure path override is also refreshed.
+- Added "PACS: {current}" text in Automation tab header and SpyWindow top bar.
+
+### Approach
+1) In `SettingsViewModel.PacsProfiles.OnSelectedPacsProfileChanged`, set `_tenant.CurrentPacsKey`, switch spy path, and assign `SelectedPacsForAutomation` to trigger reload.
+2) In `SettingsWindow`, subscribe to `ITenantContext.PacsKeyChanged` to update local `CurrentPacsKey` and push it to VM `SelectedPacsForAutomation`.
+3) In `SpyWindow`, resolve `ITenantContext` from DI, set initial text, and handle `PacsKeyChanged` to update UI immediately.
+4) In XAML, add PACS text blocks to Automation tab and SpyWindow.
+
+### Test Plan
+- Open Settings → PACS and Automation tabs. Change PACS row selection → library panes clear and refill according to the new PACS; PACS label shows new key.
+- Open SpyWindow; verify PACS label shows current key. Change PACS in Settings while SpyWindow is open → label changes instantly.
+- Save and reload procedures; ensure they write/read to `%AppData%\Wysg.Musm\Radium\Pacs\{pacs}\ui-procedures.json` for the current key.
+
+### Risks / Mitigations
+- Race conditions if PACS is switched rapidly: operations are UI-thread-bound; ProcedureExecutor path override is cheap; acceptable.
+- Null pacs key: fallback to `default_pacs` applied everywhere.
+
+## Change Log Addition (2025-10-14 – Per-PACS Spy Persistence + Invoke Test)
+- Persist UiBookmarks (bookmarks.json) and Custom Procedures (ui-procedures.json) per PACS key under `%AppData%/Wysg.Musm/Radium/Pacs/{key}`.
+- On login and on `ITenantContext.PacsKeyChanged`, set both overrides so SpyWindow and headless executor read/write per profile.
+- Added new custom procedure method `InvokeTest` and new Automation module `TestInvoke` that executes it via `PacsService.InvokeTestAsync()`.
+ - SpyWindow procedure editor now reads/writes `ui-procedures.json` in the same PACS folder as bookmarks.
+
+## Change Log Addition (2025-10-14 – Test Automation Module ShowTestMessage)
+- Added a simple module `ShowTestMessage` to the Automation library. Executing it shows a MessageBox with title/content "Test".
+
+### Approach
+1) Extend SettingsViewModel.AvailableModules to include `ShowTestMessage`.
+2) In MainViewModel automation runner (New/Add/Shortcut), handle this module by calling `MessageBox.Show("Test", "Test", OK, Information)`.
+
+### Test Plan
+- Place `ShowTestMessage` into each of NewStudy, AddStudy, and Shortcut sequences and run. Verify a modal message box appears with title/content "Test".
+- Verify no side effects or state changes occur.
+
+### Risks / Mitigations
+- Modal dialog can block automation chains; acceptable for test module. Users can dismiss to continue.
+
+## Change Log Addition (2025-10-14 – PACS-scoped Automation Execution Fix)
+- MainViewModel now reads sequences from `%AppData%/Wysg.Musm/Radium/Pacs/{pacs_key}/automation.json` via helper instead of `IRadiumLocalSettings` legacy keys.
+- Prevents unintended execution of modules like `LockStudy` that were stored in obsolete settings.
+
+### Approach
+1) Introduced `GetAutomationSequenceForCurrentPacs(selector)` in MainViewModel to load active sequence for New/Add/Shortcuts.
+2) Replaced all usages of `_localSettings?.Automation*` with calls to the helper.
+
+### Test Plan
+- Configure New Study pane with only `ShowTestMessage`; Save Automation; click New → see “Test” message and no lock.
+- Add `LockStudy` explicitly; click New → study locks as expected.
+- Configure Add Study and Shortcuts similarly; verify execution matches saved sequences per PACS.
+
+## Change Log Addition (2025-10-14 – Global Hotkey routes to Shortcut Sequences)
+- Registered a system-wide hotkey based on Settings → Keyboard “Open study” value. On press, calls `RunOpenStudyShortcut()`.
+
+### Approach
+1) Add hotkey registration in `MainWindow` using `RegisterHotKey` and a WndProc hook.
+2) Parse the saved combo string (e.g., Ctrl+Alt+O) into user32 modifiers and VK, register/unregister on open/close.
+3) On WM_HOTKEY, dispatch to VM’s `RunOpenStudyShortcut()`.
+
+### Test Plan
+- Set “Shortcut: Open study (new)” to contain `ShowTestMessage`; set Keyboard Open study = Ctrl+Alt+O; Save.
+- From Main window, press Ctrl+Alt+O → “Test” message box appears.
+- Toggle PatientLocked/StudyOpened and verify it picks “add” or “after open” sequences accordingly.
+
+### Approach
+1) In App startup, set `ProcedureExecutor.SetProcPathOverride` and `UiBookmarks.GetStorePathOverride` based on current pacs key.
+2) In SettingsViewModel.PacsProfiles selection handler, update both overrides when PACS changes.
+3) In ProcedureExecutor, add fallback auto-seed for `InvokeTest` using `Invoke` on `KnownControl.TestInvoke`.
+4) In PacsService, add `InvokeTestAsync()` that runs `InvokeTest`.
+5) Add `TestInvoke` to SettingsViewModel.AvailableModules and wire module execution in MainViewModel.
+6) Add `InvokeTest` to SpyWindow custom method ComboBox for UI authoring.
+
+### Test Plan
+- Map a control to `TestInvoke` in SpyWindow. Save a procedure under `InvokeTest` with a single Invoke op (or rely on auto-seed).
+- Place `TestInvoke` in Automation sequences (New/Add/Shortcut). Run → verify Invoke occurs on the mapped element.
+- Switch PACS: verify each profile has its own `bookmarks.json` and `ui-procedures.json`, and SpyWindow reads/writes the correct files.
+
+### Risks / Mitigations
+- Rapid PACS switching during Spy edits could race file writes → minimal risk; user-driven; save operations are small; last write wins is acceptable.
+

@@ -23,8 +23,23 @@ namespace Wysg.Musm.Radium.Services
         }
         public string TenantCode { get; set; } = string.Empty; // external auth provider user id
         public long AccountId { get => TenantId; set => TenantId = value; } // alias for readability
-        public string CurrentPacsKey { get; set; } = "default_pacs"; // current PACS profile identifier
+
+        private string _currentPacsKey = "default_pacs"; // current PACS profile identifier
+        public string CurrentPacsKey
+        {
+            get => _currentPacsKey;
+            set
+            {
+                if (!string.Equals(_currentPacsKey, value))
+                {
+                    var old = _currentPacsKey;
+                    _currentPacsKey = value;
+                    PacsKeyChanged?.Invoke(old, _currentPacsKey);
+                }
+            }
+        }
         public string? ReportifySettingsJson { get; set; } // cached per-account settings JSON
         public event System.Action<long, long>? AccountIdChanged; // subscription point for reload / clear behaviors
+        public event System.Action<string, string>? PacsKeyChanged; // notify on PACS profile change
     }
 }
