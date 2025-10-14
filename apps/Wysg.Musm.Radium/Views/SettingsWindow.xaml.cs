@@ -56,6 +56,12 @@ namespace Wysg.Musm.Radium.Views
                 DataContext = vm;
                 _tenantContext = app.Services.GetService<ITenantContext>();
                 
+                // Load PACS profiles from DB
+                _ = vm.LoadPacsProfilesAsync();
+                
+                // Point ProcedureExecutor to current PACS-specific spy path
+                TryApplyCurrentPacsSpyPath();
+
                 // Subscribe to account changes to update visibility
                 if (_tenantContext != null)
                 {
@@ -72,18 +78,48 @@ namespace Wysg.Musm.Radium.Views
             _databaseOnly = databaseOnly;
             InitializeComponent(); 
             DataContext = vm; 
+            
             InitializeAutomationLists(); 
             if (_databaseOnly) ApplyDatabaseOnlyMode();
             if (Application.Current is App app)
             {
                 _tenantContext = app.Services.GetService<ITenantContext>();
                 
+                // Load PACS profiles from DB
+                _ = vm.LoadPacsProfilesAsync();
+                
+                TryApplyCurrentPacsSpyPath();
+
                 // Subscribe to account changes
                 if (_tenantContext != null)
                 {
                     _tenantContext.AccountIdChanged += OnAccountIdChanged;
                 }
             }
+        }
+
+        private void TryApplyCurrentPacsSpyPath()
+        {
+            try
+            {
+                if (_tenantContext == null) return;
+                var pacsKey = string.IsNullOrWhiteSpace(_tenantContext.CurrentPacsKey) ? "default_pacs" : _tenantContext.CurrentPacsKey;
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var dir = System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey));
+                System.IO.Directory.CreateDirectory(dir);
+                var spyPath = System.IO.Path.Combine(dir, "ui-procedures.json");
+                ProcedureExecutor.SetProcPathOverride(() => spyPath);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.WriteLine("[SettingsWindow] Failed to set spy path: " + ex.Message);
+            }
+        }
+
+        private static string SanitizeFileName(string name)
+        {
+            var invalid = System.IO.Path.GetInvalidFileNameChars();
+            return string.Join("_", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
         }
 
         private void OnAccountIdChanged(long oldId, long newId)
@@ -99,7 +135,7 @@ namespace Wysg.Musm.Radium.Views
             {
                 if (FindName("tabsRoot") is TabControl tabs)
                 {
-                    if (FindName("tabDatabase") is TabItem db) tabs.SelectedItem = db;
+                    if (FindName("tabGeneral") is TabItem db) tabs.SelectedItem = db;
                     void Disable(string name) { if (FindName(name) is TabItem ti) ti.IsEnabled = false; }
                     Disable("tabAutomation");
                     Disable("tabReportify");
@@ -124,7 +160,8 @@ namespace Wysg.Musm.Radium.Views
             if (FindName("lstShortcutOpenNew") is ListBox s1) s1.ItemsSource = vm.ShortcutOpenNewModules;
             if (FindName("lstShortcutOpenAdd") is ListBox s2) s2.ItemsSource = vm.ShortcutOpenAddModules;
             if (FindName("lstShortcutOpenAfterOpen") is ListBox s3) s3.ItemsSource = vm.ShortcutOpenAfterOpenModules;
-            vm.LoadAutomation();
+            
+            // LoadAutomation is now handled by LoadAutomationForPacs in the ViewModel
         }
 
         private Point _dragStart;

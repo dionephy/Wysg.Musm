@@ -19,9 +19,11 @@ namespace Wysg.Musm.Radium.Services
     public sealed class RadStudyRepository : IRadStudyRepository
     {
         private readonly IRadiumLocalSettings _settings;
-        public RadStudyRepository(IRadiumLocalSettings settings) { _settings = settings; }
+        private readonly ITenantContext? _tenant;
+        public RadStudyRepository(IRadiumLocalSettings settings, ITenantContext? tenant = null) { _settings = settings; _tenant = tenant; }
         private static string GetFallbackLocalCs() => "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas";
         private NpgsqlConnection Open() => new(_settings.LocalConnectionString ?? GetFallbackLocalCs());
+        private long Tid => _tenant?.TenantId ?? 0L;
 
         public async Task EnsurePatientStudyAsync(string patientNumber, string? patientName, string? sex, string? birthDateRaw, string? studyName, DateTime? studyDateTime)
             => _ = await EnsureStudyAsync(patientNumber, patientName, sex, birthDateRaw, studyName, studyDateTime);
@@ -40,23 +42,25 @@ namespace Wysg.Musm.Radium.Services
                 DateTime? birthDate = null;
                 if (!string.IsNullOrWhiteSpace(birthDateRaw) && DateTime.TryParse(birthDateRaw.Trim(), out var bd)) birthDate = bd.Date;
 
-                await using (var cmd = new NpgsqlCommand(@"INSERT INTO med.patient(patient_number, patient_name, is_male, birth_date)
-VALUES (@num, @name, @male, @bdate)
-ON CONFLICT (patient_number) DO UPDATE SET
+                await using (var cmd = new NpgsqlCommand(@"INSERT INTO med.patient(tenant_id, patient_number, patient_name, is_male, birth_date)
+VALUES (@tid, @num, @name, @male, @bdate)
+ON CONFLICT (tenant_id, patient_number) DO UPDATE SET
   patient_name = COALESCE(EXCLUDED.patient_name, med.patient.patient_name),
   is_male = EXCLUDED.is_male,
   birth_date = COALESCE(EXCLUDED.birth_date, med.patient.birth_date)
 RETURNING id;", cn, (NpgsqlTransaction)tx))
                 {
+                    cmd.Parameters.AddWithValue("@tid", Tid);
                     cmd.Parameters.AddWithValue("@num", patientNumber);
                     cmd.Parameters.AddWithValue("@name", name);
                     cmd.Parameters.AddWithValue("@male", isMale);
                     cmd.Parameters.AddWithValue("@bdate", birthDate.HasValue ? birthDate.Value : (object)DBNull.Value);
                     var o = await cmd.ExecuteScalarAsync(); if (o is long l) patientId = l;
                 }
-                await using (var cmd = new NpgsqlCommand(@"INSERT INTO med.rad_studyname(studyname)
-VALUES (@sn) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname RETURNING id;", cn, (NpgsqlTransaction)tx))
+                await using (var cmd = new NpgsqlCommand(@"INSERT INTO med.rad_studyname(tenant_id, studyname)
+VALUES (@tid, @sn) ON CONFLICT (tenant_id, studyname) DO UPDATE SET studyname = EXCLUDED.studyname RETURNING id;", cn, (NpgsqlTransaction)tx))
                 {
+                    cmd.Parameters.AddWithValue("@tid", Tid);
                     cmd.Parameters.AddWithValue("@sn", studyName!.Trim());
                     var o = await cmd.ExecuteScalarAsync(); if (o is long l) studynameId = l;
                 }
@@ -112,13 +116,14 @@ RETURNING id;", cn);
             {
                 await using var cmd = new NpgsqlCommand(@"SELECT rs.id, rs.study_datetime, sn.studyname, rr.report_datetime, rr.created_by, rr.report
 FROM med.rad_study rs
-JOIN med.patient p ON p.id = rs.patient_id AND p.patient_number = @num
+JOIN med.patient p ON p.id = rs.patient_id AND p.tenant_id=@tid AND p.patient_number = @num
 JOIN med.rad_studyname sn ON sn.id = rs.studyname_id
 JOIN med.rad_report rr ON rr.study_id = rs.id
 WHERE (rr.report ->> 'header_and_findings') IS NOT NULL
    OR (rr.report ->> 'final_conclusion') IS NOT NULL
    OR (rr.report ->> 'conclusion') IS NOT NULL
 ORDER BY rs.study_datetime DESC, rr.report_datetime DESC NULLS LAST;", cn);
+                cmd.Parameters.AddWithValue("@tid", Tid);
                 cmd.Parameters.AddWithValue("@num", patientNumber);
                 await using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())

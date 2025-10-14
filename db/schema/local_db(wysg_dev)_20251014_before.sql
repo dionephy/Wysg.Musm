@@ -71,8 +71,7 @@ CREATE INDEX IF NOT EXISTS idx_loinc_term_class
 
 
 
-
-CREATE TABLE IF NOT EXISTS loinc.map_to
+    CREATE TABLE IF NOT EXISTS loinc.map_to
 (
     loinc text COLLATE pg_catalog."default" NOT NULL,
     map_to text COLLATE pg_catalog."default" NOT NULL,
@@ -96,7 +95,7 @@ ALTER TABLE loinc.map_to
 
 
 
-CREATE TABLE IF NOT EXISTS loinc.part
+    CREATE TABLE IF NOT EXISTS loinc.part
 (
     part_number text COLLATE pg_catalog."default" NOT NULL,
     part_type_name text COLLATE pg_catalog."default",
@@ -114,8 +113,7 @@ ALTER TABLE loinc.part
 
 
 
-
-CREATE TABLE IF NOT EXISTS loinc.rplaybook
+    CREATE TABLE IF NOT EXISTS loinc.rplaybook
 (
     loinc_number text COLLATE pg_catalog."default" NOT NULL,
     long_common_name text COLLATE pg_catalog."default",
@@ -157,41 +155,7 @@ CREATE INDEX IF NOT EXISTS idx_rplaybook_partseq
 
 
 
-
-
--- View: loinc.rp_join
-
--- DROP VIEW loinc.rp_join;
-
-CREATE OR REPLACE VIEW loinc.rp_join AS
- SELECT rp.loinc_number,
-    rp.long_common_name,
-    rp.part_number,
-    rp.part_type_name,
-    rp.part_name,
-    rp.part_sequence_order,
-    rp.rid,
-    rp.preferred_name,
-    rp.rpid,
-    rp.long_name,
-    t.class,
-    t.component,
-    t.system,
-    t.method_typ,
-    t.scale_typ
-   FROM loinc.rplaybook rp
-     LEFT JOIN loinc.loinc_term t ON t.loinc_num = rp.loinc_number;
-
-ALTER TABLE loinc.rp_join
-    OWNER TO postgres;
-
-
-
-
-
-
-
-CREATE TABLE IF NOT EXISTS med.patient
+    CREATE TABLE IF NOT EXISTS med.patient
 (
     id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
     patient_number text COLLATE pg_catalog."default" NOT NULL,
@@ -211,7 +175,7 @@ ALTER TABLE med.patient
 
 
 
-CREATE TABLE IF NOT EXISTS med.rad_report
+    CREATE TABLE IF NOT EXISTS med.rad_report
 (
     id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
     study_id bigint NOT NULL,
@@ -243,11 +207,7 @@ CREATE INDEX IF NOT EXISTS idx_rad_report_report_gin
 
 
 
-
-
-
-
-CREATE TABLE IF NOT EXISTS med.rad_study
+    CREATE TABLE IF NOT EXISTS med.rad_study
 (
     id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
     patient_id bigint NOT NULL,
@@ -281,9 +241,34 @@ CREATE INDEX IF NOT EXISTS idx_study_patient_when
 
 
 
+    CREATE TABLE IF NOT EXISTS med.rad_study_technique_combination
+(
+    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
+    study_id bigint NOT NULL,
+    combination_id bigint NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT rad_study_technique_combination_pkey PRIMARY KEY (id),
+    CONSTRAINT uq_study_combination UNIQUE (study_id),
+    CONSTRAINT rad_study_technique_combination_combination_id_fkey FOREIGN KEY (combination_id)
+        REFERENCES med.technique_combination (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT rad_study_technique_combination_study_id_fkey FOREIGN KEY (study_id)
+        REFERENCES med.rad_study (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE med.rad_study_technique_combination
+    OWNER to postgres;
 
 
-CREATE TABLE IF NOT EXISTS med.rad_studyname
+
+
+
+    CREATE TABLE IF NOT EXISTS med.rad_studyname
 (
     id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
     studyname text COLLATE pg_catalog."default" NOT NULL,
@@ -300,10 +285,7 @@ ALTER TABLE med.rad_studyname
 
 
 
-
-
-
-CREATE TABLE IF NOT EXISTS med.rad_studyname_loinc_part
+    CREATE TABLE IF NOT EXISTS med.rad_studyname_loinc_part
 (
     id bigint NOT NULL DEFAULT nextval('med.rad_studyname_loinc_part_id_seq'::regclass),
     studyname_id bigint NOT NULL,
@@ -311,7 +293,7 @@ CREATE TABLE IF NOT EXISTS med.rad_studyname_loinc_part
     part_sequence_order text COLLATE pg_catalog."default" NOT NULL DEFAULT 'A'::text,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     CONSTRAINT rad_studyname_loinc_part_pkey PRIMARY KEY (id),
-    CONSTRAINT rad_studyname_loinc_part_studyname_id_part_number_key UNIQUE (studyname_id, part_number),
+    CONSTRAINT uq_rad_studyname_loinc_part__studyname_part_seq UNIQUE (studyname_id, part_number, part_sequence_order),
     CONSTRAINT fk_loinc_part FOREIGN KEY (part_number)
         REFERENCES loinc.part (part_number) MATCH SIMPLE
         ON UPDATE NO ACTION
@@ -335,6 +317,189 @@ CREATE INDEX IF NOT EXISTS ix_rad_studyname_loinc_part_studyname
 
 
 
+    CREATE TABLE IF NOT EXISTS med.rad_studyname_technique_combination
+(
+    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
+    studyname_id bigint NOT NULL,
+    combination_id bigint NOT NULL,
+    is_default boolean NOT NULL DEFAULT false,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT rad_studyname_technique_combination_pkey PRIMARY KEY (id),
+    CONSTRAINT uq_studyname_combination UNIQUE (studyname_id, combination_id),
+    CONSTRAINT rad_studyname_technique_combination_combination_id_fkey FOREIGN KEY (combination_id)
+        REFERENCES med.technique_combination (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT rad_studyname_technique_combination_studyname_id_fkey FOREIGN KEY (studyname_id)
+        REFERENCES med.rad_studyname (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE med.rad_studyname_technique_combination
+    OWNER to postgres;
+
+-- Index: med.idx_rad_studyname_technique_combination_combination
+CREATE INDEX IF NOT EXISTS idx_rad_studyname_technique_combination_combination
+    ON med.rad_studyname_technique_combination USING btree
+    (combination_id ASC NULLS LAST)
+    TABLESPACE pg_default;
+-- Index: med.idx_rad_studyname_technique_combination_studyname
+CREATE INDEX IF NOT EXISTS idx_rad_studyname_technique_combination_studyname
+    ON med.rad_studyname_technique_combination USING btree
+    (studyname_id ASC NULLS LAST)
+    TABLESPACE pg_default;
+
+
+
+
+
+    CREATE TABLE IF NOT EXISTS med.technique
+(
+    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
+    prefix_id bigint,
+    tech_id bigint NOT NULL,
+    suffix_id bigint,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT technique_pkey PRIMARY KEY (id),
+    CONSTRAINT uq_technique_components UNIQUE (prefix_id, tech_id, suffix_id),
+    CONSTRAINT technique_prefix_id_fkey FOREIGN KEY (prefix_id)
+        REFERENCES med.technique_prefix (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT technique_suffix_id_fkey FOREIGN KEY (suffix_id)
+        REFERENCES med.technique_suffix (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT,
+    CONSTRAINT technique_tech_id_fkey FOREIGN KEY (tech_id)
+        REFERENCES med.technique_tech (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE med.technique
+    OWNER to postgres;
+
+-- Index: med.idx_technique_tech_id
+CREATE INDEX IF NOT EXISTS idx_technique_tech_id
+    ON med.technique USING btree
+    (tech_id ASC NULLS LAST)
+    TABLESPACE pg_default;
+
+
+
+
+
+    CREATE TABLE IF NOT EXISTS med.technique_combination
+(
+    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
+    combination_name text COLLATE pg_catalog."default",
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT technique_combination_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE med.technique_combination
+    OWNER to postgres;
+
+
+
+
+    CREATE TABLE IF NOT EXISTS med.technique_combination_item
+(
+    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
+    combination_id bigint NOT NULL,
+    technique_id bigint NOT NULL,
+    sequence_order integer NOT NULL DEFAULT 0,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT technique_combination_item_pkey PRIMARY KEY (id),
+    CONSTRAINT uq_combination_technique_seq UNIQUE (combination_id, technique_id, sequence_order),
+    CONSTRAINT technique_combination_item_combination_id_fkey FOREIGN KEY (combination_id)
+        REFERENCES med.technique_combination (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT technique_combination_item_technique_id_fkey FOREIGN KEY (technique_id)
+        REFERENCES med.technique (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE RESTRICT
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE med.technique_combination_item
+    OWNER to postgres;
+
+-- Index: med.idx_technique_combination_item_combination
+CREATE INDEX IF NOT EXISTS idx_technique_combination_item_combination
+    ON med.technique_combination_item USING btree
+    (combination_id ASC NULLS LAST)
+    TABLESPACE pg_default;
+-- Index: med.idx_technique_combination_item_technique
+CREATE INDEX IF NOT EXISTS idx_technique_combination_item_technique
+    ON med.technique_combination_item USING btree
+    (technique_id ASC NULLS LAST)
+    TABLESPACE pg_default;
+
+
+
+
+    CREATE TABLE IF NOT EXISTS med.technique_prefix
+(
+    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
+    prefix_text text COLLATE pg_catalog."default" NOT NULL,
+    display_order integer NOT NULL DEFAULT 0,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT technique_prefix_pkey PRIMARY KEY (id),
+    CONSTRAINT uq_technique_prefix_text UNIQUE (prefix_text)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE med.technique_prefix
+    OWNER to postgres;
+
+
+
+
+
+    CREATE TABLE IF NOT EXISTS med.technique_suffix
+(
+    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
+    suffix_text text COLLATE pg_catalog."default" NOT NULL,
+    display_order integer NOT NULL DEFAULT 0,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT technique_suffix_pkey PRIMARY KEY (id),
+    CONSTRAINT uq_technique_suffix_text UNIQUE (suffix_text)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE med.technique_suffix
+    OWNER to postgres;
+
+
+
+
+
+    CREATE TABLE IF NOT EXISTS med.technique_tech
+(
+    id bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
+    tech_text text COLLATE pg_catalog."default" NOT NULL,
+    display_order integer NOT NULL DEFAULT 0,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT technique_tech_pkey PRIMARY KEY (id),
+    CONSTRAINT uq_technique_tech_text UNIQUE (tech_text)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE med.technique_tech
+    OWNER to postgres;
 
 
 

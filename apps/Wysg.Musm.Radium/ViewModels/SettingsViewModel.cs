@@ -14,6 +14,10 @@ namespace Wysg.Musm.Radium.ViewModels
     public partial class SettingsViewModel : ObservableObject
     {
         private readonly IRadiumLocalSettings _local;
+        private readonly ITenantRepository? _tenantRepo; // added
+
+        [ObservableProperty]
+        private bool isBusy; // used by async commands in PACS profiles partial
 
         // User-requested default (note: quoted Authentication as provided)
         private const string DefaultCentralAzureSqlConnection = "Server=tcp:musm-server.database.windows.net,1433;Initial Catalog=musmdb;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication=\"Active Directory Default\";";
@@ -89,10 +93,10 @@ namespace Wysg.Musm.Radium.ViewModels
 
         public SettingsViewModel() : this(new RadiumLocalSettings()) { }
 
-        public SettingsViewModel(IRadiumLocalSettings local, IReportifySettingsService? reportifySvc = null, ITenantContext? tenant = null, PhrasesViewModel? phrases = null)
+        public SettingsViewModel(IRadiumLocalSettings local, IReportifySettingsService? reportifySvc = null, ITenantContext? tenant = null, PhrasesViewModel? phrases = null, ITenantRepository? tenantRepo = null)
         {
             _local = local;
-            _reportifySvc = reportifySvc; _tenant = tenant; Phrases = phrases;
+            _reportifySvc = reportifySvc; _tenant = tenant; Phrases = phrases; _tenantRepo = tenantRepo;
             LocalConnectionString = _local.LocalConnectionString ?? "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas";
             // Initialize central connection string with provided default if none persisted
             CentralConnectionString = string.IsNullOrWhiteSpace(_local.CentralConnectionString) ? DefaultCentralAzureSqlConnection: _local.CentralConnectionString;
@@ -120,6 +124,13 @@ namespace Wysg.Musm.Radium.ViewModels
             // Load keyboard hotkeys from local settings
             OpenStudyHotkey = _local.GlobalHotkeyOpenStudy;
             SendStudyHotkey = _local.GlobalHotkeySendStudy;
+
+            // Initialize PACS profile commands and load from DB if repository is available
+            InitializePacsProfileCommands();
+            if (_tenantRepo != null)
+            {
+                _ = LoadPacsProfilesAsync();
+            }
         }
 
         private bool CanPersistSettings() => _reportifySvc != null && _tenant != null && _tenant.AccountId > 0;
@@ -128,7 +139,7 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             if (!CanPersistSettings()) return;
             try { var res = await _reportifySvc!.UpsertAsync(_tenant!.AccountId, ReportifySettingsJson); _tenant.ReportifySettingsJson = res.settingsJson; }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[SettingsVM] Save reportify error: " + ex.Message); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine("[SettingsVM] Save reportify error: " + ex.Message); }
         }
 
         private void ApplyReportifyJson(string json)
@@ -190,12 +201,8 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private void SaveAutomation()
         {
-            _local.AutomationNewStudySequence = string.Join(",", NewStudyModules);
-            _local.AutomationAddStudySequence = string.Join(",", AddStudyModules);
-            _local.AutomationShortcutOpenNew = string.Join(",", ShortcutOpenNewModules);
-            _local.AutomationShortcutOpenAdd = string.Join(",", ShortcutOpenAddModules);
-            _local.AutomationShortcutOpenAfterOpen = string.Join(",", ShortcutOpenAfterOpenModules);
-            MessageBox.Show("Automation saved.", "Automation", MessageBoxButton.OK, MessageBoxImage.Information);
+            // Persist automation to PACS-scoped file (by current selection)
+            SaveAutomationForPacs();
         }
 
         private void SaveKeyboard()

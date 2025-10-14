@@ -38,11 +38,11 @@ LIMIT 1";
             var list = new List<(string? Prefix, string Tech, string? Suffix, int SequenceOrder)>();
             await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
             const string sql = @"SELECT COALESCE(tp.prefix_text,''), tt.tech_text, COALESCE(ts.suffix_text,''), i.sequence_order
-FROM med.technique_combination_item i
-JOIN med.technique t ON t.id = i.technique_id
-LEFT JOIN med.technique_prefix tp ON tp.id = t.prefix_id
-JOIN med.technique_tech tt ON tt.id = t.tech_id
-LEFT JOIN med.technique_suffix ts ON ts.id = t.suffix_id
+FROM med.rad_technique_combination_item i
+JOIN med.rad_technique t ON t.id = i.technique_id
+LEFT JOIN med.rad_technique_prefix tp ON tp.id = t.prefix_id
+JOIN med.rad_technique_tech tt ON tt.id = t.tech_id
+LEFT JOIN med.rad_technique_suffix ts ON ts.id = t.suffix_id
 WHERE i.combination_id = @cid
 ORDER BY i.sequence_order";
             await using var cmd = new NpgsqlCommand(sql, cn);

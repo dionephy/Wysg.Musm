@@ -23,6 +23,7 @@ namespace Wysg.Musm.Radium.Services
         }
         public string TenantCode { get; set; } = string.Empty; // external auth provider user id
         public long AccountId { get => TenantId; set => TenantId = value; } // alias for readability
+        public string CurrentPacsKey { get; set; } = "default_pacs"; // current PACS profile identifier
         public string? ReportifySettingsJson { get; set; } // cached per-account settings JSON
         public event System.Action<long, long>? AccountIdChanged; // subscription point for reload / clear behaviors
     }

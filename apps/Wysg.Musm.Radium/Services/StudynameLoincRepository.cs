@@ -13,12 +13,13 @@ namespace Wysg.Musm.Radium.Services
     public sealed class StudynameLoincRepository : IStudynameLoincRepository
     {
         private readonly IRadiumLocalSettings _settings;
+        private readonly ITenantContext? _tenant;
         private string? _mapTableName; // cache resolved table name
         private static int _openCounter = 0;
         private static int _methodCallCounter = 0;
-        public StudynameLoincRepository(IRadiumLocalSettings settings)
+        public StudynameLoincRepository(IRadiumLocalSettings settings, ITenantContext? tenant = null)
         {
-            _settings = settings;
+            _settings = settings; _tenant = tenant;
             Debug.WriteLine($"[Repo][Init] StudynameLoincRepository constructed Thread={Environment.CurrentManagedThreadId}");
         }
 
@@ -99,7 +100,10 @@ namespace Wysg.Musm.Radium.Services
                 try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn); }
                 catch (Exception openEx) { LogNetworkException("Open", openEx); throw; }
                 Debug.WriteLine($"[Repo][Call#{callId}] Connection Opened State={cn.FullState}");
-                await using var cmd = new NpgsqlCommand("SELECT id, studyname FROM med.rad_studyname ORDER BY studyname", cn);
+                long tid = _tenant?.TenantId ?? 0L;
+                string sql = tid > 0 ? "SELECT id, studyname FROM med.rad_studyname WHERE tenant_id=@tid ORDER BY studyname" : "SELECT id, studyname FROM med.rad_studyname ORDER BY studyname";
+                await using var cmd = new NpgsqlCommand(sql, cn);
+                if (tid > 0) cmd.Parameters.AddWithValue("@tid", tid);
                 await using var rd = await cmd.ExecuteReaderAsync();
                 while (await rd.ReadAsync()) list.Add(new StudynameRow(rd.GetInt64(0), rd.GetString(1)));
                 sw.Stop();
@@ -132,8 +136,18 @@ namespace Wysg.Musm.Radium.Services
             {
                 try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn); }
                 catch (Exception openEx) { LogNetworkException("Open", openEx); throw; }
-                await using var cmd = new NpgsqlCommand(@"INSERT INTO med.rad_studyname(studyname)
-VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname RETURNING id;", cn);
+                long tid = _tenant?.TenantId ?? 0L;
+                string sql = tid > 0
+                    ? @"INSERT INTO med.rad_studyname(tenant_id, studyname)
+VALUES (@tid, @n)
+ON CONFLICT (tenant_id, studyname) DO UPDATE SET studyname = EXCLUDED.studyname
+RETURNING id;"
+                    : @"INSERT INTO med.rad_studyname(studyname)
+VALUES (@n)
+ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
+RETURNING id;";
+                await using var cmd = new NpgsqlCommand(sql, cn);
+                if (tid > 0) cmd.Parameters.AddWithValue("@tid", tid);
                 cmd.Parameters.AddWithValue("@n", studyname);
                 var id = (long)await cmd.ExecuteScalarAsync();
                 sw.Stop();
@@ -366,8 +380,18 @@ VALUES (@n) ON CONFLICT (studyname) DO UPDATE SET studyname = EXCLUDED.studyname
             var src = _settings.LocalConnectionString != null && cn.ConnectionString.Contains(_settings.LocalConnectionString) ? "LocalConnectionString" : "Fallback";
             var mapTable = await GetMapTableAsync(cn);
             long studynameCount = 0, studyCount = 0, mappingCount = 0;
-            await using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM med.rad_studyname", cn)) studynameCount = (long)await cmd.ExecuteScalarAsync();
-            await using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM med.rad_study", cn)) studyCount = (long)await cmd.ExecuteScalarAsync();
+            long tid = _tenant?.TenantId ?? 0L;
+            if (tid > 0)
+            {
+                await using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM med.rad_studyname WHERE tenant_id=@tid", cn)) { cmd.Parameters.AddWithValue("@tid", tid); studynameCount = (long)await cmd.ExecuteScalarAsync(); }
+                await using (var cmd = new NpgsqlCommand(@"SELECT COUNT(*) FROM med.rad_study s
+JOIN med.patient p ON p.id = s.patient_id AND p.tenant_id=@tid", cn)) { cmd.Parameters.AddWithValue("@tid", tid); studyCount = (long)await cmd.ExecuteScalarAsync(); }
+            }
+            else
+            {
+                await using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM med.rad_studyname", cn)) studynameCount = (long)await cmd.ExecuteScalarAsync();
+                await using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM med.rad_study", cn)) studyCount = (long)await cmd.ExecuteScalarAsync();
+            }
             await using (var cmd = new NpgsqlCommand($"SELECT COUNT(*) FROM {mapTable}", cn)) mappingCount = (long)await cmd.ExecuteScalarAsync();
             sw.Stop();
             Debug.WriteLine($"[Repo][Call#{callId}] GetDiagnosticsAsync OK Elapsed={sw.ElapsedMilliseconds}ms");

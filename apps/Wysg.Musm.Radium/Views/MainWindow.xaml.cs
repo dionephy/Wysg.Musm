@@ -44,6 +44,10 @@ namespace Wysg.Musm.Radium.Views
             try { var _ = ((App)Application.Current).Services.GetRequiredService<IAuthStorage>(); } catch { }
 
             if (DataContext is not MainViewModel vm) return;
+            
+            // Initialize PACS profiles
+            vm.InitializePacsProfilesForMain();
+            
             try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Header"); InitEditor(vm, EditorHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Header: " + ex); throw; }
             try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Findings"); InitEditor(vm, EditorFindings); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Findings: " + ex); throw; }
             try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Conclusion"); InitEditor(vm, EditorConclusion); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Conclusion: " + ex); throw; }

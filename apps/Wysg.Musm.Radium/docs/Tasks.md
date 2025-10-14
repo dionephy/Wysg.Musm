@@ -187,3 +187,17 @@
 - [X] T753 Add local settings keys in interface and implementation (apps/Wysg.Musm.Radium/Services/IRadiumLocalSettings.cs, .../RadiumLocalSettings.cs).
 - [X] T754 Add `MainViewModel.RunOpenStudyShortcut()` to execute proper sequence (apps/Wysg.Musm.Radium/ViewModels/MainViewModel.Commands.cs).
 - [X] T755 Docs: Update Spec.md with FR-545..FR-547 and Plan.md with approach/test/risks.
+
+## New (2025-10-14 – Multi-PACS Tenant + Account-Scoped Techniques)
+- [X] T760 Add local tenant table `app.tenant` with `(account_id, pacs_key)` unique and `created_at`.
+- [X] T761 Add `tenant_id` column (FK → app.tenant) to `med.patient`; change unique to `(tenant_id, patient_number)`.
+- [X] T762 Add `tenant_id` column (FK → app.tenant) to `med.rad_studyname`; change unique to `(tenant_id, studyname)`.
+- [X] T763 Rename technique tables to account-scoped `rad_technique*` and add `account_id` with unique constraints per account:
+      `rad_technique_prefix`, `rad_technique_tech`, `rad_technique_suffix`, `rad_technique`, `rad_technique_combination`, `rad_technique_combination_item`.
+- [X] T764 Create/refresh views `med.v_technique_display` and `med.v_technique_combination_display` to use the new table names.
+- [X] T765 Update `TechniqueRepository` SQL to the new `rad_technique*` tables and pass `account_id` from `ITenantContext`.
+- [X] T766 Update `RadStudyRepository` to persist/filter by `tenant_id` and adjust `ON CONFLICT` keys.
+- [X] T767 Update `StudynameLoincRepository` to scope queries and upserts by `tenant_id`.
+- [X] T768 Update `GetStudynameIdByNameAsync` to filter by tenant.
+- [X] T769 Docs: Update Spec.md (FR-600..FR-609) and Plan.md with approach/test/risks for tenancy and technique renames.
+- [X] V210 Build passes after repository and schema name changes.

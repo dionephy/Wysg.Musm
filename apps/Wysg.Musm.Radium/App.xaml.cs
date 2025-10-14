@@ -17,6 +17,8 @@ using Serilog.Events;
 using Microsoft.Data.SqlClient;
 using System.Drawing; // added
 using System.Text; // added for CodePagesEncodingProvider
+using System.IO; // added for path ops
+using System.Linq; // added
 
 namespace Wysg.Musm.Radium
 {
@@ -186,6 +188,7 @@ namespace Wysg.Musm.Radium
 
             // Data access (central + local) ----------------------------------------------------
             services.AddSingleton<ICentralDataSourceProvider, CentralDataSourceProvider>(); // Shared NpgsqlDataSources (central)
+            services.AddSingleton<ITenantRepository, TenantRepository>();    // Local tenant management (PACS profiles)
             services.AddSingleton<IPhraseService>(sp =>
             {
                 var settings = sp.GetRequiredService<IRadiumLocalSettings>();
@@ -255,7 +258,8 @@ namespace Wysg.Musm.Radium
                 sp.GetRequiredService<IRadiumLocalSettings>(),
                 sp.GetService<IReportifySettingsService>(),
                 sp.GetService<ITenantContext>(),
-                sp.GetService<PhrasesViewModel>() // compose phrases tab inside settings
+                sp.GetService<PhrasesViewModel>(), // compose phrases tab inside settings
+                sp.GetRequiredService<ITenantRepository>() // pass tenant repo so SettingsVM can load PACS from DB
             ));
         }
 
@@ -277,6 +281,14 @@ namespace Wysg.Musm.Radium
                 loginSuccess = true;
                 try
                 {
+                    // After login, set per-PACS spy settings path override for ProcedureExecutor
+                    var tenant = _host.Services.GetRequiredService<ITenantContext>();
+                    string pacsKey = string.IsNullOrWhiteSpace(tenant.CurrentPacsKey) ? "default_pacs" : tenant.CurrentPacsKey;
+                    string baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey));
+                    Directory.CreateDirectory(baseDir);
+                    string spyPath = Path.Combine(baseDir, "ui-procedures.json");
+                    ProcedureExecutor.SetProcPathOverride(() => spyPath);
+
                     BackgroundTask.Run("PhrasePreload", async () =>
                     {
                         if (Environment.GetEnvironmentVariable("RAD_DISABLE_PHRASE_PRELOAD") == "1")
@@ -284,7 +296,6 @@ namespace Wysg.Musm.Radium
                             Debug.WriteLine("[App][Preload] Skipped (RAD_DISABLE_PHRASE_PRELOAD=1)");
                             return;
                         }
-                        var tenant = _host.Services.GetRequiredService<ITenantContext>();
                         if (tenant.TenantId > 0)
                         {
                             Debug.WriteLine($"[App][Preload] Start tenant={tenant.TenantId}");
@@ -312,6 +323,12 @@ namespace Wysg.Musm.Radium
             {
                 Shutdown(); // abort application (no authenticated session)
             }
+        }
+
+        private static string SanitizeFileName(string name)
+        {
+            var invalid = Path.GetInvalidFileNameChars();
+            return string.Join("_", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
         }
     }
 

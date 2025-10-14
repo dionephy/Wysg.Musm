@@ -426,3 +426,33 @@
 - Moving mouse programmatically is disruptive → operation is explicit; not run automatically.
 - DPI/coordinate mismatch → using screen coordinates (SetCursorPos/mouse_event); users can tune values.
 
+## Change Log Addition (2025-10-14 – Multi-PACS Tenant + Account-Scoped Techniques)
+- Introduced local tenant model to support multiple PACS per account. Added `app.tenant` with `(account_id, pacs_key)` unique to represent an account×PACS pairing.
+- Scoped `med.patient` and `med.rad_studyname` by tenant: added `tenant_id` FK and adjusted unique constraints to `(tenant_id, patient_number)` and `(tenant_id, studyname)`.
+- Renamed technique tables to `rad_technique*` and added `account_id` to scope technique vocabularies per account:
+  - `med.rad_technique_prefix`, `med.rad_technique_tech`, `med.rad_technique_suffix`, `med.rad_technique`, `med.rad_technique_combination`, `med.rad_technique_combination_item`.
+- Provided compatibility views `med.v_technique_display` and `med.v_technique_combination_display` over the new table names for unchanged UI queries.
+- Updated repositories to respect `ITenantContext`:
+  - `RadStudyRepository` and `StudynameLoincRepository` filter by `TenantId` and include `tenant_id` on upserts.
+  - `TechniqueRepository` filters component lists by `AccountId`, persists `account_id`, and uses renamed tables.
+
+### Approach
+1) Add `app.tenant` and wire FK relations from `med.patient` and `med.rad_studyname`.
+2) Change uniqueness to be tenant-qualified; keep existing `rad_study` and `rad_report` relations unchanged.
+3) Rename technique tables to `rad_technique*` and add `account_id`; enforce uniqueness per account for text and composite keys.
+4) Keep existing link tables for studynames/studies to combinations; only the technique sources change.
+5) Update repository SQL to new names and to include account/tenant parameters from `ITenantContext`.
+6) Maintain views for display so dependent queries remain stable.
+
+### Test Plan
+- Create a tenant row and verify inserts of patients/studynames under that tenant; duplicates by patient_number/studyname allowed across tenants but not within the same tenant.
+- Seed a few prefixes/techs/suffixes for two accounts and verify no cross-account leakage; uniqueness enforced per account.
+- Create techniques and combinations; link defaults to a studyname; confirm `v_technique_combination_display` renders correct string.
+- Verify New Study flow persists patients/studies under the active tenant and technique UI lists only the current account’s items.
+- Switch `ITenantContext` values at runtime and verify queries reflect the new tenant/account.
+
+### Risks / Mitigations
+- Legacy databases without tenant/account columns: repositories include guarded fallbacks (no-tenant queries) to avoid crashes.
+- Existing data in old `med.technique_*` tables: migration not automated here; keep a separate migration script or dual-compat views if needed.
+- Accidental mixed-account references in combinations: combinations include `account_id` through their items; ensure UI only allows using items from same account (enforced by filtering).
+

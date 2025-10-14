@@ -16,6 +16,8 @@ namespace Wysg.Musm.Radium.Services;
 
 public sealed class UiBookmarks
 {
+    public static Func<string>? GetStorePathOverride { get; set; }
+
     public enum KnownControl
     {
         StudyInfoBanner,
@@ -121,6 +123,7 @@ public sealed class UiBookmarks
 
     public static string GetStorePath()
     {
+        if (GetStorePathOverride != null) return GetStorePathOverride();
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Wysg.Musm", "Radium");
         Directory.CreateDirectory(dir);
         return Path.Combine(dir, "ui-bookmarks.json");

@@ -12,15 +12,12 @@ using FlaUI.UIA3;
 
 namespace Wysg.Musm.Radium.Services
 {
-    /// <summary>
-    /// Executes user-defined PACS procedures saved by SpyWindow (ui-procedures.json).
-    /// Mirrors the minimal data contract from SpyWindow's internal ProcStore/ProcOpRow/ProcArg classes
-    /// so that PACS service methods can be fully data?driven (customizable) instead of hard-coded.
-    /// </summary>
     internal static class ProcedureExecutor
     {
         private static readonly HttpClient _http = new HttpClient();
         private static bool _encProviderRegistered;
+        private static Func<string>? _getProcPathOverride;
+        public static void SetProcPathOverride(Func<string> resolver) => _getProcPathOverride = resolver;
         private static void EnsureEncodingProviders()
         {
             if (_encProviderRegistered) return;
@@ -28,7 +25,6 @@ namespace Wysg.Musm.Radium.Services
             _encProviderRegistered = true;
         }
 
-        // Cache for resolved known controls (avoid repeated expensive UIA crawls)
         private static readonly Dictionary<UiBookmarks.KnownControl, AutomationElement> _controlCache = new();
         private static AutomationElement? GetCached(UiBookmarks.KnownControl key)
         {
@@ -40,7 +36,6 @@ namespace Wysg.Musm.Radium.Services
         }
         private static void StoreCache(UiBookmarks.KnownControl key, AutomationElement el) { if (el != null) _controlCache[key] = el; }
 
-        // --- Data contracts (shape must match SpyWindow serialization) ---
         private sealed class ProcStore { public Dictionary<string, List<ProcOpRow>> Methods { get; set; } = new(); }
         private sealed class ProcOpRow
         {
@@ -60,6 +55,10 @@ namespace Wysg.Musm.Radium.Services
 
         private static string GetProcPath()
         {
+            if (_getProcPathOverride != null)
+            {
+                try { return _getProcPathOverride(); } catch { }
+            }
             var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Wysg.Musm", "Radium");
             Directory.CreateDirectory(dir);
             return Path.Combine(dir, "ui-procedures.json");
@@ -95,7 +94,6 @@ namespace Wysg.Musm.Radium.Services
 
             if (!store.Methods.TryGetValue(methodTag, out var steps) || steps.Count == 0)
             {
-                // Create a sensible default for known tags when missing
                 steps = TryCreateFallbackProcedure(methodTag);
                 if (steps.Count > 0) { store.Methods[methodTag] = steps; Save(store); }
                 else return null;
@@ -107,10 +105,8 @@ namespace Wysg.Musm.Radium.Services
             {
                 var row = steps[i];
                 var (preview, value) = ExecuteRow(row, vars);
-                // Store under implicit var{i+1}
                 var implicitKey = $"var{i + 1}";
                 vars[implicitKey] = value;
-                // Also store under explicit OutputVar if provided by SpyWindow
                 if (!string.IsNullOrWhiteSpace(row.OutputVar)) vars[row.OutputVar!] = value;
                 if (value != null) last = value;
             }
@@ -405,7 +401,6 @@ namespace Wysg.Musm.Radium.Services
                    s?.Equals("Number", StringComparison.OrdinalIgnoreCase) == true ? ArgKind.Number : ArgKind.String;
         }
 
-        // Small helper subset copied from SpyWindow for header/value extraction consistency
         private static class SpyHeaderHelpers
         {
             public static string NormalizeHeader(string h)

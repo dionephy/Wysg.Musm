@@ -7,16 +7,19 @@ namespace Wysg.Musm.Radium.Services
     public sealed partial class TechniqueRepository : ITechniqueRepository
     {
         private readonly IRadiumLocalSettings _settings;
-        public TechniqueRepository(IRadiumLocalSettings settings) { _settings = settings; }
+        private readonly ITenantContext? _tenant;
+        public TechniqueRepository(IRadiumLocalSettings settings, ITenantContext? tenant = null) { _settings = settings; _tenant = tenant; }
         private static string FallbackLocal() => "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas";
         private NpgsqlConnection Open() => new(_settings.LocalConnectionString ?? FallbackLocal());
+        private long Aid => _tenant?.AccountId ?? 0L;
 
         public async Task<IReadOnlyList<SimpleTextRow>> GetPrefixesAsync()
         {
             var list = new List<SimpleTextRow>();
             await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            const string sql = "SELECT id, prefix_text, display_order FROM med.technique_prefix ORDER BY display_order, prefix_text";
+            const string sql = "SELECT id, prefix_text, display_order FROM med.rad_technique_prefix WHERE account_id=@aid ORDER BY display_order, prefix_text";
             await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@aid", Aid);
             await using var rd = await cmd.ExecuteReaderAsync();
             while (await rd.ReadAsync()) list.Add(new SimpleTextRow(rd.GetInt64(0), rd.IsDBNull(1) ? string.Empty : rd.GetString(1)));
             return list;
@@ -25,10 +28,11 @@ namespace Wysg.Musm.Radium.Services
         public async Task<long> AddPrefixAsync(string text)
         {
             await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            const string sql = @"INSERT INTO med.technique_prefix(prefix_text) VALUES (@t)
-ON CONFLICT (prefix_text) DO UPDATE SET prefix_text = EXCLUDED.prefix_text
+            const string sql = @"INSERT INTO med.rad_technique_prefix(account_id, prefix_text) VALUES (@aid, @t)
+ON CONFLICT (account_id, prefix_text) DO UPDATE SET prefix_text = EXCLUDED.prefix_text
 RETURNING id";
             await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@aid", Aid);
             cmd.Parameters.AddWithValue("@t", text);
             var o = await cmd.ExecuteScalarAsync();
             return o is long l ? l : 0L;
@@ -37,11 +41,12 @@ RETURNING id";
         public async Task<long> EnsureTechniqueAsync(long? prefixId, long techId, long? suffixId)
         {
             await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            const string sql = @"INSERT INTO med.technique(prefix_id, tech_id, suffix_id)
-VALUES (@p, @t, @s)
-ON CONFLICT (prefix_id, tech_id, suffix_id) DO UPDATE SET tech_id = EXCLUDED.tech_id
+            const string sql = @"INSERT INTO med.rad_technique(account_id, prefix_id, tech_id, suffix_id)
+VALUES (@aid, @p, @t, @s)
+ON CONFLICT (account_id, prefix_id, tech_id, suffix_id) DO UPDATE SET tech_id = EXCLUDED.tech_id
 RETURNING id";
             await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@aid", Aid);
             cmd.Parameters.AddWithValue("@p", prefixId.HasValue ? prefixId.Value : (object)System.DBNull.Value);
             cmd.Parameters.AddWithValue("@t", techId);
             cmd.Parameters.AddWithValue("@s", suffixId.HasValue ? suffixId.Value : (object)System.DBNull.Value);
@@ -52,8 +57,9 @@ RETURNING id";
         public async Task<long> CreateCombinationAsync(string? name)
         {
             await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            const string sql = "INSERT INTO med.technique_combination(combination_name) VALUES (@n) RETURNING id";
+            const string sql = "INSERT INTO med.rad_technique_combination(account_id, combination_name) VALUES (@aid, @n) RETURNING id";
             await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@aid", Aid);
             cmd.Parameters.AddWithValue("@n", (object?)name ?? System.DBNull.Value);
             var o = await cmd.ExecuteScalarAsync();
             return o is long l ? l : 0L;
@@ -65,7 +71,7 @@ RETURNING id";
             await using var tx = await cn.BeginTransactionAsync();
             try
             {
-                const string sql = @"INSERT INTO med.technique_combination_item(combination_id, technique_id, sequence_order)
+                const string sql = @"INSERT INTO med.rad_technique_combination_item(combination_id, technique_id, sequence_order)
 VALUES (@c, @t, @o)
 ON CONFLICT (combination_id, technique_id, sequence_order) DO NOTHING";
                 await using var cmd = new NpgsqlCommand(sql, cn, (NpgsqlTransaction)tx);
@@ -103,8 +109,9 @@ ON CONFLICT (studyname_id, combination_id) DO UPDATE SET is_default = EXCLUDED.i
         {
             var list = new List<SimpleTextRow>();
             await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            const string sql = "SELECT id, tech_text, display_order FROM med.technique_tech ORDER BY display_order, tech_text";
+            const string sql = "SELECT id, tech_text, display_order FROM med.rad_technique_tech WHERE account_id=@aid ORDER BY display_order, tech_text";
             await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@aid", Aid);
             await using var rd = await cmd.ExecuteReaderAsync();
             while (await rd.ReadAsync()) list.Add(new SimpleTextRow(rd.GetInt64(0), rd.IsDBNull(1) ? string.Empty : rd.GetString(1)));
             return list;
@@ -113,10 +120,11 @@ ON CONFLICT (studyname_id, combination_id) DO UPDATE SET is_default = EXCLUDED.i
         public async Task<long> AddTechAsync(string text)
         {
             await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            const string sql = @"INSERT INTO med.technique_tech(tech_text) VALUES (@t)
-ON CONFLICT (tech_text) DO UPDATE SET tech_text = EXCLUDED.tech_text
+            const string sql = @"INSERT INTO med.rad_technique_tech(account_id, tech_text) VALUES (@aid, @t)
+ON CONFLICT (account_id, tech_text) DO UPDATE SET tech_text = EXCLUDED.tech_text
 RETURNING id";
             await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@aid", Aid);
             cmd.Parameters.AddWithValue("@t", text);
             var o = await cmd.ExecuteScalarAsync();
             return o is long l ? l : 0L;
@@ -126,8 +134,9 @@ RETURNING id";
         {
             var list = new List<SimpleTextRow>();
             await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            const string sql = "SELECT id, suffix_text, display_order FROM med.technique_suffix ORDER BY display_order, suffix_text";
+            const string sql = "SELECT id, suffix_text, display_order FROM med.rad_technique_suffix WHERE account_id=@aid ORDER BY display_order, suffix_text";
             await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@aid", Aid);
             await using var rd = await cmd.ExecuteReaderAsync();
             while (await rd.ReadAsync()) list.Add(new SimpleTextRow(rd.GetInt64(0), rd.IsDBNull(1) ? string.Empty : rd.GetString(1)));
             return list;
@@ -136,10 +145,11 @@ RETURNING id";
         public async Task<long> AddSuffixAsync(string text)
         {
             await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            const string sql = @"INSERT INTO med.technique_suffix(suffix_text) VALUES (@t)
-ON CONFLICT (suffix_text) DO UPDATE SET suffix_text = EXCLUDED.suffix_text
+            const string sql = @"INSERT INTO med.rad_technique_suffix(account_id, suffix_text) VALUES (@aid, @t)
+ON CONFLICT (account_id, suffix_text) DO UPDATE SET suffix_text = EXCLUDED.suffix_text
 RETURNING id";
             await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@aid", Aid);
             cmd.Parameters.AddWithValue("@t", text);
             var o = await cmd.ExecuteScalarAsync();
             return o is long l ? l : 0L;

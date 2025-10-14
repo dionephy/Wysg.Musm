@@ -19,15 +19,16 @@ namespace Wysg.Musm.Radium.ViewModels
     ///   * On success: ensure (or create) a central account record, load per-account Reportify settings, populate tenant context, fire LoginSuccess.
     ///   * On failure: present interactive login UI (email/password + Google OAuth) and surface validation / error messages.
     ///   * Provide a quick "Test Central" connectivity check before user credentials are entered (helps diagnose network / firewall issues).
+    ///   * Ensure local tenant exists for account (creates with "default_pacs" if missing).
     ///
     /// UX flow:
     ///   1. Splash shows loading spinner.
-    ///   2. If refresh token present -> RefreshAsync -> EnsureAccountAsync -> load settings -> set ITenantContext -> signal success -> main window.
+    ///   2. If refresh token present -> RefreshAsync -> EnsureAccountAsync -> EnsureTenantAsync -> load settings -> set ITenantContext -> signal success -> main window.
     ///   3. Else show credential form; user logs in; same ensure + settings load path.
     ///
     /// Design choices:
     ///   * Fire-and-forget background task for last login timestamp so UI remains responsive.
-    ///   * Separation of concerns: token persistence abstracted via IAuthStorage; central DB logic kept in ISupabaseService.
+    ///   * Separation of concerns: token persistence abstracted via IAuthStorage; central DB logic kept in AzureSqlCentralService.
     ///   * Minimal retries here (fail fast) ? deeper network retry logic lives inside lower-level services when appropriate.
     /// </summary>
     public partial class SplashLoginViewModel : BaseViewModel
@@ -36,6 +37,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly AzureSqlCentralService _central; // replaced ISupabaseService
         private readonly ITenantContext _tenantContext;
         private readonly IAuthStorage _storage;
+        private readonly ITenantRepository _tenantRepo;
 
         [ObservableProperty]
         private bool _isLoading = true;  // true while attempting silent restore
@@ -55,12 +57,13 @@ namespace Wysg.Musm.Radium.ViewModels
         public IRelayCommand SignUpCommand { get; }
         public IRelayCommand TestCentralCommand { get; }
 
-        public SplashLoginViewModel(IAuthService auth, AzureSqlCentralService central, ITenantContext tenantContext, IAuthStorage storage)
+        public SplashLoginViewModel(IAuthService auth, AzureSqlCentralService central, ITenantContext tenantContext, IAuthStorage storage, ITenantRepository tenantRepo)
         {
             _auth = auth;
             _central = central;
             _tenantContext = tenantContext;
             _storage = storage;
+            _tenantRepo = tenantRepo;
 
             RememberMe = _storage.RememberMe || true; // ensure checkbox starts checked
             if (_storage.Email != null) Email = _storage.Email;
@@ -74,7 +77,7 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         /// <summary>
-        /// Silent initialization path invoked on splash load. Attempts token refresh -> account ensure -> settings load.
+        /// Silent initialization path invoked on splash load. Attempts token refresh -> account ensure -> tenant ensure -> settings load.
         /// Falls back to interactive login UI on any failure (user still able to proceed manually).
         /// </summary>
         private async Task InitializeAsync()
@@ -108,6 +111,14 @@ namespace Wysg.Musm.Radium.ViewModels
                             swStage.Stop();
                             Debug.WriteLine($"[Splash][Init][Stage] Ensure+Settings account={accountId} ms={swStage.ElapsedMilliseconds} settingsLen={(combined.settingsJson?.Length ?? 0)}");
 
+                            // Ensure local tenant (creates with default_pacs if missing)
+                            swStage.Restart();
+                            StatusMessage = "Loading PACS profile...";
+                            Debug.WriteLine("[Splash][Init][Stage] EnsureTenant start");
+                            var tenant = await _tenantRepo.EnsureTenantAsync(accountId, "default_pacs");
+                            swStage.Stop();
+                            Debug.WriteLine($"[Splash][Init][Stage] EnsureTenant done tenant={tenant.Id} pacs={tenant.PacsKey} ms={swStage.ElapsedMilliseconds}");
+
                             // Apply settings immediately
                             _tenantContext.ReportifySettingsJson = combined.settingsJson;
 
@@ -115,6 +126,7 @@ namespace Wysg.Musm.Radium.ViewModels
                             StatusMessage = "Loading phrases...";
                             _tenantContext.TenantId = accountId;
                             _tenantContext.TenantCode = refreshed.UserId;
+                            _tenantContext.CurrentPacsKey = tenant.PacsKey;
 
                             // Preload phrases BEFORE signaling success as requested
                             try
@@ -131,7 +143,7 @@ namespace Wysg.Musm.Radium.ViewModels
                             catch (Exception pex) { Debug.WriteLine("[Splash][Init][Stage][PhrasePreload][WARN] " + pex.Message); }
 
                             StatusMessage = "Finalizing session...";
-                            Debug.WriteLine("[Splash][Init] Silent login success (tenant set) with phrases");
+                            Debug.WriteLine($"[Splash][Init] Silent login success (tenant set) with PACS={tenant.PacsKey}");
                             LoginSuccess?.Invoke();
 
                             // Background last login update
@@ -172,7 +184,7 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         /// <summary>
-        /// Handles email/password authentication path. Ensures account, updates last login (interactive error surfaced),
+        /// Handles email/password authentication path. Ensures account, tenant, updates last login (interactive error surfaced),
         /// loads reportify settings, persists auth context (if RememberMe).  Raises LoginSuccess on completion.
         /// </summary>
         private async Task OnEmailLoginAsync(object? parameter)
@@ -194,8 +206,15 @@ namespace Wysg.Musm.Radium.ViewModels
 
                 var accountId = await _central.EnsureAccountAsync(auth.UserId, auth.Email, auth.DisplayName);
                 await _central.UpdateLastLoginAsync(accountId); // interactive login keep errors visible
+
+                // Ensure local tenant
+                StatusMessage = "Loading PACS profile...";
+                var tenant = await _tenantRepo.EnsureTenantAsync(accountId, "default_pacs");
+                Debug.WriteLine($"[Splash][Login] Tenant ensured id={tenant.Id} pacs={tenant.PacsKey}");
+
                 _tenantContext.TenantId = accountId;
                 _tenantContext.TenantCode = auth.UserId;
+                _tenantContext.CurrentPacsKey = tenant.PacsKey;
 
                 // Load reportify settings after login
                 try
@@ -217,7 +236,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 catch (Exception px) { Debug.WriteLine("[Splash][Login][PhrasePreload][WARN] " + px.Message); }
 
                 PersistAuth(auth);
-                Debug.WriteLine("[Splash][Login] Success account=" + accountId);
+                Debug.WriteLine($"[Splash][Login] Success account={accountId} PACS={tenant.PacsKey}");
                 LoginSuccess?.Invoke();
             }
             catch (OperationCanceledException oce)
@@ -253,8 +272,15 @@ namespace Wysg.Musm.Radium.ViewModels
 
                 var accountId = await _central.EnsureAccountAsync(auth.UserId, auth.Email, auth.DisplayName);
                 await _central.UpdateLastLoginAsync(accountId); // interactive login keep errors visible
+
+                // Ensure local tenant
+                StatusMessage = "Loading PACS profile...";
+                var tenant = await _tenantRepo.EnsureTenantAsync(accountId, "default_pacs");
+                Debug.WriteLine($"[Splash][Google] Tenant ensured id={tenant.Id} pacs={tenant.PacsKey}");
+
                 _tenantContext.TenantId = accountId;
                 _tenantContext.TenantCode = auth.UserId;
+                _tenantContext.CurrentPacsKey = tenant.PacsKey;
 
                 try
                 {
@@ -274,7 +300,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 catch (Exception px) { Debug.WriteLine("[Splash][Google][PhrasePreload][WARN] " + px.Message); }
 
                 PersistAuth(auth);
-                Debug.WriteLine("[Splash][Google] Success account=" + accountId);
+                Debug.WriteLine($"[Splash][Google] Success account={accountId} PACS={tenant.PacsKey}");
                 LoginSuccess?.Invoke();
             }
             catch (OperationCanceledException oce)

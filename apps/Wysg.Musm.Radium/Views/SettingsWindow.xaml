@@ -106,32 +106,89 @@
         </Grid.Resources>
 
         <TabControl Background="#1E1E1E" x:Name="tabsRoot">
-            <!-- Database -->
-            <TabItem Header="Database" x:Name="tabDatabase">
-                <Grid Margin="8">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Local/Intranet Connection String:" VerticalAlignment="Center" Margin="0,0,8,4"/>
-                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding LocalConnectionString, UpdateSourceTrigger=PropertyChanged}" MinWidth="520"/>
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Central (Azure SQL) Connection String:" VerticalAlignment="Center" Margin="0,4,8,4"/>
-                    <TextBox Grid.Row="1" Grid.Column="1" MinWidth="520" ToolTip="Paste AAD passwordless connection string (Authentication=Active Directory Default)"
-                             Text="{Binding CentralConnectionString, UpdateSourceTrigger=PropertyChanged}" />
-                    <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-                        <Button Content="Test Local" Width="100" Margin="0,0,8,0" Command="{Binding TestLocalCommand}"/>
-                        <Button Content="Test Central" Width="110" Margin="0,0,8,0" Command="{Binding TestCentralCommand}"/>
-                        <Button Content="Save" Width="90" Margin="0,0,8,0" Command="{Binding SaveCommand}"/>
-                        <Button Content="Close" Width="90" IsCancel="True"/>
+            <!-- General (renamed from Database) -->
+            <TabItem Header="General" x:Name="tabGeneral">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8">
+                        <!-- Database Pane -->
+                        <GroupBox Header="Database" Margin="0,0,0,12" Padding="8">
+                            <GroupBox.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource BrushTextPrimary}"/>
+                                </DataTemplate>
+                            </GroupBox.HeaderTemplate>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Local/Intranet Connection String:" VerticalAlignment="Center" Margin="0,0,8,4"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding LocalConnectionString, UpdateSourceTrigger=PropertyChanged}" MinWidth="520" Margin="0,0,0,4"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Central (Azure SQL) Connection String:" VerticalAlignment="Center" Margin="0,4,8,4"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" MinWidth="520" ToolTip="Paste AAD passwordless connection string (Authentication=Active Directory Default)"
+                                         Text="{Binding CentralConnectionString, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,4"/>
+                                <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                                    <Button Content="Test Local" Width="100" Margin="0,0,8,0" Command="{Binding TestLocalCommand}"/>
+                                    <Button Content="Test Central" Width="110" Margin="0,0,8,0" Command="{Binding TestCentralCommand}"/>
+                                    <Button Content="Save" Width="90" Margin="0,0,8,0" Command="{Binding SaveCommand}"/>
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- PACS Pane -->
+                        <GroupBox Header="PACS" Padding="8">
+                            <GroupBox.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource BrushTextPrimary}"/>
+                                </DataTemplate>
+                            </GroupBox.HeaderTemplate>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Text="Manage PACS profiles for different systems. Each profile has its own automation settings and UI Spy configurations." 
+                                           TextWrapping="Wrap" Foreground="{StaticResource BrushTextSecondary}" Margin="0,0,0,8"/>
+
+                                <DataGrid Grid.Row="1" ItemsSource="{Binding PacsProfiles}" SelectedItem="{Binding SelectedPacsProfile, Mode=TwoWay}"
+                                          AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" 
+                                          IsReadOnly="True" RowHeaderWidth="0" MinHeight="150" MaxHeight="300" Margin="0,0,0,8"
+                                          Background="{StaticResource BrushSurface}" Foreground="{StaticResource BrushTextPrimary}"
+                                          BorderBrush="{StaticResource BrushBorder}" RowBackground="{StaticResource BrushSurface}"
+                                          AlternatingRowBackground="{StaticResource BrushSurfaceAlt}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" MinWidth="150"/>
+                                        <DataGridTextColumn Header="Process" Binding="{Binding ProcessName}" Width="120"/>
+                                        <DataGridTextColumn Header="Created" Binding="{Binding CreatedAt, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
+                                        <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedAt, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
+                                        <DataGridTemplateColumn Header="Actions" Width="200">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Content="Rename" Width="70" Margin="2" Command="{Binding DataContext.RenamePacsProfileCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}"/>
+                                                        <Button Content="Remove" Width="70" Margin="2" Command="{Binding DataContext.RemovePacsProfileCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding}"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Content="Add PACS" Width="100" Command="{Binding AddPacsProfileCommand}"/>
+                                    <Button Content="Close" Width="90" IsCancel="True" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
                     </StackPanel>
-                    <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="Tip: Central string can omit password when using Azure AD (Active Directory Default)." Foreground="#9AA0A6"/>
-                </Grid>
+                </ScrollViewer>
             </TabItem>
 
             <!-- Keyboard -->
@@ -166,11 +223,24 @@
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Text="Drag modules between panes to configure execution order (duplicates allowed)." FontWeight="Bold" Foreground="{StaticResource BrushTextPrimary}"/>
-                    <Grid Grid.Row="1" Margin="0,8,0,0">
+                    
+                    <!-- PACS Selection -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="PACS Profile:" VerticalAlignment="Center" Foreground="{StaticResource BrushTextPrimary}" Margin="0,0,8,0"/>
+                        <ComboBox x:Name="cmbPacsAutomation" Width="200" 
+                                  ItemsSource="{Binding PacsProfiles}" 
+                                  DisplayMemberPath="Name"
+                                  SelectedValue="{Binding SelectedPacsForAutomation, Mode=TwoWay}"
+                                  SelectedValuePath="Name"/>
+                        <TextBlock Text="(Changes apply only to selected PACS)" VerticalAlignment="Center" Foreground="{StaticResource BrushTextSecondary}" Margin="12,0,0,0"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="1" Text="Drag modules between panes to configure execution order (duplicates allowed)." FontWeight="Bold" Foreground="{StaticResource BrushTextPrimary}"/>
+                    <Grid Grid.Row="2" Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
@@ -219,7 +289,7 @@
                             </DockPanel>
                         </Border>
                     </Grid>
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
                         <Button Content="Save Automation" Command="{Binding SaveAutomationCommand}" Width="140" Margin="0,0,8,0"/>
                         <Button Content="Spy" Width="90" Margin="0,0,8,0" Click="OnOpenSpy"/>
                         <Button Content="Close" Width="90" IsCancel="True"/>

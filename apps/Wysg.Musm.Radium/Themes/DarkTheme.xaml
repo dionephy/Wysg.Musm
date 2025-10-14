@@ -73,10 +73,10 @@
 		  <Setter.Value>
 			  <ControlTemplate TargetType="Button">
 				  <Border x:Name="border"
-						  Background="{TemplateBinding Background}"
-						  BorderBrush="{TemplateBinding BorderBrush}"
-						  BorderThickness="{TemplateBinding BorderThickness}"
-						  CornerRadius="4">
+					  Background="{TemplateBinding Background}"
+					  BorderBrush="{TemplateBinding BorderBrush}"
+					  BorderThickness="{TemplateBinding BorderThickness}"
+					  CornerRadius="4">
 					  <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
 				  </Border>
 				  <ControlTemplate.Triggers>
@@ -135,17 +135,17 @@
             </Grid.ColumnDefinitions>
             <Border x:Name="Bd" Grid.ColumnSpan="2" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="2"/>
             <Grid Grid.Column="0" Margin="2,0,2,0">
-              <!-- Display selected item text explicitly, avoid default SelectionBoxItem presenter to prevent overlap -->
-              <TextBlock x:Name="ContentText" Margin="4,0,2,0" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+              <!-- Display SelectedValue (e.g., Name) first, then fall back to SelectedItem.Name, Text, then SelectionBoxItem -->
+              <TextBlock Margin="4,0,2,0" VerticalAlignment="Center" HorizontalAlignment="Left">
                 <TextBlock.Text>
                   <PriorityBinding>
-                    <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectedItem.Text"/>
+                    <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectedValue"/>
+                    <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectedItem.Name"/>
                     <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Text"/>
                     <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectionBoxItem"/>
                   </PriorityBinding>
                 </TextBlock.Text>
               </TextBlock>
-              <!-- Overlay toggle: minimal template, Arrow cursor -->
               <ToggleButton x:Name="FullSurfaceToggle" Background="Transparent" BorderThickness="0" Focusable="False" IsHitTestVisible="True" Cursor="Arrow" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
                 <ToggleButton.Template>
                   <ControlTemplate TargetType="ToggleButton">

@@ -77,9 +77,17 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="22"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Margin="6,2,4,2" VerticalAlignment="Center" HorizontalAlignment="Left"
-                                           Text="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
-                                           Foreground="{TemplateBinding Foreground}" IsHitTestVisible="False"/>
+                                <!-- Show selected text reliably -->
+                                <TextBlock Grid.Column="0" Margin="6,2,4,2" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                    <TextBlock.Text>
+                                        <PriorityBinding>
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectedValue"/>
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectedItem.Name"/>
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Text"/>
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectionBoxItem"/>
+                                        </PriorityBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
                                 <Border Grid.Column="1" Background="{StaticResource Dark.Accent}" IsHitTestVisible="False">
                                     <Path HorizontalAlignment="Center" VerticalAlignment="Center" Data="M 0 0 L 4 4 L 8 0 Z" Fill="{StaticResource Dark.Foreground}"/>
                                 </Border>
@@ -210,6 +218,14 @@
 
         <!-- Top bar -->
         <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
+            <!-- PACS selector -->
+            <TextBlock Text="PACS:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <ComboBox x:Name="cmbPacsSpy" Width="180" Margin="0,0,12,0"
+                      ItemsSource="{Binding PacsProfiles}"
+                      DisplayMemberPath="Name"
+                      SelectedValuePath="Name"
+                      SelectedValue="{Binding SelectedPacsName, Mode=TwoWay}"/>
+
             <TextBlock Text="Process:" VerticalAlignment="Center" Margin="0,0,6,0"/>
             <TextBox x:Name="txtProcess" Width="160" Text=""/>
             <TextBlock Text="Delay(ms):" VerticalAlignment="Center" Margin="8,0,4,0"/>
@@ -470,7 +486,7 @@
                         <DataGridTemplateColumn Header="Arg1 Type" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox Width="80" SelectedValuePath="Content" SelectedValue="{ Binding Arg1.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg1Enabled}">
+                                    <ComboBox Width="80" SelectedValuePath="Content" SelectedValue="{Binding Arg1.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg1Enabled}">
                                         <ComboBoxItem Content="Element"/>
                                         <ComboBoxItem Content="String"/>
                                         <ComboBoxItem Content="Number"/>

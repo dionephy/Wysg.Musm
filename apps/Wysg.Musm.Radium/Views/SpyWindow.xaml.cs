@@ -43,6 +43,27 @@ namespace Wysg.Musm.Radium.Views
         private UiBookmarks.Bookmark? _editing;          // Active bookmark being edited
         private AutomationElement? _lastResolved;        // Cached resolved element (for quick actions)
 
+        // PACS profiles for per-PACS Spy storage
+        public ObservableCollection<Wysg.Musm.Radium.Models.PacsProfile> PacsProfiles { get; } = new();
+        public string? SelectedPacsName
+        {
+            get => _selectedPacsName;
+            set
+            {
+                if (_selectedPacsName == value) return;
+                _selectedPacsName = value;
+                OnSelectedPacsChanged();
+                try
+                {
+                    (FindName("cmbPacsSpy") as System.Windows.Controls.ComboBox)?
+                        .GetBindingExpression(System.Windows.Controls.ComboBox.SelectedValueProperty)?.UpdateTarget();
+                }
+                catch { }
+            }
+        }
+        private string? _selectedPacsName;
+        private PacsProfileManager? _pacsMgr;
+
         // Expose known controls and procedure vars (populated in procedures partial)
         public List<string> KnownControlTags { get; } = Enum.GetNames(typeof(UiBookmarks.KnownControl)).ToList();
         public ObservableCollection<string> ProcedureVars { get; } = new();
@@ -91,6 +112,50 @@ namespace Wysg.Musm.Radium.Views
             // Custom procedures grid wiring (handlers in Procedures partial)
             if (FindName("gridProcSteps") is System.Windows.Controls.DataGrid procGrid) procGrid.ItemsSource = new List<ProcOpRow>();
             if (FindName("cmbProcMethod") is System.Windows.Controls.ComboBox cmbMethodProc) cmbMethodProc.SelectionChanged += OnProcMethodChanged;
+
+            // Initialize PACS profiles
+            try
+            {
+                _pacsMgr = new PacsProfileManager();
+                var existing = _pacsMgr.GetAllProfiles();
+                PacsProfiles.Clear();
+                foreach (var p in existing) PacsProfiles.Add(p);
+                var cur = _pacsMgr.GetCurrentProfile();
+                SelectedPacsName = cur?.Name;
+                ApplyPacsProfile(cur);
+            }
+            catch { }
+        }
+
+        private void ApplyPacsProfile(Wysg.Musm.Radium.Models.PacsProfile? profile)
+        {
+            if (profile == null || _pacsMgr == null) return;
+            try
+            {
+                // Override bookmarks path per PACS
+                UiBookmarks.GetStorePathOverride = () => _pacsMgr.GetBookmarksPath(profile.Name);
+                // Override procedures path per PACS
+                ProcedureExecutor.SetProcPathOverride(() => _pacsMgr.GetSpySettingsPath(profile.Name));
+                // Update Process textbox default
+                if (FindName("txtProcess") is System.Windows.Controls.TextBox txt)
+                    txt.Text = profile.ProcessName ?? txt.Text;
+            }
+            catch { }
+        }
+
+        private void OnSelectedPacsChanged()
+        {
+            try
+            {
+                if (_pacsMgr == null || string.IsNullOrWhiteSpace(_selectedPacsName)) return;
+                _pacsMgr.SetCurrentProfile(_selectedPacsName);
+                var prof = PacsProfiles.FirstOrDefault(p => p.Name == _selectedPacsName);
+                ApplyPacsProfile(prof);
+                txtStatus.Text = $"Spy: PACS set to {_selectedPacsName}";
+                // Reload current procedure steps for new profile
+                try { OnProcMethodChanged(null!, null!); } catch { }
+            }
+            catch { }
         }
 
         // ------------------------------------------------------------------
