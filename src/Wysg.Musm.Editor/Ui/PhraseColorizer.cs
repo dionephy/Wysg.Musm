@@ -63,9 +63,9 @@ namespace Wysg.Musm.Editor.Ui
 
             // SNOMED semantic tag colors (matching SettingsWindow.xaml colors)
             _bodyStructureBrush = new SolidColorBrush(Color.FromRgb(0x90, 0xEE, 0x90)); // Light Green
-            _findingBrush = new SolidColorBrush(Color.FromRgb(0xAD, 0xD8, 0xE6)); // Light Blue
+            _findingBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0x99)); // Light Yellow - CHANGED: finding now yellow
             _disorderBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xB3, 0xB3)); // Light Red/Pink
-            _procedureBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0x99)); // Light Yellow
+            _procedureBrush = new SolidColorBrush(Color.FromRgb(0xAD, 0xD8, 0xE6)); // Light Cyan/Blue - CHANGED: procedure now cyan
             _observableEntityBrush = new SolidColorBrush(Color.FromRgb(0xE0, 0xC4, 0xFF)); // Light Purple
             _substanceBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xD5, 0x80)); // Light Orange
 
@@ -137,6 +137,7 @@ namespace Wysg.Musm.Editor.Ui
             {
                 "body structure" => _bodyStructureBrush,
                 "finding" => _findingBrush,
+                "morphologic abnormality" => _findingBrush, // Same as finding: light yellow
                 "disorder" => _disorderBrush,
                 "procedure" => _procedureBrush,
                 "observable entity" => _observableEntityBrush,
