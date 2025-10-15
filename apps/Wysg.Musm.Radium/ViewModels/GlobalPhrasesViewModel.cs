@@ -21,6 +21,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly IPhraseService _phraseService;
         private readonly IPhraseCache _cache;
         private readonly ITenantContext _tenant;
+        private readonly ISnomedMapService? _snomedMapService;
         private string _newPhraseText = string.Empty;
         private bool _isBusy;
         private string _statusMessage = string.Empty;
@@ -95,11 +96,12 @@ namespace Wysg.Musm.Radium.ViewModels
         public IAsyncRelayCommand ConvertSelectedCommand { get; }
         public IRelayCommand SelectAllAccountPhrasesCommand { get; }
 
-        public GlobalPhrasesViewModel(IPhraseService phraseService, IPhraseCache cache, ITenantContext tenant)
+        public GlobalPhrasesViewModel(IPhraseService phraseService, IPhraseCache cache, ITenantContext tenant, ISnomedMapService? snomedMapService = null)
         {
             _phraseService = phraseService;
             _cache = cache;
             _tenant = tenant;
+            _snomedMapService = snomedMapService;
 
             AddPhraseCommand = new AsyncRelayCommand(
                 AddPhraseAsync,
@@ -219,7 +221,37 @@ namespace Wysg.Musm.Radium.ViewModels
                 Items.Clear();
                 foreach (var phrase in phrases.OrderByDescending(p => p.UpdatedAt))
                 {
-                    Items.Add(new GlobalPhraseItem(phrase, this));
+                    var item = new GlobalPhraseItem(phrase, this);
+                    
+                    // Load SNOMED mapping if available
+                    if (_snomedMapService != null)
+                    {
+                        try
+                        {
+                            var mapping = await _snomedMapService.GetMappingAsync(phrase.Id);
+                            if (mapping != null)
+                            {
+                                // Build display text: show FSN (or PT if FSN not available), and concept ID
+                                var displayText = !string.IsNullOrWhiteSpace(mapping.Fsn) 
+                                    ? mapping.Fsn 
+                                    : mapping.Pt ?? string.Empty;
+                                    
+                                if (!string.IsNullOrWhiteSpace(displayText))
+                                {
+                                    item.SnomedMappingText = $"{displayText} ({mapping.ConceptIdStr})";
+                                }
+                                
+                                // Extract semantic tag for color determination
+                                item.SnomedSemanticTag = mapping.GetSemanticTag();
+                            }
+                        }
+                        catch
+                        {
+                            // Silently skip mapping load errors for individual phrases
+                        }
+                    }
+                    
+                    Items.Add(item);
                 }
 
                 StatusMessage = $"Loaded {Items.Count} global phrases";
@@ -398,6 +430,8 @@ namespace Wysg.Musm.Radium.ViewModels
         private bool _active;
         private DateTime _updatedAt;
         private long _rev;
+        private string _snomedMappingText = string.Empty;
+        private string? _snomedSemanticTag;
 
         public long Id { get; }
         public string Text { get; }
@@ -437,6 +471,36 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (_rev != value)
                 {
                     _rev = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string SnomedMappingText
+        {
+            get => _snomedMappingText;
+            internal set
+            {
+                if (_snomedMappingText != value)
+                {
+                    _snomedMappingText = value ?? string.Empty;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// The semantic tag extracted from the SNOMED FSN (e.g., "body structure", "disorder", "procedure").
+        /// Used to determine the display color.
+        /// </summary>
+        public string? SnomedSemanticTag
+        {
+            get => _snomedSemanticTag;
+            internal set
+            {
+                if (_snomedSemanticTag != value)
+                {
+                    _snomedSemanticTag = value;
                     OnPropertyChanged();
                 }
             }

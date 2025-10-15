@@ -495,6 +495,21 @@ myocardial infarction,22298006,exact,1.0,"Standard mapping"
 
 **Rationale**: Compliance, accountability, and debugging support.
 
+### FR-916: Phrase-SNOMED Mapping Window UX Improvements
+**Requirement**: Enhance the PhraseSnomedLinkWindow user experience with automatic search initialization and proper command state management.
+
+**FR-916a: Pre-fill Search Text**
+- When opening the phrase-SNOMED mapping window, automatically populate the search textbox with the phrase text being mapped.
+- User can immediately press Enter or click Search without retyping the phrase.
+- Improves workflow efficiency for mapping workflows.
+
+**FR-916b: Enable Map Button**
+- Map button must enable when a SNOMED concept is selected from the search results grid.
+- Map button must disable when no concept is selected.
+- Implemented by notifying `MapCommand.CanExecuteChanged` when `SelectedConcept` property changes.
+
+**Rationale**: Reduces friction in the mapping workflow; users can immediately search and map without redundant typing and button state is clear and responsive.
+
 ### Notes
 - Snowstorm base URL configurable in settings (e.g., `http://localhost:8080`)
 - Support multiple SNOMED editions/branches (INT, US, KR) via Snowstorm branch parameter

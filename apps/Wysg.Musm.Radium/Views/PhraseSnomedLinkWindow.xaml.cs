@@ -30,7 +30,20 @@ namespace Wysg.Musm.Radium.Views
         [ObservableProperty] private string scopeText = string.Empty;
         [ObservableProperty] private string searchText = string.Empty;
         public ObservableCollection<SnomedConcept> Results { get; } = new();
-        [ObservableProperty] private SnomedConcept? selectedConcept;
+        
+        private SnomedConcept? _selectedConcept;
+        public SnomedConcept? SelectedConcept
+        {
+            get => _selectedConcept;
+            set
+            {
+                if (SetProperty(ref _selectedConcept, value))
+                {
+                    MapCommand.NotifyCanExecuteChanged();
+                }
+            }
+        }
+        
         [ObservableProperty] private string mappingType = "exact";
         [ObservableProperty] private string? confidence;
         [ObservableProperty] private string? notes;
@@ -42,6 +55,7 @@ namespace Wysg.Musm.Radium.Views
         {
             _phraseId = phraseId; _accountId = accountId; _map = map; _snow = snow;
             PhraseText = phraseText;
+            SearchText = phraseText; // Pre-fill search box with phrase text
             ScopeText = accountId == null ? "Global" : $"Account {accountId}";
             SearchCommand = new AsyncRelayCommand(OnSearchAsync);
             MapCommand = new AsyncRelayCommand(OnMapAsync, CanMap);
@@ -59,11 +73,25 @@ namespace Wysg.Musm.Radium.Views
         private async Task OnMapAsync()
         {
             if (SelectedConcept == null) return;
-            decimal? conf = null;
-            if (!string.IsNullOrWhiteSpace(Confidence) && decimal.TryParse(Confidence, out var d)) conf = d;
-            // ensure it exists in central cache by relying on mapping service which expects concept to exist
-            await _map.MapPhraseAsync(_phraseId, _accountId, SelectedConcept.ConceptId, MappingType, conf, Notes);
-            MessageBox.Show("Mapped.", "SNOMED", MessageBoxButton.OK, MessageBoxImage.Information);
+            
+            try
+            {
+                // First, cache the concept if it's not already cached
+                await _map.CacheConceptAsync(SelectedConcept);
+                
+                // Parse confidence
+                decimal? conf = null;
+                if (!string.IsNullOrWhiteSpace(Confidence) && decimal.TryParse(Confidence, out var d)) conf = d;
+                
+                // Map phrase to SNOMED concept
+                await _map.MapPhraseAsync(_phraseId, _accountId, SelectedConcept.ConceptId, MappingType, conf, Notes);
+                
+                MessageBox.Show("Mapped successfully.", "SNOMED", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to map phrase:\n{ex.Message}", "SNOMED", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

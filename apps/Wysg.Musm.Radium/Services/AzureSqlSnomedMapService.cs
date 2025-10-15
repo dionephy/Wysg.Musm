@@ -95,6 +95,26 @@ namespace Wysg.Musm.Radium.Services
             return null;
         }
 
+        public async Task CacheConceptAsync(SnomedConcept concept)
+        {
+            if (concept == null) throw new ArgumentNullException(nameof(concept));
+
+            const string sql = "EXEC snomed.upsert_concept @concept_id, @concept_id_str, @fsn, @pt, @module_id, @active, @expires_at";
+
+            await using var con = Create();
+            await con.OpenAsync().ConfigureAwait(false);
+            await using var cmd = new SqlCommand(sql, con) { CommandType = CommandType.StoredProcedure };
+            cmd.CommandText = "snomed.upsert_concept";
+            cmd.Parameters.AddWithValue("@concept_id", concept.ConceptId);
+            cmd.Parameters.AddWithValue("@concept_id_str", concept.ConceptIdStr);
+            cmd.Parameters.AddWithValue("@fsn", concept.Fsn);
+            cmd.Parameters.AddWithValue("@pt", (object?)concept.Pt ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@module_id", DBNull.Value); // Not provided by Snowstorm client
+            cmd.Parameters.AddWithValue("@active", concept.Active);
+            cmd.Parameters.AddWithValue("@expires_at", DBNull.Value); // Let DB default handle
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+        }
+
         public async Task<bool> MapPhraseAsync(long phraseId, long? accountId, long conceptId, string mappingType = "exact", decimal? confidence = null, string? notes = null, long? mappedBy = null)
         {
             await using var con = Create();

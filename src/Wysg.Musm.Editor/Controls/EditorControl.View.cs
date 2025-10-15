@@ -128,6 +128,11 @@ namespace Wysg.Musm.Editor.Controls
             DependencyProperty.Register(nameof(PhraseSnapshot), typeof(System.Collections.Generic.IReadOnlyList<string>), typeof(EditorControl),
                 new PropertyMetadata(null, OnPhraseSnapshotChanged));
 
+        // SNOMED semantic tags for phrase coloring
+        public static readonly DependencyProperty PhraseSemanticTagsProperty =
+            DependencyProperty.Register(nameof(PhraseSemanticTags), typeof(System.Collections.Generic.IReadOnlyDictionary<string, string>), typeof(EditorControl),
+                new PropertyMetadata(null, OnPhraseSemanticTagsChanged));
+
         // CLR wrappers
         public string DocumentText { get => (string)GetValue(DocumentTextProperty); set => SetValue(DocumentTextProperty, value); }
         public bool AiEnabled { get => (bool)GetValue(AiEnabledProperty); set => SetValue(AiEnabledProperty, value); }
@@ -141,6 +146,7 @@ namespace Wysg.Musm.Editor.Controls
         public string StudyInfo { get => (string)GetValue(StudyInfoProperty); set => SetValue(StudyInfoProperty, value); }
         public ISnippetProvider? SnippetProvider { get => (ISnippetProvider?)GetValue(SnippetProviderProperty); set => SetValue(SnippetProviderProperty, value); }
         public System.Collections.Generic.IReadOnlyList<string>? PhraseSnapshot { get => (System.Collections.Generic.IReadOnlyList<string>?)GetValue(PhraseSnapshotProperty); set => SetValue(PhraseSnapshotProperty, value); }
+        public System.Collections.Generic.IReadOnlyDictionary<string, string?>? PhraseSemanticTags { get => (System.Collections.Generic.IReadOnlyDictionary<string, string?>?)GetValue(PhraseSemanticTagsProperty); set => SetValue(PhraseSemanticTagsProperty, value); }
 
         // ===== Timers / state =====
         private readonly DispatcherTimer _debounce;          // short debounce (typing/caret)
@@ -224,8 +230,10 @@ namespace Wysg.Musm.Editor.Controls
                 showAnchors: false);
             _ghostRenderer.Attach();
 
-            // Initialize phrase foreground colorizer (line transformer)
-            _phraseColorizer = new PhraseColorizer(() => PhraseSnapshot ?? System.Array.Empty<string>());
+            // Initialize phrase foreground colorizer (line transformer) with semantic tags support
+            _phraseColorizer = new PhraseColorizer(
+                () => PhraseSnapshot ?? System.Array.Empty<string>(),
+                () => PhraseSemanticTags);
             Editor.TextArea.TextView.LineTransformers.Add(_phraseColorizer);
 
             Editor.TextArea.PreviewMouseLeftButtonDown += (s,e) => {
@@ -377,6 +385,17 @@ namespace Wysg.Musm.Editor.Controls
         {
             var self = (EditorControl)d;
             // Invalidate text layer to force re-colorization with new snapshot
+            var tv = self.Editor?.TextArea?.TextView;
+            if (tv != null)
+            {
+                try { tv.InvalidateLayer(KnownLayer.Text); } catch { tv.InvalidateVisual(); }
+            }
+        }
+
+        private static void OnPhraseSemanticTagsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var self = (EditorControl)d;
+            // Invalidate text layer to force re-colorization with new semantic tags
             var tv = self.Editor?.TextArea?.TextView;
             if (tv != null)
             {

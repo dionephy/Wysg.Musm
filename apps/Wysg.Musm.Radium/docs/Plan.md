@@ -845,6 +845,93 @@ Designed and implemented database schema for mapping global and account-specific
 
 ---
 
+## Change Log Addition (2025-01-15 – Phrase-SNOMED Mapping Window UX Enhancements)
+- **Problem 1**: When opening the phrase-SNOMED link window from Settings → Global Phrases, the search textbox was empty, requiring users to retype the phrase text to search for matching SNOMED concepts.
+- **Problem 2**: The Map button remained disabled even after selecting a concept from the search results, preventing users from saving the mapping.
+
+### Root Cause
+1. **Empty Search Box**: The `SearchText` property in `PhraseSnomedLinkWindowViewModel` was initialized as empty string and not set to the phrase text passed in the constructor.
+2. **Disabled Map Button**: The `MapCommand` used `CanMap()` which correctly returned `true` when `SelectedConcept != null`, but the command's `CanExecuteChanged` event was never raised when `SelectedConcept` changed, so WPF never re-evaluated the button's enabled state.
+
+### Fix
+1. **Pre-fill Search Text**: In `PhraseSnomedLinkWindowViewModel` constructor, set `SearchText = phraseText` immediately after setting `PhraseText`. This pre-populates the search box so users can immediately search without retyping.
+2. **Enable Map Button**: Removed the `[ObservableProperty]` attribute from `selectedConcept` field and manually implemented the `SelectedConcept` property setter to call `MapCommand.NotifyCanExecuteChanged()` when the value changes. This ensures WPF re-evaluates the button state when a concept is selected.
+
+### Approach (Mapping Window UX)
+1) Update `PhraseSnomedLinkWindowViewModel` constructor to initialize `SearchText` with `phraseText` parameter.
+2) Replace auto-generated `SelectedConcept` property with manual implementation that calls `SetProperty` and `MapCommand.NotifyCanExecuteChanged()` on value change.
+3) No changes to XAML or other parts of the window; purely ViewModel fixes.
+
+### Test Plan (Mapping Window UX)
+- **Pre-fill Search**:
+  1. Open Settings → Global Phrases
+  2. Click "Link SNOMED" button for any phrase
+  3. Verify the search textbox is pre-filled with the phrase text
+  4. Press Enter or click Search → verify Snowstorm search executes with the phrase text
+  5. Edit the search text and search again → verify custom search works
+
+- **Map Button State**:
+  1. Open phrase-SNOMED link window
+  2. Verify Map button is disabled (no concept selected)
+  3. Perform a search → results appear in grid
+  4. Click on a result row to select a concept
+  5. Verify Map button becomes enabled immediately
+  6. Click Map button → verify mapping is saved and success message appears
+  7. Select a different concept → verify Map button remains enabled
+  8. Clear selection (click outside rows or press Ctrl+click) → verify Map button disables
+
+### Risks / Mitigations (Mapping Window UX)
+- **Risk**: Replacing `[ObservableProperty]` with manual property may break INPC notifications.
+  - **Mitigation**: Manual implementation uses `SetProperty` helper from `ObservableObject` base class, which handles INPC correctly. Tested that bindings work.
+  
+- **Risk**: Calling `NotifyCanExecuteChanged()` on every property set may impact performance.
+  - **Mitigation**: Property setter is only called when user selects a concept (infrequent user action). Minimal performance impact.
+
+- **Risk**: Pre-filled search text may be confusing if phrase text contains special characters or is very long.
+  - **Mitigation**: Users can edit the search text before searching. Search box is standard TextBox with full editing support.
+
+### Code Changes (Mapping Window UX)
+**File**: `apps\Wysg.Musm.Radium\Views\PhraseSnomedLinkWindow.xaml.cs`
+
+**Changes in `PhraseSnomedLinkWindowViewModel` constructor**:
+```csharp
+// Before:
+PhraseText = phraseText;
+ScopeText = accountId == null ? "Global" : $"Account {accountId}";
+
+// After:
+PhraseText = phraseText;
+SearchText = phraseText; // Pre-fill search box with phrase text
+ScopeText = accountId == null ? "Global" : $"Account {accountId}";
+```
+
+**Changes in `SelectedConcept` property**:
+```csharp
+// Before (auto-generated):
+[ObservableProperty] private SnomedConcept? selectedConcept;
+
+// After (manual with CanExecute notification):
+private SnomedConcept? _selectedConcept;
+public SnomedConcept? SelectedConcept
+{
+    get => _selectedConcept;
+    set
+    {
+        if (SetProperty(ref _selectedConcept, value))
+        {
+            MapCommand.NotifyCanExecuteChanged();
+        }
+    }
+}
+```
+
+### Related Features
+- Completes FR-909 (Global Phrases Tab - SNOMED Mapping UI) by fixing UX blockers
+- Supports FR-916a (Pre-fill Search Text) and FR-916b (Enable Map Button)
+- Improves workflow efficiency for terminology management tasks
+
+---
+
 ## Change Log Addition (2025-10-15 – OpenStudy reliability + sequential execution + AddPreviousStudy guard/perf)
 - Problem: The last module `OpenStudy` sometimes failed when run after other modules (e.g., `AddPreviousStudy`) because earlier code fired modules concurrently and waited for heavy previous-study reloads before proceeding.
 - Fixes:

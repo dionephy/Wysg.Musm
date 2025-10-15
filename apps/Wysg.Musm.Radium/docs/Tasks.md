@@ -327,6 +327,22 @@
 - [ ] V309 Query v_phrase_snomed_combined → verify UNION ALL returns global and account mappings with correct mapping_source.
 - [ ] V310 Build passes with no errors after schema deployment.
 
+## New (2025-01-15 – PhraseSnomedLinkWindow UX Improvements)
+- [X] T931 Pre-fill search textbox with phrase text in PhraseSnomedLinkWindow constructor (FR-916a).
+- [X] T932 Implement manual SelectedConcept property to call MapCommand.NotifyCanExecuteChanged() when concept selected (FR-916b).
+- [X] T933 Update Spec.md with FR-916 documenting mapping window UX improvements (cumulative).
+- [X] T934 Update Plan.md with change log entry for mapping window fixes including root cause, approach, and test plan (cumulative).
+- [X] T935 Update Tasks.md with completed mapping window UX tasks (this file, cumulative).
+
+## Verification (PhraseSnomedLinkWindow UX)
+- [X] V311 Open "Link SNOMED" from Global Phrases → verify search box pre-filled with phrase text.
+- [X] V312 Press Enter or click Search → verify Snowstorm search executes with pre-filled text.
+- [X] V313 Map button is disabled when no concept selected.
+- [X] V314 Select a concept from search results → verify Map button enables immediately.
+- [X] V315 Click Map button → verify mapping saves successfully and confirmation appears.
+- [X] V316 Select different concept → verify Map button remains enabled.
+- [X] V317 Clear selection → verify Map button disables.
+
 ---
 # Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 

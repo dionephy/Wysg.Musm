@@ -45,6 +45,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly INewStudyProcedure? _newStudyProc;
         private readonly IRadiumLocalSettings? _localSettings;
         private readonly ILockStudyProcedure? _lockStudyProc;
+        private readonly ISnomedMapService? _snomedMapService; // SNOMED mapping service for semantic tags
 
         // ------------------------------------------------------------------
         // Status / UI flags
@@ -105,7 +106,8 @@ namespace Wysg.Musm.Radium.ViewModels
             INewStudyProcedure? newStudyProc = null,
             IRadiumLocalSettings? localSettings = null,
             ILockStudyProcedure? lockStudyProc = null,
-            IAuthStorage? authStorage = null)
+            IAuthStorage? authStorage = null,
+            ISnomedMapService? snomedMapService = null)
         {
             Debug.WriteLine("[MainViewModel] Constructor START");
             try
@@ -113,6 +115,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine("[MainViewModel] Setting dependencies...");
                 _phrases = phrases; _tenant = tenant; _cache = cache; _hotkeys = hotkeys; _snippets = snippets;
                 _studyRepo = studyRepo; _newStudyProc = newStudyProc; _localSettings = localSettings; _lockStudyProc = lockStudyProc;
+                _snomedMapService = snomedMapService;
                 
                 Debug.WriteLine("[MainViewModel] Creating PreviousStudies collection...");
                 PreviousStudies = new ObservableCollection<PreviousStudyTab>();
