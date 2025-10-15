@@ -328,3 +328,31 @@
 - [ ] V310 Build passes with no errors after schema deployment.
 
 ---
+# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
+
+## Added (2025-10-15 – OpenStudy fallback to per-PACS WorklistViewButton)
+- [X] T860 Change `ProcedureExecutor` fallback for `InvokeOpenStudy` to `Invoke` `KnownControl.WorklistViewButton` so it uses per-PACS UiBookmarks mapping.
+- [X] T861 Update Spec.md FR-518 to reflect WorklistViewButton default and per-PACS storage note.
+- [X] T862 Update Plan.md with change log entry, approach, test plan, and risks for the new fallback behavior.
+- [ ] T863 Validate SpyWindow mapping flow for `WorklistViewButton` across two PACS profiles (mapping persists under each PACS folder).
+
+## Verification (2025-10-15 – OpenStudy fallback)
+- [X] V262 If `InvokeOpenStudy` procedure is missing, opening editor auto-seeds with a single `Invoke` step targeting `WorklistViewButton`.
+- [X] V263 Mapping `WorklistViewButton` to the PACS View/Open UI element and running the procedure opens the viewer.
+- [X] V264 Running Automation module `OpenStudy` triggers `PacsService.InvokeOpenStudyAsync()` and sets `StudyOpened=true`.
+- [ ] V265 Switch PACS profile and verify the fallback reads the mapped `WorklistViewButton` from the new PACS folder.
+
+## Added (2025-10-15 – OpenStudy reliability + sequential execution + AddPreviousStudy guard/perf)
+- [X] T870 Execute automation modules sequentially in New/Add/Shortcut flows via `RunModulesSequentially` (await each module in order).
+- [X] T871 Convert remark acquisition helpers to `Task` and await in sequencing to preserve ordering.
+- [X] T872 Add abort checks in `RunAddPreviousStudyModuleAsync`: skip when related study `studyname` or `studydatetime` is null/empty.
+- [X] T873 Add abort check in `RunAddPreviousStudyModuleAsync`: skip when related study matches current study (same `StudyName` and `StudyDateTime`).
+- [X] T874 Improve AddPreviousStudy performance: run `LoadPreviousStudiesForPatientAsync` in background after persistence; do not block module chain.
+- [X] T875 Add retry to `PacsService.InvokeOpenStudyAsync` (3 attempts with small backoff) while preserving strict throw-if-undefined behavior.
+
+## Verification (2025-10-15 – Sequencing + AddPreviousStudy + OpenStudy)
+- [X] V270 New/Add/Shortcut sequences run modules one-by-one in configured order; no interleaving.
+- [X] V271 Related study missing name/datetime → `AddPreviousStudy` aborts gracefully; status shows reason.
+- [X] V272 Related study equals current by name+datetime → `AddPreviousStudy` aborts; status shows reason.
+- [X] V273 After saving previous study, viewer opens promptly because reload runs in background; `OpenStudy` executes reliably next.
+- [X] V274 `OpenStudy` succeeds when procedure is present; transient failures are retried; if undefined, an error is thrown and surfaced in status.

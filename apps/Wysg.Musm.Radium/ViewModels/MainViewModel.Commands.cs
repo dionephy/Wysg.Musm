@@ -84,8 +84,8 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private async Task RunNewStudyProcedureAsync() => await (_newStudyProc != null ? _newStudyProc.ExecuteAsync(this) : Task.Run(OnNewStudy));
 
-        // New automation helpers (use UI thread synchronization via async void)
-        private async void AcquireStudyRemarkAsync()
+        // New automation helpers (return Task for proper sequencing)
+        private async Task AcquireStudyRemarkAsync()
         {
             try
             {
@@ -99,7 +99,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 SetStatus("Study remark capture failed", true);
             }
         }
-        private async void AcquirePatientRemarkAsync()
+        private async Task AcquirePatientRemarkAsync()
         {
             try
             {
@@ -114,22 +114,38 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
+        // Execute modules sequentially to preserve user-defined order
+        private async Task RunModulesSequentially(string[] modules)
+        {
+            foreach (var m in modules)
+            {
+                try
+                {
+                    if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase)) { await RunNewStudyProcedureAsync(); }
+                    else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _lockStudyProc != null) { await _lockStudyProc.ExecuteAsync(this); }
+                    else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { await AcquireStudyRemarkAsync(); }
+                    else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { await AcquirePatientRemarkAsync(); }
+                    else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { await RunAddPreviousStudyModuleAsync(); }
+                    else if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { await RunOpenStudyAsync(); }
+                    else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { await _pacs.CustomMouseClick1Async(); }
+                    else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { await _pacs.CustomMouseClick2Async(); }
+                    else if (string.Equals(m, "TestInvoke", StringComparison.OrdinalIgnoreCase)) { await _pacs.InvokeTestAsync(); }
+                    else if (string.Equals(m, "ShowTestMessage", StringComparison.OrdinalIgnoreCase)) { System.Windows.MessageBox.Show("Test", "Test", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information); }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("[Automation] Module '" + m + "' error: " + ex.Message);
+                    SetStatus($"Module '{m}' failed", true);
+                }
+            }
+        }
+
         private void OnRunAddStudyAutomation()
         {
             var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.AddStudySequence);
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
-            foreach (var m in modules)
-            {
-                if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunAddPreviousStudyModuleAsync(); }
-                else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { AcquireStudyRemarkAsync(); }
-                else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { AcquirePatientRemarkAsync(); }
-                else if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunOpenStudyAsync(); }
-                else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick1Async(); }
-                else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick2Async(); }
-                else if (string.Equals(m, "TestInvoke", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.InvokeTestAsync(); }
-                else if (string.Equals(m, "ShowTestMessage", StringComparison.OrdinalIgnoreCase)) { System.Windows.MessageBox.Show("Test", "Test", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information); }
-            }
+            _ = RunModulesSequentially(modules);
         }
 
         private async Task RunAddPreviousStudyModuleAsync()
@@ -152,6 +168,21 @@ namespace Wysg.Musm.Radium.ViewModels
                 var radiologist = await _pacs.GetSelectedRadiologistFromRelatedStudiesAsync();
                 var reportDateStr = await _pacs.GetSelectedReportDateTimeFromRelatedStudiesAsync();
 
+                // Abort when studyname/datetime missing
+                if (string.IsNullOrWhiteSpace(studyName) || string.IsNullOrWhiteSpace(dtStr))
+                { SetStatus("Related study is incomplete (name/datetime)", true); return; }
+
+                // Parse datetimes
+                if (!DateTime.TryParse(dtStr, out var studyDt)) { SetStatus("Related study datetime invalid", true); return; }
+                DateTime? reportDt = DateTime.TryParse(reportDateStr, out var rdt) ? rdt : null;
+
+                // Abort when same as current study
+                if (DateTime.TryParse(StudyDateTime, out var currentDt))
+                {
+                    if (string.Equals(studyName?.Trim(), StudyName?.Trim(), StringComparison.OrdinalIgnoreCase) && studyDt == currentDt)
+                    { SetStatus("Same as current study; skipping add", true); return; }
+                }
+
                 // 3) Fetch findings/conclusion from current report editors using dual getters and pick longer
                 var f1Task = _pacs.GetCurrentFindingsAsync();
                 var f2Task = _pacs.GetCurrentFindings2Async();
@@ -163,23 +194,27 @@ namespace Wysg.Musm.Radium.ViewModels
                 string conclusion = PickLonger(c1Task.Result, c2Task.Result);
 
                 // 4) Persist as previous study via existing repo methods
-                var dt = DateTime.TryParse(dtStr, out var studyDt) ? studyDt : (DateTime?)null;
-                var reportDt = DateTime.TryParse(reportDateStr, out var rdt) ? rdt : (DateTime?)null;
-                if (dt == null) { SetStatus("Related study datetime invalid", true); return; }
                 if (_studyRepo == null) return;
-                var studyId = await _studyRepo.EnsureStudyAsync(PatientNumber, PatientName, PatientSex, null, studyName, dt);
+                var studyId = await _studyRepo.EnsureStudyAsync(PatientNumber, PatientName, PatientSex, null, studyName, studyDt);
                 if (studyId == null) { SetStatus("Study save failed", true); return; }
 
-                var reportObj = new
-                {
-                    header_and_findings = findings,
-                    final_conclusion = conclusion
-                };
+                var reportObj = new { header_and_findings = findings, final_conclusion = conclusion };
                 string json = JsonSerializer.Serialize(reportObj);
                 await _studyRepo.UpsertPartialReportAsync(studyId.Value, radiologist, reportDt, json, isMine: false, isCreated: false);
-                await LoadPreviousStudiesForPatientAsync(PatientNumber);
-                var newTab = PreviousStudies.FirstOrDefault(t => t.StudyDateTime == dt.Value);
-                if (newTab != null) SelectedPreviousStudy = newTab;
+
+                // Fire-and-forget reload to avoid blocking the sequence (OpenStudy can run immediately)
+                async void ReloadAndSelectAsync()
+                {
+                    try
+                    {
+                        await LoadPreviousStudiesForPatientAsync(PatientNumber);
+                        var newTabLocal = PreviousStudies.FirstOrDefault(t => t.StudyDateTime == studyDt);
+                        if (newTabLocal != null) SelectedPreviousStudy = newTabLocal;
+                    }
+                    catch (Exception ex) { Debug.WriteLine("[AddPreviousStudyModule][Reload] " + ex.Message); }
+                }
+                ReloadAndSelectAsync();
+
                 PreviousReportified = true;
                 SetStatus("Previous study added");
             }
@@ -195,19 +230,7 @@ namespace Wysg.Musm.Radium.ViewModels
             var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.NewStudySequence);
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
-            foreach (var m in modules)
-            {
-                if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunNewStudyProcedureAsync(); }
-                else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _lockStudyProc != null) { _ = _lockStudyProc.ExecuteAsync(this); }
-                else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { AcquireStudyRemarkAsync(); }
-                else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { AcquirePatientRemarkAsync(); }
-                else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunAddPreviousStudyModuleAsync(); }
-                else if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunOpenStudyAsync(); }
-                else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick1Async(); }
-                else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick2Async(); }
-                else if (string.Equals(m, "TestInvoke", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.InvokeTestAsync(); }
-                else if (string.Equals(m, "ShowTestMessage", StringComparison.OrdinalIgnoreCase)) { System.Windows.MessageBox.Show("Test", "Test", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information); }
-            }
+            _ = RunModulesSequentially(modules);
         }
 
         private async Task RunOpenStudyAsync()
@@ -235,17 +258,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
-            foreach (var m in modules)
-            {
-                if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunOpenStudyAsync(); }
-                else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick1Async(); }
-                else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.CustomMouseClick2Async(); }
-                else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { AcquireStudyRemarkAsync(); }
-                else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { AcquirePatientRemarkAsync(); }
-                else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunAddPreviousStudyModuleAsync(); }
-                else if (string.Equals(m, "TestInvoke", StringComparison.OrdinalIgnoreCase)) { _ = _pacs.InvokeTestAsync(); }
-                else if (string.Equals(m, "ShowTestMessage", StringComparison.OrdinalIgnoreCase)) { System.Windows.MessageBox.Show("Test", "Test", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information); }
-            }
+            _ = RunModulesSequentially(modules);
         }
 
         private void OnSelectPrevious(object? o)

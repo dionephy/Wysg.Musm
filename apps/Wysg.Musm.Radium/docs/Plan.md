@@ -1,5 +1,57 @@
 ﻿# Implementation Plan: Radium (Cumulative)
 
+## Change Log Addition (2025-01-15 – Fix: Shortcut Key Missing NewStudy and LockStudy Modules)
+- **Problem**: The "Shortcut: Open study (new)" automation sequence was not executing `NewStudy` and `LockStudy` modules that are present in the "New Study" button sequence, causing incomplete study initialization.
+- **Symptoms**:
+  1. Current study label not changing (NewStudy module not running)
+  2. Locked toggle not turning on (LockStudy module not running)
+  3. "Patient mismatch cannot add" error when AddPreviousStudy executes (incomplete patient context from missing NewStudy)
+  4. Study remarks and patient remarks were received correctly
+- **Root Cause**: `MainViewModel.RunOpenStudyShortcut()` method was missing the module handlers for `NewStudy` and `LockStudy`, which are present in `OnNewStudy()` method.
+- **Fix**: Added `NewStudy` and `LockStudy` module execution support to `RunOpenStudyShortcut()` to achieve parity with the "New" button behavior.
+
+### Approach (Shortcut Key Fix)
+1) Analyze difference between `OnNewStudy()` (working) and `RunOpenStudyShortcut()` (broken) execution paths.
+2) Add missing module handlers to `RunOpenStudyShortcut()`:
+   - `NewStudy` → calls `RunNewStudyProcedureAsync()` to load patient/study context
+   - `LockStudy` → calls `_lockStudyProc.ExecuteAsync(this)` to set PatientLocked state
+3) Maintain exact same module ordering as `OnNewStudy()` for consistency.
+4) No changes to Settings UI or persistence; fix is purely in runtime execution.
+
+### Test Plan (Shortcut Key Fix)
+- Configure "Shortcut: Open study (new)" pane with modules: `NewStudy, LockStudy, GetStudyRemark, GetPatientRemark, AddPreviousStudy, OpenStudy`
+- Save automation settings
+- Press the registered global hotkey (e.g., Ctrl+Alt+O) when PatientLocked=false
+- **Expected Results**:
+  1. Current study label updates with patient information (NewStudy executed)
+  2. "Study locked" toggle turns on (LockStudy executed)
+  3. Study remark and patient remark fields populate (GetStudyRemark/GetPatientRemark executed)
+  4. Previous study added successfully without "Patient mismatch" error (AddPreviousStudy executed after patient context loaded)
+  5. Viewer opens if configured (OpenStudy executed)
+- Compare behavior with clicking "New" button → should be identical
+- Verify "Shortcut: Open study (add)" and "Shortcut: Open study (after open)" sequences also support NewStudy/LockStudy if configured
+
+### Risks / Mitigations (Shortcut Key Fix)
+- **Risk**: Adding LockStudy to shortcut sequences when not desired by user
+  - **Mitigation**: Modules are only executed if explicitly present in saved sequence; users control via Settings → Automation
+- **Risk**: Breaking existing shortcut configurations that worked around the missing modules
+  - **Mitigation**: If users added workarounds (e.g., manual lock steps), they can remove them; standard configuration now works
+- **Risk**: Execution order differences between button and shortcut
+  - **Mitigation**: Module handler order in `RunOpenStudyShortcut()` now matches `OnNewStudy()` exactly
+
+### Code Changes (Shortcut Key Fix)
+**File**: `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Commands.cs`
+**Method**: `RunOpenStudyShortcut()`
+**Changes**:
+- Added: `if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase)) { _ = RunNewStudyProcedureAsync(); }`
+- Added: `else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _lockStudyProc != null) { _ = _lockStudyProc.ExecuteAsync(this); }`
+- Preserved: All existing module handlers (OpenStudy, MouseClick1/2, GetStudyRemark, GetPatientRemark, AddPreviousStudy, TestInvoke, ShowTestMessage)
+
+### Related Features
+- This fix completes the implementation of FR-545 (Automation panes for Open Study Shortcut)
+- Enables full parity between "New" button (FR-540) and global hotkey execution (FR-660, FR-661)
+- Supports proper patient context loading for FR-511 (Add Previous Study automation module)
+
 ## Change Log Addition (2025-10-13 – Open Study Shortcut Panes)
 - Added three Automation panes to configure Open Study hotkey action lists by state: (new/add/after open).
 - Persisted sequences to local settings as `auto_shortcut_open_new`, `auto_shortcut_open_add`, `auto_shortcut_open_after_open`.
@@ -792,4 +844,33 @@ Designed and implemented database schema for mapping global and account-specific
 8. **Phase 8**: Audit logging and compliance reporting
 
 ---
+
+## Change Log Addition (2025-10-15 – OpenStudy reliability + sequential execution + AddPreviousStudy guard/perf)
+- Problem: The last module `OpenStudy` sometimes failed when run after other modules (e.g., `AddPreviousStudy`) because earlier code fired modules concurrently and waited for heavy previous-study reloads before proceeding.
+- Fixes:
+  1) Execute automation modules sequentially, preserving exact user order across New/Add/Shortcut flows.
+  2) `AddPreviousStudy` now aborts when related study metadata is incomplete (studyname or studydatetime is null/empty) or when it matches the current study (same name and datetime).
+  3) Speed up `AddPreviousStudy` by moving the heavy `LoadPreviousStudiesForPatientAsync` to a fire-and-forget continuation so `OpenStudy` can run immediately after persistence.
+
+### Approach
+1) Introduce `RunModulesSequentially(string[] modules)` and route New/Add/Shortcut flows through it to `await` each module.
+2) Convert remark acquisition helpers to return `Task` so they can be awaited within sequencing.
+3) In `RunAddPreviousStudyModuleAsync`:
+   - Validate patient, related study id, studyname, and datetime.
+   - Abort if missing or equal to current study (name + datetime).
+   - Persist report, then kick off background reload/selection; do not block module chain.
+4) Keep `RunOpenStudyAsync` unchanged other than benefiting from sequencing; it now runs after prior modules actually finish.
+
+### Test Plan
+- Configure sequences with `NewStudy, LockStudy, AddPreviousStudy, OpenStudy` and run via button and shortcut:
+  - Verify `OpenStudy` invokes only after `AddPreviousStudy` completes (viewer opens reliably).
+  - Verify background reload eventually adds/selects the new previous study without delaying `OpenStudy`.
+- Related study with missing name/datetime → `AddPreviousStudy` aborts with status; `OpenStudy` still runs if next.
+- Related study equal to current (same name + datetime) → `AddPreviousStudy` aborts; `OpenStudy` runs.
+- Sequences that include `GetStudyRemark`/`GetPatientRemark` run in order and do not interleave.
+
+### Risks / Mitigations
+- If `InvokeOpenStudy` procedure isn't authored per PACS, `OpenStudy` throws (by design); error surfaces in status.
+- Background reload may update UI after viewer opens; acceptable and improves responsiveness.
+- Sequencing increases total chain time vs fire-and-forget; user order correctness prioritized.
 

@@ -270,6 +270,9 @@ public sealed class UiBookmarks
         catch { return (IntPtr.Zero, null); }
     }
 
+    private const int StepRetryCount = 2; // total attempts per step = 1 + StepRetryCount
+    private const int StepRetryDelayMs = 150;
+
     // Core walker used by ResolvePath / TryResolveWithTrace / ResolveBookmark
     private static (AutomationElement? final, List<AutomationElement> path) Walk(AutomationElement start, Bookmark b, List<Node> nodes, StringBuilder? trace)
     {
@@ -316,38 +319,48 @@ public sealed class UiBookmarks
             if (cond == null) { trace?.AppendLine($"Step {i}: No constraints"); continue; }
 
             AutomationElement[] matches = Array.Empty<AutomationElement>();
-            bool usedRelaxed = false;
-            try
+            // Attempt primary find with small retry/backoff for transient UIA failures
+            for (int attempt = 0; attempt <= StepRetryCount; attempt++)
             {
-                if (node.Scope == SearchScope.Children)
+                try
                 {
-                    matches = current.FindAllChildren(cond);
-                }
-                else
-                {
-                    if (!node.UseIndex || node.IndexAmongMatches <= 0)
+                    if (node.Scope == SearchScope.Children)
                     {
-                        var hit = current.FindFirstDescendant(cond);
-                        matches = hit != null ? new[] { hit } : Array.Empty<AutomationElement>();
+                        matches = current.FindAllChildren(cond);
                     }
                     else
                     {
-                        matches = current.FindAllDescendants(cond);
+                        if (!node.UseIndex || node.IndexAmongMatches <= 0)
+                        {
+                            var hit = current.FindFirstDescendant(cond);
+                            matches = hit != null ? new[] { hit } : Array.Empty<AutomationElement>();
+                        }
+                        else
+                        {
+                            matches = current.FindAllDescendants(cond);
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                trace?.AppendLine($"Step {i}: Find failed: {ex.Message}");
-                // VS sometimes throws on Children at root; fallback to descendant scan once
-                if (i == 0)
+                catch (Exception ex)
                 {
-                    try
+                    trace?.AppendLine($"Step {i}: Find failed: {ex.Message}");
+                    // VS sometimes throws on Children at root; fallback to descendant scan once
+                    if (i == 0)
                     {
-                        var hit = current.FindFirstDescendant(cond);
-                        if (hit != null) matches = new[] { hit };
+                        try
+                        {
+                            var hit = current.FindFirstDescendant(cond);
+                            if (hit != null) matches = new[] { hit };
+                        }
+                        catch { }
                     }
-                    catch { }
+                }
+
+                if (matches.Length > 0) break;
+                if (attempt < StepRetryCount)
+                {
+                    trace?.AppendLine($"Step {i}: No match, retrying in {StepRetryDelayMs + attempt * 100} ms...");
+                    try { System.Threading.Thread.Sleep(StepRetryDelayMs + attempt * 100); } catch { }
                 }
             }
 
@@ -390,7 +403,7 @@ public sealed class UiBookmarks
             trace?.AppendLine($"Step {i}: Scope={node.Scope}, matches={matches.Length}");
             if (matches.Length == 0) { trace?.AppendLine($"Step {i}: Failed"); return (null, new()); }
 
-            if (!usedRelaxed && node.Scope == SearchScope.Descendants && matches.Length > 1)
+            if (node.Scope == SearchScope.Descendants && matches.Length > 1)
             {
                 try
                 {

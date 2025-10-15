@@ -94,6 +94,10 @@ namespace Wysg.Musm.Radium.Services
 
             if (!store.Methods.TryGetValue(methodTag, out var steps) || steps.Count == 0)
             {
+                // No implicit fallback for InvokeOpenStudy; require explicit authoring
+                if (string.Equals(methodTag, "InvokeOpenStudy", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Custom procedure 'InvokeOpenStudy' is not defined. Please configure it in SpyWindow for this PACS profile.");
+
                 steps = TryCreateFallbackProcedure(methodTag);
                 if (steps.Count > 0) { store.Methods[methodTag] = steps; Save(store); }
                 else return null;
@@ -115,8 +119,7 @@ namespace Wysg.Musm.Radium.Services
 
         private static List<ProcOpRow> TryCreateFallbackProcedure(string methodTag)
         {
-            // Seed minimal viable procedures for well-known PACS tags when user has not authored one yet.
-            // Request focuses on GetCurrentPatientRemark.
+            // Keep selective fallbacks for non-critical getters; do NOT fallback for InvokeOpenStudy.
             if (string.Equals(methodTag, "GetCurrentPatientRemark", StringComparison.OrdinalIgnoreCase))
             {
                 return new List<ProcOpRow>
@@ -124,7 +127,6 @@ namespace Wysg.Musm.Radium.Services
                     new ProcOpRow { Op = "GetText", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.PatientRemark.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false, OutputVar = "var1" }
                 };
             }
-            // Also provide a fallback for study remark if not present
             if (string.Equals(methodTag, "GetCurrentStudyRemark", StringComparison.OrdinalIgnoreCase))
             {
                 return new List<ProcOpRow>
@@ -132,13 +134,10 @@ namespace Wysg.Musm.Radium.Services
                     new ProcOpRow { Op = "GetText", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.StudyRemark.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false, OutputVar = "var1" }
                 };
             }
-            // New: default for invoke open study ? attempt to Invoke the selected row in search results (opens viewer in many PACS)
+            // IMPORTANT: No fallback for InvokeOpenStudy (explicit procedure required). Return empty.
             if (string.Equals(methodTag, "InvokeOpenStudy", StringComparison.OrdinalIgnoreCase))
             {
-                return new List<ProcOpRow>
-                {
-                    new ProcOpRow { Op = "Invoke", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.SelectedStudyInSearch.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
-                };
+                return new List<ProcOpRow>();
             }
             if (string.Equals(methodTag, "CustomMouseClick1", StringComparison.OrdinalIgnoreCase))
             {
@@ -184,7 +183,6 @@ namespace Wysg.Musm.Radium.Services
                     if (input == null) { return ("(null)", null); }
 
                     string[] parts;
-                    // Regex mode: prefix with re: or regex:
                     if (sepRaw.StartsWith("re:", StringComparison.OrdinalIgnoreCase) || sepRaw.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
                     {
                         var pattern = sepRaw.StartsWith("re:", StringComparison.OrdinalIgnoreCase) ? sepRaw.Substring(3) : sepRaw.Substring(6);
@@ -194,10 +192,8 @@ namespace Wysg.Musm.Radium.Services
                     }
                     else
                     {
-                        // Support C#-style escapes like \n, \r\n, \t in separator
                         var sep = UnescapeUserText(sepRaw);
                         parts = input.Split(new[] { sep }, StringSplitOptions.None);
-                        // Best-effort: if user wrote only LF but input uses CRLF, try again
                         if (parts.Length == 1 && sep.Contains('\n') && !sep.Contains("\r\n"))
                         {
                             var crlfSep = sep.Replace("\n", "\r\n");

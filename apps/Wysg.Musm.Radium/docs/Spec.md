@@ -36,10 +36,19 @@
 - FR-514 Automation tab MUST expose an ordered list: `AddStudy` sequence (already present). Clicking the small `+` button in Previous Reports section MUST execute the configured modules in `AddStudy` sequence in order.
 - FR-515 Supported modules in `AddStudy` include: `AddPreviousStudy`, `GetStudyRemark`, `GetPatientRemark`. Unknown modules are ignored.
 
-## Update: PACS Custom Procedure – Invoke Open Study (2025-10-13)
+## Update: PACS Custom Procedure – Invoke Open Study (2025-10-13, updated 2025-10-15)
 - FR-516 SpyWindow Custom Procedures MUST include a PACS method `InvokeOpenStudy` labeled "Invoke open study".
-- FR-517 `PacsService` MUST expose `InvokeOpenStudyAsync()` which runs the procedure tag `InvokeOpenStudy` (best-effort, no return value required).
-- FR-518 Procedure default (auto-seed) MUST consist of a single `Invoke` op with Arg1 Type=`Element`, Arg1 Value=`SelectedStudyInSearch` to simulate double-click/enter on the selected study row in the search results list.
+- FR-517 `PacsService` MUST expose `InvokeOpenStudyAsync()` which runs the procedure tag `InvokeOpenStudy`.
+- FR-518 No fallback or auto-seed MUST exist for `InvokeOpenStudy`. The procedure MUST be authored explicitly by the user per PACS. If it is missing, the system MUST throw an error indicating the procedure is not defined for the current PACS profile.
+- FR-518a Per-PACS storage: UiBookmarks and Custom Procedures are stored under `%AppData%/Wysg.Musm/Radium/Pacs/{pacs_key}/` so each PACS profile maintains its own configuration.
+
+## Update: OpenStudy Reliability and Sequencing (2025-10-15)
+- FR-710 Automation modules MUST execute sequentially in the exact order configured by the user in New/Add/Shortcut sequences. No fire-and-forget interleaving.
+- FR-711 `OpenStudy` MUST execute after prior modules complete. `PacsService.InvokeOpenStudyAsync()` MUST retry the custom procedure a few times (default 3 attempts, 200ms+ backoff) to allow UI stabilization. If the procedure is undefined, it MUST throw immediately (no retry/fallback).
+- FR-712 `AddPreviousStudy` MUST abort when the selected related study has null/empty studyname OR null/empty studydatetime.
+- FR-713 `AddPreviousStudy` MUST abort when the selected related study matches the current study by both studyname (case-insensitive) and study datetime (exact match after parse).
+- FR-714 `AddPreviousStudy` MUST NOT block subsequent modules with heavy previous-studies reload; after persisting the previous study and report, the list reload/selection MAY run in the background.
+- FR-715 Remark acquisition helpers (`GetStudyRemark`, `GetPatientRemark`) MUST be awaited within sequencing to preserve order.
 
 ## Update: Custom Procedure Operation – Invoke (2025-10-13)
 - FR-519 Add a new operation `Invoke` to Custom Procedures. Behavior:
@@ -69,7 +78,7 @@
 
 ## Update: Settings → Automation modules and Keyboard (2025-10-13)
 - FR-540 Add three new Automation modules to library: `OpenStudy`, `MouseClick1`, `MouseClick2`.
-  - `OpenStudy` executes PACS procedure tag `InvokeOpenStudy` (headless: PacsService.InvokeOpenStudyAsync()).
+  - `OpenStudy` executes PACS procedure tag `InvokeOpenStudy`.
   - `MouseClick1`/`MouseClick2` execute their respective procedure tags (headless wrappers in PacsService).
 - FR-541 Settings window MUST include a new tab named "Keyboard".
   - Provide two capture TextBoxes: "Open study" and "Send study".
@@ -214,7 +223,7 @@ Enable mapping of global and account-specific phrases to SNOMED CT concepts via 
 - `phrase_id` (BIGINT, UNIQUE, FK → radium.phrase): Must reference account phrase (account_id IS NOT NULL)
 - `concept_id` (BIGINT, FK → snomed.concept_cache): SNOMED concept
 - `mapping_type` (VARCHAR(20), NOT NULL, DEFAULT 'exact'): Values: 'exact', 'broader', 'narrower', 'related'
-- `confidence` (DECIMAL(3,2), NULL): Optional confidence score (0.00-1.00)
+- `confidence` (DECIMAL(3,2), NULL: Optional confidence score (0.00-1.00)
 - `notes` (NVARCHAR(500), NULL): Optional mapping notes
 - `created_at` (DATETIME2(3), NOT NULL, DEFAULT SYSUTCDATETIME())
 - `updated_at` (DATETIME2(3), NOT NULL, DEFAULT SYSUTCDATETIME())

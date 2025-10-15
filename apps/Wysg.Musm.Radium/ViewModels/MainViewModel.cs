@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Diagnostics;
 using System.Threading;
-using System.ComponentModel;
 using Wysg.Musm.Infrastructure.ViewModels;
 using Wysg.Musm.Radium.Services;
 using Wysg.Musm.Radium.Services.Procedures;
@@ -52,7 +51,37 @@ namespace Wysg.Musm.Radium.ViewModels
         // ------------------------------------------------------------------
         private string _statusText = "Ready"; public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
         private bool _statusIsError; public bool StatusIsError { get => _statusIsError; set => SetProperty(ref _statusIsError, value); }
-        private void SetStatus(string message, bool isError = false) { StatusText = message; StatusIsError = isError; }
+
+        // Cumulative status buffer (last 50 lines)
+        private readonly object _statusSync = new();
+        private readonly Queue<string> _statusLines = new();
+        private const int MaxStatusLines = 50;
+        private void SetStatus(string message, bool isError = false)
+        {
+            try
+            {
+                void update()
+                {
+                    lock (_statusSync)
+                    {
+                        // trim to MaxStatusLines - 1 so enqueue keeps <= MaxStatusLines
+                        while (_statusLines.Count >= MaxStatusLines) _statusLines.Dequeue();
+                        _statusLines.Enqueue(message ?? string.Empty);
+                        StatusText = string.Join(Environment.NewLine, _statusLines);
+                        StatusIsError = isError;
+                    }
+                }
+
+                if (System.Windows.Application.Current?.Dispatcher?.CheckAccess() == true) update();
+                else System.Windows.Application.Current?.Dispatcher?.Invoke(update);
+            }
+            catch
+            {
+                // Fallback to single-line update if dispatcher unavailable
+                StatusText = message ?? string.Empty;
+                StatusIsError = isError;
+            }
+        }
 
         // ------------------------------------------------------------------
         // Current user and PACS display for status bar

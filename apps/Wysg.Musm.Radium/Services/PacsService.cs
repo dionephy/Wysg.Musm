@@ -91,14 +91,32 @@ namespace Wysg.Musm.Radium.Services
         public Task<string?> GetCurrentStudyRemarkAsync() => ExecWithRetry("GetCurrentStudyRemark");
         public Task<string?> GetCurrentPatientRemarkAsync() => ExecWithRetry("GetCurrentPatientRemark");
 
-        // New: Procedure to invoke open study (no value expected)
-        public async Task<bool> InvokeOpenStudyAsync()
+        // Invoke open study ? retry a few times for UI stabilization; throws if procedure is missing
+        public async Task<bool> InvokeOpenStudyAsync(int attempts = 3, int delayMs = 200)
         {
-            await ExecCustom("InvokeOpenStudy");
-            return true; // success assumed; procedure is best-effort
+            for (int i = 0; i < attempts; i++)
+            {
+                try
+                {
+                    await ProcedureExecutor.ExecuteAsync("InvokeOpenStudy");
+                    return true;
+                }
+                catch (InvalidOperationException)
+                {
+                    // Procedure not defined ? honor strict behavior
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    if (i == attempts - 1) throw;
+                    System.Diagnostics.Debug.WriteLine($"[PacsService] InvokeOpenStudy retry {i + 1}: {ex.Message}");
+                    await Task.Delay(delayMs + i * 150);
+                }
+            }
+            return false;
         }
 
-        // New: Custom mouse click procedures (coordinate-driven)
+        // Custom mouse click procedures (coordinate-driven)
         public async Task<bool> CustomMouseClick1Async()
         {
             await ExecCustom("CustomMouseClick1");
@@ -110,7 +128,7 @@ namespace Wysg.Musm.Radium.Services
             return true;
         }
 
-        // New: InvokeTest wrapper (runs custom procedure 'InvokeTest')
+        // InvokeTest wrapper (runs custom procedure 'InvokeTest')
         public async Task<bool> InvokeTestAsync()
         {
             await ExecCustom("InvokeTest");
