@@ -343,6 +343,39 @@
 - [X] V316 Select different concept → verify Map button remains enabled.
 - [X] V317 Clear selection → verify Map button disables.
 
+## New (2025-01-15 – UI Bookmark Robustness Improvements)
+- [X] T936 Update `Walk` method in `UiBookmarks.cs` to require ALL enabled attributes for step 0 root acceptance (FR-920).
+- [X] T937 Update `DiscoverRoots` method to filter existing roots using first node attributes instead of rescanning desktop (FR-921).
+- [X] T938 Add exact match filtering followed by relaxed match (without ControlTypeId) fallback (FR-921).
+- [X] T939 Add ClassName filtering when multiple root matches remain (FR-924).
+- [X] T940 Implement `CalculateNodeSimilarity` helper to score roots (AutomationId=200, Name=100, ClassName=50, ControlType=25) (FR-925).
+- [X] T941 Sort filtered roots by similarity score for deterministic selection (FR-925).
+- [X] T942 Add `ValidateBookmark` method in `SpyWindow.Bookmarks.cs` to validate before save (FR-922).
+- [X] T943 Validate process name not empty, chain not empty, first node has ≥2 enabled attributes (FR-922).
+- [X] T944 Warn about nodes relying solely on UseIndex=true with IndexAmongMatches=0 (FR-922).
+- [X] T945 Call `ValidateBookmark` in `OnSaveEdited` and display validation errors preventing save (FR-922).
+- [X] T946 Enhance trace output in `Walk` to show attribute match results for step 0 (FR-923).
+- [X] T947 Enhance trace output in `DiscoverRoots` to show filtering stages and root counts (FR-923).
+- [X] T948 Update Spec.md with FR-920..FR-925 documenting bookmark robustness improvements (cumulative).
+- [X] T949 Update Plan.md with change log entry for bookmark robustness including root cause, fixes, approach, test plan, and risks (cumulative).
+- [X] T950 Update Tasks.md with completed bookmark robustness tasks (this file, cumulative).
+
+## Verification (UI Bookmark Robustness)
+- [ ] V320 Open PACS with main + toolbar windows; capture bookmark with ClassName enabled → verify root matches main window consistently across 5 reopens.
+- [ ] V321 Edit bookmark to leave only 1 attribute enabled on first node → verify validation error prevents save.
+- [ ] V322 Enable second attribute → verify validation passes and save succeeds.
+- [ ] V323 Capture bookmark with unique AutomationId → verify similarity scoring selects correct root when multiple candidates exist.
+- [ ] V324 Simulate ControlTypeId change → verify relaxed match fallback succeeds with trace message.
+- [ ] V325 Resolve bookmark with trace → verify trace shows attribute match results (Name=true, Class=true, Auto=false, Ct=true) and timing info (e.g., "Step 0: Accept root... (12 ms)").
+- [ ] V326 Resolve bookmark after ClassName filter → verify trace shows "ClassName filter applied: N roots remain".
+- [ ] V327 Verify bookmarks saved before fix continue to work (no regression for existing bookmarks).
+- [ ] V328 Resolve bookmark with multiple steps → verify each step shows timing (e.g., "Step 2: Completed (45 ms)").
+- [ ] V329 Click Validate button in SpyWindow → verify diagnostic table includes timing column showing per-step milliseconds.
+- [ ] V330 Click "Resolve" with trace on slow bookmark → verify trace shows retry breakdown with query time, retry delay, and attempt count for each step.
+- [ ] V331 Click "Validate" on any bookmark → verify status textbox shows last 100 lines of trace with detailed timing for all steps (even on success).
+- [ ] V332 Click "Validate" on Calculator bookmark → verify trace shows "Detected 'not supported' error, skipping remaining retries" and resolution completes in <1 second.
+- [ ] V333 Compare Calculator bookmark timing before/after fix → verify resolution is 4-6x faster (from ~2900ms to ~500-800ms).
+
 ---
 # Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 

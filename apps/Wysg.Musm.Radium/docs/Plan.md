@@ -961,3 +961,123 @@ public SnomedConcept? SelectedConcept
 - Background reload may update UI after viewer opens; acceptable and improves responsiveness.
 - Sequencing increases total chain time vs fire-and-forget; user order correctness prioritized.
 
+## Change Log Addition (2025-01-15 – UI Bookmark Robustness Improvements)
+- **Problem**: UI bookmarks saved in SpyWindow sometimes failed to resolve consistently. Same bookmark with identical crawl path and options would work after re-picking but fail on subsequent attempts.
+- **Root Causes**:
+  1. **Non-deterministic Root Discovery**: `DiscoverRoots` tried multiple fallback strategies (attach, PID search, name search, desktop scan), and timing/ordering varied causing different roots to be selected on different runs.
+  2. **Step 0 Relaxed Matching**: `Walk` method accepted roots by "relaxed match" (ignoring ClassName), which could match wrong window when multiple windows shared similar AutomationId or Name.
+  3. **ClassName Mismatch**: First node's ClassName was captured but often ignored during root resolution, allowing matches to auxiliary windows (toolbars) instead of main window.
+  4. **Index Ambiguity**: `IndexAmongMatches` captured sibling position, but became stale when UI hierarchy changed slightly (e.g., new toolbar button appeared).
+  5. **Insufficient Validation**: No validation at save time to catch under-specified bookmarks (e.g., first node with only 1 enabled attribute).
+
+### Fixes
+1. **Stricter Step 0 Validation** (FR-920):
+   - Changed from ANY attribute match (Name OR AutomationId OR ControlType) to ALL enabled attributes (Name AND ClassName AND AutomationId AND ControlType).
+   - Only accepts root if every enabled attribute matches exactly.
+   - Falls through to normal search if root doesn't match perfectly.
+   - Trace output shows which attributes matched/mismatched for debugging.
+
+2. **Improved Root Filtering** (FR-921):
+   - Filters existing root candidates using first node attributes instead of rescanning desktop.
+   - Applies exact match first, then relaxed match (without ControlTypeId) as fallback.
+   - Additional ClassName filtering when multiple matches remain.
+   - Sorts remaining roots by similarity score (AutomationId=200pts, Name=100pts, ClassName=50pts, ControlType=25pts) for deterministic selection.
+
+3. **Bookmark Validation** (FR-922):
+   - Validates before save: process name not empty, chain not empty, first node has ≥2 enabled attributes.
+   - Warns about nodes relying solely on UseIndex=true with IndexAmongMatches=0.
+   - Displays actionable error messages preventing save of under-specified bookmarks.
+
+4. **ClassName Enforcement** (FR-924):
+   - When first node specifies ClassName, root discovery prefers roots matching that ClassName.
+   - Step 0 requires ClassName match if UseClassName=true.
+   - Only relaxes ClassName if no other matches found (explicit fallback).
+
+5. **Similarity-Based Prioritization** (FR-925):
+   - When multiple roots match, sorts by cumulative similarity score.
+   - Ensures deterministic selection across runs when PACS has multiple windows.
+   - Logged in trace output for transparency.
+
+### Approach (Bookmark Robustness)
+1) Update `Walk` method in `UiBookmarks.cs` to require ALL enabled attributes for step 0 root acceptance (not just ANY).
+2) Update `DiscoverRoots` method to filter candidate roots in-place instead of rescanning desktop:
+   - Apply first node exact match filter
+   - Apply relaxed match (without ControlTypeId) as fallback
+   - Apply ClassName filter when multiple matches remain
+   - Sort by `CalculateNodeSimilarity` score for deterministic ordering
+3) Add `CalculateNodeSimilarity` helper to score root candidates (AutomationId=200, Name=100, ClassName=50, ControlType=25).
+4) Add `ValidateBookmark` method in `SpyWindow.Bookmarks.cs` to check:
+   - Process name not empty
+   - Chain not empty
+   - First node has ≥2 enabled attributes
+   - Warn about index-only nodes with insufficient attributes
+5) Call `ValidateBookmark` in `OnSaveEdited` before persisting; display validation errors and abort save if invalid.
+
+### Test Plan (Bookmark Robustness)
+- **Scenario 1: Multiple Windows**:
+  1. Open PACS with main window + auxiliary toolbar window
+  2. Capture bookmark for main window control (ensure ClassName enabled)
+  3. Save bookmark
+  4. Close and reopen PACS (ensure windows open in different order)
+  5. Resolve bookmark → verify it matches main window consistently (not toolbar)
+  6. Repeat 5 times → verify 100% success rate
+
+- **Scenario 2: Under-Specified Bookmark**:
+  1. Capture bookmark
+  2. Edit chain to disable all attributes except one on first node
+  3. Attempt to save → verify validation error "First node has insufficient attributes (need at least 2 enabled)"
+  4. Enable second attribute
+  5. Save → verify success
+
+- **Scenario 3: ClassName Filtering**:
+  1. Capture bookmark for PACS main window (ClassName = "MainWindowClass")
+  2. Open PACS with main window + dialog (both share same Name/AutomationId)
+  3. Resolve bookmark with trace → verify ClassName filter narrows to main window
+  4. Verify trace shows "ClassName filter applied: 1 roots remain"
+
+- **Scenario 4: Similarity Scoring**:
+  1. Capture bookmark for control with unique AutomationId
+  2. Create mock scenario with 3 candidate roots:
+     - Root A: AutomationId match only (score=200)
+     - Root B: Name + ClassName match (score=150)
+     - Root C: ClassName + ControlType match (score=75)
+  3. Resolve bookmark with trace → verify Root A selected (highest score)
+  4. Verify trace shows "Roots sorted by similarity to first node"
+
+- **Scenario 5: Relaxed Fallback**:
+  1. Capture bookmark with ControlTypeId enabled
+  2. Simulate PACS version update where ControlTypeId changed
+  3. Resolve bookmark with trace → verify relaxed match succeeds (ignores ControlTypeId)
+  4. Verify trace shows "relaxed ControlType" message
+
+### Risks / Mitigations (Bookmark Robustness)
+- **Risk**: Stricter validation may reject previously-saved bookmarks that worked despite being under-specified.
+  - **Mitigation**: Validation only applies to new saves; existing bookmarks load unchanged. Users can re-capture and save if needed.
+
+- **Risk**: Similarity scoring may deprioritize correct root if AutomationId is not unique across windows.
+  - **Mitigation**: Combined scoring (AutomationId + Name + ClassName + ControlType) handles this case. Trace output helps diagnose.
+
+- **Risk**: ClassName may be platform-specific and fail when PACS runs on different OS versions.
+  - **Mitigation**: ClassName filter is fallback-tolerant; if no ClassName matches, uses other attributes. Can disable UseClassName when capturing.
+
+- **Risk**: Validation warnings about index-only nodes may be noisy for experienced users.
+  - **Mitigation**: Warnings are informational (not errors); allow save. Users can add attributes if they experience failures.
+
+### Code Changes (Bookmark Robustness)
+**File**: `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs`
+**Methods Modified**:
+- `Walk`: Changed step 0 from ANY match to ALL enabled attributes match; added detailed trace logging.
+- `DiscoverRoots`: Added in-place filtering of roots using first node attributes; added ClassName filter; added similarity sorting.
+- Added `CalculateNodeSimilarity`: Scores root candidates for prioritization.
+
+**File**: `apps\Wysg.Musm.Radium\Views\SpyWindow.Bookmarks.cs`
+**Methods Modified**:
+- `OnSaveEdited`: Added validation call before save; display validation errors if any.
+- Added `ValidateBookmark`: Checks process name, chain, first node attributes, and index-only nodes.
+
+### Related Features
+- Completes FR-920 through FR-925 (UI Bookmark Robustness Improvements)
+- Supports PACS automation workflows by ensuring bookmarks resolve consistently across sessions
+- Improves SpyWindow UX by preventing save of under-specified bookmarks
+- Enhances debugging with detailed trace output for root discovery and matching
+

@@ -102,6 +102,15 @@ namespace Wysg.Musm.Radium.Views
         {
             ForceCommitGridEdits();
             if (_editing == null) { txtStatus.Text = "Nothing to save"; return; }
+            
+            // FIX: Validate bookmark before saving to catch common robustness issues
+            var validationErrors = ValidateBookmark(_editing);
+            if (validationErrors.Count > 0)
+            {
+                txtStatus.Text = $"Validation failed: {string.Join("; ", validationErrors)}";
+                return;
+            }
+            
             SaveEditorInto(_editing);
             var knownItem = cmbKnown?.SelectedItem as System.Windows.Controls.ComboBoxItem;
             var tagStr = knownItem?.Tag as string;
@@ -130,6 +139,54 @@ namespace Wysg.Musm.Radium.Views
             existing.Chain = _editing.Chain.ToList();
             UiBookmarks.Save(store);
             txtStatus.Text = $"Saved bookmark '{name}'";
+        }
+        
+        // FIX: Validate bookmark to catch common robustness issues before saving
+        private List<string> ValidateBookmark(UiBookmarks.Bookmark b)
+        {
+            var errors = new List<string>();
+            
+            // Check for empty process name
+            if (string.IsNullOrWhiteSpace(b.ProcessName))
+                errors.Add("Process name is empty");
+            
+            // Check for empty chain
+            if (b.Chain == null || b.Chain.Count == 0)
+                errors.Add("Chain is empty");
+            
+            // Check first node has sufficient identifying attributes
+            var firstNode = b.Chain?.FirstOrDefault();
+            if (firstNode != null && firstNode.Include)
+            {
+                int attrCount = 0;
+                if (firstNode.UseName && !string.IsNullOrWhiteSpace(firstNode.Name)) attrCount++;
+                if (firstNode.UseClassName && !string.IsNullOrWhiteSpace(firstNode.ClassName)) attrCount++;
+                if (firstNode.UseAutomationId && !string.IsNullOrWhiteSpace(firstNode.AutomationId)) attrCount++;
+                if (firstNode.UseControlTypeId && firstNode.ControlTypeId.HasValue) attrCount++;
+                
+                if (attrCount < 2)
+                    errors.Add("First node has insufficient attributes (need at least 2 enabled)");
+            }
+            
+            // Check for nodes with UseIndex=true and IndexAmongMatches=0 (potential ambiguity)
+            for (int i = 1; i < (b.Chain?.Count ?? 0); i++)
+            {
+                var node = b.Chain[i];
+                if (node.Include && node.UseIndex && node.IndexAmongMatches == 0)
+                {
+                    // This is okay, but warn if it's the only enabled attribute
+                    int attrCount = 0;
+                    if (node.UseName && !string.IsNullOrWhiteSpace(node.Name)) attrCount++;
+                    if (node.UseClassName && !string.IsNullOrWhiteSpace(node.ClassName)) attrCount++;
+                    if (node.UseAutomationId && !string.IsNullOrWhiteSpace(node.AutomationId)) attrCount++;
+                    if (node.UseControlTypeId && node.ControlTypeId.HasValue) attrCount++;
+                    
+                    if (attrCount == 0)
+                        errors.Add($"Node {i} relies only on index=0 (consider adding more attributes)");
+                }
+            }
+            
+            return errors;
         }
 
         // ------------------------------ Capture under mouse ------------------------------
@@ -241,23 +298,67 @@ namespace Wysg.Musm.Radium.Views
         {
             ForceCommitGridEdits();
             if (!BuildBookmarkFromUi(out var copy)) return;
-            var diag = BuildChainDiagnostic(copy);
             var sw = Stopwatch.StartNew();
             var (_, el, trace) = UiBookmarks.TryResolveWithTrace(copy); sw.Stop(); _lastResolved = el;
+            
+            // FIX: Parse trace to extract per-step timing information
+            var stepTimings = ParseStepTimingsFromTrace(trace);
+            var diag = BuildChainDiagnosticWithTimings(copy, stepTimings);
+            
+            // FIX: Always show last 100 lines of trace for detailed timing analysis
+            var truncatedTrace = TruncateToLastLines(trace, 100);
+            
             if (el == null)
-            { txtStatus.Text = diag + $"Validate: not found ({sw.ElapsedMilliseconds} ms)\r\n" + trace; return; }
+            { txtStatus.Text = diag + $"Validate: not found ({sw.ElapsedMilliseconds} ms)\r\n" + truncatedTrace; return; }
             var r = el.BoundingRectangle;
             _overlay.ShowForRect(new System.Drawing.Rectangle((int)r.Left, (int)r.Top, (int)r.Width, (int)r.Height));
-            txtStatus.Text = diag + $"Validate: found and highlighted ({sw.ElapsedMilliseconds} ms)";
+            txtStatus.Text = diag + $"Validate: found and highlighted ({sw.ElapsedMilliseconds} ms)\r\n\r\n" + truncatedTrace;
         }
-        private string BuildChainDiagnostic(UiBookmarks.Bookmark b)
+        
+        // FIX: Truncate trace to last N lines to keep output manageable
+        private string TruncateToLastLines(string text, int maxLines)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+            
+            var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            if (lines.Length <= maxLines) return text;
+            
+            var startIndex = lines.Length - maxLines;
+            var truncatedLines = lines.Skip(startIndex).ToArray();
+            return $"... (showing last {maxLines} of {lines.Length} lines)\r\n" + string.Join("\r\n", truncatedLines);
+        }
+        
+        // FIX: Parse trace output to extract per-step timing
+        private Dictionary<int, long> ParseStepTimingsFromTrace(string trace)
+        {
+            var timings = new Dictionary<int, long>();
+            if (string.IsNullOrEmpty(trace)) return timings;
+            
+            // Look for patterns like "Step 0: ... (12 ms)" or "Step 1: Completed (45 ms)"
+            var lines = trace.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                // Match "Step N: ... (XXX ms)"
+                var match = System.Text.RegularExpressions.Regex.Match(line, @"Step (\d+):.+\((\d+) ms\)");
+                if (match.Success && int.TryParse(match.Groups[1].Value, out var stepIdx) && long.TryParse(match.Groups[2].Value, out var ms))
+                {
+                    // Store the latest timing for each step (in case multiple lines reference same step)
+                    timings[stepIdx] = ms;
+                }
+            }
+            return timings;
+        }
+        
+        private string BuildChainDiagnosticWithTimings(UiBookmarks.Bookmark b, Dictionary<int, long> stepTimings)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("Idx Inc Nm Cls Ctl Auto Idx Scope | Name / Class / Ctrl / AutoId");
+            sb.AppendLine("Idx Inc Nm Cls Ctl Auto Idx Scope | Name / Class / Ctrl / AutoId | Time");
+            
             for (int i = 0; i < b.Chain.Count; i++)
             {
                 var n = b.Chain[i];
-                sb.AppendFormat("{0,2}  {1}   {2}{3}{4}{5}{6}  {7} | {8} / {9} / {10} / {11}\r\n",
+                var timing = stepTimings.ContainsKey(i) ? $"{stepTimings[i]} ms" : "-";
+                sb.AppendFormat("{0,2}  {1}   {2}{3}{4}{5}{6}  {7} | {8} / {9} / {10} / {11} | {12}\r\n",
                     i,
                     n.Include ? 'Y' : 'N',
                     n.UseName ? 'N' : '-',
@@ -269,7 +370,8 @@ namespace Wysg.Musm.Radium.Views
                     n.Name ?? "",
                     n.ClassName ?? "",
                     n.ControlTypeId?.ToString() ?? "",
-                    n.AutomationId ?? "");
+                    n.AutomationId ?? "",
+                    timing);
             }
             return sb.ToString();
         }

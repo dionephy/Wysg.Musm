@@ -510,6 +510,116 @@ myocardial infarction,22298006,exact,1.0,"Standard mapping"
 
 **Rationale**: Reduces friction in the mapping workflow; users can immediately search and map without redundant typing and button state is clear and responsive.
 
+## FR-920 through FR-925: UI Bookmark Robustness Improvements (2025-01-15)
+
+### FR-920: Stricter Root Validation
+**Requirement**: When resolving bookmarks, the root window matching MUST enforce ALL enabled attributes (Name, ClassName, AutomationId, ControlTypeId) instead of relaxed matching.
+
+**Previous Behavior** (Issue):
+- Step 0 accepted root by ANY attribute match (Name OR AutomationId OR ControlType) while ignoring ClassName
+- Could match wrong window if multiple windows existed with similar properties
+- Led to bookmark failures when PACS had multiple windows open
+
+**New Behavior** (Fix):
+- Step 0 requires ALL enabled attributes to match exactly (Name AND ClassName AND AutomationId AND ControlType)
+- Only accepts root if every enabled attribute matches the captured values
+- Falls through to normal search if root doesn't match perfectly
+- Trace output shows which attributes matched/mismatched for debugging
+
+**Rationale**: Prevents misidentification of root window; improves bookmark reliability across different PACS states.
+
+### FR-921: Improved Root Discovery Filtering
+**Requirement**: Root discovery MUST filter and prioritize candidate roots using the first bookmark node's attributes instead of rescanning the entire desktop.
+
+**Previous Behavior** (Issue):
+- Discovered all windows via multiple fallback strategies
+- Rescanned desktop to find windows matching first node
+- Non-deterministic ordering led to different roots on different runs
+- Performance overhead from repeated desktop scans
+
+**New Behavior** (Fix):
+- Filters existing root candidates using first node attributes
+- Applies exact match filtering first, then relaxed match (without ControlTypeId) if needed
+- Additional ClassName filtering when multiple matches remain
+- Sorts remaining roots by similarity score (AutomationId=200pts, Name=100pts, ClassName=50pts, ControlType=25pts)
+- Deterministic selection based on similarity scores
+
+**Rationale**: Ensures consistent root selection across runs; reduces unnecessary API calls; prioritizes most distinctive attributes.
+
+### FR-922: Bookmark Validation Before Save
+**Requirement**: SpyWindow MUST validate bookmarks before saving to catch common robustness issues.
+
+**Validation Rules**:
+1. Process name must not be empty
+2. Chain must not be empty
+3. First node must have at least 2 enabled identifying attributes (Name, ClassName, AutomationId, ControlTypeId)
+4. Nodes relying solely on UseIndex=true with IndexAmongMatches=0 generate warnings (recommend adding more attributes)
+
+**Error Handling**:
+- Validation failures prevent save and display specific error messages
+- Warnings allow save but inform user of potential issues
+- Validation messages are actionable (explain what to fix)
+
+**Rationale**: Catches under-specified bookmarks at save time instead of discovering failures at runtime; guides users toward more robust bookmark configurations.
+
+### FR-923: Enhanced Trace Diagnostics
+**Requirement**: Bookmark resolution trace output MUST include detailed matching information for step 0 root acceptance.
+
+**Trace Output Enhancements**:
+- Step 0: Shows match results for each attribute (Name=true, Class=true, Auto=false, Ct=true)
+- Root mismatch: Explains which attributes failed to match and continues to normal search
+- Root discovery: Lists filtering stages (exact match, relaxed match, ClassName filter, similarity sort)
+- Root count after each filtering stage for transparency
+- **Per-step timing**: Each step shows elapsed time in milliseconds (e.g., "Step 2: Completed (45 ms)")
+- **Validate button timing**: SpyWindow "Validate" button displays per-step timing in the diagnostic table output
+- **Full trace display**: "Validate" button always shows last 100 lines of trace output (including on success) for comprehensive timing analysis
+- **Retry timing breakdown**: Each step shows detailed breakdown:
+  - Individual attempt timing (e.g., "Attempt 1/3 - Query took 50ms")
+  - Total query time across all attempts
+  - Total retry delay time (accumulated sleep between attempts)
+  - Number of attempts made
+  - Success indication (e.g., "Success on attempt 2")
+- **Smart exception handling**: Detects "Specified method is not supported" errors and immediately skips to manual walker (prevents wasted retry delays)
+- **Optimized retry count**: Reduced from 2 retries (3 total attempts) to 1 retry (2 total attempts) to minimize delay overhead
+
+**Performance Impact**: These optimizations typically reduce bookmark resolution time by 4-6x for UWP apps where UIA Find operations fail with "not supported" errors. Example: Calculator app improved from 2934ms to ~500-800ms.
+
+**Rationale**: Enables developers and power users to diagnose bookmark failures quickly; reduces trial-and-error debugging; detailed retry timing helps identify whether slowness is due to UIA queries or retry overhead; smart exception detection prevents wasted retry delays on permanent errors; allows data-driven optimization decisions.
+
+### FR-924: ClassName Match Enforcement
+**Requirement**: When first node specifies ClassName, root discovery MUST prefer roots matching that ClassName even if other attributes match.
+
+**Previous Behavior** (Issue):
+- ClassName was captured but often ignored during root matching
+- Could match wrong window type (e.g., toolbar instead of main window)
+- Special "relaxed match" logic at step 0 skipped ClassName entirely
+
+**New Behavior** (Fix):
+- ClassName filter applied to root candidates when multiple matches remain
+- Step 0 requires ClassName match if UseClassName=true
+- Only relaxes ClassName if no other matches found (explicit fallback)
+- Trace shows when ClassName filter is applied
+
+**Rationale**: ClassName is often the most reliable distinguisher for window type; enforcing it prevents matching auxiliary windows.
+
+### FR-925: Similarity-Based Root Prioritization
+**Requirement**: When multiple root candidates match first node attributes, sort by similarity score to ensure deterministic selection.
+
+**Similarity Scoring**:
+- AutomationId match: +200 points (most unique)
+- Name match: +100 points
+- ClassName match: +50 points
+- ControlTypeId match: +25 points
+- Highest score selected first
+
+**Behavior**:
+- Applied after all filtering stages
+- Breaks ties deterministically (prefer highest cumulative match)
+- Logged in trace output
+- Ensures same root selected across runs when multiple windows exist
+
+**Rationale**: Eliminates non-deterministic bookmark resolution; prioritizes most distinctive attributes; improves reliability when PACS has multiple windows.
+
 ### Notes
 - Snowstorm base URL configurable in settings (e.g., `http://localhost:8080`)
 - Support multiple SNOMED editions/branches (INT, US, KR) via Snowstorm branch parameter
