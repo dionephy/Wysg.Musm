@@ -153,3 +153,342 @@
 - FR-707 Highlighting MUST be implemented using a background renderer (KnownLayer.Background) so text remains readable.
 - FR-708 Phrase highlighting MUST only affect visible text regions for performance (no full-document scan).
 - FR-709 Future enhancement: phrase colors will be diversified using SNOMED CT concepts linked to each phrase.
+
+## FR-900 through FR-915: Phrase-to-SNOMED Mapping (Central Database)
+
+### Overview
+Enable mapping of global and account-specific phrases to SNOMED CT concepts via Snowstorm API. Store mappings in central database for terminology management and semantic interoperability.
+
+### FR-900: SNOMED Concept Cache Table
+**Requirement**: Create `snomed.concept_cache` table in central database to cache SNOMED CT concepts retrieved from Snowstorm API.
+
+**Schema**:
+- `concept_id` (BIGINT, PK): SNOMED CT Concept ID (numeric, e.g., 22298006)
+- `concept_id_str` (VARCHAR(18), UNIQUE): String representation for compatibility
+- `fsn` (NVARCHAR(500), NOT NULL): Fully Specified Name
+- `pt` (NVARCHAR(500), NULL): Preferred Term (may differ from FSN)
+- `module_id` (VARCHAR(18), NULL): SNOMED CT Module ID
+- `active` (BIT, NOT NULL, DEFAULT 1): Active status from Snowstorm
+- `cached_at` (DATETIME2(3), NOT NULL, DEFAULT SYSUTCDATETIME()): Cache timestamp
+- `expires_at` (DATETIME2(3), NULL): Optional cache expiration
+
+**Indexes**:
+- `IX_snomed_concept_cache_fsn` on `fsn`
+- `IX_snomed_concept_cache_pt` on `pt`
+- `IX_snomed_concept_cache_cached_at` on `cached_at DESC`
+
+**Rationale**: Reduces Snowstorm API calls, improves performance, enables offline operation.
+
+### FR-901: Global Phrase SNOMED Mapping Table
+**Requirement**: Create `radium.global_phrase_snomed` table to map global phrases (account_id IS NULL) to SNOMED concepts.
+
+**Schema**:
+- `id` (BIGINT IDENTITY, PK)
+- `phrase_id` (BIGINT, UNIQUE, FK → radium.phrase): Must reference global phrase (account_id IS NULL)
+- `concept_id` (BIGINT, FK → snomed.concept_cache): SNOMED concept
+- `mapping_type` (VARCHAR(20), NOT NULL, DEFAULT 'exact'): Values: 'exact', 'broader', 'narrower', 'related'
+- `confidence` (DECIMAL(3,2), NULL): Optional confidence score (0.00-1.00)
+- `notes` (NVARCHAR(500), NULL): Optional mapping notes
+- `mapped_by` (BIGINT, NULL): Optional account_id of user who created mapping
+- `created_at` (DATETIME2(3), NOT NULL, DEFAULT SYSUTCDATETIME())
+- `updated_at` (DATETIME2(3), NOT NULL, DEFAULT SYSUTCDATETIME())
+
+**Constraints**:
+- FK to `radium.phrase` with CASCADE DELETE
+- FK to `snomed.concept_cache` with RESTRICT DELETE
+- CHECK constraint on `mapping_type` values
+- CHECK constraint on `confidence` range (0.00-1.00)
+
+**Indexes**:
+- `IX_global_phrase_snomed_concept` on `concept_id`
+- `IX_global_phrase_snomed_mapping_type` on `mapping_type`
+- `IX_global_phrase_snomed_mapped_by` on `mapped_by`
+
+**Rationale**: Global mappings are available to all accounts; one phrase maps to one concept.
+
+### FR-902: Account Phrase SNOMED Mapping Table
+**Requirement**: Create `radium.phrase_snomed` table to map account-specific phrases to SNOMED concepts.
+
+**Schema**:
+- `id` (BIGINT IDENTITY, PK)
+- `phrase_id` (BIGINT, UNIQUE, FK → radium.phrase): Must reference account phrase (account_id IS NOT NULL)
+- `concept_id` (BIGINT, FK → snomed.concept_cache): SNOMED concept
+- `mapping_type` (VARCHAR(20), NOT NULL, DEFAULT 'exact'): Values: 'exact', 'broader', 'narrower', 'related'
+- `confidence` (DECIMAL(3,2), NULL): Optional confidence score (0.00-1.00)
+- `notes` (NVARCHAR(500), NULL): Optional mapping notes
+- `created_at` (DATETIME2(3), NOT NULL, DEFAULT SYSUTCDATETIME())
+- `updated_at` (DATETIME2(3), NOT NULL, DEFAULT SYSUTCDATETIME())
+
+**Constraints**:
+- UNIQUE constraint on `phrase_id` (one phrase → one concept)
+- FK to `radium.phrase` with CASCADE DELETE
+- FK to `snomed.concept_cache` with RESTRICT DELETE
+- CHECK constraint on `mapping_type` values
+- CHECK constraint on `confidence` range (0.00-1.00)
+
+**Indexes**:
+- `IX_phrase_snomed_concept` on `concept_id`
+- `IX_phrase_snomed_mapping_type` on `mapping_type`
+- `IX_phrase_snomed_created` on `created_at DESC`
+
+**Rationale**: Account-specific mappings allow per-account customization; override global mappings.
+
+### FR-903: Auto-Update Triggers
+**Requirement**: Implement triggers `trg_global_phrase_snomed_touch` and `trg_phrase_snomed_touch` to automatically update `updated_at` when meaningful fields change.
+
+**Trigger Behavior**:
+- Fire AFTER UPDATE
+- Detect changes in: `concept_id`, `mapping_type`, `confidence`, `notes`
+- Set `updated_at = SYSUTCDATETIME()` for changed rows only
+
+**Rationale**: Automatic timestamp maintenance for audit and sync tracking.
+
+### FR-904: Combined Phrase-SNOMED View
+**Requirement**: Create view `radium.v_phrase_snomed_combined` to unify global and account-specific mappings with phrase details.
+
+**Columns**:
+- `phrase_id`: Phrase ID
+- `account_id`: Account ID (NULL for global)
+- `phrase_text`: Phrase text
+- `concept_id`: SNOMED concept ID (numeric)
+- `concept_id_str`: SNOMED concept ID (string)
+- `fsn`: Fully Specified Name
+- `pt`: Preferred Term
+- `mapping_type`: Mapping type
+- `confidence`: Confidence score
+- `notes`: Mapping notes
+- `mapping_source`: 'global' or 'account'
+- `created_at`: Mapping creation timestamp
+- `updated_at`: Mapping update timestamp
+
+**Join Logic**:
+- UNION ALL of global and account mappings
+- Include phrase details and concept cache details
+- Use for lookups and reporting
+
+**Rationale**: Simplifies queries for combined phrase-concept data.
+
+### FR-905: Upsert SNOMED Concept Procedure
+**Requirement**: Create stored procedure `snomed.upsert_concept` to insert or update concept cache from Snowstorm API responses.
+
+**Parameters**:
+- `@concept_id` (BIGINT)
+- `@concept_id_str` (VARCHAR(18))
+- `@fsn` (NVARCHAR(500))
+- `@pt` (NVARCHAR(500), optional)
+- `@module_id` (VARCHAR(18), optional)
+- `@active` (BIT, default 1)
+- `@expires_at` (DATETIME2(3), optional)
+
+**Behavior**:
+- MERGE on `concept_id`
+- UPDATE existing: refresh all fields and `cached_at`
+- INSERT new: create cache entry
+
+**Rationale**: Standardized API → database sync; idempotent upsert pattern.
+
+### FR-906: Map Global Phrase to SNOMED Procedure
+**Requirement**: Create stored procedure `radium.map_global_phrase_to_snomed` to map a global phrase to a SNOMED concept.
+
+**Parameters**:
+- `@phrase_id` (BIGINT): Must be global phrase (account_id IS NULL)
+- `@concept_id` (BIGINT): Must exist in concept_cache
+- `@mapping_type` (VARCHAR(20), default 'exact')
+- `@confidence` (DECIMAL(3,2), optional)
+- `@notes` (NVARCHAR(500), optional)
+- `@mapped_by` (BIGINT, optional): Account ID of mapper
+
+**Validations**:
+- Verify phrase is global (account_id IS NULL)
+- Verify concept exists in cache
+- RAISERROR if validations fail
+
+**Behavior**:
+- MERGE on `phrase_id`
+- UPDATE existing mapping
+- INSERT new mapping
+
+**Rationale**: Enforce global phrase constraint; standardized mapping workflow.
+
+### FR-907: Map Account Phrase to SNOMED Procedure
+**Requirement**: Create stored procedure `radium.map_phrase_to_snomed` to map an account-specific phrase to a SNOMED concept.
+
+**Parameters**:
+- `@phrase_id` (BIGINT): Must be account phrase (account_id IS NOT NULL)
+- `@concept_id` (BIGINT): Must exist in concept_cache
+- `@mapping_type` (VARCHAR(20), default 'exact')
+- `@confidence` (DECIMAL(3,2), optional)
+- `@notes` (NVARCHAR(500), optional)
+
+**Validations**:
+- Verify phrase is account-specific (account_id IS NOT NULL)
+- Verify concept exists in cache
+- RAISERROR if validations fail
+
+**Behavior**:
+- MERGE on `phrase_id`
+- UPDATE existing mapping
+- INSERT new mapping
+
+**Rationale**: Enforce account phrase constraint; standardized mapping workflow.
+
+### FR-908: Snowstorm API Integration
+**Requirement**: Implement C# service to query Snowstorm API for SNOMED concept search and details.
+
+**Service Methods**:
+- `SearchConceptsAsync(string query, int limit = 50)`: Search concepts by term
+- `GetConceptDetailsAsync(string conceptId)`: Get concept details by ID
+- `CacheConceptAsync(ConceptDto concept)`: Cache concept to database
+
+**API Endpoints** (Snowstorm):
+- Search: `GET /MAIN/concepts?term={query}&limit={limit}&activeFilter=true`
+- Details: `GET /MAIN/concepts/{conceptId}`
+
+**Response Mapping**:
+- Extract `conceptId`, `fsn.term`, `pt.term`, `moduleId`, `active`
+- Map to `ConceptCacheDto` and upsert to database
+
+**Rationale**: Abstraction layer for Snowstorm API; automatic caching.
+
+### FR-909: Global Phrases Tab - SNOMED Mapping UI
+**Requirement**: Extend Settings → Global Phrases tab to support SNOMED mapping.
+
+**UI Elements**:
+1. **Phrase List** (existing): Show global phrases with mapped SNOMED indicator (icon or badge)
+2. **SNOMED Search Panel**:
+   - Search textbox: Enter SNOMED term
+   - Search button: Query Snowstorm
+   - Results grid: Display `conceptId`, `fsn`, `pt` with columns
+   - Select action: Double-click or button to map selected concept
+3. **Mapping Details Panel** (when phrase selected):
+   - Show current mapping if exists: Concept ID, FSN, PT, Mapping Type
+   - Edit controls: Mapping Type dropdown, Confidence slider (0-100%), Notes textbox
+   - Save Mapping button: Persist changes
+   - Remove Mapping button: Delete mapping
+
+**Behavior**:
+- Search results populate from Snowstorm API (cache concepts automatically)
+- Mapping action creates/updates `global_phrase_snomed` row
+- Refresh phrase list to show mapping indicator
+
+**Rationale**: User-friendly interface for terminology management; supports semantic standardization.
+
+### FR-910: Account Phrases Tab - SNOMED Mapping UI
+**Requirement**: Extend Settings → Phrases tab (account-specific) to support SNOMED mapping.
+
+**UI Elements**: Same as FR-909 but operates on account-specific phrases.
+
+**Behavior**:
+- Account mappings override global mappings for same phrase text
+- UI shows if global mapping exists and allows override
+- Search/select/save workflow identical to global tab
+
+**Rationale**: Per-account customization while leveraging global standards.
+
+### FR-911: Phrase Highlighting - SNOMED Color Coding
+**Requirement**: Extend phrase highlighting renderer to use SNOMED semantic category colors.
+
+**Color Scheme** (example):
+- Clinical Finding (finding): Light blue (#A0C4FF)
+- Procedure (procedure): Light green (#A0FFA0)
+- Body Structure (body structure): Light yellow (#FFFFCC)
+- Disorder (disorder): Light red (#FFB3B3)
+- Observable Entity (observable entity): Light purple (#E0C4FF)
+- Unmapped phrase: Red (#FF6666)
+
+**Implementation**:
+- Query `radium.v_phrase_snomed_combined` for mapped phrases and concept semantic tags
+- Lookup SNOMED concept details via Snowstorm or cache for semantic tag
+- Apply color based on semantic tag in `PhraseHighlightRenderer`
+
+**Rationale**: Visual feedback for semantic categories; aids report review and quality.
+
+### FR-912: Phrase Completion - SNOMED Metadata Display
+**Requirement**: Show SNOMED concept details in phrase completion dropdown.
+
+**Display Format**:
+```
+[phrase text]
+SNOMED: [conceptId] | [fsn]
+```
+
+**Example**:
+```
+myocardial infarction
+SNOMED: 22298006 | Myocardial infarction (disorder)
+```
+
+**Behavior**:
+- Query phrase mappings when building completion list
+- Include SNOMED metadata in completion item tooltip or secondary line
+- Distinguish mapped vs unmapped phrases visually (e.g., icon)
+
+**Rationale**: Contextual awareness of terminology during typing; promotes correct usage.
+
+### FR-913: Phrase Report Export with SNOMED
+**Requirement**: Include SNOMED concept IDs in exported phrase reports (CSV/JSON).
+
+**Export Format** (CSV):
+```
+phrase_id,phrase_text,account_id,concept_id,fsn,pt,mapping_type
+123,myocardial infarction,NULL,22298006,"Myocardial infarction (disorder)","Myocardial infarction",exact
+```
+
+**Export Format** (JSON):
+```json
+{
+  "phrase_id": 123,
+  "phrase_text": "myocardial infarction",
+  "account_id": null,
+  "snomed_mapping": {
+    "concept_id": "22298006",
+    "fsn": "Myocardial infarction (disorder)",
+    "pt": "Myocardial infarction",
+    "mapping_type": "exact",
+    "confidence": 1.0
+  }
+}
+```
+
+**Rationale**: Enables downstream analytics, interoperability, and quality metrics.
+
+### FR-914: Bulk Import SNOMED Mappings
+**Requirement**: Support CSV import of phrase-SNOMED mappings for batch operations.
+
+**Import CSV Format**:
+```
+phrase_text,concept_id,mapping_type,confidence,notes
+myocardial infarction,22298006,exact,1.0,"Standard mapping"
+```
+
+**Import Workflow**:
+1. Upload CSV file
+2. Validate: Check phrase exists, concept in cache (fetch if missing), valid mapping_type
+3. Preview: Show import summary with warnings
+4. Execute: Batch insert/update mappings via stored procedures
+5. Report: Show success/error counts
+
+**Rationale**: Efficient bulk setup from external terminology resources or prior work.
+
+### FR-915: Mapping Audit Log
+**Requirement**: Track mapping changes for compliance and troubleshooting.
+
+**Implementation Options**:
+1. **Temporal tables** (SQL Server): Automatic history tracking
+2. **Audit table** `radium.phrase_snomed_audit`:
+   - Columns: `audit_id`, `phrase_id`, `concept_id`, `mapping_type`, `action` (INSERT/UPDATE/DELETE), `changed_by`, `changed_at`
+   - Trigger: Capture changes on `global_phrase_snomed` and `phrase_snomed`
+
+**Query Examples**:
+- Who mapped phrase X?
+- When did mapping for phrase Y change?
+- What concepts were previously mapped to phrase Z?
+
+**Rationale**: Compliance, accountability, and debugging support.
+
+### Notes
+- Snowstorm base URL configurable in settings (e.g., `http://localhost:8080`)
+- Support multiple SNOMED editions/branches (INT, US, KR) via Snowstorm branch parameter
+- Handle API failures gracefully (offline mode uses cached concepts only)
+- Consider rate limiting and batching for bulk operations
+- Future: Support SNOMED relationships and expression constraints for advanced mappings

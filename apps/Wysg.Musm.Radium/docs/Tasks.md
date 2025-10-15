@@ -280,3 +280,51 @@
 - [ ] T821 Integrate SNOMED CT concept colors for phrase highlighting (FR-709, future work).
 - [ ] T822 Add phrase highlighting configuration UI in Settings window (future work).
 - [ ] T823 Implement phrase hover tooltips showing SNOMED CT information (future work).
+
+## New (2025-01-15 – Phrase-to-SNOMED Mapping Central Database)
+- [X] T900 Design phrase-to-SNOMED mapping schema with three tables: snomed.concept_cache, radium.global_phrase_snomed, radium.phrase_snomed (FR-900, FR-901, FR-902).
+- [X] T901 Create snomed.concept_cache table with concept_id (PK), concept_id_str (UNIQUE), fsn, pt, module_id, active, cached_at, expires_at (FR-900).
+- [X] T902 Create radium.global_phrase_snomed table with phrase_id (UNIQUE FK), concept_id (FK), mapping_type, confidence, notes, mapped_by, timestamps (FR-901).
+- [X] T903 Create radium.phrase_snomed table with phrase_id (UNIQUE FK), concept_id (FK), mapping_type, confidence, notes, timestamps (FR-902).
+- [X] T904 Add indexes on snomed.concept_cache: fsn, pt, cached_at DESC (FR-900).
+- [X] T905 Add indexes on radium.global_phrase_snomed: concept_id, mapping_type, mapped_by (FR-901).
+- [X] T906 Add indexes on radium.phrase_snomed: concept_id, mapping_type, created_at DESC (FR-902).
+- [X] T907 Add FK constraints: phrase tables CASCADE delete, concept_cache RESTRICT delete (FR-901, FR-902).
+- [X] T908 Add CHECK constraints on mapping_type (exact/broader/narrower/related) and confidence (0.00-1.00) (FR-901, FR-902).
+- [X] T909 Create triggers trg_global_phrase_snomed_touch and trg_phrase_snomed_touch to auto-update updated_at on field changes (FR-903).
+- [X] T910 Create view radium.v_phrase_snomed_combined with UNION ALL of global and account mappings including phrase and concept details (FR-904).
+- [X] T911 Create stored procedure snomed.upsert_concept for idempotent concept caching from Snowstorm API (FR-905).
+- [X] T912 Create stored procedure radium.map_global_phrase_to_snomed with validation for global phrases (account_id IS NULL) (FR-906).
+- [X] T913 Create stored procedure radium.map_phrase_to_snomed with validation for account phrases (account_id IS NOT NULL) (FR-907).
+- [X] T914 Add table and column comments documenting purpose and constraints (e.g., mapping_type values, confidence range) (FR-900..FR-907).
+- [X] T915 Create SQL file db\schema\central_db_phrase_snomed_mapping.sql with all tables, views, indexes, constraints, triggers, and procedures (FR-900..FR-907).
+- [X] T916 Update Spec.md with FR-900..FR-915 documenting phrase-to-SNOMED mapping feature requirements (cumulative).
+- [X] T917 Update Plan.md with change log entry for phrase-to-SNOMED mapping including approach, test plan, and risks (cumulative).
+- [X] T918 Update Tasks.md with completed phrase-to-SNOMED mapping schema tasks (this file, cumulative).
+- [ ] T919 Implement C# service SnowstormService with SearchConceptsAsync and GetConceptDetailsAsync methods (FR-908, future work).
+- [ ] T920 Implement C# service PhraseSnomedService with UpsertConceptAsync, MapGlobalPhraseAsync, MapAccountPhraseAsync methods (FR-906, FR-907, future work).
+- [ ] T921 Add SNOMED search panel to Settings → Global Phrases tab with search textbox, results grid, and map button (FR-909, future work).
+- [ ] T922 Add mapping details panel to Global Phrases tab with concept display, mapping type dropdown, confidence slider, notes textbox, save/remove buttons (FR-909, future work).
+- [ ] T923 Extend GlobalPhrasesViewModel with SNOMED search and mapping commands (FR-909, future work).
+- [ ] T924 Add SNOMED search and mapping UI to Settings → Phrases tab (account-specific) (FR-910, future work).
+- [ ] T925 Extend PhrasesViewModel with SNOMED search and mapping commands (FR-910, future work).
+- [ ] T926 Update PhraseHighlightRenderer to query phrase-SNOMED mappings and apply semantic category colors (FR-911, future work).
+- [ ] T927 Extend phrase completion dropdown to display SNOMED concept ID and FSN in tooltip or secondary line (FR-912, future work).
+- [ ] T928 Implement phrase report export (CSV/JSON) with SNOMED concept IDs and mapping metadata (FR-913, future work).
+- [ ] T929 Implement CSV import for bulk phrase-SNOMED mappings with validation and preview (FR-914, future work).
+- [ ] T930 Add mapping audit log table or temporal tables for compliance tracking (FR-915, future work).
+
+## Verification (Phrase-to-SNOMED Mapping)
+- [X] V300 SQL file deploys without errors on Azure SQL Database.
+- [ ] V301 Call snomed.upsert_concept with test data → verify concept cached with correct fields.
+- [ ] V302 Call radium.map_global_phrase_to_snomed with global phrase → verify mapping created.
+- [ ] V303 Call radium.map_phrase_to_snomed with account phrase → verify mapping created.
+- [ ] V304 Attempt to map account phrase via global procedure → verify RAISERROR.
+- [ ] V305 Attempt to map global phrase via account procedure → verify RAISERROR.
+- [ ] V306 Delete phrase → verify mapping CASCADE deleted.
+- [ ] V307 Attempt to delete concept with existing mappings → verify FK RESTRICT violation.
+- [ ] V308 Update mapping fields → verify updated_at changes; update non-tracked fields → verify updated_at unchanged.
+- [ ] V309 Query v_phrase_snomed_combined → verify UNION ALL returns global and account mappings with correct mapping_source.
+- [ ] V310 Build passes with no errors after schema deployment.
+
+---

@@ -535,6 +535,33 @@ namespace Wysg.Musm.Radium.Views
             }
         }
 
+        private void OnLinkSnomedFromGlobal(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is not Button btn) return;
+                if (FindAncestor<DataGridRow>(btn) is DataGridRow row && row.Item is Wysg.Musm.Radium.ViewModels.GlobalPhraseItem item)
+                {
+                    if (Application.Current is App app)
+                    {
+                        var svc = app.Services.GetService<Wysg.Musm.Radium.Services.ISnomedMapService>();
+                        var snow = app.Services.GetService<Wysg.Musm.Radium.Services.ISnowstormClient>();
+                        if (svc == null || snow == null)
+                        {
+                            MessageBox.Show("SNOMED services not available.", "SNOMED", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return;
+                        }
+                        var win = new Views.PhraseSnomedLinkWindow(item.Id, item.Text, null, svc, snow) { Owner = this };
+                        win.ShowDialog();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[SettingsWindow] Link SNOMED error: " + ex.Message);
+            }
+        }
+
         // ---- Integrated Spy Tab Handlers (minimal reuse) ----
         private Views.SpyWindow? _spyDelegate; // lazy delegate instance to reuse existing logic
         private SpyWindow EnsureSpyDelegate()

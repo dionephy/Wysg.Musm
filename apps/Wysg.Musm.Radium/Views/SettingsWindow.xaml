@@ -107,11 +107,11 @@
 
         <TabControl Background="#1E1E1E" x:Name="tabsRoot">
             <!-- Database -->
-            <TabItem Header="Database" x:Name="tabDatabase">
+            <TabItem Header="Network" x:Name="tabDatabase">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="8">
                         <!-- Database Pane -->
-                        <GroupBox Header="Database" Margin="0,0,0,12" Padding="8">
+                        <GroupBox Header="Network" Margin="0,0,0,12" Padding="8">
                             <GroupBox.HeaderTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource BrushTextPrimary}"/>
@@ -119,6 +119,7 @@
                             </GroupBox.HeaderTemplate>
                             <Grid>
                                 <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
@@ -132,7 +133,10 @@
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Central (Azure SQL) Connection String:" VerticalAlignment="Center" Margin="0,4,8,4"/>
                                 <TextBox Grid.Row="1" Grid.Column="1" MinWidth="520" ToolTip="Paste AAD passwordless connection string (Authentication=Active Directory Default)"
                                          Text="{Binding CentralConnectionString, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,4"/>
-                                <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Snowstorm Base URL:" VerticalAlignment="Center" Margin="0,4,8,4"/>
+                                <TextBox Grid.Row="2" Grid.Column="1" MinWidth="520" ToolTip="e.g. https://snowstorm.ihtsdotools.org/snowstorm/snomed-ct"
+                                         Text="{Binding SnowstormBaseUrl, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,4"/>
+                                <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
                                     <Button Content="Test Local" Width="100" Margin="0,0,8,0" Command="{Binding TestLocalCommand}"/>
                                     <Button Content="Test Central" Width="110" Margin="0,0,8,0" Command="{Binding TestCentralCommand}"/>
                                     <Button Content="Save" Width="90" Margin="0,0,8,0" Command="{Binding SaveCommand}"/>
@@ -910,14 +914,17 @@ i have ${1^fruit=a^apple|b^bannana|3^watermelon} and ${2^juices=a^cola|b^cider},
                                                 Width="60"/>
 
                             <!-- Actions Column -->
-                            <DataGridTemplateColumn Header="Actions" Width="100">
+                            <DataGridTemplateColumn Header="Actions" Width="220">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="{Binding Active, Converter={StaticResource ActiveToButtonTextConverter}}"
-                                                Command="{Binding ToggleCommand}"
-                                                Padding="5,2"
-                                                MinWidth="80"
-                                                HorizontalAlignment="Center"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Button Content="{Binding Active, Converter={StaticResource ActiveToButtonTextConverter}}"
+                                                    Command="{Binding ToggleCommand}"
+                                                    Padding="5,2"
+                                                    MinWidth="80"/>
+                                            <Button Content="Link SNOMED" Padding="5,2" Margin="8,0,0,0"
+                                                    Click="OnLinkSnomedFromGlobal"/>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>

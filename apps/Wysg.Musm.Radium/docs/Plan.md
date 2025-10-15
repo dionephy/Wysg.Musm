@@ -1,4 +1,4 @@
-﻿# Implementation Plan: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
+﻿# Implementation Plan: Radium (Cumulative)
 
 ## Change Log Addition (2025-10-13 – Open Study Shortcut Panes)
 - Added three Automation panes to configure Open Study hotkey action lists by state: (new/add/after open).
@@ -616,37 +616,180 @@
 ### Risks / Mitigations
 - Rapid PACS switching during Spy edits could race file writes → minimal risk; user-driven; save operations are small; last write wins is acceptable.
 
-## Change Log Addition (2025-01-14 – Editor Phrase-Based Syntax Highlighting)
-- Implemented real-time phrase-based syntax highlighting in the editor control.
-- Added `PhraseHighlightRenderer` class that highlights phrases based on a snapshot list.
-- Phrases in the snapshot are highlighted with #4A4A4A (Dark.Color.BorderLight).
-- Phrases NOT in the snapshot are highlighted with red color.
-- EditorControl now exposes `PhraseSnapshot` dependency property for ViewModel binding.
-- Highlighting updates automatically when phrase snapshot changes.
+## 2025-01-15: Phrase-to-SNOMED Mapping (Central Database Schema)
+
+### Overview
+Designed and implemented database schema for mapping global and account-specific phrases to SNOMED CT concepts via Snowstorm API. Supports terminology management, semantic interoperability, and standardized reporting.
 
 ### Approach
-1) Create `PhraseHighlightRenderer` class implementing `IBackgroundRenderer` in `src/Wysg.Musm.Editor/Ui/`.
-2) Implement tokenization logic to find words and multi-word phrases (up to 5 words) in visible text.
-3) Add case-insensitive phrase matching using `HashSet<string>` for O(1) lookup.
-4) Draw semi-transparent backgrounds behind matched phrases using different colors for existing vs. missing phrases.
-5) Add `PhraseSnapshot` dependency property to `EditorControl` with change notification to invalidate view.
-6) Initialize renderer in `EditorControl` constructor and wire to TextView's background renderers.
-7) Dispose renderer properly in `OnUnloaded` to prevent memory leaks.
+
+#### 1. Schema Design (Three-Table Pattern)
+**`snomed.concept_cache`**: Cache SNOMED concepts from Snowstorm to reduce API calls
+- Primary storage for concept details: ID, FSN, PT, module, active status
+- Indexed on FSN/PT for search, cached_at for refresh logic
+- Optional expiration field for cache invalidation strategies
+
+**`radium.global_phrase_snomed`**: Map global phrases to SNOMED
+- Links `radium.phrase` (account_id IS NULL) to `snomed.concept_cache`
+- One phrase → one concept (UNIQUE constraint on phrase_id)
+- Supports mapping type (exact/broader/narrower/related) and confidence score
+- Optional `mapped_by` tracks user who created mapping
+- CASCADE delete when phrase deleted; RESTRICT delete when concept deleted
+
+**`radium.phrase_snomed`**: Map account-specific phrases to SNOMED
+- Links `radium.phrase` (account_id IS NOT NULL) to `snomed.concept_cache`
+- One phrase → one concept (UNIQUE constraint on phrase_id)
+- Same structure as global table but scoped to account
+- Account mappings override global mappings for same phrase text
+
+**`radium.v_phrase_snomed_combined`**: Unified view for queries
+- UNION ALL of global and account mappings with phrase and concept details
+- Includes `mapping_source` column to distinguish origin
+- Simplifies application-level queries for phrase-concept lookups
+
+#### 2. Normalization Strategy
+**Why separate concept_cache?**
+- Multiple phrases can map to same concept (many-to-one)
+- Avoids duplicate concept data
+- Enables efficient concept-level queries (e.g., "all phrases for concept X")
+- Future-proofs for SNOMED relationship tracking
+
+**Why separate global and account tables?**
+- Global mappings are shared across all accounts (read-only for most users)
+- Account mappings are scoped and mutable per account
+- Simplifies access control and query filtering
+- Mirrors existing `radium.phrase` account_id pattern
+
+#### 3. Stored Procedures for Data Integrity
+**`snomed.upsert_concept`**: Idempotent concept caching
+- MERGE pattern ensures no duplicates
+- Updates cached_at on every upsert (tracks freshness)
+- Application layer calls after Snowstorm API query
+
+**`radium.map_global_phrase_to_snomed`**: Enforces global phrase constraint
+- Validates phrase.account_id IS NULL before mapping
+- Validates concept exists in cache (prevents orphan references)
+- MERGE pattern for idempotent mapping (insert/update)
+- RAISERROR for constraint violations (clear error messages)
+
+**`radium.map_phrase_to_snomed`**: Enforces account phrase constraint
+- Validates phrase.account_id IS NOT NULL before mapping
+- Same validation and merge logic as global procedure
+- Separate procedure for clarity and access control
+
+#### 4. Triggers for Audit Trail
+**Auto-update `updated_at`**: Triggers on both mapping tables
+- Fire AFTER UPDATE only when meaningful fields change
+- Avoid trigger recursion (do not update updated_at again if already updated)
+- Use CTE pattern to detect changed rows efficiently
+
+#### 5. Indexing Strategy
+**Concept cache**: FSN, PT (for Snowstorm API response matching), cached_at (for refresh queries)
+**Mapping tables**: concept_id (for reverse lookups), mapping_type (for type-specific queries), created_at (for audit/reporting)
+**No full-text indexes yet**: Start with simple indexes; add FTS if search performance requires
+
+#### 6. Future Enhancements (Not Implemented)
+- SNOMED relationships table (parent-child, part-of, etc.)
+- Expression constraint parsing (post-coordinated expressions)
+- Temporal tables for automatic audit history
+- Multi-branch support (INT vs US vs KR editions)
 
 ### Test Plan
-- Load phrase snapshot into EditorControl via binding.
-- Type text containing phrases from snapshot → verify they highlight with #4A4A4A color.
-- Type text containing phrases NOT in snapshot → verify they highlight with red color.
-- Type multi-word phrases (2-5 words) → verify entire phrase highlights as single unit.
-- Update phrase snapshot at runtime → verify highlighting updates immediately.
-- Verify highlighting only occurs in visible viewport (scroll to verify lazy evaluation).
-- Check that text remains readable with background highlighting (no foreground color changes).
-- Verify no performance issues with large documents or many phrases.
-- Future: Colors will be diversified based on SNOMED CT concept links (not implemented yet).
 
-### Risks / Mitigations
-- Performance with large phrase lists → mitigated by using HashSet for O(1) lookup and only processing visible text.
-- Multi-word phrase matching complexity → limited to 5 words maximum to balance accuracy and performance.
-- Color contrast for readability → using semi-transparent backgrounds to preserve text visibility.
-- Memory leaks from renderer → mitigated by proper disposal in OnUnloaded.
+#### Database Schema Tests
+1. **Concept Cache Upsert**: Call `upsert_concept` multiple times with same ID → verify no duplicates, cached_at updates
+2. **Global Mapping Insert**: Map global phrase to concept → verify row in `global_phrase_snomed`, verify FK constraints
+3. **Account Mapping Insert**: Map account phrase to concept → verify row in `phrase_snomed`, verify FK constraints
+4. **Constraint Violations**:
+   - Try to map account phrase via global procedure → expect RAISERROR
+   - Try to map global phrase via account procedure → expect RAISERROR
+   - Try to map to non-existent concept → expect FK violation
+5. **Cascade Delete**: Delete phrase → verify mapping deleted (CASCADE)
+6. **Restrict Delete**: Try to delete concept with existing mappings → expect FK violation (RESTRICT)
+7. **Trigger Behavior**: Update mapping fields → verify `updated_at` changes; update non-tracked fields → verify no change
+8. **View Query**: Query `v_phrase_snomed_combined` → verify UNION ALL returns global and account mappings with correct `mapping_source`
+
+#### Integration Tests (Snowstorm API - Future)
+1. **Search Concepts**: Query Snowstorm with "myocardial" → verify results include concept 22298006
+2. **Get Concept Details**: Fetch concept 22298006 → verify FSN is "Myocardial infarction (disorder)"
+3. **Cache Concept**: Search → cache → verify concept in `snomed.concept_cache`
+4. **Offline Mode**: Disconnect Snowstorm → verify cached concepts still queryable
+
+#### UI Tests (Global Phrases Tab - Future)
+1. **Search SNOMED**: Enter "infarction" → verify results grid populates
+2. **Map Phrase**: Select phrase and concept → click Map → verify mapping saved and indicator shows
+3. **Edit Mapping**: Change mapping type or confidence → save → verify update
+4. **Remove Mapping**: Click Remove → verify mapping deleted
+5. **Indicator Display**: Mapped phrases show icon/badge; unmapped do not
+
+#### Performance Tests
+1. **Bulk Insert**: Insert 1000 mappings → measure time (target: <10 seconds)
+2. **View Query**: Query `v_phrase_snomed_combined` with 10,000 phrases → measure time (target: <1 second)
+3. **Concept Cache Lookup**: Query cache with 100,000 concepts → verify indexed queries fast (<100ms)
+
+### Risks and Mitigation
+
+#### Risk 1: Snowstorm API Downtime
+**Impact**: Cannot search/fetch new concepts; UI search fails
+**Mitigation**: 
+- Use cached concepts for offline operation
+- Display friendly error message when API unavailable
+- Implement cache expiration policy to detect stale data
+- Consider periodic background sync for high-priority concepts
+
+#### Risk 2: Concept ID Changes in SNOMED Updates
+**Impact**: Cached concept IDs may become inactive or retired
+**Mitigation**:
+- Track `active` field in cache; filter inactive concepts in queries
+- Implement concept retirement workflow (flag mappings for review)
+- Periodic cache refresh from Snowstorm to update active status
+- Use SNOMED versioning (effectiveTime) for audit trail
+
+#### Risk 3: Performance with Large Phrase Sets
+**Impact**: 100,000+ phrases may slow view queries
+**Mitigation**:
+- Indexes on key columns (phrase_id, concept_id, account_id)
+- Pagination in UI (load phrases in batches)
+- Consider materialized view if performance degrades
+- Analyze query plans and add covering indexes as needed
+
+#### Risk 4: Mapping Type Ambiguity
+**Impact**: Users unsure when to use "exact" vs "broader" vs "narrower"
+**Mitigation**:
+- Provide UI tooltips explaining each mapping type
+- Default to "exact" for simplicity
+- Future: Implement mapping validation rules (e.g., warn if exact mapping conflicts with SNOMED hierarchy)
+
+#### Risk 5: Data Migration from Existing Systems
+**Impact**: Radium may have legacy phrase-SNOMED mappings in old format
+**Mitigation**:
+- Design import CSV format matching new schema
+- Implement bulk import procedure with validation and rollback
+- Test migration on staging database before production
+- Document mapping rules for manual review
+
+#### Risk 6: Multi-Branch SNOMED Support
+**Impact**: US/KR editions have different concept IDs for same clinical meaning
+**Mitigation**:
+- Store edition/branch in `snomed.concept_cache` (currently `module_id` supports this)
+- Filter concepts by edition in UI search
+- Future: Support cross-edition equivalence mapping
+
+### Documentation
+- **Spec.md**: Added FR-900 through FR-915 documenting requirements
+- **Plan.md**: This entry with approach, test plan, and risks
+- **Tasks.md**: Tasks T900-T915 for implementation phases
+- **SQL File**: `db\schema\central_db_phrase_snomed_mapping.sql` with complete schema
+
+### Next Steps (Implementation Phases)
+1. **Phase 1 (Complete)**: Database schema and stored procedures
+2. **Phase 2**: C# service layer for Snowstorm API integration
+3. **Phase 3**: Global Phrases tab UI for SNOMED mapping
+4. **Phase 4**: Account Phrases tab UI for SNOMED mapping
+5. **Phase 5**: Phrase highlighting with SNOMED colors
+6. **Phase 6**: Phrase completion metadata display
+7. **Phase 7**: Export/import functionality
+8. **Phase 8**: Audit logging and compliance reporting
+
+---
 

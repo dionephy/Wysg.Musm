@@ -238,6 +238,10 @@ namespace Wysg.Musm.Radium
             services.AddSingleton<ITechniqueRepository, TechniqueRepository>();              // Technique feature repository (Postgres)
             services.AddSingleton<PacsService>();                                             // PACS interaction abstraction
 
+            // SNOMED mapping (Azure SQL only). Safe to register unconditionally; uses CentralConnectionString
+            services.AddSingleton<ISnomedMapService>(sp => new AzureSqlSnomedMapService(sp.GetRequiredService<IRadiumLocalSettings>()));
+            services.AddSingleton<ISnowstormClient, SnowstormClient>();
+
             // Procedures (automation) ----------------------------------------------------------
             services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.INewStudyProcedure, Wysg.Musm.Radium.Services.Procedures.NewStudyProcedure>();
             services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.ILockStudyProcedure, Wysg.Musm.Radium.Services.Procedures.LockStudyProcedure>();

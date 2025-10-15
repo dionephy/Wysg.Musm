@@ -28,6 +28,9 @@ namespace Wysg.Musm.Radium.ViewModels
         [ObservableProperty]
         private string? centralConnectionString;
 
+        [ObservableProperty]
+        private string? snowstormBaseUrl; // new: Snowstorm server base URL
+
         // Back-compat binding
         // New: editable central (Azure SQL) connection string (passwordless AAD)
         public string? ConnectionString
@@ -100,6 +103,7 @@ namespace Wysg.Musm.Radium.ViewModels
             LocalConnectionString = _local.LocalConnectionString ?? "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas";
             // Initialize central connection string with provided default if none persisted
             CentralConnectionString = string.IsNullOrWhiteSpace(_local.CentralConnectionString) ? DefaultCentralAzureSqlConnection: _local.CentralConnectionString;
+            SnowstormBaseUrl = _local.SnowstormBaseUrl ?? "https://snowstorm.ihtsdotools.org/snowstorm/snomed-ct"; // sensible default
             SaveCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(Save);
             TestLocalCommand = new AsyncRelayCommand(TestLocalAsync);
             TestCentralCommand = new AsyncRelayCommand(TestCentralAsync); // new
@@ -196,6 +200,7 @@ namespace Wysg.Musm.Radium.ViewModels
             _local.LocalConnectionString = LocalConnectionString ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(CentralConnectionString))
                 _local.CentralConnectionString = CentralConnectionString!.Trim();
+            _local.SnowstormBaseUrl = SnowstormBaseUrl ?? string.Empty;
             MessageBox.Show("Saved.", "Settings", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
