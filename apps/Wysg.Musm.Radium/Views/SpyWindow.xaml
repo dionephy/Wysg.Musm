@@ -238,12 +238,12 @@
                 <ComboBoxItem Tag="ReportText2">Report text 2</ComboBoxItem>
                 <ComboBoxItem Tag="SearchResultsList">Search results list</ComboBoxItem>
                 <ComboBoxItem Tag="SelectedStudyInRelated">Selected study in related studies</ComboBoxItem>
-                <ComboBoxItem Tag="SelectedStudyInSearch">Selected study in search</ComboBoxItem>
+                <ComboBoxItem Tag="SelectedStudyInSearch">Selected study in search results</ComboBoxItem>
                 <ComboBoxItem Tag="StudyInfoBanner">Study info banner</ComboBoxItem>
                 <ComboBoxItem Tag="StudyList">Study list</ComboBoxItem>
                 <ComboBoxItem Tag="StudyRemark">Study remark</ComboBoxItem>
                 <ComboBoxItem Tag="PatientRemark">Patient remark</ComboBoxItem>
-                <ComboBoxItem Tag="TestInvoke">Test invoke</ComboBoxItem>
+                <ComboBoxItem Tag="TestInvoke">Test button</ComboBoxItem>
                 <ComboBoxItem Tag="ViewerToolbar">Viewer toolbar</ComboBoxItem>
                 <ComboBoxItem Tag="ViewerWindow">Viewer window</ComboBoxItem>
                 <ComboBoxItem Tag="WorklistListsPane">Worklist lists pane</ComboBoxItem>
