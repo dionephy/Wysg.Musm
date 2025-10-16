@@ -44,230 +44,266 @@
         </Style>
     </UserControl.Resources>
     
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*" />
-            <ColumnDefinition Width="2" />
-            <ColumnDefinition Width="1*" />
-            <ColumnDefinition Width="2" />
-            <ColumnDefinition Width="1*" />
-        </Grid.ColumnDefinitions>
+    <!-- True Grid-Based Row Layout for Previous Reports -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*" MinWidth="200"/>
+                <ColumnDefinition Width="2"/>
+                <ColumnDefinition Width="1*" MinWidth="200"/>
+                <ColumnDefinition Width="2"/>
+                <ColumnDefinition Width="1*" MinWidth="200"/>
+            </Grid.ColumnDefinitions>
+            
+            <Grid.RowDefinitions>
+                <!-- Row 0: Headers -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 1: Header and Findings / Proofread header section -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 2: Header and Findings textboxes -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 3: Split controls -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 4: Final Conclusion label -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 5: Final Conclusion textboxes -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 6: Second split controls -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 7: Header temp label -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 8: Header temp textboxes -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 9: Chief Complaint label -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 10: Chief Complaint textboxes -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 11: Patient History label -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 12: Patient History textboxes -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 13: Study Techniques label -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 14: Study Techniques textboxes -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 15: Comparison label -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 16: Comparison textboxes -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 17: Findings split label -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 18: Findings split textboxes -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 19: Conclusion split label -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 20: Conclusion split textboxes -->
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-        <!-- Left: Header and Findings TextBox with ScrollViewer and controls -->
-        <ScrollViewer x:Name="PART_LeftHost" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Grid.Column="0">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="2"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-					<RowDefinition Height="Auto"/>
-					<RowDefinition Height="Auto"/>
-					<RowDefinition Height="Auto"/>
-					<RowDefinition Height="Auto"/>
-					<RowDefinition Height="Auto"/>
-					<RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                
-                <!-- Row 0: Label and controls -->
-                <TextBlock Grid.Row="0" Text="Previous Header and Findings" Margin="6,0,0,2"/>
+            <!-- Row 0: Column Headers -->
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Previous Report" FontWeight="Bold" Margin="6,0,0,8"/>
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="Proofread" FontWeight="Bold" Margin="6,0,0,8"/>
 
-                <TextBox x:Name="txtHeaderAndFindings" Grid.Row="1"
-Text="{Binding HeaderAndFindingsText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" 
-VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" 
-AcceptsReturn="True" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Previous Header and Findings" Margin="6,0,0,2"/>
+            
+            <!-- Row 2: Header and Findings Textboxes -->
+            <TextBox x:Name="txtHeaderAndFindings" Grid.Row="2" Grid.Column="0"
+                     Text="{Binding HeaderAndFindingsText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                     Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"/>
 
-                <!-- First set of split controls -->
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="6,2,0,4">
-                    <Button Content="Split Header" FontSize="10" Padding="4,2" Margin="0,0,0,0" 
-             Command="{Binding SplitHeaderTopCommand}"
-             CommandParameter="{Binding ElementName=txtHeaderAndFindings}"/>
-                    <Button Content="Split Conclusion" FontSize="10" Padding="4,2" Margin="4,0,0,0" 
-             Command="{Binding SplitConclusionCommand}"
-             CommandParameter="{Binding ElementName=txtHeaderAndFindings}"/>
-                    <ToggleButton Content="Auto Split" FontSize="10" Padding="4,2" 
-                   Style="{StaticResource DarkToggleButtonStyle}"
-                   IsChecked="{Binding AutoSplit, Mode=TwoWay}"/>
-                </StackPanel>
-
-                <GridSplitter Grid.Row="3" VerticalAlignment="Stretch" Height="2" Background="#2D2D30"/>
-
-                <!-- Row 2: Final Conclusion Label -->
-                <TextBlock Grid.Row="4" Text="Final Conclusion" Margin="6,4,0,2"/>
-                
-                <!-- Row 3: Final Conclusion TextBox -->
-                <TextBox x:Name="txtFinalConclusion" Grid.Row="5"
-                         Text="{Binding FinalConclusionText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                         Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" 
-                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" 
-                         AcceptsReturn="True"/>
-                
-                <!-- Row 4: Second set of split controls -->
-                <StackPanel Grid.Row="6" Orientation="Horizontal" Margin="6,2,0,4">
-                    <Button Content="Split Header" FontSize="10" Padding="4,2" Margin="0,0,0,0" 
-                            Command="{Binding SplitHeaderBottomCommand}"
-                            CommandParameter="{Binding ElementName=txtFinalConclusion}"/>
-                    <Button Content="Split Findings" FontSize="10" Padding="4,2" Margin="4,0,0,0" 
-                            Command="{Binding SplitFindingsCommand}"
-                            CommandParameter="{Binding ElementName=txtFinalConclusion}"/>
-                    <ToggleButton Content="Auto Split" FontSize="10" Padding="4,2" 
-                                  Style="{StaticResource DarkToggleButtonStyle}"
-                                  IsChecked="{Binding AutoSplit, Mode=TwoWay}"/>
-                </StackPanel>
-
-                <!-- Header temp editor between split buttons and metadata -->
-                <TextBlock Grid.Row="7" Text="Header (temp)" Margin="6,6,0,2"/>
-                <TextBox Grid.Row="8" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding HeaderTemp, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                <!-- Additional editable fields -->
-                <StackPanel Grid.Row="9" Orientation="Horizontal" Margin="6,6,0,2">
-                    <TextBlock Text="Chief Complaint" VerticalAlignment="Center"/>
-                    <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
-                                  IsChecked="{Binding DataContext.AutoChiefComplaint, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                    <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
-                            Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="chief_complaint"/>
-                </StackPanel>
-                <TextBox Grid.Row="10" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding ChiefComplaint, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                <StackPanel Grid.Row="11" Orientation="Horizontal" Margin="6,6,0,2">
-                    <TextBlock Text="Patient History" VerticalAlignment="Center"/>
-                    <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
-                                  IsChecked="{Binding DataContext.AutoPatientHistory, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                    <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
-                            Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="patient_history"/>
-                </StackPanel>
-                <TextBox Grid.Row="12" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding PatientHistory, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                <StackPanel Grid.Row="13" Orientation="Horizontal" Margin="6,6,0,2">
-                    <TextBlock Text="Study Techniques" VerticalAlignment="Center"/>
-                    <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
-                                  IsChecked="{Binding DataContext.AutoStudyTechniques, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                    <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
-                            Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="study_techniques"/>
-                </StackPanel>
-                <TextBox Grid.Row="14" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding StudyTechniques, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                <StackPanel Grid.Row="15" Orientation="Horizontal" Margin="6,6,0,2">
-                    <TextBlock Text="Comparison" VerticalAlignment="Center"/>
-                    <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
-                                  IsChecked="{Binding DataContext.AutoComparison, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                    <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
-                            Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="comparison"/>
-                </StackPanel>
-                <TextBox Grid.Row="16" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding Comparison, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                <!-- Findings/Conclusion editors below comparison -->
-                <TextBlock Grid.Row="17" Text="Findings (split)" Margin="6,6,0,2"/>
-                <TextBox Grid.Row="18" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding SplitFindings, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                <TextBlock Grid.Row="19" Text="Conclusion (split)" Margin="6,6,0,2"/>
-                <TextBox Grid.Row="20" Padding="6" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding SplitConclusion, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            </Grid>
-        </ScrollViewer>
-
-        <!-- Splitter -->
-        <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
-
-        <!-- Mid: Proofread column -->
-        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel>
-                <TextBlock Text="Proofread" Margin="6,0,0,8" FontWeight="Bold"/>
-                <StackPanel Orientation="Horizontal" Margin="6,0,0,2">
-                    <TextBlock Text="Chief Complaint (proofread)" VerticalAlignment="Center"/>
-                    <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
-                                  IsChecked="{Binding DataContext.AutoChiefComplaintProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                    <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
-                            Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="chief_complaint_proofread"/>
-                </StackPanel>
-                <TextBox Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding ChiefComplaintProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <StackPanel Orientation="Horizontal" Margin="6,6,0,2">
-                    <TextBlock Text="Patient History (proofread)" VerticalAlignment="Center"/>
-                    <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
-                                  IsChecked="{Binding DataContext.AutoPatientHistoryProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                    <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
-                            Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="patient_history_proofread"/>
-                </StackPanel>
-                <TextBox Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding PatientHistoryProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <StackPanel Orientation="Horizontal" Margin="6,6,0,2">
-                    <TextBlock Text="Study Techniques (proofread)" VerticalAlignment="Center"/>
-                    <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
-                                  IsChecked="{Binding DataContext.AutoStudyTechniquesProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                    <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
-                            Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="study_techniques_proofread"/>
-                </StackPanel>
-                <TextBox Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding StudyTechniquesProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <StackPanel Orientation="Horizontal" Margin="6,6,0,2">
-                    <TextBlock Text="Comparison (proofread)" VerticalAlignment="Center"/>
-                    <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
-                                  IsChecked="{Binding DataContext.AutoComparisonProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                    <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
-                            Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="comparison_proofread"/>
-                </StackPanel>
-                <TextBox Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding ComparisonProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <StackPanel Orientation="Horizontal" Margin="6,6,0,2">
-                    <TextBlock Text="Findings (proofread)" VerticalAlignment="Center"/>
-                    <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
-                                  IsChecked="{Binding DataContext.AutoFindingsProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                    <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
-                            Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="findings_proofread"/>
-                </StackPanel>
-                <TextBox Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding FindingsProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <StackPanel Orientation="Horizontal" Margin="6,6,0,2">
-                    <TextBlock Text="Conclusion (proofread)" VerticalAlignment="Center"/>
-                    <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
-                                  IsChecked="{Binding DataContext.AutoConclusionProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
-                    <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
-                            Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="conclusion_proofread"/>
-                </StackPanel>
-                <TextBox Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
-                         Text="{Binding ConclusionProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <!-- Row 3: Split Controls (main column only) -->
+            <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" Margin="6,2,0,8">
+                <Button Content="Split Header" FontSize="10" Padding="4,2" Margin="0,0,0,0" 
+                        Command="{Binding SplitHeaderTopCommand}"
+                        CommandParameter="{Binding ElementName=txtHeaderAndFindings}"/>
+                <Button Content="Split Conclusion" FontSize="10" Padding="4,2" Margin="4,0,0,0" 
+                        Command="{Binding SplitConclusionCommand}"
+                        CommandParameter="{Binding ElementName=txtHeaderAndFindings}"/>
+                <ToggleButton Content="Auto Split" FontSize="10" Padding="4,2" 
+                              Style="{StaticResource DarkToggleButtonStyle}"
+                              IsChecked="{Binding AutoSplit, Mode=TwoWay}"/>
             </StackPanel>
-        </ScrollViewer>
 
-        <!-- Splitter between mid and right -->
-        <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+            <!-- Row 4: Final Conclusion Label -->
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="Final Conclusion" Margin="6,4,0,2"/>
+            
+            <!-- Row 5: Final Conclusion Textboxes -->
+            <TextBox x:Name="txtFinalConclusion" Grid.Row="5" Grid.Column="0"
+                     Text="{Binding FinalConclusionText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                     Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"/>
+            
+            <!-- Row 6: Second Split Controls (main column only) -->
+            <StackPanel Grid.Row="6" Grid.Column="0" Orientation="Horizontal" Margin="6,2,0,8">
+                <Button Content="Split Header" FontSize="10" Padding="4,2" Margin="0,0,0,0" 
+                        Command="{Binding SplitHeaderBottomCommand}"
+                        CommandParameter="{Binding ElementName=txtFinalConclusion}"/>
+                <Button Content="Split Findings" FontSize="10" Padding="4,2" Margin="4,0,0,0" 
+                        Command="{Binding SplitFindingsCommand}"
+                        CommandParameter="{Binding ElementName=txtFinalConclusion}"/>
+                <ToggleButton Content="Auto Split" FontSize="10" Padding="4,2" 
+                              Style="{StaticResource DarkToggleButtonStyle}"
+                              IsChecked="{Binding AutoSplit, Mode=TwoWay}"/>
+            </StackPanel>
 
-        <!-- Right: JSON TextBox -->
-        <TextBox x:Name="txtJson"
-                 Text="{Binding JsonText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                 Grid.Column="4" 
-                 Padding="6" Margin="0" 
-                 TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" 
-                 AcceptsReturn="True"
-                 VerticalAlignment="Stretch"/>
-    </Grid>
+            <!-- Row 7: Header temp Label -->
+            <TextBlock Grid.Row="7" Grid.Column="0" Text="Header (temp)" Margin="6,6,0,2"/>
+            
+            <!-- Row 8: Header temp Textboxes -->
+            <TextBox Grid.Row="8" Grid.Column="0" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding HeaderTemp, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <!-- Row 9: Chief Complaint Labels -->
+            <StackPanel Grid.Row="9" Grid.Column="0" Orientation="Horizontal" Margin="6,6,0,2">
+                <TextBlock Text="Chief Complaint" VerticalAlignment="Center"/>
+                <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
+                              IsChecked="{Binding DataContext.AutoChiefComplaint, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
+                        Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="chief_complaint"/>
+            </StackPanel>
+            
+            <StackPanel Grid.Row="9" Grid.Column="2" Orientation="Horizontal" Margin="6,6,0,2">
+                <TextBlock Text="Chief Complaint (PR)" VerticalAlignment="Center" FontSize="11"/>
+                <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="6,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
+                              IsChecked="{Binding DataContext.AutoChiefComplaintProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                <Button Content="gen" FontSize="10" Padding="4,2" Margin="3,0,0,0"
+                        Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="chief_complaint_proofread"/>
+            </StackPanel>
+            
+            <!-- Row 10: Chief Complaint Textboxes -->
+            <TextBox Grid.Row="10" Grid.Column="0" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding ChiefComplaint, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            
+            <TextBox Grid.Row="10" Grid.Column="2" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding ChiefComplaintProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <!-- Row 11: Patient History Labels -->
+            <StackPanel Grid.Row="11" Grid.Column="0" Orientation="Horizontal" Margin="6,6,0,2">
+                <TextBlock Text="Patient History" VerticalAlignment="Center"/>
+                <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
+                              IsChecked="{Binding DataContext.AutoPatientHistory, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
+                        Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="patient_history"/>
+            </StackPanel>
+            
+            <StackPanel Grid.Row="11" Grid.Column="2" Orientation="Horizontal" Margin="6,6,0,2">
+                <TextBlock Text="Patient History (PR)" VerticalAlignment="Center" FontSize="11"/>
+                <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="6,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
+                              IsChecked="{Binding DataContext.AutoPatientHistoryProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                <Button Content="gen" FontSize="10" Padding="4,2" Margin="3,0,0,0"
+                        Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="patient_history_proofread"/>
+            </StackPanel>
+            
+            <!-- Row 12: Patient History Textboxes -->
+            <TextBox Grid.Row="12" Grid.Column="0" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding PatientHistory, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            
+            <TextBox Grid.Row="12" Grid.Column="2" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding PatientHistoryProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <!-- Row 13: Study Techniques Labels -->
+            <StackPanel Grid.Row="13" Grid.Column="0" Orientation="Horizontal" Margin="6,6,0,2">
+                <TextBlock Text="Study Techniques" VerticalAlignment="Center"/>
+                <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
+                              IsChecked="{Binding DataContext.AutoStudyTechniques, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
+                        Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="study_techniques"/>
+            </StackPanel>
+            
+            <StackPanel Grid.Row="13" Grid.Column="2" Orientation="Horizontal" Margin="6,6,0,2">
+                <TextBlock Text="Study Techniques (PR)" VerticalAlignment="Center" FontSize="11"/>
+                <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="6,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
+                              IsChecked="{Binding DataContext.AutoStudyTechniquesProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                <Button Content="gen" FontSize="10" Padding="4,2" Margin="3,0,0,0"
+                        Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="study_techniques_proofread"/>
+            </StackPanel>
+            
+            <!-- Row 14: Study Techniques Textboxes -->
+            <TextBox Grid.Row="14" Grid.Column="0" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding StudyTechniques, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            
+            <TextBox Grid.Row="14" Grid.Column="2" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding StudyTechniquesProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <!-- Row 15: Comparison Labels -->
+            <StackPanel Grid.Row="15" Grid.Column="0" Orientation="Horizontal" Margin="6,6,0,2">
+                <TextBlock Text="Comparison" VerticalAlignment="Center"/>
+                <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="8,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
+                              IsChecked="{Binding DataContext.AutoComparison, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                <Button Content="generate" FontSize="10" Padding="4,2" Margin="4,0,0,0"
+                        Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="comparison"/>
+            </StackPanel>
+            
+            <StackPanel Grid.Row="15" Grid.Column="2" Orientation="Horizontal" Margin="6,6,0,2">
+                <TextBlock Text="Comparison (PR)" VerticalAlignment="Center" FontSize="11"/>
+                <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="6,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
+                              IsChecked="{Binding DataContext.AutoComparisonProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                <Button Content="gen" FontSize="10" Padding="4,2" Margin="3,0,0,0"
+                        Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="comparison_proofread"/>
+            </StackPanel>
+            
+            <!-- Row 16: Comparison Textboxes -->
+            <TextBox Grid.Row="16" Grid.Column="0" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding Comparison, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            
+            <TextBox Grid.Row="16" Grid.Column="2" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding ComparisonProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <!-- Row 17: Findings split Labels -->
+            <TextBlock Grid.Row="17" Grid.Column="0" Text="Findings (split)" Margin="6,6,0,2"/>
+            
+            <StackPanel Grid.Row="17" Grid.Column="2" Orientation="Horizontal" Margin="6,6,0,2">
+                <TextBlock Text="Findings (PR)" VerticalAlignment="Center" FontSize="11"/>
+                <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="6,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
+                              IsChecked="{Binding DataContext.AutoFindingsProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                <Button Content="gen" FontSize="10" Padding="4,2" Margin="3,0,0,0"
+                        Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="findings_proofread"/>
+            </StackPanel>
+            
+            <!-- Row 18: Findings split Textboxes -->
+            <TextBox Grid.Row="18" Grid.Column="0" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding SplitFindings, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            
+            <TextBox Grid.Row="18" Grid.Column="2" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding FindingsProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <!-- Row 19: Conclusion split Labels -->
+            <TextBlock Grid.Row="19" Grid.Column="0" Text="Conclusion (split)" Margin="6,6,0,2"/>
+            
+            <StackPanel Grid.Row="19" Grid.Column="2" Orientation="Horizontal" Margin="6,6,0,2">
+                <TextBlock Text="Conclusion (PR)" VerticalAlignment="Center" FontSize="11"/>
+                <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="6,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
+                              IsChecked="{Binding DataContext.AutoConclusionProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                <Button Content="gen" FontSize="10" Padding="4,2" Margin="3,0,0,0"
+                        Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="conclusion_proofread"/>
+            </StackPanel>
+            
+            <!-- Row 20: Conclusion split Textboxes -->
+            <TextBox Grid.Row="20" Grid.Column="0" Padding="6" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding SplitConclusion, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            
+            <TextBox Grid.Row="20" Grid.Column="2" Padding="6" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True"
+                     Text="{Binding ConclusionProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+
+            <!-- GridSplitters -->
+            <GridSplitter Grid.Row="0" Grid.RowSpan="21" Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+            <GridSplitter Grid.Row="0" Grid.RowSpan="21" Grid.Column="3" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+
+            <!-- Column 4: JSON (spans all rows) -->
+            <TextBox x:Name="txtJson" Grid.Row="0" Grid.RowSpan="21" Grid.Column="4" 
+                     Text="{Binding JsonText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                     Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" 
+                     AcceptsReturn="True" VerticalAlignment="Stretch"/>
+        </Grid>
+    </ScrollViewer>
 </UserControl>

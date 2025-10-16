@@ -30,22 +30,40 @@ namespace Wysg.Musm.Radium.Controls
 
         private void ApplyReverse(bool reverse)
         {
-            // 5-column layout: 0=textboxes, 1=splitter, 2=proofread, 3=splitter, 4=json
-            var left = this.FindName("PART_InputHost") as UIElement;
+            // True Grid layout: swap main column (0) with json column (4)
+            // Note: With Grid-based rows, we need to swap all elements in column 0 and column 4
             var json = this.FindName("txtCurrentJson") as UIElement;
-            if (left == null || json == null) return;
+            if (json == null) return;
+
+            // Get all children in column 0 (main content) and move to column 4, and vice versa
+            var grid = this.Content as Grid;
+            if (grid == null) return;
 
             if (reverse)
             {
-                // json | splitter | proofread | splitter | textboxes
+                // json column 0, main content to column 4
                 Grid.SetColumn(json, 0);
-                Grid.SetColumn(left, 4);
+                // Swap main column content
+                foreach (UIElement child in grid.Children)
+                {
+                    if (child == json) continue;
+                    var col = Grid.GetColumn(child);
+                    if (col == 0) Grid.SetColumn(child, 4);
+                    else if (col == 4) Grid.SetColumn(child, 0);
+                }
             }
             else
             {
-                // textboxes | splitter | proofread | splitter | json
-                Grid.SetColumn(left, 0);
+                // main content column 0, json to column 4
                 Grid.SetColumn(json, 4);
+                // Restore main column content
+                foreach (UIElement child in grid.Children)
+                {
+                    if (child == json) continue;
+                    var col = Grid.GetColumn(child);
+                    if (col == 4 && Grid.GetColumnSpan(child) == 1) Grid.SetColumn(child, 0);
+                    else if (col == 0 && Grid.GetRow(child) != 0) continue; // Leave column 0 items alone
+                }
             }
         }
     }

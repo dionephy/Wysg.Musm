@@ -759,6 +759,43 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [ ] V429 Test with studyname not set → verify button remains disabled even when adding items (safeguard)
 - [ ] V430 Performance test: add 10 items rapidly → verify button state updates responsively without lag
 
+## New (2025-01-18 – ReportInputsAndJsonPanel Side-by-Side Row Layout)
+- [X] T1220 Restructure ReportInputsAndJsonPanel XAML from column-based to side-by-side row layout for natural Y-coordinate alignment (FR-1081)
+- [X] T1221 Add named references to main textboxes: txtChiefComplaint, txtPatientHistory, txtFindings, txtConclusion (FR-1083..FR-1086)
+- [X] T1222 Set MinHeight="60" on Chief Complaint and Patient History main textboxes (FR-1083, FR-1084)
+- [X] T1223 Set MinHeight="100" on Findings and Conclusion main textboxes (FR-1085, FR-1086)
+- [X] T1224 Bind MinHeight on Chief Complaint (PR) textbox to txtChiefComplaint.MinHeight (FR-1083, FR-1094)
+- [X] T1225 Bind MinHeight on Patient History (PR) textbox to txtPatientHistory.MinHeight (FR-1084, FR-1094)
+- [X] T1226 Bind MinHeight on Findings (PR) textbox to txtFindings.MinHeight (FR-1085, FR-1094)
+- [X] T1227 Bind MinHeight on Conclusion (PR) textbox to txtConclusion.MinHeight (FR-1086, FR-1094)
+- [X] T1228 Add OnProofreadScrollChanged event handler to ReportInputsAndJsonPanel.xaml.cs (FR-1090)
+- [X] T1229 Implement scroll synchronization logic with _isScrollSyncing flag to prevent feedback loops (FR-1090)
+- [X] T1230 Remove non-existent converter references from XAML (cleanup)
+- [X] T1231 Maintain dark theme styling for all textboxes with proper background/foreground/border colors (FR-1092)
+- [X] T1232 Verify ApplyReverse() method still works with new layout structure (FR-1091)
+- [X] T1233 Update Spec.md with FR-1080 through FR-1096 documenting side-by-side row layout feature (cumulative)
+- [X] T1234 Update Plan.md with change log entry including approach, test plan, and risks (cumulative)
+- [X] T1235 Update Tasks.md with T1220-T1245 and V480-V495 (this file, cumulative)
+- [X] T1236 Verify build passes with no compilation errors
+
+## Verification (ReportInputsAndJsonPanel Side-by-Side Row Layout)
+- [ ] V480 Open Main Window in portrait mode → verify Chief Complaint upper border aligns with Chief Complaint (PR)
+- [ ] V481 Verify Patient History upper border aligns with Patient History (PR)
+- [ ] V482 Verify Findings upper border aligns with Findings (PR)
+- [ ] V483 Verify Conclusion upper border aligns with Conclusion (PR)
+- [ ] V484 Type multi-line content into Chief Complaint → verify both main and proofread textboxes grow proportionally
+- [ ] V485 Type multi-line content into Patient History → verify alignment maintained during height changes
+- [ ] V486 Rotate to landscape mode → verify same alignment behavior in gridSideTop panel
+- [ ] V487 Scroll proofread column → verify main column scrolls in sync
+- [ ] V488 Scroll main column → verify operates independently (no feedback sync back to proofread)
+- [ ] V489 Toggle Reverse Reports → verify columns swap and alignment maintained
+- [ ] V490 Toggle Reverse back → verify alignment restored
+- [ ] V491 Add 50+ lines to both columns → verify scroll synchronization works smoothly without lag
+- [ ] V492 Verify no visual glitches or overlap when textboxes have different content lengths
+- [ ] V493 Resize window horizontally → verify textboxes and proofread columns resize proportionally
+- [ ] V494 Test with empty fields → verify alignment maintained with minimal heights
+- [ ] V495 Compare portrait and landscape layouts → verify consistent behavior across orientations
+
 ## New (2025-01-18 – Current Combination Quick Delete and All Combinations Library)
 - [X] T1190 Add MouseDoubleClick event handler to "Current Combination" ListBox (FR-1060, FR-1061)
 - [X] T1191 Implement RemoveFromCurrentCombination(item) method in StudynameTechniqueViewModel (FR-1062, FR-1069)

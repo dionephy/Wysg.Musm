@@ -949,3 +949,22 @@ No angle brackets here
 - FR-1072 The left panel MUST use a 5-row layout: Header (Auto), Builder UI (Auto), Current Combination (Star), All Combinations (Star), Save Button (Auto).
 - FR-1073 Both "Current Combination" and "All Combinations" ListBoxes MUST share equal vertical space (both use Star sizing) for balanced UX.
 - FR-1074 The window layout MUST remain consistent with existing dark theme styling for the new "All Combinations" ListBox.
+
+## Update: ReportInputsAndJsonPanel Side-by-Side Row Layout for Y-Coordinate Alignment (2025-01-18)
+- FR-1080 The ReportInputsAndJsonPanel MUST restructure from column-based to side-by-side row layout to ensure natural Y-coordinate alignment between main and proofread textboxes.
+- FR-1081 The layout MUST use 3 columns: Main Input (1*) | Splitter (2px) | Proofread (1*) | Splitter (2px) | JSON (1*).
+- FR-1082 Each corresponding textbox pair MUST be placed in the same row to ensure their upper borders align naturally without custom layout code.
+- FR-1083 Chief Complaint textbox and Chief Complaint (Proofread) textbox MUST share the same row position and bind MinHeight to synchronize vertical space.
+- FR-1084 Patient History textbox and Patient History (Proofread) textbox MUST share the same row position and bind MinHeight to synchronize vertical space.
+- FR-1085 Findings textbox and Findings (Proofread) textbox MUST share the same row position and bind MinHeight to synchronize vertical space.
+- FR-1086 Conclusion textbox and Conclusion (Proofread) textbox MUST share the same row position and bind MinHeight to synchronize vertical space.
+- FR-1087 The Main Input column MUST include non-paired elements (Study Remark, Patient Remark, Edit Buttons) with appropriate spacing.
+- FR-1088 The Proofread column MUST display abbreviated labels (e.g., "Chief Complaint (PR)") and smaller controls to fit alongside main column.
+- FR-1089 Both Main and Proofread columns MUST use ScrollViewers to handle overflow content independently.
+- FR-1090 Scroll synchronization MUST be implemented via ScrollChanged event handler to link main and proofread column scrolling.
+- FR-1091 The reverse layout feature MUST continue to work by swapping column positions (Main ↔ JSON) while keeping side-by-side alignment intact.
+- FR-1092 All textboxes MUST maintain dark theme styling with appropriate background (#1E1E1E), foreground (#D0D0D0), and border colors (#2D2D30).
+- FR-1093 The implementation MUST NOT require custom Y-coordinate calculation, attached behaviors, or manual layout logic—WPF's Grid naturally aligns row elements.
+- FR-1094 MinHeight bindings MUST reference corresponding main textbox elements (e.g., txtChiefComplaint, txtPatientHistory) to ensure proofread textboxes don't shrink below main textbox height.
+- FR-1095 The layout change MUST maintain backward compatibility with existing bindings (ChiefComplaint, PatientHistory, FindingsText, ConclusionText, and their Proofread counterparts).
+- FR-1096 The window MUST remain responsive and functional on both landscape and portrait orientations used in gridTop and gridSideTop panels.

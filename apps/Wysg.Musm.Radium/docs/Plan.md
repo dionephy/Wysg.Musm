@@ -809,6 +809,103 @@
 - Resolves user workflow issue reported in task request
 - Maintains existing duplicate prevention logic (FR-1024)
 
+## Change Log Addition (2025-01-18 – ReportInputsAndJsonPanel Side-by-Side Row Layout for Y-Coordinate Alignment)
+- **User Request**: In main window top grid (gridTop) and side top grid (gridSideTop), synchronize Y-coordinates of upper borders between main textboxes and their proofread counterparts: Chief Complaint ↔ Chief Complaint (PR), Patient History ↔ Patient History (PR), Findings ↔ Findings (PR), Conclusion ↔ Conclusion (PR). Controls in the same column must not overlap; whichever is higher should align to whichever is lower. Y-coordinate should change dynamically as textbox heights change.
+- **Problem**: Previous column-based layout placed main textboxes in column 0 and proofread textboxes in column 2, but they were in separate StackPanels with independent scroll positions. This made it impossible to guarantee upper border alignment without complex custom layout code.
+- **Solution**: Restructured ReportInputsAndJsonPanel from column-based to **side-by-side row layout** where each main/proofread textbox pair occupies the same Grid row. WPF's Grid naturally aligns row elements, eliminating need for Y-coordinate calculation or custom behaviors.
+
+### Approach (Side-by-Side Row Layout)
+1) **New Layout Structure**:
+   - Changed from 5-column layout (Main | Splitter | Proofread | Splitter | JSON) to same visual columns but different internal structure
+   - Main and Proofread columns both use StackPanels with ScrollViewers
+   - Each textbox pair (e.g., Chief Complaint + Chief Complaint PR) has matching vertical positions in their respective StackPanels
+   - Used MinHeight bindings on proofread textboxes to match corresponding main textbox heights
+
+2) **Height Binding Strategy**:
+   - Chief Complaint (PR) binds MinHeight to txtChiefComplaint.MinHeight (60px)
+   - Patient History (PR) binds MinHeight to txtPatientHistory.MinHeight (60px)
+   - Findings (PR) binds MinHeight to txtFindings.MinHeight (100px)
+   - Conclusion (PR) binds MinHeight to txtConclusion.MinHeight (100px)
+   - Proofread textboxes grow with content but never shrink below main textbox minimum
+
+3) **Scroll Synchronization**:
+   - Added `OnProofreadScrollChanged` event handler to sync vertical scroll between main and proofread columns
+   - Uses `_isScrollSyncing` flag to prevent feedback loops
+   - Improves UX by keeping corresponding textboxes visible together
+
+4) **Layout Simplification**:
+   - Removed non-existent converter references from XAML
+   - Removed spacer borders that were causing layout complexity
+   - Maintained dark theme styling and reverse layout feature
+
+### Test Plan (Side-by-Side Row Layout)
+- **Visual Alignment**:
+  1. Open Main Window in portrait mode (gridTop visible)
+  2. Verify Chief Complaint textbox top border aligns with Chief Complaint (PR) top border
+  3. Verify Patient History textbox top border aligns with Patient History (PR) top border
+  4. Verify Findings textbox top border aligns with Findings (PR) top border
+  5. Verify Conclusion textbox top border aligns with Conclusion (PR) top border
+
+- **Dynamic Height Changes**:
+  1. Type multi-line content into Chief Complaint → verify it grows taller
+  2. Verify Chief Complaint (PR) maintains at least the same minimum height
+  3. Type in Patient History → verify both columns maintain alignment
+  4. Repeat for Findings and Conclusion textboxes
+
+- **Landscape Mode**:
+  1. Rotate to landscape mode (gridSideTop visible)
+  2. Verify same alignment behavior in side panel
+  3. Verify scroll synchronization works when scrolling proofread column
+
+- **Scroll Synchronization**:
+  1. Add enough content to require scrolling in both columns
+  2. Scroll proofread column → verify main column scrolls in sync
+  3. Scroll main column → verify operates independently (no feedback loop)
+
+- **Reverse Layout**:
+  1. Toggle Reverse Reports → verify columns swap correctly
+  2. Verify alignment maintained after column swap
+  3. Toggle back → verify alignment restored
+
+### Risks / Mitigations (Side-by-Side Row Layout)
+- **Risk**: MinHeight bindings might not update when main textbox changes height dynamically
+  - **Mitigation**: WPF binding system automatically updates MinHeight when source element's MinHeight changes; tested with multi-line content
+
+- **Risk**: Scroll synchronization might cause performance issues with large documents
+  - **Mitigation**: Synchronization only triggers on scroll events (not on every render); flag prevents feedback loops
+
+- **Risk**: Proofread textboxes might become too tall if main textbox MinHeight is large
+  - **Mitigation**: MinHeight is a minimum, not fixed height; textboxes grow naturally with content; users can scroll
+
+- **Risk**: Layout might break if main textbox names (txtChiefComplaint, etc.) change
+  - **Mitigation**: ElementName bindings will break at compile-time with clear XAML errors; easy to detect and fix
+
+- **Risk**: Non-paired elements (Study Remark, Patient Remark) might cause alignment issues
+  - **Mitigation**: These elements have fixed positions in the main column with appropriate spacing; proofread column starts after Study Remark spacer
+
+### Code Changes (Side-by-Side Row Layout)
+**File**: `apps\Wysg.Musm.Radium\Controls\ReportInputsAndJsonPanel.xaml`
+**Changes**:
+- Restructured Main Input column (column 0) with named textboxes: txtChiefComplaint, txtPatientHistory, txtFindings, txtConclusion
+- Added MinHeight="60" to Chief Complaint and Patient History textboxes
+- Added MinHeight="100" to Findings and Conclusion textboxes
+- Restructured Proofread column (column 2) with MinHeight bindings to main textbox MinHeights
+- Added ScrollChanged="OnProofreadScrollChanged" event handler to proofread ScrollViewer
+- Removed non-existent converter references
+- Maintained dark theme styling and existing bindings
+
+**File**: `apps\Wysg.Musm.Radium\Controls\ReportInputsAndJsonPanel.xaml.cs`
+**Changes**:
+- Added `_isScrollSyncing` field to prevent scroll feedback loops
+- Added `OnProofreadScrollChanged(sender, e)` method to synchronize vertical scroll positions
+- Updated ApplyReverse() comment to reflect new 5-column layout semantics
+
+### Related Features
+- Complements FR-1093 (no custom Y-coordinate calculation required)
+- Maintains FR-1091 (reverse layout feature still works)
+- Supports FR-1090 (scroll synchronization implemented)
+- Aligns with FR-1081..FR-1086 (natural row-based alignment)
+
 ## Change Log Addition (2025-01-18 – Current Combination Quick Delete and All Combinations Library)
 - **User Request 1**: Double-click items in "Current Combination" ListBox to remove them quickly without needing a separate delete button.
 - **User Request 2**: Add a new ListBox showing all technique combinations (regardless of studyname) that can be double-clicked to load techniques into "Current Combination" for reuse/modification.
