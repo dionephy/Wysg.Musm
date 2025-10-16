@@ -28,6 +28,7 @@ namespace Wysg.Musm.Radium.Views
             leftPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Header
             leftPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Builder UI
             leftPanel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // Current combination
+            leftPanel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // All combinations
             leftPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Save button
             Grid.SetColumn(leftPanel, 0);
             root.Children.Add(leftPanel);
@@ -95,7 +96,7 @@ namespace Wysg.Musm.Radium.Views
             // Current combination list
             var comboGroup = new GroupBox 
             { 
-                Header = "Current Combination", 
+                Header = "Current Combination (double-click to remove)", 
                 Margin = new Thickness(0, 0, 0, 8),
                 BorderBrush = System.Windows.Media.Brushes.DimGray,
                 BorderThickness = new Thickness(1)
@@ -105,12 +106,34 @@ namespace Wysg.Musm.Radium.Views
                 Margin = new Thickness(4),
                 Background = System.Windows.Media.Brushes.Black,
                 BorderBrush = System.Windows.Media.Brushes.DimGray,
-                DisplayMemberPath = "TechniqueDisplay" // FIX: Set DisplayMemberPath directly as string, not via binding
+                DisplayMemberPath = "TechniqueDisplay"
             };
             lstCurrentCombo.SetBinding(ListBox.ItemsSourceProperty, new Binding("CurrentCombinationItems"));
+            lstCurrentCombo.MouseDoubleClick += OnCurrentCombinationDoubleClick;
             comboGroup.Content = lstCurrentCombo;
             Grid.SetRow(comboGroup, 2);
             leftPanel.Children.Add(comboGroup);
+
+            // All combinations list
+            var allComboGroup = new GroupBox 
+            { 
+                Header = "All Combinations (double-click to load)", 
+                Margin = new Thickness(0, 0, 0, 8),
+                BorderBrush = System.Windows.Media.Brushes.DimGray,
+                BorderThickness = new Thickness(1)
+            };
+            var lstAllCombos = new ListBox 
+            { 
+                Margin = new Thickness(4),
+                Background = System.Windows.Media.Brushes.Black,
+                BorderBrush = System.Windows.Media.Brushes.DimGray,
+                DisplayMemberPath = "Display"
+            };
+            lstAllCombos.SetBinding(ListBox.ItemsSourceProperty, new Binding("AllCombinations"));
+            lstAllCombos.MouseDoubleClick += OnAllCombinationsDoubleClick;
+            allComboGroup.Content = lstAllCombos;
+            Grid.SetRow(allComboGroup, 3);
+            leftPanel.Children.Add(allComboGroup);
 
             // Save button
             var btnSaveNew = new Button 
@@ -120,7 +143,7 @@ namespace Wysg.Musm.Radium.Views
                 Padding = new Thickness(12, 4, 12, 4)
             };
             btnSaveNew.SetBinding(Button.CommandProperty, new Binding("SaveNewCombinationCommand"));
-            Grid.SetRow(btnSaveNew, 3);
+            Grid.SetRow(btnSaveNew, 4);
             leftPanel.Children.Add(btnSaveNew);
 
             // SPLITTER
@@ -393,6 +416,30 @@ namespace Wysg.Musm.Radium.Views
             var w = new StudynameTechniqueWindow(vm);
             w.Owner = Application.Current?.Windows.OfType<Window>().FirstOrDefault(x => x.IsActive);
             w.Show();
+        }
+
+        private void OnCurrentCombinationDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            var vm = DataContext as StudynameTechniqueViewModel;
+            if (vm == null) return;
+
+            var listBox = sender as ListBox;
+            if (listBox?.SelectedItem is StudynameTechniqueViewModel.CombinationItem item)
+            {
+                vm.RemoveFromCurrentCombination(item);
+            }
+        }
+
+        private async void OnAllCombinationsDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            var vm = DataContext as StudynameTechniqueViewModel;
+            if (vm == null) return;
+
+            var listBox = sender as ListBox;
+            if (listBox?.SelectedItem is StudynameTechniqueViewModel.AllCombinationRow row)
+            {
+                await vm.LoadCombinationIntoCurrentAsync(row.CombinationId);
+            }
         }
 
         // Converter for boolean to checkmark display

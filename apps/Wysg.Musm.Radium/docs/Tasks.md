@@ -737,3 +737,83 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [ ] V408 Verify header text color matches column cell text color
 - [ ] V409 Open window with no combinations → verify empty grid displays properly
 - [ ] V410 Open window with 10+ combinations → verify all rows display text properly
+
+## New (2025-01-18 – Save as New Combination Button Enablement Fix)
+- [X] T1180 Modify AddTechniqueCommand to call RaiseCanExecuteChanged() on SaveNewCombinationCommand after adding item (FR-1053)
+- [X] T1181 Modify SaveNewCombinationCommand to call RaiseCanExecuteChanged() after clearing CurrentCombinationItems (FR-1054)
+- [X] T1182 Update Spec.md with FR-1050 through FR-1054 documenting button enablement fix (cumulative)
+- [X] T1183 Update Plan.md with change log entry including root cause, approach, test plan, and risks (cumulative)
+- [X] T1184 Update Tasks.md with T1180-T1190 and V420-V430 (this file, cumulative)
+- [X] T1185 Verify build passes with no compilation errors
+
+## Verification (Save as New Combination Button Enablement)
+- [ ] V420 Open "Manage Studyname Techniques" window → verify "Save as New Combination" button is disabled initially
+- [ ] V421 Select Prefix, Tech, Suffix → click "Add to Combination" → verify button becomes enabled immediately
+- [ ] V422 Add 2-3 more techniques → verify button remains enabled
+- [ ] V423 Click "Save as New Combination" → verify saves successfully
+- [ ] V424 Verify Current Combination list clears after save
+- [ ] V425 Verify button disables immediately after save
+- [ ] V426 Verify new combination appears in right panel DataGrid
+- [ ] V427 Repeat add/save cycle 2-3 times → verify button enables/disables correctly each time
+- [ ] V428 Add items then close window without saving → verify items not persisted
+- [ ] V429 Test with studyname not set → verify button remains disabled even when adding items (safeguard)
+- [ ] V430 Performance test: add 10 items rapidly → verify button state updates responsively without lag
+
+## New (2025-01-18 – Current Combination Quick Delete and All Combinations Library)
+- [X] T1190 Add MouseDoubleClick event handler to "Current Combination" ListBox (FR-1060, FR-1061)
+- [X] T1191 Implement RemoveFromCurrentCombination(item) method in StudynameTechniqueViewModel (FR-1062, FR-1069)
+- [X] T1192 Update RemoveFromCurrentCombination to call RaiseCanExecuteChanged on SaveNewCombinationCommand (FR-1062)
+- [X] T1193 Update "Current Combination" GroupBox header to include hint text "(double-click to remove)" (FR-1070)
+- [X] T1194 Add AllCombinations ObservableCollection to StudynameTechniqueViewModel (FR-1063)
+- [X] T1195 Create AllCombinationRow class with CombinationId and Display properties (FR-1063)
+- [X] T1196 Add GetAllCombinationsAsync() method to ITechniqueRepository interface (FR-1064)
+- [X] T1197 Add AllCombinationRow record to TechniqueRepository.cs (FR-1064)
+- [X] T1198 Implement GetAllCombinationsAsync() in TechniqueRepository.Pg.Extensions.cs querying v_technique_combination_display (FR-1064)
+- [X] T1199 Update ReloadAsync() to populate AllCombinations collection (FR-1064)
+- [X] T1200 Change left panel layout from 4 rows to 5 rows (FR-1072)
+- [X] T1201 Add "All Combinations" GroupBox with ListBox to left panel row 3 (FR-1063, FR-1072)
+- [X] T1202 Set DisplayMemberPath="Display" on "All Combinations" ListBox (FR-1063)
+- [X] T1203 Bind "All Combinations" ListBox ItemsSource to AllCombinations collection (FR-1063)
+- [X] T1204 Add MouseDoubleClick event handler to "All Combinations" ListBox (FR-1065)
+- [X] T1205 Update "All Combinations" GroupBox header to include hint text "(double-click to load)" (FR-1071)
+- [X] T1206 Implement LoadCombinationIntoCurrentAsync(combinationId) method in StudynameTechniqueViewModel (FR-1065, FR-1068)
+- [X] T1207 Implement duplicate prevention logic in LoadCombinationIntoCurrentAsync (FR-1066)
+- [X] T1208 Implement sequential sequence_order assignment when loading techniques (FR-1067)
+- [X] T1209 Call RaiseCanExecuteChanged on SaveNewCombinationCommand after loading techniques (FR-1065)
+- [X] T1210 Apply dark theme styling to "All Combinations" ListBox (FR-1074)
+- [X] T1211 Update both "Current Combination" and "All Combinations" to use Star row sizing for equal space (FR-1073)
+- [X] T1212 Update Save button Grid.SetRow to 4 (was 3) due to layout change (FR-1072)
+- [X] T1213 Implement OnCurrentCombinationDoubleClick event handler in StudynameTechniqueWindow (FR-1060, FR-1061)
+- [X] T1214 Implement OnAllCombinationsDoubleClick event handler in StudynameTechniqueWindow (FR-1065)
+- [X] T1215 Update Spec.md with FR-1060 through FR-1074 documenting quick delete and all combinations library (cumulative)
+- [X] T1216 Update Plan.md with change log entry including approach, test plan, and risks (cumulative)
+- [X] T1217 Update Tasks.md with T1190-T1225 and V440-V465 (this file, cumulative)
+- [X] T1218 Verify build passes with no compilation errors
+
+## Verification (Current Combination Quick Delete and All Combinations Library)
+- [ ] V440 Open "Manage Studyname Techniques" window → verify both "Current Combination" and "All Combinations" ListBoxes are visible
+- [ ] V441 Verify "Current Combination" header includes "(double-click to remove)" hint text
+- [ ] V442 Verify "All Combinations" header includes "(double-click to load)" hint text
+- [ ] V443 Verify both ListBoxes have equal vertical space (both Star-sized rows)
+- [ ] V444 Add 3-4 techniques to Current Combination manually
+- [ ] V445 Double-click an item in Current Combination → verify it removes immediately without confirmation
+- [ ] V446 Verify Save button disables when last item removed via double-click
+- [ ] V447 Double-click multiple items rapidly → verify all remove correctly
+- [ ] V448 Verify "All Combinations" ListBox populates with existing combinations
+- [ ] V449 Verify combinations in All Combinations display formatted text (e.g., "axial T1, T2; coronal T1")
+- [ ] V450 Verify All Combinations list is ordered by ID descending (newest first)
+- [ ] V451 Verify All Combinations includes combinations not linked to current studyname
+- [ ] V452 Double-click a combination in All Combinations with empty Current Combination → verify techniques load
+- [ ] V453 Verify loaded techniques appear with correct prefix/tech/suffix display text
+- [ ] V454 Verify sequence_order starts at 1 for first loaded technique
+- [ ] V455 Add 2 techniques manually, then double-click a combination → verify new techniques append (sequence continues)
+- [ ] V456 Double-click same combination twice → verify no duplicates added second time
+- [ ] V457 Manually add "axial T1", then double-click combination containing "axial T1" → verify that technique skipped
+- [ ] V458 Double-click combination with techniques having null prefix/suffix → verify techniques load correctly
+- [ ] V459 Verify Save button enables after loading techniques from All Combinations
+- [ ] V460 Load techniques from All Combinations, modify list (add/remove), then save → verify new combination created
+- [ ] V461 Resize window → verify both ListBoxes resize proportionally
+- [ ] V462 Test with combination containing 10+ techniques → verify loading completes quickly (<500ms)
+- [ ] V463 Verify All Combinations ListBox has scrollbar when many combinations exist
+- [ ] V464 Single-click items in both ListBoxes → verify selection works (no unintended double-click)
+- [ ] V465 Close window without saving after loading from All Combinations → verify changes not persisted

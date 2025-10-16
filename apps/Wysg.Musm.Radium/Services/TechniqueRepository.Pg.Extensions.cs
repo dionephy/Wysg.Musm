@@ -58,5 +58,23 @@ ORDER BY i.sequence_order";
             }
             return list;
         }
+        
+        public async Task<IReadOnlyList<AllCombinationRow>> GetAllCombinationsAsync()
+        {
+            var list = new List<AllCombinationRow>();
+            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            const string sql = @"SELECT id, COALESCE(combination_name, combination_display, '') AS display
+FROM med.v_technique_combination_display
+ORDER BY id DESC";
+            await using var cmd = new NpgsqlCommand(sql, cn);
+            await using var rd = await cmd.ExecuteReaderAsync();
+            while (await rd.ReadAsync())
+            {
+                long id = rd.GetInt64(0);
+                string display = rd.IsDBNull(1) ? string.Empty : rd.GetString(1);
+                list.Add(new AllCombinationRow(id, display));
+            }
+            return list;
+        }
     }
 }

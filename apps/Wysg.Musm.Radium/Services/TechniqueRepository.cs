@@ -12,6 +12,7 @@ namespace Wysg.Musm.Radium.Services
         Task<long> AddTechAsync(string text);
         Task<long> AddSuffixAsync(string text);
         Task<IReadOnlyList<StudynameCombinationRow>> GetCombinationsForStudynameAsync(long studynameId);
+        Task<IReadOnlyList<AllCombinationRow>> GetAllCombinationsAsync();
         Task SetDefaultForStudynameAsync(long studynameId, long combinationId);
         Task<long> EnsureTechniqueAsync(long? prefixId, long techId, long? suffixId);
         Task<long> CreateCombinationAsync(string? name);
@@ -22,4 +23,5 @@ namespace Wysg.Musm.Radium.Services
 
     public sealed record SimpleTextRow(long Id, string Text);
     public sealed record StudynameCombinationRow(long CombinationId, string Display, bool IsDefault);
+    public sealed record AllCombinationRow(long CombinationId, string Display);
 }

@@ -55,6 +55,9 @@ namespace Wysg.Musm.Radium.ViewModels
                     TechId = candT,
                     SuffixId = candS
                 });
+
+                // FIX: Notify SaveNewCombinationCommand that CanExecute state may have changed
+                _saveNewCombinationCommand?.RaiseCanExecuteChanged();
             });
 
             _saveNewCombinationCommand = new RelayCommand(async _ =>
@@ -83,6 +86,9 @@ namespace Wysg.Musm.Radium.ViewModels
                 await _repo.LinkStudynameCombinationAsync(_studynameId.Value, combId, isDefault: false);
                 await ReloadAsync();
                 CurrentCombinationItems.Clear();
+
+                // FIX: Notify that CanExecute state changed after clearing items
+                _saveNewCombinationCommand?.RaiseCanExecuteChanged();
             }, _ => _studynameId.HasValue && CurrentCombinationItems.Count > 0);
 
             _deleteCombinationCommand = new RelayCommand(async _ =>
@@ -147,6 +153,9 @@ namespace Wysg.Musm.Radium.ViewModels
         
         public ObservableCollection<CombinationItem> CurrentCombinationItems { get; } = new();
         
+        // All combinations list (not filtered by studyname)
+        public ObservableCollection<AllCombinationRow> AllCombinations { get; } = new();
+        
         public ICommand SetDefaultCommand => _setDefaultCommand!;
         public ICommand AddTechniqueCommand => _addTechniqueCommand!;
         public ICommand SaveNewCombinationCommand => _saveNewCombinationCommand!;
@@ -169,11 +178,17 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             if (!_studynameId.HasValue) return;
             
-            // Reload combinations list
+            // Reload combinations list for this studyname
             Combinations.Clear();
             var rows = await _repo.GetCombinationsForStudynameAsync(_studynameId.Value);
             foreach (var c in rows) 
                 Combinations.Add(new ComboRow { CombinationId = c.CombinationId, Display = c.Display, IsDefault = c.IsDefault });
+
+            // Reload ALL combinations (regardless of studyname)
+            AllCombinations.Clear();
+            var allRows = await _repo.GetAllCombinationsAsync();
+            foreach (var c in allRows)
+                AllCombinations.Add(new AllCombinationRow { CombinationId = c.CombinationId, Display = c.Display });
 
             // Reload lookup lists for building
             Prefixes.Clear(); 
@@ -240,6 +255,75 @@ namespace Wysg.Musm.Radium.ViewModels
             public string Display { get; set; } = string.Empty; 
             public bool IsDefault { get; set; }
             public override string ToString() => Display; // FIX: Override ToString to show Display text
+        }
+        
+        public sealed class AllCombinationRow
+        {
+            public long CombinationId { get; set; }
+            public string Display { get; set; } = string.Empty;
+            public override string ToString() => Display;
+        }
+        
+        /// <summary>
+        /// Removes the specified item from CurrentCombinationItems and notifies SaveNewCombinationCommand.
+        /// </summary>
+        public void RemoveFromCurrentCombination(CombinationItem item)
+        {
+            if (item == null) return;
+            CurrentCombinationItems.Remove(item);
+            _saveNewCombinationCommand?.RaiseCanExecuteChanged();
+        }
+        
+        /// <summary>
+        /// Loads techniques from the specified combination ID and adds them to CurrentCombinationItems (excluding duplicates).
+        /// </summary>
+        public async System.Threading.Tasks.Task LoadCombinationIntoCurrentAsync(long combinationId)
+        {
+            var items = await _repo.GetCombinationItemsAsync(combinationId);
+            
+            // Convert to CombinationItem and add if not duplicate
+            foreach (var (prefix, tech, suffix, seq) in items)
+            {
+                // Find matching IDs from lookups
+                long? prefixId = string.IsNullOrWhiteSpace(prefix) ? null : Prefixes.FirstOrDefault(p => p.Text == prefix)?.Id;
+                long? techId = Techs.FirstOrDefault(t => t.Text == tech)?.Id;
+                long? suffixId = string.IsNullOrWhiteSpace(suffix) ? null : Suffixes.FirstOrDefault(s => s.Text == suffix)?.Id;
+                
+                if (techId == null) continue; // Skip if tech not found
+                
+                // Check for duplicate
+                bool isDuplicate = false;
+                foreach (var existing in CurrentCombinationItems)
+                {
+                    if (existing.PrefixId == prefixId && existing.TechId == techId.Value && existing.SuffixId == suffixId)
+                    {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                
+                if (!isDuplicate)
+                {
+                    var display = string.Join(" ", new[] 
+                    { 
+                        string.IsNullOrWhiteSpace(prefix) ? null : prefix, 
+                        tech, 
+                        string.IsNullOrWhiteSpace(suffix) ? null : suffix 
+                    }.Where(s => !string.IsNullOrWhiteSpace(s))) ?? tech;
+                    
+                    var nextSeq = CurrentCombinationItems.Count + 1;
+                    CurrentCombinationItems.Add(new CombinationItem
+                    {
+                        SequenceOrder = nextSeq,
+                        TechniqueDisplay = display,
+                        PrefixId = prefixId,
+                        TechId = techId.Value,
+                        SuffixId = suffixId
+                    });
+                }
+            }
+            
+            _saveNewCombinationCommand?.RaiseCanExecuteChanged();
         }
         
         private sealed class RelayCommand : ICommand

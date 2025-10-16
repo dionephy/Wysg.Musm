@@ -925,3 +925,27 @@ No angle brackets here
 - FR-1039 The delete operation MUST only remove the link between the studyname and combination (not delete the combination itself from the database).
 - FR-1040 If deletion fails, an error message MUST be displayed to the user with the exception message.
 - FR-1041 The info text in the right panel MUST be updated to indicate that users can "set default or delete" combinations.
+
+## Update: Save as New Combination Button Enablement Fix (2025-01-18)
+- FR-1050 The "Save as New Combination" button MUST enable automatically when at least one technique is added to the Current Combination list.
+- FR-1051 The "Save as New Combination" button MUST disable automatically when the Current Combination list is empty (after save or initially).
+- FR-1052 The button's CanExecute state MUST be updated by raising CanExecuteChanged on the SaveNewCombinationCommand when CurrentCombinationItems changes.
+- FR-1053 The AddTechniqueCommand MUST notify SaveNewCombinationCommand after adding an item to CurrentCombinationItems.
+- FR-1054 The SaveNewCombinationCommand MUST notify itself after clearing CurrentCombinationItems following a successful save.
+
+## Update: Current Combination Quick Delete and All Combinations Library (2025-01-18)
+- FR-1060 The "Current Combination" ListBox MUST support double-click to remove items from the working combination.
+- FR-1061 When a user double-clicks an item in the "Current Combination" ListBox, the item MUST be removed immediately without confirmation.
+- FR-1062 After removing an item via double-click, the SaveNewCombinationCommand's CanExecute state MUST be updated (button disables if list becomes empty).
+- FR-1063 The left panel MUST include an "All Combinations" ListBox displaying all technique combinations in the database regardless of studyname or study association.
+- FR-1064 The "All Combinations" ListBox MUST be populated from a new repository method GetAllCombinationsAsync() that queries all combinations.
+- FR-1065 When a user double-clicks an item in the "All Combinations" ListBox, all techniques from that combination MUST be loaded into the "Current Combination" list.
+- FR-1066 When loading techniques from "All Combinations", duplicate techniques (same prefix_id, tech_id, suffix_id) MUST be excluded from being added to "Current Combination".
+- FR-1067 Techniques loaded from "All Combinations" MUST be appended to the end of "Current Combination" with sequential sequence_order values.
+- FR-1068 The LoadCombinationIntoCurrentAsync method MUST fetch combination items via GetCombinationItemsAsync() and match them against loaded component lookup lists.
+- FR-1069 The RemoveFromCurrentCombination method MUST remove the specified CombinationItem from CurrentCombinationItems and notify SaveNewCombinationCommand.
+- FR-1070 The "Current Combination" GroupBox header MUST include hint text "(double-click to remove)" for user guidance.
+- FR-1071 The "All Combinations" GroupBox header MUST include hint text "(double-click to load)" for user guidance.
+- FR-1072 The left panel MUST use a 5-row layout: Header (Auto), Builder UI (Auto), Current Combination (Star), All Combinations (Star), Save Button (Auto).
+- FR-1073 Both "Current Combination" and "All Combinations" ListBoxes MUST share equal vertical space (both use Star sizing) for balanced UX.
+- FR-1074 The window layout MUST remain consistent with existing dark theme styling for the new "All Combinations" ListBox.

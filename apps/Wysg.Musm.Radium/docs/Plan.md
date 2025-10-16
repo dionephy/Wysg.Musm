@@ -743,4 +743,180 @@
 - **Risk**: ElementStyle might conflict with cell selection styling
   - **Mitigation**: WPF selection template overrides cell style appropriately; tested with row selection
 
+## Change Log Addition (2025-01-18 – Save as New Combination Button Enablement Fix)
+- **Problem**: The "Save as New Combination" button in the Manage Studyname Techniques window remained disabled even after adding techniques to the Current Combination list, preventing users from saving their work.
+- **Root Cause**: The SaveNewCombinationCommand's CanExecute predicate correctly checks if CurrentCombinationItems.Count > 0, but the command's CanExecuteChanged event was never raised when items were added or removed, so WPF never re-evaluated the button's enabled state.
+- **Solution**: Explicitly call RaiseCanExecuteChanged() on SaveNewCombinationCommand after modifying CurrentCombinationItems collection.
+
+### Approach (Button Enablement Fix)
+1) **After Adding Items**:
+   - Modified AddTechniqueCommand to call `_saveNewCombinationCommand?.RaiseCanExecuteChanged()` after successfully adding an item to CurrentCombinationItems
+   - This notifies WPF to re-evaluate the button's CanExecute state immediately
+
+2) **After Clearing Items**:
+   - Modified SaveNewCombinationCommand to call `_saveNewCombinationCommand?.RaiseCanExecuteChanged()` after clearing CurrentCombinationItems following successful save
+   - This ensures button properly disables after items are cleared
+
+3) **No Collection Monitoring**:
+   - Did not use CollectionChanged events to avoid coupling to ObservableCollection implementation details
+   - Explicit calls at known mutation points are more predictable and testable
+
+### Test Plan (Button Enablement)
+- **Initial State**:
+  1. Open "Manage Studyname Techniques" window
+  2. Verify "Save as New Combination" button is disabled (no items in Current Combination)
+
+- **Adding Items**:
+  1. Select Prefix, Tech, and Suffix from dropdowns
+  2. Click "Add to Combination" button
+  3. **Expected**: "Save as New Combination" button becomes enabled immediately
+  4. Add 2-3 more techniques
+  5. **Expected**: Button remains enabled
+
+- **After Save**:
+  1. Click "Save as New Combination" button
+  2. Confirm successful save (new combination appears in right panel)
+  3. **Expected**: Current Combination list clears and button becomes disabled
+  4. **Expected**: New combination appears in right panel DataGrid
+
+- **Multiple Cycles**:
+  1. Repeat add/save cycle 2-3 times
+  2. **Expected**: Button enables/disables correctly each time
+
+### Risks / Mitigations (Button Enablement)
+- **Risk**: Duplicate CanExecuteChanged calls might impact performance
+  - **Mitigation**: Only called after user actions (add/save), not in loops or property setters; minimal performance impact
+
+- **Risk**: Forgetting to call RaiseCanExecuteChanged in future code paths that modify CurrentCombinationItems
+  - **Mitigation**: Documented in code comments; kept mutation points minimal (only in command Execute methods)
+
+- **Risk**: Button might not disable if save fails
+  - **Mitigation**: Clear() is called after successful repository operations; exceptions would leave items in collection, button remains enabled (correct behavior)
+
+### Code Changes (Button Enablement)
+**File**: `apps\Wysg.Musm.Radium\ViewModels\StudynameTechniqueViewModel.cs`
+
+**Change 1** - AddTechniqueCommand:
+- Added: `_saveNewCombinationCommand?.RaiseCanExecuteChanged();` after `CurrentCombinationItems.Add(...)`
+- Location: End of AddTechniqueCommand Execute method
+
+**Change 2** - SaveNewCombinationCommand:
+- Added: `_saveNewCombinationCommand?.RaiseCanExecuteChanged();` after `CurrentCombinationItems.Clear()`
+- Location: End of SaveNewCombinationCommand Execute method, after successful save
+
+### Related Features
+- Complements FR-1025 (Save as New Combination functionality)
+- Resolves user workflow issue reported in task request
+- Maintains existing duplicate prevention logic (FR-1024)
+
+## Change Log Addition (2025-01-18 – Current Combination Quick Delete and All Combinations Library)
+- **User Request 1**: Double-click items in "Current Combination" ListBox to remove them quickly without needing a separate delete button.
+- **User Request 2**: Add a new ListBox showing all technique combinations (regardless of studyname) that can be double-clicked to load techniques into "Current Combination" for reuse/modification.
+- **Solution**: Implemented double-click event handlers and added a new "All Combinations" ListBox with backend repository support.
+
+### Approach (Quick Delete + All Combinations Library)
+1) **Double-Click to Delete**:
+   - Added `MouseDoubleClick` event handler to "Current Combination" ListBox
+   - Created `RemoveFromCurrentCombination(item)` method in ViewModel that removes the item and notifies SaveNewCombinationCommand
+   - Updated GroupBox header to include hint text "(double-click to remove)"
+
+2) **All Combinations Library**:
+   - Added `AllCombinations` ObservableCollection to ViewModel
+   - Created `AllCombinationRow` class for binding (CombinationId, Display)
+   - Implemented `GetAllCombinationsAsync()` in TechniqueRepository.Pg.Extensions.cs
+   - Query selects from `med.v_technique_combination_display` view ordered by id DESC (newest first)
+   - Populated in `ReloadAsync()` alongside studyname-specific combinations
+
+3) **Double-Click to Load**:
+   - Added `MouseDoubleClick` event handler to "All Combinations" ListBox
+   - Created `LoadCombinationIntoCurrentAsync(combinationId)` method in ViewModel
+   - Fetches combination items via existing `GetCombinationItemsAsync()`
+   - Matches prefix/tech/suffix strings against loaded lookup collections to get IDs
+   - Checks for duplicates before adding each technique
+   - Appends to end of CurrentCombinationItems with sequential sequence_order
+   - Notifies SaveNewCombinationCommand after loading
+
+4) **Layout Adjustment**:
+   - Changed left panel from 4 rows to 5 rows
+   - Split the previous single Star row into two Star rows (Current Combination + All Combinations)
+   - Both ListBoxes now have equal vertical space for balanced UX
+
+### Test Plan (Quick Delete + All Combinations Library)
+- **Double-Click Delete**:
+  1. Add 3-4 techniques to Current Combination
+  2. Double-click on an item → verify it removes immediately
+  3. Verify no confirmation dialog appears
+  4. Verify SaveNewCombination button disables if last item removed
+  5. Double-click multiple items rapidly → verify all remove correctly
+
+- **All Combinations Display**:
+  1. Open window → verify "All Combinations" ListBox populates with existing combinations
+  2. Verify combinations display formatted text (e.g., "axial T1, T2; coronal T1")
+  3. Verify list is ordered by ID descending (newest first)
+  4. Verify list includes combinations not linked to current studyname
+
+- **Double-Click Load**:
+  1. Start with empty Current Combination
+  2. Double-click a combination in All Combinations → verify techniques load into Current Combination
+  3. Verify each technique appears with correct prefix/tech/suffix text
+  4. Verify sequence_order starts at 1 and increments
+  5. Add some techniques manually, then double-click another combination → verify new techniques append (no overwrite)
+
+- **Duplicate Prevention**:
+  1. Double-click a combination to load it
+  2. Double-click the same combination again → verify no duplicates added
+  3. Manually add a technique, then double-click a combination containing that technique → verify that technique skipped
+  4. Verify only non-duplicate techniques are added
+
+- **Edge Cases**:
+  1. Double-click combination with unknown prefix/suffix → verify technique still loads (nulls handled)
+  2. Double-click combination where tech not in lookup list → verify that technique skipped gracefully
+  3. Resize window → verify both ListBoxes resize proportionally (both Star-sized)
+
+### Risks / Mitigations (Quick Delete + All Combinations Library)
+- **Risk**: Double-click might trigger accidentally when user intends single-click selection
+  - **Mitigation**: Standard ListBox double-click behavior; users familiar with this pattern; no data loss since items not saved until button clicked
+
+- **Risk**: Loading large combinations (50+ techniques) might freeze UI
+  - **Mitigation**: Current combinations are typically small (5-15 items); operation is async; loading happens quickly
+
+- **Risk**: Lookup mismatches when loading combinations (prefix/tech/suffix text doesn't match loaded lookups)
+  - **Mitigation**: Method skips techniques with missing tech ID; gracefully handles nulls for prefix/suffix
+
+- **Risk**: All Combinations list could be very long (hundreds of combinations)
+  - **Mitigation**: ListBox has scrolling; combinations ordered newest first for relevance; future enhancement could add search/filter
+
+- **Risk**: User loads combination, modifies it, then saves → might expect to update original instead of creating new
+  - **Mitigation**: Button text clearly says "Save as New Combination"; behavior is explicit and predictable
+
+### Code Changes (Quick Delete + All Combinations Library)
+**Files Modified**:
+1. `apps\Wysg.Musm.Radium\ViewModels\StudynameTechniqueViewModel.cs`
+   - Added `AllCombinations` ObservableCollection
+   - Added `AllCombinationRow` class
+   - Added `RemoveFromCurrentCombination(item)` method
+   - Added `LoadCombinationIntoCurrentAsync(combinationId)` method
+   - Updated `ReloadAsync()` to populate AllCombinations
+
+2. `apps\Wysg.Musm.Radium\Services\TechniqueRepository.cs`
+   - Added `GetAllCombinationsAsync()` to interface
+   - Added `AllCombinationRow` record
+
+3. `apps\Wysg.Musm.Radium\Services\TechniqueRepository.Pg.Extensions.cs`
+   - Implemented `GetAllCombinationsAsync()` with SQL query to `v_technique_combination_display`
+
+4. `apps\Wysg.Musm.Radium\Views\StudynameTechniqueWindow.xaml.cs`
+   - Changed left panel from 4 rows to 5 rows
+   - Added "All Combinations" GroupBox with ListBox
+   - Added `MouseDoubleClick` handlers to both Current and All Combinations ListBoxes
+   - Added `OnCurrentCombinationDoubleClick` event handler
+   - Added `OnAllCombinationsDoubleClick` event handler
+   - Updated GroupBox headers with hint text
+
+### Related Features
+- Builds on FR-1025 (Save as New Combination)
+- Complements FR-1024 (Duplicate prevention)
+- Enhances FR-1023 (Add to Combination)
+- Improves user workflow efficiency by enabling combination reuse and quick editing
+
 
