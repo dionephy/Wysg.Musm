@@ -42,7 +42,9 @@ public sealed class UiBookmarks
         ReportCommitButton,
         StudyRemark, // existing
         PatientRemark, // new: distinct bookmark for patient remark field
-        TestInvoke // new: generic target for testing Invoke operation
+        TestInvoke, // new: generic target for testing Invoke operation
+        Screen_MainCurrentStudyTab, // NEW: main screen current study tab area
+        Screen_SubPreviousStudyTab // NEW: sub screen previous study tab area
     }
 
     public enum MapMethod { Chain = 0, AutomationIdOnly = 1 }
@@ -169,6 +171,116 @@ public sealed class UiBookmarks
         return b == null ? (IntPtr.Zero, null) : ResolveBookmark(b);
     }
 
+    /// <summary>
+    /// Resolves a KnownControl with automatic retry and progressive constraint relaxation.
+    /// Inspired by legacy PacsService pattern of trying multiple approaches (e.g., eViewer1 then eViewer2, AutomationId then ClassName).
+    /// </summary>
+    /// <param name="key">The KnownControl to resolve</param>
+    /// <param name="maxAttempts">Maximum number of resolution attempts (default 3)</param>
+    /// <returns>Tuple of (window handle, AutomationElement) or (IntPtr.Zero, null) if all attempts fail</returns>
+    public static (IntPtr hwnd, AutomationElement? element) ResolveWithRetry(KnownControl key, int maxAttempts = 3)
+    {
+        var b = GetMapping(key);
+        if (b == null) return (IntPtr.Zero, null);
+
+        for (int attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            // Attempt 1: Try exact match with all constraints
+            if (attempt == 0)
+            {
+                var result = ResolveBookmark(b);
+                if (result.element != null) return result;
+            }
+            // Attempt 2: Progressive relaxation - relax ControlType for all nodes
+            else if (attempt == 1)
+            {
+                var relaxed = RelaxBookmarkControlType(b);
+                var result = ResolveBookmark(relaxed);
+                if (result.element != null) return result;
+            }
+            // Attempt 3: Further relaxation - relax ClassName (keep Name + AutomationId)
+            else if (attempt == 2)
+            {
+                var relaxed = RelaxBookmarkClassName(b);
+                var result = ResolveBookmark(relaxed);
+                if (result.element != null) return result;
+            }
+
+            // Wait before next attempt (exponential backoff)
+            if (attempt < maxAttempts - 1)
+            {
+                System.Threading.Thread.Sleep(150 * (attempt + 1)); // 150ms, 300ms
+            }
+        }
+
+        // All attempts exhausted
+        return (IntPtr.Zero, null);
+    }
+
+    /// <summary>
+    /// Creates a copy of the bookmark with ControlType constraint relaxed on all nodes.
+    /// Inspired by legacy pattern: try AutomationId first, fall back without ControlType constraint.
+    /// </summary>
+    private static Bookmark RelaxBookmarkControlType(Bookmark b)
+    {
+        return new Bookmark
+        {
+            Name = b.Name,
+            ProcessName = b.ProcessName,
+            Method = b.Method,
+            DirectAutomationId = b.DirectAutomationId,
+            CrawlFromRoot = b.CrawlFromRoot,
+            Chain = b.Chain.Select(n => new Node
+            {
+                Name = n.Name,
+                ClassName = n.ClassName,
+                ControlTypeId = n.ControlTypeId,
+                AutomationId = n.AutomationId,
+                IndexAmongMatches = n.IndexAmongMatches,
+                Include = n.Include,
+                UseName = n.UseName,
+                UseClassName = n.UseClassName,
+                UseControlTypeId = false, // Relax ControlType
+                UseAutomationId = n.UseAutomationId,
+                UseIndex = n.UseIndex,
+                Scope = n.Scope,
+                Order = n.Order
+            }).ToList()
+        };
+    }
+
+    /// <summary>
+    /// Creates a copy of the bookmark with ClassName constraint relaxed on all nodes (keeps Name + AutomationId).
+    /// Most aggressive relaxation - only use when other attempts fail.
+    /// </summary>
+    private static Bookmark RelaxBookmarkClassName(Bookmark b)
+    {
+        return new Bookmark
+        {
+            Name = b.Name,
+            ProcessName = b.ProcessName,
+            Method = b.Method,
+            DirectAutomationId = b.DirectAutomationId,
+            CrawlFromRoot = b.CrawlFromRoot,
+            Chain = b.Chain.Select(n => new Node
+            {
+                Name = n.Name,
+                ClassName = n.ClassName,
+                ControlTypeId = n.ControlTypeId,
+                AutomationId = n.AutomationId,
+                IndexAmongMatches = n.IndexAmongMatches,
+                Include = n.Include,
+                UseName = n.UseName,
+                UseClassName = false, // Relax ClassName
+                UseControlTypeId = false, // Also relax ControlType
+                UseAutomationId = n.UseAutomationId,
+                UseIndex = n.UseIndex,
+                Scope = n.Scope,
+                Order = n.Order
+            }).ToList()
+        };
+    }
+
     public static (IntPtr hwnd, AutomationElement? element) Resolve(string name)
     {
         var s = Load();
@@ -270,7 +382,8 @@ public sealed class UiBookmarks
         catch { return (IntPtr.Zero, null); }
     }
 
-    private const int StepRetryCount = 2; // total attempts per step = 1 + StepRetryCount
+    // FIX: Reduced retry count to minimize wasted delays (was 2, now 1 = max 1 retry)
+    private const int StepRetryCount = 1; // total attempts per step = 1 + StepRetryCount
     private const int StepRetryDelayMs = 150;
 
     // Core walker used by ResolvePath / TryResolveWithTrace / ResolveBookmark
@@ -290,38 +403,94 @@ public sealed class UiBookmarks
 
         for (int i = 0; i < nodes.Count; i++)
         {
+            var stepSw = Stopwatch.StartNew(); // FIX: Track timing for each step
             var node = nodes[i];
             trace?.AppendLine($"Step {i}: Include={node.Include}, Scope={node.Scope}, UseName={node.UseName}('{node.Name}'), UseClassName={node.UseClassName}('{node.ClassName}'), UseAutomationId={node.UseAutomationId}('{node.AutomationId}'), UseControlTypeId={node.UseControlTypeId}({node.ControlTypeId}), UseIndex={node.UseIndex}({node.IndexAmongMatches})");
 
-            if (!node.Include || node.LocateIndex == 0) { trace?.AppendLine($"Step {i}: Skipped (excluded)"); continue; }
+            if (!node.Include || node.LocateIndex == 0) { stepSw.Stop(); trace?.AppendLine($"Step {i}: Skipped (excluded) ({stepSw.ElapsedMilliseconds} ms)"); continue; }
 
-            // Special handling for step 0: accept the discovered root by relaxed match
+            // FIX: Stricter step 0 validation - require ClassName match when provided
             if (i == 0)
             {
                 bool acceptRoot = false;
-                string? curName = null, curAuto = null; int curCt = -1;
+                string? curName = null, curClass = null, curAuto = null; int curCt = -1;
                 try { curName = current.Name; } catch { }
+                try { curClass = current.ClassName; } catch { }
                 try { curAuto = current.AutomationId; } catch { }
                 try { curCt = (int)current.Properties.ControlType.Value; } catch { }
 
-                if (node.UseAutomationId && !string.IsNullOrEmpty(node.AutomationId) && string.Equals(curAuto, node.AutomationId, StringComparison.Ordinal)) acceptRoot = true;
-                else if (node.UseName && !string.IsNullOrEmpty(node.Name) && string.Equals(curName, node.Name, StringComparison.Ordinal)) acceptRoot = true;
-                else if (node.UseControlTypeId && node.ControlTypeId.HasValue && node.ControlTypeId.Value == curCt) acceptRoot = true;
+                // FIX: Require all enabled attributes to match (stricter than before)
+                bool nameMatch = !node.UseName || string.Equals(curName, node.Name, StringComparison.Ordinal);
+                bool classMatch = !node.UseClassName || string.Equals(curClass, node.ClassName, StringComparison.Ordinal);
+                bool autoMatch = !node.UseAutomationId || string.Equals(curAuto, node.AutomationId, StringComparison.Ordinal);
+                bool ctMatch = !node.UseControlTypeId || (node.ControlTypeId.HasValue && node.ControlTypeId.Value == curCt);
+
+                // FIX: Accept root only if ALL enabled attributes match
+                acceptRoot = nameMatch && classMatch && autoMatch && ctMatch;
 
                 if (acceptRoot)
                 {
-                    trace?.AppendLine("Step 0: Accept root by relaxed match (ignoring ClassName)");
+                    stepSw.Stop(); // FIX: Stop timing for step 0
+                    trace?.AppendLine($"Step 0: Accept root (Name={nameMatch}, Class={classMatch}, Auto={autoMatch}, Ct={ctMatch}) ({stepSw.ElapsedMilliseconds} ms)");
                     continue;
+                }
+                else
+                {
+                    trace?.AppendLine($"Step 0: Root mismatch (Name={nameMatch}, Class={classMatch}, Auto={autoMatch}, Ct={ctMatch}) - will attempt normal search");
+                    // FIX: Don't fail immediately - attempt normal search below
                 }
             }
 
             var cond = BuildAndCondition(node, cf);
-            if (cond == null) { trace?.AppendLine($"Step {i}: No constraints"); continue; }
+            if (cond == null) 
+            { 
+                // FIX: Support pure index-based navigation (legacy pattern)
+                // When no attributes are enabled but UseIndex=true, use index-based child selection
+                if (node.UseIndex && node.Scope == SearchScope.Children)
+                {
+                    trace?.AppendLine($"Step {i}: Pure index navigation (no attributes, using index {node.IndexAmongMatches})");
+                    
+                    try
+                    {
+                        var children = current.FindAllChildren();
+                        if (children.Length > node.IndexAmongMatches)
+                        {
+                            current = children[node.IndexAmongMatches];
+                            path.Add(current);
+                            stepSw.Stop();
+                            trace?.AppendLine($"Step {i}: Pure index success - selected child at index {node.IndexAmongMatches} ({stepSw.ElapsedMilliseconds} ms)");
+                            continue;
+                        }
+                        else
+                        {
+                            stepSw.Stop();
+                            trace?.AppendLine($"Step {i}: Pure index failed - index {node.IndexAmongMatches} out of range (only {children.Length} children) ({stepSw.ElapsedMilliseconds} ms)");
+                            return (null, new());
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        stepSw.Stop();
+                        trace?.AppendLine($"Step {i}: Pure index failed - {ex.Message} ({stepSw.ElapsedMilliseconds} ms)");
+                        return (null, new());
+                    }
+                }
+                
+                trace?.AppendLine($"Step {i}: No constraints"); 
+                continue; 
+            }
 
             AutomationElement[] matches = Array.Empty<AutomationElement>();
+            // FIX: Detailed retry timing breakdown
+            int totalRetries = 0;
+            long queryTimeMs = 0;
+            long retryDelayMs = 0;
+            bool skipRetries = false; // FIX: Flag to skip retries on "not supported" errors
+            
             // Attempt primary find with small retry/backoff for transient UIA failures
             for (int attempt = 0; attempt <= StepRetryCount; attempt++)
             {
+                var attemptSw = Stopwatch.StartNew();
                 try
                 {
                     if (node.Scope == SearchScope.Children)
@@ -340,10 +509,24 @@ public sealed class UiBookmarks
                             matches = current.FindAllDescendants(cond);
                         }
                     }
+                    attemptSw.Stop();
+                    queryTimeMs += attemptSw.ElapsedMilliseconds;
+                    trace?.AppendLine($"Step {i}: Attempt {attempt + 1}/{StepRetryCount + 1} - Query took {attemptSw.ElapsedMilliseconds} ms, found {matches.Length} matches");
                 }
                 catch (Exception ex)
                 {
-                    trace?.AppendLine($"Step {i}: Find failed: {ex.Message}");
+                    attemptSw.Stop();
+                    queryTimeMs += attemptSw.ElapsedMilliseconds;
+                    trace?.AppendLine($"Step {i}: Attempt {attempt + 1}/{StepRetryCount + 1} - Find failed after {attemptSw.ElapsedMilliseconds} ms: {ex.Message}");
+                    
+                    // FIX: Detect "method not supported" error and skip retries
+                    if (ex.Message != null && (ex.Message.Contains("not supported", StringComparison.OrdinalIgnoreCase) ||
+                                               ex.Message.Contains("not implemented", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        trace?.AppendLine($"Step {i}: Detected 'not supported' error, skipping remaining retries and using manual walker");
+                        skipRetries = true;
+                    }
+                    
                     // VS sometimes throws on Children at root; fallback to descendant scan once
                     if (i == 0)
                     {
@@ -354,13 +537,25 @@ public sealed class UiBookmarks
                         }
                         catch { }
                     }
+                    
+                    // FIX: Break early if we detected a permanent error
+                    if (skipRetries)
+                        break;
                 }
 
-                if (matches.Length > 0) break;
-                if (attempt < StepRetryCount)
+                if (matches.Length > 0)
                 {
-                    trace?.AppendLine($"Step {i}: No match, retrying in {StepRetryDelayMs + attempt * 100} ms...");
-                    try { System.Threading.Thread.Sleep(StepRetryDelayMs + attempt * 100); } catch { }
+                    trace?.AppendLine($"Step {i}: Success on attempt {attempt + 1} (QueryTime={queryTimeMs} ms, Retries={totalRetries}, RetryDelay={retryDelayMs} ms)");
+                    break;
+                }
+                
+                if (attempt < StepRetryCount && !skipRetries)
+                {
+                    totalRetries++;
+                    var delay = StepRetryDelayMs + attempt * 100;
+                    retryDelayMs += delay;
+                    trace?.AppendLine($"Step {i}: No match on attempt {attempt + 1}, retrying in {delay} ms...");
+                    try { System.Threading.Thread.Sleep(delay); } catch { }
                 }
             }
 
@@ -401,7 +596,12 @@ public sealed class UiBookmarks
             }
 
             trace?.AppendLine($"Step {i}: Scope={node.Scope}, matches={matches.Length}");
-            if (matches.Length == 0) { trace?.AppendLine($"Step {i}: Failed"); return (null, new()); }
+            if (matches.Length == 0)
+            {
+                stepSw.Stop();
+                trace?.AppendLine($"Step {i}: Failed - Total time {stepSw.ElapsedMilliseconds} ms (Query={queryTimeMs} ms, RetryDelay={retryDelayMs} ms, Attempts={totalRetries + 1})");
+                return (null, new());
+            }
 
             if (node.Scope == SearchScope.Descendants && matches.Length > 1)
             {
@@ -418,7 +618,7 @@ public sealed class UiBookmarks
                     if (nextCond != null)
                     {
                         var leading = matches.FirstOrDefault(m => { try { return m.FindFirstDescendant(nextCond) != null; } catch { return false; } });
-                        if (leading != null) { current = leading; path.Add(current); trace?.AppendLine("  -> Selected by look-ahead"); continue; }
+                        if (leading != null) { current = leading; path.Add(current); stepSw.Stop(); trace?.AppendLine($"  -> Selected by look-ahead ({stepSw.ElapsedMilliseconds} ms)"); continue; }
                     }
                 }
                 catch (Exception ex) { trace?.AppendLine("  -> Look-ahead failed: " + ex.Message); }
@@ -428,12 +628,15 @@ public sealed class UiBookmarks
             idx = Math.Max(0, Math.Min(idx, matches.Length - 1));
             current = matches[idx];
             path.Add(current);
+            stepSw.Stop(); // FIX: Stop timing after step completes
+            trace?.AppendLine($"Step {i}: Completed - Total time {stepSw.ElapsedMilliseconds} ms (Query={queryTimeMs} ms, RetryDelay={retryDelayMs} ms, Attempts={totalRetries + 1})");
         }
 
         return (path.LastOrDefault(), path);
     }
 
     // Root discovery with multiple fallbacks and optional first-node preference
+    // FIX: Improved root filtering to prefer exact matches and validate against bookmark metadata
     private static AutomationElement[] DiscoverRoots(UIA3Automation automation, Bookmark b, out string attachInfo)
     {
         var cf = automation.ConditionFactory;
@@ -491,34 +694,55 @@ public sealed class UiBookmarks
                 catch (Exception ex) { sb.AppendLine("Desktop Window/Pane failed: " + ex.Message); roots = Array.Empty<AutomationElement>(); }
             }
 
-            // Prefer roots matching first node if requested
+            // FIX: Prefer roots matching first node WITH stricter filtering
             var nodes = OrderNodes(b);
             var firstIncluded = nodes.FirstOrDefault(n => n.Include && n.LocateIndex > 0);
-            if (firstIncluded != null && b.CrawlFromRoot)
+            if (firstIncluded != null && b.CrawlFromRoot && roots.Length > 0)
             {
                 try
                 {
-                    var firstCond = BuildAndCondition(firstIncluded, cf);
-                    if (firstCond != null)
+                    // FIX: Filter current roots instead of re-scanning desktop
+                    var filtered = roots.Where(r => ElementMatchesNode(r, firstIncluded)).ToArray();
+                    if (filtered.Length > 0)
                     {
-                        var cond = firstCond.And(typeCond);
-                        if (appPid > 0) cond = cf.ByProcessId(appPid).And(cond);
-                        var byFirst = automation.GetDesktop().FindAllChildren(cond);
-                        if (byFirst.Length == 0 && firstIncluded.UseControlTypeId)
+                        roots = filtered;
+                        sb.AppendLine($"First-node filtered roots: {roots.Length} (exact match)");
+                    }
+                    else if (firstIncluded.UseControlTypeId)
+                    {
+                        // FIX: Fallback to relaxed match only if exact fails
+                        var relaxed = CloneWithoutControlType(firstIncluded);
+                        filtered = roots.Where(r => ElementMatchesNode(r, relaxed)).ToArray();
+                        if (filtered.Length > 0)
                         {
-                            var relaxed = CloneWithoutControlType(firstIncluded);
-                            var relaxedCond = BuildAndCondition(relaxed, cf);
-                            if (relaxedCond != null)
-                            {
-                                cond = relaxedCond.And(typeCond);
-                                if (appPid > 0) cond = cf.ByProcessId(appPid).And(cond);
-                                byFirst = automation.GetDesktop().FindAllChildren(cond);
-                            }
+                            roots = filtered;
+                            sb.AppendLine($"First-node filtered roots: {roots.Length} (relaxed ControlType)");
                         }
-                        if (byFirst.Length > 0) { roots = byFirst; sb.AppendLine($"First-node matched roots: {roots.Length}"); }
+                    }
+                    
+                    // FIX: Additional filtering by ClassName if provided and multiple matches remain
+                    if (roots.Length > 1 && firstIncluded.UseClassName && !string.IsNullOrEmpty(firstIncluded.ClassName))
+                    {
+                        var classFiltered = roots.Where(r => string.Equals(SafeClass(r), firstIncluded.ClassName, StringComparison.Ordinal)).ToArray();
+                        if (classFiltered.Length > 0)
+                        {
+                            roots = classFiltered;
+                            sb.AppendLine($"ClassName filter applied: {roots.Length} roots remain");
+                        }
                     }
                 }
-                catch (Exception ex) { sb.AppendLine("First-node roots failed: " + ex.Message); }
+                catch (Exception ex) { sb.AppendLine("First-node filtering failed: " + ex.Message); }
+            }
+            
+            // FIX: Sort roots by similarity to first node for deterministic ordering
+            if (roots.Length > 1 && firstIncluded != null)
+            {
+                try
+                {
+                    roots = roots.OrderByDescending(r => CalculateNodeSimilarity(r, firstIncluded)).ToArray();
+                    sb.AppendLine("Roots sorted by similarity to first node");
+                }
+                catch (Exception ex) { sb.AppendLine("Root sorting failed: " + ex.Message); }
             }
         }
         catch (Exception ex)
@@ -529,6 +753,24 @@ public sealed class UiBookmarks
 
         attachInfo = sb.ToString().TrimEnd();
         return roots;
+    }
+    
+    // FIX: Calculate similarity score for root prioritization
+    private static int CalculateNodeSimilarity(AutomationElement e, Node node)
+    {
+        int score = 0;
+        try
+        {
+            if (node.UseName && !string.IsNullOrEmpty(node.Name) && string.Equals(SafeName(e), node.Name, StringComparison.Ordinal)) score += 100;
+            if (node.UseClassName && !string.IsNullOrEmpty(node.ClassName) && string.Equals(SafeClass(e), node.ClassName, StringComparison.Ordinal)) score += 50;
+            if (node.UseAutomationId && !string.IsNullOrEmpty(node.AutomationId) && string.Equals(SafeAutoId(e), node.AutomationId, StringComparison.Ordinal)) score += 200;
+            if (node.UseControlTypeId && node.ControlTypeId.HasValue)
+            {
+                try { if ((int)e.Properties.ControlType.Value == node.ControlTypeId.Value) score += 25; } catch { }
+            }
+        }
+        catch { }
+        return score;
     }
 
     private static List<Node> OrderNodes(Bookmark b) => b.Chain

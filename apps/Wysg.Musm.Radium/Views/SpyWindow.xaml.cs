@@ -36,6 +36,23 @@ namespace Wysg.Musm.Radium.Views
     public partial class SpyWindow : System.Windows.Window
     {
         // ------------------------------------------------------------------
+        // Single instance management
+        // ------------------------------------------------------------------
+        private static SpyWindow? _instance;
+        
+        public static void ShowInstance()
+        {
+            if (_instance == null || !_instance.IsLoaded)
+            {
+                _instance = new SpyWindow();
+                _instance.Closed += (s, e) => _instance = null;
+            }
+            
+            _instance.Show();
+            _instance.Activate();
+        }
+        
+        // ------------------------------------------------------------------
         // Shared fields & objects
         // ------------------------------------------------------------------
 

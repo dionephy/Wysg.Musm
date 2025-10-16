@@ -6,16 +6,51 @@ namespace Wysg.Musm.Radium.Services
     {
         [DllImport("user32.dll")]
         private static extern bool SetCursorPos(int X, int Y);
+        
+        [DllImport("user32.dll")]
+        private static extern bool GetCursorPos(out POINT lpPoint);
+        
         [DllImport("user32.dll")]
         private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, int dwExtraInfo);
+        
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int X;
+            public int Y;
+        }
 
         public static void ClickScreen(int x, int y)
         {
             try { SetCursorPos(x, y); } catch { }
             mouse_event(MOUSEEVENTF_LEFTDOWN, (uint)x, (uint)y, 0, 0);
             mouse_event(MOUSEEVENTF_LEFTUP, (uint)x, (uint)y, 0, 0);
+        }
+
+        public static void ClickScreenWithRestore(int x, int y)
+        {
+            // Save current mouse position
+            POINT savedPos;
+            bool hasSavedPos = GetCursorPos(out savedPos);
+
+            try
+            {
+                // Move to target and click
+                SetCursorPos(x, y);
+                mouse_event(MOUSEEVENTF_LEFTDOWN, (uint)x, (uint)y, 0, 0);
+                mouse_event(MOUSEEVENTF_LEFTUP, (uint)x, (uint)y, 0, 0);
+            }
+            finally
+            {
+                // Restore mouse position
+                if (hasSavedPos)
+                {
+                    try { SetCursorPos(savedPos.X, savedPos.Y); } catch { }
+                }
+            }
         }
     }
 }

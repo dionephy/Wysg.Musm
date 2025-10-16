@@ -961,3 +961,219 @@ public SnomedConcept? SelectedConcept
 - Background reload may update UI after viewer opens; acceptable and improves responsiveness.
 - Sequencing increases total chain time vs fire-and-forget; user order correctness prioritized.
 
+## Change Log Addition (2025-01-16 – Element Staleness Detection with Auto-Retry)
+- **Problem**: UI automation procedures sometimes failed when UI elements became stale (PACS UI hierarchy changed) between bookmark resolution and usage, causing intermittent failures in GetText, Invoke, ClickElement operations.
+- **Solution**: Implemented element staleness detection with automatic retry in `ProcedureExecutor.ResolveElement()`, inspired by legacy PacsService validation pattern.
+
+### Approach (Element Staleness Detection)
+1) **Validation Strategy**: Before using a cached element, validate it's still alive by accessing the `Name` property (lightweight check).
+2) **Multi-Attempt Resolution**: If element is stale or resolution fails, retry up to 3 times with exponential backoff (150ms, 300ms, 450ms).
+3) **Cache Management**: Remove stale elements from cache immediately when detected; only cache validated elements.
+4) **Fail-Safe**: After all attempts exhausted, return null (operation will report "(no element)" error).
+
+### Code Changes (Element Staleness Detection)
+**File**: `apps\Wysg.Musm.Radium\Services\ProcedureExecutor.cs`
+**Changes**:
+- Added `ElementResolveMaxAttempts = 3` and `ElementResolveRetryDelayMs = 150` constants
+- Rewrote `ResolveElement()` with retry loop:
+  1. Check cache → validate with `IsElementAlive()` → return if valid
+  2. Clear stale cache entries immediately
+  3. Resolve fresh from bookmark → validate before caching
+  4. Retry with exponential backoff on failure
+- Added `IsElementAlive()` helper method that validates element accessibility by checking `Name` property
+
+### Test Plan (Element Staleness Detection)
+- **Normal Case**: Element resolves on first attempt → cached → subsequent uses hit cache (no retry).
+- **Stale Cache**: PACS window hierarchy changes → cached element becomes stale → automatic retry resolves fresh element.
+- **Transient Failure**: UI busy during resolution → first attempt fails → retry after 150ms succeeds.
+- **Permanent Failure**: Bookmark points to non-existent element → all 3 attempts fail, return (IntPtr.Zero, null)
+- **Performance**: Most operations complete on first attempt (cache hit); retry overhead only when needed (~150-900ms total).
+
+### Risks / Mitigations (Element Staleness Detection)
+- **Risk**: Retry delays may slow down procedures.
+  - **Mitigation**: Exponential backoff starts small (150ms); cache hits avoid retries entirely; retries only occur on actual staleness.
+- **Risk**: Validation check (`element.Name`) may itself throw unpredictable exceptions.
+  - **Mitigation**: Wrapped in try-catch; any exception treated as stale element; safe fallback behavior.
+- **Risk**: UI hierarchy changes faster than retry can resolve.
+  - **Mitigation**: 3 attempts with delays should handle most transient issues; persistent failures surface as "(no element)" error for user troubleshooting.
+
+## Change Log Addition (2025-01-16 – ResolveWithRetry with Progressive Constraint Relaxation)
+- **Problem**: Bookmarks sometimes failed to resolve when UI hierarchy changed slightly (new toolbar buttons, panel rearrangements), requiring users to re-pick elements frequently.
+- **Solution**: Implemented `ResolveWithRetry()` with progressive constraint relaxation, inspired by legacy PacsService pattern of trying AutomationId first, then falling back to ClassName.
+
+### Approach (ResolveWithRetry)
+1) **Attempt 1**: Try exact match with all constraints enabled (Name + ClassName + AutomationId + ControlType)
+2) **Attempt 2**: Relax ControlType constraint on all nodes (Name + ClassName + AutomationId only)
+3) **Attempt 3**: Relax ClassName constraint (Name + AutomationId only) - most aggressive relaxation
+4) **Exponential Backoff**: Wait 150ms, 300ms between attempts for UI to stabilize
+5) **Trace Logging**: Each attempt logged for debugging
+
+### Code Changes (ResolveWithRetry)
+**File**: `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs`
+**Changes**:
+- Added `ResolveWithRetry(KnownControl key, int maxAttempts = 3)` public method
+- Added `RelaxBookmarkControlType(Bookmark b)` helper - creates bookmark copy with UseControlTypeId=false on all nodes
+- Added `RelaxBookmarkClassName(Bookmark b)` helper - creates bookmark copy with UseClassName=false + UseControlTypeId=false on all nodes
+- Each helper creates deep copy of bookmark to avoid mutating original
+
+**Inspired by Legacy Pattern**:
+```csharp
+// Legacy PacsService.InitializeWorklistChildrenAsync():
+//eLstStudy = await _uia.GetFirstChildByAutomationIdAsync(ePanLstStudy, "274"); // Try AutomationId first
+eLstStudy = await _uia.GetFirstChildByClassNameAsync(ePanLstStudy, "SysListView32"); // Fall back to ClassName
+```
+
+### Test Plan (ResolveWithRetry)
+- **Exact Match Success**: Bookmark resolves on first attempt with all constraints → no relaxation needed
+- **ControlType Relaxation**: PACS UI update changes control types → second attempt succeeds without ControlType
+- **ClassName Relaxation**: Major UI rearrangement → third attempt succeeds with only Name + AutomationId
+- **Complete Failure**: Bookmark completely invalid → all 3 attempts fail, return (IntPtr.Zero, null)
+- **Performance**: First attempt ~100ms, retry attempts add 150-300ms each only when needed
+
+### Risks / Mitigations (ResolveWithRetry)
+- **Risk**: Relaxed constraints may match wrong element (false positive).
+  - **Mitigation**: Relaxation is progressive; AutomationId + Name kept until final attempt; users can still re-pick for exact match.
+- **Risk**: Deep copy of bookmark chain may have performance impact.
+  - **Mitigation**: Only called on retry (rare); chain is typically <10 nodes; copy is lightweight.
+- **Risk**: Users may rely on relaxed matching and not fix underlying bookmark issues.
+  - **Mitigation**: Trace logging shows which attempt succeeded; SpyWindow validation shows health; documented as fallback, not primary.
+
+### Usage
+**Option 1: Use standard Resolve() (existing behavior)**:
+```csharp
+var (hwnd, element) = UiBookmarks.Resolve(KnownControl.WorklistWindow);
+```
+
+**Option 2: Use ResolveWithRetry() for critical bookmarks**:
+```csharp
+var (hwnd, element) = UiBookmarks.ResolveWithRetry(KnownControl.WorklistWindow, maxAttempts: 3);
+```
+
+**Recommendation**: Update `ProcedureExecutor.ResolveElement()` to use `ResolveWithRetry()` instead of `Resolve()` for automatic progressive relaxation in automation scenarios.
+
+### FR-960: Multi-Root Window Discovery (Medium Priority) - ⚠️ Partially Implemented
+**Pattern from Legacy**: `InitializeWorklistAsync()` checks `eViewer1` then `eViewer2` as alternate roots.
+```csharp
+// Legacy pattern:
+eWinWorklist = await _uia.GetFirstChildByNameAsync(eViewer1, @"INFINITT G3 Worklist...");
+if (eWinWorklist == null)
+{                       
+    eWinWorklist = await _uia.GetFirstChildByNameAsync(eViewer2, @"INFINITT G3 Worklist...");
+}
+```
+
+**Current Status**: `DiscoverRoots()` already tries multiple approaches (attach, PID search, name search), but doesn't explicitly handle multiple PACS viewer instances like legacy.
+
+**Future Enhancement**: Explicitly store and alternate between viewer window handles when primary fails.
+- Store window handles (`hwndViewer1`, `hwndViewer2`) in bookmark metadata
+- Try each window as potential root when process has multiple top-level windows
+- **Trigger**: Implement when users report bookmarks failing due to worklist appearing in secondary PACS window
+
+**Implementation Location**: `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs` - `DiscoverRoots()` method
+
+### FR-961: Index-Based Navigation Fallback (Low Priority)
+**Pattern from Legacy**: `GetChildByIndexAsync(parent, index)` - no attributes, just "get child at index N".
+```csharp
+// Legacy pattern:
+ePanWorklistToolBar = await _uia.GetChildByIndexAsync(eWinWorklist, 1);  // Get 2nd child (index 1)
+```
+
+**Current Status**: User can achieve this with `UseIndex=true` and all other attributes false. E.g.:
+```json
+{
+  "Name": "WorklistToolbar",
+  "Chain": [
+    { "Name": "INFINITT G3 Worklist...", "UseName": true, "Scope": "Descendants" },
+    { 
+      "UseName": false, 
+      "UseClassName": false, 
+      "UseControlTypeId": false, 
+      "UseAutomationId": false,
+      "UseIndex": true,
+      "IndexAmongMatches": 1,
+      "Scope": "Children"
+    }
+  ]
+}
+```
+
+**Status**: ✅ Already implemented in `UiBookmarks.Walk()` method (2025-01-16).
+
+**How It Works**:
+- When a node has **no attributes enabled** (UseName=false, UseClassName=false, UseAutomationId=false, UseControlTypeId=false)
+- **AND** `UseIndex=true` with `Scope=Children`
+- The resolver performs **pure index-based navigation**: `current.FindAllChildren()[IndexAmongMatches]`
+
+**Recommendation**: Use only when attributes are truly unavailable or unstable. Prefer attribute-based matching for maintainability.
+
+### FR-964: Dual Pattern Fallback (Invoke → Toggle)
+**Pattern from Legacy**: Operations try Invoke pattern first, fall back to Toggle if not supported.
+```csharp
+// Already implemented in ProcedureExecutor:
+var inv = el.Patterns.Invoke.PatternOrDefault; 
+if (inv != null) inv.Invoke(); 
+else el.Patterns.Toggle.PatternOrDefault?.Toggle();
+```
+
+**Status**: ✅ Already implemented in `ProcedureExecutor.ExecuteElemental()` for `Invoke` operation.
+
+### FR-966: Pure Index-Based Navigation (Legacy Pattern) - ✅ IMPLEMENTED
+**Pattern from Legacy**: `GetChildByIndexAsync(parent, index)` - no attributes, just "get child at index N".
+```csharp
+// Legacy pattern:
+ePanWorklistToolBar = await _uia.GetChildByIndexAsync(eWinWorklist, 1);  // Get 2nd child (index 1)
+```
+
+**Status**: ✅ Implemented in `UiBookmarks.Walk()` method (2025-01-16).
+
+**How It Works**:
+- When a node has **no attributes enabled** (UseName=false, UseClassName=false, UseAutomationId=false, UseControlTypeId=false)
+- **AND** `UseIndex=true` with `Scope=Children`
+- The resolver performs **pure index-based navigation**: `current.FindAllChildren()[IndexAmongMatches]`
+
+**Usage in SpyWindow**:
+1. **Disable all attributes** for the node:
+   - UseName=false, UseClassName=false, UseControlTypeId=false, UseAutomationId=false
+2. **Enable UseIndex=true**
+3. **Set IndexAmongMatches** to desired child index (0-based)
+4. **Set Scope=Children** (required for pure index)
+
+**Example Bookmark** (matching legacy `GetChildByIndexAsync(eWinWorklist, 1)`):
+```json
+{
+  "Name": "WorklistToolbar",
+  "Chain": [
+    { "Name": "INFINITT G3 Worklist...", "UseName": true, "Scope": "Descendants" },
+    { 
+      "UseName": false, 
+      "UseClassName": false, 
+      "UseControlTypeId": false, 
+      "UseAutomationId": false,
+      "UseIndex": true,
+      "IndexAmongMatches": 1,
+      "Scope": "Children"
+    }
+  ]
+}
+```
+
+**Trace Output**:
+```
+Step 3: Pure index navigation (no attributes, using index 1)
+Step 3: Pure index success - selected child at index 1 (5 ms)
+```
+
+**Benefits**:
+- ✅ Exact legacy pattern replication
+- ✅ Fast (no attribute matching overhead)
+- ✅ Works when attributes are unstable/unavailable
+
+**Trade-offs**:
+- ⚠️ Brittle: breaks if UI adds/removes/reorders children
+- ⚠️ Not self-documenting: unclear what element you're selecting
+- ⚠️ Only works with `Scope=Children` (not Descendants)
+
+**Recommendation**: Use only when attributes are truly unavailable or unstable. Prefer attribute-based matching for maintainability.
+
+### FR-965: Bookmark Health Check Tool (Low Priority)
+

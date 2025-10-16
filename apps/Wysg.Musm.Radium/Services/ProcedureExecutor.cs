@@ -160,6 +160,20 @@ namespace Wysg.Musm.Radium.Services
                     new ProcOpRow { Op = "Invoke", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.TestInvoke.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
                 };
             }
+            if (string.Equals(methodTag, "SetCurrentStudyInMainScreen", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "ClickElement", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.Screen_MainCurrentStudyTab.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
+                };
+            }
+            if (string.Equals(methodTag, "SetPreviousStudyInSubScreen", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "ClickElement", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.Screen_SubPreviousStudyTab.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
+                };
+            }
             return new List<ProcOpRow>();
         }
 
@@ -216,6 +230,7 @@ namespace Wysg.Musm.Radium.Services
                 case "GetText":
                 case "GetTextOCR":
                 case "Invoke":
+                case "ClickElement":
                 case "MouseClick":
                 case "GetValueFromSelection":
                 case "ToDateTime":
@@ -346,6 +361,23 @@ namespace Wysg.Musm.Radium.Services
                         try { NativeMouseHelper.ClickScreen(x, y); return ($"(clicked {x},{y})", null); }
                         catch { return ("(error)", null); }
                     }
+                    case "ClickElement":
+                    {
+                        var el = ResolveElement(row.Arg1);
+                        if (el == null) return ("(no element)", null);
+                        try
+                        {
+                            var rect = el.BoundingRectangle;
+                            if (rect.Width <= 0 || rect.Height <= 0) return ("(no bounds)", null);
+                            
+                            int centerX = (int)(rect.Left + rect.Width / 2);
+                            int centerY = (int)(rect.Top + rect.Height / 2);
+                            
+                            NativeMouseHelper.ClickScreenWithRestore(centerX, centerY);
+                            return ($"(clicked element center {centerX},{centerY})", null);
+                        }
+                        catch (Exception ex) { return ($"(error: {ex.Message})", null); }
+                    }
                 }
             }
             catch { }
@@ -371,16 +403,82 @@ namespace Wysg.Musm.Radium.Services
             catch { return Encoding.UTF8.GetString(bytes); }
         }
 
+        // Element resolution with staleness detection and retry (inspired by legacy PacsService validation pattern)
+        private const int ElementResolveMaxAttempts = 3;
+        private const int ElementResolveRetryDelayMs = 150;
+
         private static AutomationElement? ResolveElement(ProcArg arg)
         {
             if (ParseArgKind(arg.Type) != ArgKind.Element) return null;
             var tag = arg.Value ?? string.Empty;
             if (!Enum.TryParse<UiBookmarks.KnownControl>(tag, out var key)) return null;
-            var cached = GetCached(key);
-            if (cached != null) return cached;
-            var tuple = UiBookmarks.Resolve(key);
-            if (tuple.element != null) StoreCache(key, tuple.element);
-            return tuple.element;
+
+            // Strategy: Try cache first, validate it, then resolve fresh with retry on staleness
+            for (int attempt = 0; attempt < ElementResolveMaxAttempts; attempt++)
+            {
+                // Attempt 1: Check cache
+                var cached = GetCached(key);
+                if (cached != null)
+                {
+                    if (IsElementAlive(cached))
+                    {
+                        return cached; // Cache hit, element valid
+                    }
+                    else
+                    {
+                        // Stale element in cache, remove it
+                        _controlCache.Remove(key);
+                    }
+                }
+
+                // Attempt 2: Resolve fresh from bookmark
+                try
+                {
+                    var tuple = UiBookmarks.Resolve(key);
+                    if (tuple.element != null)
+                    {
+                        // Validate the newly resolved element before caching
+                        if (IsElementAlive(tuple.element))
+                        {
+                            StoreCache(key, tuple.element);
+                            return tuple.element;
+                        }
+                        // Element resolved but immediately stale (rare UI timing issue)
+                    }
+                }
+                catch
+                {
+                    // Resolve failed, will retry
+                }
+
+                // If not last attempt, wait before retry (exponential backoff)
+                if (attempt < ElementResolveMaxAttempts - 1)
+                {
+                    System.Threading.Thread.Sleep(ElementResolveRetryDelayMs * (attempt + 1));
+                }
+            }
+
+            // All attempts exhausted
+            return null;
+        }
+
+        /// <summary>
+        /// Validates that an AutomationElement is still alive and accessible.
+        /// Inspired by legacy PacsService validation pattern: try to access a property and catch exceptions.
+        /// </summary>
+        private static bool IsElementAlive(AutomationElement element)
+        {
+            try
+            {
+                // Attempt to access a lightweight property to validate element is still in UI tree
+                _ = element.Name;
+                return true;
+            }
+            catch
+            {
+                // Element is stale (UI element no longer exists or accessible)
+                return false;
+            }
         }
 
         private static string? ResolveString(ProcArg arg, Dictionary<string, string?> vars)

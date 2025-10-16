@@ -135,6 +135,20 @@ namespace Wysg.Musm.Radium.Services
             return true;
         }
 
+        // NEW: Set current study in main screen (clicks main screen current study tab)
+        public async Task<bool> SetCurrentStudyInMainScreenAsync()
+        {
+            await ExecCustom("SetCurrentStudyInMainScreen");
+            return true;
+        }
+
+        // NEW: Set previous study in sub screen (clicks sub screen previous study tab)
+        public async Task<bool> SetPreviousStudyInSubScreenAsync()
+        {
+            await ExecCustom("SetPreviousStudyInSubScreen");
+            return true;
+        }
+
         public async Task<bool> IsViewerWindowAsync(IntPtr hwnd)
         {
             using var mfc = MfcUi.Attach(_proc);

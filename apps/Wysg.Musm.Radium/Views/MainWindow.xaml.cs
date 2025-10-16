@@ -306,8 +306,7 @@ namespace Wysg.Musm.Radium.Views
                     ev.Key == Key.S)
                 {
                     ev.Handled = true;
-                    var win = new SpyWindow { Owner = this };
-                    win.Show();
+                    SpyWindow.ShowInstance();
                 }
             };
         }
@@ -327,8 +326,7 @@ namespace Wysg.Musm.Radium.Views
 
         private void OnOpenSpy(object sender, RoutedEventArgs e)
         {
-            var win = new SpyWindow { Owner = this };
-            win.Show();
+            SpyWindow.ShowInstance();
         }
 
         // Test helper: add a dummy previous study with tabs

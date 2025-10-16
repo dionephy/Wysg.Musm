@@ -131,6 +131,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { await _pacs.CustomMouseClick2Async(); }
                     else if (string.Equals(m, "TestInvoke", StringComparison.OrdinalIgnoreCase)) { await _pacs.InvokeTestAsync(); }
                     else if (string.Equals(m, "ShowTestMessage", StringComparison.OrdinalIgnoreCase)) { System.Windows.MessageBox.Show("Test", "Test", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information); }
+                    else if (string.Equals(m, "SetCurrentInMainScreen", StringComparison.OrdinalIgnoreCase)) { await RunSetCurrentInMainScreenAsync(); }
                 }
                 catch (Exception ex)
                 {
@@ -140,9 +141,60 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
+        private async Task RunOpenStudyAsync()
+        {
+            try
+            {
+                await _pacs.InvokeOpenStudyAsync();
+                StudyOpened = true;
+                SetStatus("Open study invoked");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[Automation] OpenStudy error: " + ex.Message);
+                SetStatus("Open study failed", true);
+            }
+        }
+
+        private async Task RunSetCurrentInMainScreenAsync()
+        {
+            try
+            {
+                await _pacs.SetCurrentStudyInMainScreenAsync();
+                await _pacs.SetPreviousStudyInSubScreenAsync();
+                SetStatus("Screen layout set: current study in main, previous study in sub");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[Automation] SetCurrentInMainScreen error: " + ex.Message);
+                SetStatus("Screen layout failed", true);
+            }
+        }
+
         private void OnRunAddStudyAutomation()
         {
             var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.AddStudySequence);
+            var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (modules.Length == 0) return;
+            _ = RunModulesSequentially(modules);
+        }
+
+        private void OnNewStudy()
+        {
+            var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.NewStudySequence);
+            var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (modules.Length == 0) return;
+            _ = RunModulesSequentially(modules);
+        }
+
+        // Executes configured modules for OpenStudy shortcut depending on lock/opened state
+        public void RunOpenStudyShortcut()
+        {
+            string seqRaw;
+            if (!PatientLocked) seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenNew);
+            else if (!StudyOpened) seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenAdd);
+            else seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenAfterOpen);
+
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
             _ = RunModulesSequentially(modules);
@@ -225,42 +277,6 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
-        private void OnNewStudy()
-        {
-            var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.NewStudySequence);
-            var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (modules.Length == 0) return;
-            _ = RunModulesSequentially(modules);
-        }
-
-        private async Task RunOpenStudyAsync()
-        {
-            try
-            {
-                await _pacs.InvokeOpenStudyAsync();
-                StudyOpened = true;
-                SetStatus("Open study invoked");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("[Automation] OpenStudy error: " + ex.Message);
-                SetStatus("Open study failed", true);
-            }
-        }
-
-        // Executes configured modules for OpenStudy shortcut depending on lock/opened state
-        public void RunOpenStudyShortcut()
-        {
-            string seqRaw;
-            if (!PatientLocked) seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenNew);
-            else if (!StudyOpened) seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenAdd);
-            else seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenAfterOpen);
-
-            var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (modules.Length == 0) return;
-            _ = RunModulesSequentially(modules);
-        }
-
         private void OnSelectPrevious(object? o)
         {
             if (o is not PreviousStudyTab tab) return;
@@ -280,83 +296,6 @@ namespace Wysg.Musm.Radium.ViewModels
                 SetStatus(string.IsNullOrWhiteSpace(key) ? "Generate requested" : $"Generate {key} requested");
             }
             catch { }
-        }
-
-        // existing OnAddStudy retained for direct action flows if used elsewhere
-        private async void OnAddStudy()
-        {
-            if (_studyRepo == null) return;
-            try
-            {
-                var relatedPatientRaw = await _pacs.GetSelectedIdFromRelatedStudiesAsync();
-                string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : Regex.Replace(s, "[^A-Za-z0-9]", "").ToUpperInvariant();
-                var currentNorm = Normalize(PatientNumber);
-                var relatedNorm = Normalize(relatedPatientRaw);
-                if (string.IsNullOrWhiteSpace(currentNorm) || string.IsNullOrWhiteSpace(relatedNorm) || currentNorm != relatedNorm)
-                { SetStatus($"Patient mismatch cannot add (current {currentNorm} vs related {relatedNorm})", true); return; }
-
-                var studyName = await _pacs.GetSelectedStudynameFromRelatedStudiesAsync();
-                var dtStr = await _pacs.GetSelectedStudyDateTimeFromRelatedStudiesAsync();
-                var radiologist = await _pacs.GetSelectedRadiologistFromRelatedStudiesAsync();
-                var reportDateStr = await _pacs.GetSelectedReportDateTimeFromRelatedStudiesAsync();
-                if (!DateTime.TryParse(dtStr, out var studyDt)) { SetStatus("Related study datetime invalid", true); return; }
-                DateTime? reportDt = DateTime.TryParse(reportDateStr, out var rdt) ? rdt : null;
-                var studyId = await _studyRepo.EnsureStudyAsync(PatientNumber, PatientName, PatientSex, null, studyName, studyDt);
-                if (studyId == null) { SetStatus("Study save failed", true); return; }
-
-                // Acquire findings / conclusion (choose longer version of dual-field variants)
-                var f1Task = _pacs.GetCurrentFindingsAsync();
-                var f2Task = _pacs.GetCurrentFindings2Async();
-                var c1Task = _pacs.GetCurrentConclusionAsync();
-                var c2Task = _pacs.GetCurrentConclusion2Async();
-                await Task.WhenAll(f1Task, f2Task, c1Task, c2Task);
-                string PickLonger(string? a, string? b) => (b?.Length ?? 0) > (a?.Length ?? 0) ? (b ?? string.Empty) : (a ?? string.Empty);
-                string findings = PickLonger(f1Task.Result, f2Task.Result);
-                string conclusion = PickLonger(c1Task.Result, c2Task.Result);
-
-                var reportObj = new
-                {
-                    technique = string.Empty,
-                    chief_complaint = string.Empty,
-                    history_preview = string.Empty,
-                    chief_complaint_proofread = string.Empty,
-                    history = string.Empty,
-                    history_proofread = string.Empty,
-                    header_and_findings = findings,
-                    final_conclusion = conclusion,
-                    // keep split outputs empty initially; do not misuse root 'conclusion' for main conclusion
-                    split_index = 0,
-                    comparison = string.Empty,
-                    technique_proofread = string.Empty,
-                    comparison_proofread = string.Empty,
-                    findings_proofread = string.Empty,
-                    conclusion_proofread = string.Empty,
-                    findings,
-                    conclusion_preview = string.Empty
-                };
-                string json = JsonSerializer.Serialize(reportObj);
-                await _studyRepo.UpsertPartialReportAsync(studyId.Value, radiologist, reportDt, json, isMine: false, isCreated: false);
-                await LoadPreviousStudiesForPatientAsync(PatientNumber);
-                var newTab = PreviousStudies.FirstOrDefault(t => t.StudyDateTime == studyDt);
-                if (newTab != null) SelectedPreviousStudy = newTab;
-                PreviousReportified = true;
-                SetStatus("Previous study added");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("[AddStudy] error: " + ex.Message);
-                SetStatus("Add study failed", true);
-            }
-        }
-
-        // DelegateCommand implementation kept local for simplicity
-        private sealed class DelegateCommand : ICommand
-        {
-            private readonly Action<object?> _exec; private readonly Predicate<object?>? _can;
-            public DelegateCommand(Action<object?> exec, Predicate<object?>? can = null) { _exec = exec; _can = can; }
-            public bool CanExecute(object? parameter) => _can?.Invoke(parameter) ?? true;
-            public void Execute(object? parameter) => _exec(parameter);
-            public event EventHandler? CanExecuteChanged; public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
         }
 
         // -------- PACS-scoped automation loader (replaces obsolete IRadiumLocalSettings sequences) --------
@@ -397,6 +336,16 @@ namespace Wysg.Musm.Radium.ViewModels
             public string? ShortcutOpenNew { get; set; }
             public string? ShortcutOpenAdd { get; set; }
             public string? ShortcutOpenAfterOpen { get; set; }
+        }
+
+        // DelegateCommand implementation kept local for simplicity
+        private sealed class DelegateCommand : ICommand
+        {
+            private readonly Action<object?> _exec; private readonly Predicate<object?>? _can;
+            public DelegateCommand(Action<object?> exec, Predicate<object?>? can = null) { _exec = exec; _can = can; }
+            public bool CanExecute(object? parameter) => _can?.Invoke(parameter) ?? true;
+            public void Execute(object? parameter) => _exec(parameter);
+            public event EventHandler? CanExecuteChanged; public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }

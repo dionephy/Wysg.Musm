@@ -588,8 +588,7 @@ namespace Wysg.Musm.Radium.Views
         // New: open Spy window directly from Settings Automation tab
         private void OnOpenSpy(object sender, RoutedEventArgs e)
         {
-            var win = new SpyWindow { Owner = this };
-            win.Show();
+            SpyWindow.ShowInstance();
         }
 
         // Keyboard hotkey capture: capture modifiers + key and write as string into bound TextBox

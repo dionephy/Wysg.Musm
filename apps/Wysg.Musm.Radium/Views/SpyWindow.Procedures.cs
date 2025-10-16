@@ -488,6 +488,7 @@ namespace Wysg.Musm.Radium.Views
                         case "GetTextOCR":
                         case "GetName":
                         case "Invoke":
+                        case "ClickElement":  // ก็ ADD THIS LINE
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
