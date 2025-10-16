@@ -961,123 +961,219 @@ public SnomedConcept? SelectedConcept
 - Background reload may update UI after viewer opens; acceptable and improves responsiveness.
 - Sequencing increases total chain time vs fire-and-forget; user order correctness prioritized.
 
-## Change Log Addition (2025-01-15 – UI Bookmark Robustness Improvements)
-- **Problem**: UI bookmarks saved in SpyWindow sometimes failed to resolve consistently. Same bookmark with identical crawl path and options would work after re-picking but fail on subsequent attempts.
-- **Root Causes**:
-  1. **Non-deterministic Root Discovery**: `DiscoverRoots` tried multiple fallback strategies (attach, PID search, name search, desktop scan), and timing/ordering varied causing different roots to be selected on different runs.
-  2. **Step 0 Relaxed Matching**: `Walk` method accepted roots by "relaxed match" (ignoring ClassName), which could match wrong window when multiple windows shared similar AutomationId or Name.
-  3. **ClassName Mismatch**: First node's ClassName was captured but often ignored during root resolution, allowing matches to auxiliary windows (toolbars) instead of main window.
-  4. **Index Ambiguity**: `IndexAmongMatches` captured sibling position, but became stale when UI hierarchy changed slightly (e.g., new toolbar button appeared).
-  5. **Insufficient Validation**: No validation at save time to catch under-specified bookmarks (e.g., first node with only 1 enabled attribute).
+## Change Log Addition (2025-01-16 – Element Staleness Detection with Auto-Retry)
+- **Problem**: UI automation procedures sometimes failed when UI elements became stale (PACS UI hierarchy changed) between bookmark resolution and usage, causing intermittent failures in GetText, Invoke, ClickElement operations.
+- **Solution**: Implemented element staleness detection with automatic retry in `ProcedureExecutor.ResolveElement()`, inspired by legacy PacsService validation pattern.
 
-### Fixes
-1. **Stricter Step 0 Validation** (FR-920):
-   - Changed from ANY attribute match (Name OR AutomationId OR ControlType) to ALL enabled attributes (Name AND ClassName AND AutomationId AND ControlType).
-   - Only accepts root if every enabled attribute matches exactly.
-   - Falls through to normal search if root doesn't match perfectly.
-   - Trace output shows which attributes matched/mismatched for debugging.
+### Approach (Element Staleness Detection)
+1) **Validation Strategy**: Before using a cached element, validate it's still alive by accessing the `Name` property (lightweight check).
+2) **Multi-Attempt Resolution**: If element is stale or resolution fails, retry up to 3 times with exponential backoff (150ms, 300ms, 450ms).
+3) **Cache Management**: Remove stale elements from cache immediately when detected; only cache validated elements.
+4) **Fail-Safe**: After all attempts exhausted, return null (operation will report "(no element)" error).
 
-2. **Improved Root Filtering** (FR-921):
-   - Filters existing root candidates using first node attributes instead of rescanning desktop.
-   - Applies exact match first, then relaxed match (without ControlTypeId) as fallback.
-   - Additional ClassName filtering when multiple matches remain.
-   - Sorts remaining roots by similarity score (AutomationId=200pts, Name=100pts, ClassName=50pts, ControlType=25pts) for deterministic selection.
+### Code Changes (Element Staleness Detection)
+**File**: `apps\Wysg.Musm.Radium\Services\ProcedureExecutor.cs`
+**Changes**:
+- Added `ElementResolveMaxAttempts = 3` and `ElementResolveRetryDelayMs = 150` constants
+- Rewrote `ResolveElement()` with retry loop:
+  1. Check cache → validate with `IsElementAlive()` → return if valid
+  2. Clear stale cache entries immediately
+  3. Resolve fresh from bookmark → validate before caching
+  4. Retry with exponential backoff on failure
+- Added `IsElementAlive()` helper method that validates element accessibility by checking `Name` property
 
-3. **Bookmark Validation** (FR-922):
-   - Validates before save: process name not empty, chain not empty, first node has ≥2 enabled attributes.
-   - Warns about nodes relying solely on UseIndex=true with IndexAmongMatches=0.
-   - Displays actionable error messages preventing save of under-specified bookmarks.
+### Test Plan (Element Staleness Detection)
+- **Normal Case**: Element resolves on first attempt → cached → subsequent uses hit cache (no retry).
+- **Stale Cache**: PACS window hierarchy changes → cached element becomes stale → automatic retry resolves fresh element.
+- **Transient Failure**: UI busy during resolution → first attempt fails → retry after 150ms succeeds.
+- **Permanent Failure**: Bookmark points to non-existent element → all 3 attempts fail, return (IntPtr.Zero, null)
+- **Performance**: Most operations complete on first attempt (cache hit); retry overhead only when needed (~150-900ms total).
 
-4. **ClassName Enforcement** (FR-924):
-   - When first node specifies ClassName, root discovery prefers roots matching that ClassName.
-   - Step 0 requires ClassName match if UseClassName=true.
-   - Only relaxes ClassName if no other matches found (explicit fallback).
+### Risks / Mitigations (Element Staleness Detection)
+- **Risk**: Retry delays may slow down procedures.
+  - **Mitigation**: Exponential backoff starts small (150ms); cache hits avoid retries entirely; retries only occur on actual staleness.
+- **Risk**: Validation check (`element.Name`) may itself throw unpredictable exceptions.
+  - **Mitigation**: Wrapped in try-catch; any exception treated as stale element; safe fallback behavior.
+- **Risk**: UI hierarchy changes faster than retry can resolve.
+  - **Mitigation**: 3 attempts with delays should handle most transient issues; persistent failures surface as "(no element)" error for user troubleshooting.
 
-5. **Similarity-Based Prioritization** (FR-925):
-   - When multiple roots match, sorts by cumulative similarity score.
-   - Ensures deterministic selection across runs when PACS has multiple windows.
-   - Logged in trace output for transparency.
+## Change Log Addition (2025-01-16 – ResolveWithRetry with Progressive Constraint Relaxation)
+- **Problem**: Bookmarks sometimes failed to resolve when UI hierarchy changed slightly (new toolbar buttons, panel rearrangements), requiring users to re-pick elements frequently.
+- **Solution**: Implemented `ResolveWithRetry()` with progressive constraint relaxation, inspired by legacy PacsService pattern of trying AutomationId first, then falling back to ClassName.
 
-### Approach (Bookmark Robustness)
-1) Update `Walk` method in `UiBookmarks.cs` to require ALL enabled attributes for step 0 root acceptance (not just ANY).
-2) Update `DiscoverRoots` method to filter candidate roots in-place instead of rescanning desktop:
-   - Apply first node exact match filter
-   - Apply relaxed match (without ControlTypeId) as fallback
-   - Apply ClassName filter when multiple matches remain
-   - Sort by `CalculateNodeSimilarity` score for deterministic ordering
-3) Add `CalculateNodeSimilarity` helper to score root candidates (AutomationId=200, Name=100, ClassName=50, ControlType=25).
-4) Add `ValidateBookmark` method in `SpyWindow.Bookmarks.cs` to check:
-   - Process name not empty
-   - Chain not empty
-   - First node has ≥2 enabled attributes
-   - Warn about index-only nodes with insufficient attributes
-5) Call `ValidateBookmark` in `OnSaveEdited` before persisting; display validation errors and abort save if invalid.
+### Approach (ResolveWithRetry)
+1) **Attempt 1**: Try exact match with all constraints enabled (Name + ClassName + AutomationId + ControlType)
+2) **Attempt 2**: Relax ControlType constraint on all nodes (Name + ClassName + AutomationId only)
+3) **Attempt 3**: Relax ClassName constraint (Name + AutomationId only) - most aggressive relaxation
+4) **Exponential Backoff**: Wait 150ms, 300ms between attempts for UI to stabilize
+5) **Trace Logging**: Each attempt logged for debugging
 
-### Test Plan (Bookmark Robustness)
-- **Scenario 1: Multiple Windows**:
-  1. Open PACS with main window + auxiliary toolbar window
-  2. Capture bookmark for main window control (ensure ClassName enabled)
-  3. Save bookmark
-  4. Close and reopen PACS (ensure windows open in different order)
-  5. Resolve bookmark → verify it matches main window consistently (not toolbar)
-  6. Repeat 5 times → verify 100% success rate
-
-- **Scenario 2: Under-Specified Bookmark**:
-  1. Capture bookmark
-  2. Edit chain to disable all attributes except one on first node
-  3. Attempt to save → verify validation error "First node has insufficient attributes (need at least 2 enabled)"
-  4. Enable second attribute
-  5. Save → verify success
-
-- **Scenario 3: ClassName Filtering**:
-  1. Capture bookmark for PACS main window (ClassName = "MainWindowClass")
-  2. Open PACS with main window + dialog (both share same Name/AutomationId)
-  3. Resolve bookmark with trace → verify ClassName filter narrows to main window
-  4. Verify trace shows "ClassName filter applied: 1 roots remain"
-
-- **Scenario 4: Similarity Scoring**:
-  1. Capture bookmark for control with unique AutomationId
-  2. Create mock scenario with 3 candidate roots:
-     - Root A: AutomationId match only (score=200)
-     - Root B: Name + ClassName match (score=150)
-     - Root C: ClassName + ControlType match (score=75)
-  3. Resolve bookmark with trace → verify Root A selected (highest score)
-  4. Verify trace shows "Roots sorted by similarity to first node"
-
-- **Scenario 5: Relaxed Fallback**:
-  1. Capture bookmark with ControlTypeId enabled
-  2. Simulate PACS version update where ControlTypeId changed
-  3. Resolve bookmark with trace → verify relaxed match succeeds (ignores ControlTypeId)
-  4. Verify trace shows "relaxed ControlType" message
-
-### Risks / Mitigations (Bookmark Robustness)
-- **Risk**: Stricter validation may reject previously-saved bookmarks that worked despite being under-specified.
-  - **Mitigation**: Validation only applies to new saves; existing bookmarks load unchanged. Users can re-capture and save if needed.
-
-- **Risk**: Similarity scoring may deprioritize correct root if AutomationId is not unique across windows.
-  - **Mitigation**: Combined scoring (AutomationId + Name + ClassName + ControlType) handles this case. Trace output helps diagnose.
-
-- **Risk**: ClassName may be platform-specific and fail when PACS runs on different OS versions.
-  - **Mitigation**: ClassName filter is fallback-tolerant; if no ClassName matches, uses other attributes. Can disable UseClassName when capturing.
-
-- **Risk**: Validation warnings about index-only nodes may be noisy for experienced users.
-  - **Mitigation**: Warnings are informational (not errors); allow save. Users can add attributes if they experience failures.
-
-### Code Changes (Bookmark Robustness)
+### Code Changes (ResolveWithRetry)
 **File**: `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs`
-**Methods Modified**:
-- `Walk`: Changed step 0 from ANY match to ALL enabled attributes match; added detailed trace logging.
-- `DiscoverRoots`: Added in-place filtering of roots using first node attributes; added ClassName filter; added similarity sorting.
-- Added `CalculateNodeSimilarity`: Scores root candidates for prioritization.
+**Changes**:
+- Added `ResolveWithRetry(KnownControl key, int maxAttempts = 3)` public method
+- Added `RelaxBookmarkControlType(Bookmark b)` helper - creates bookmark copy with UseControlTypeId=false on all nodes
+- Added `RelaxBookmarkClassName(Bookmark b)` helper - creates bookmark copy with UseClassName=false + UseControlTypeId=false on all nodes
+- Each helper creates deep copy of bookmark to avoid mutating original
 
-**File**: `apps\Wysg.Musm.Radium\Views\SpyWindow.Bookmarks.cs`
-**Methods Modified**:
-- `OnSaveEdited`: Added validation call before save; display validation errors if any.
-- Added `ValidateBookmark`: Checks process name, chain, first node attributes, and index-only nodes.
+**Inspired by Legacy Pattern**:
+```csharp
+// Legacy PacsService.InitializeWorklistChildrenAsync():
+//eLstStudy = await _uia.GetFirstChildByAutomationIdAsync(ePanLstStudy, "274"); // Try AutomationId first
+eLstStudy = await _uia.GetFirstChildByClassNameAsync(ePanLstStudy, "SysListView32"); // Fall back to ClassName
+```
 
-### Related Features
-- Completes FR-920 through FR-925 (UI Bookmark Robustness Improvements)
-- Supports PACS automation workflows by ensuring bookmarks resolve consistently across sessions
-- Improves SpyWindow UX by preventing save of under-specified bookmarks
-- Enhances debugging with detailed trace output for root discovery and matching
+### Test Plan (ResolveWithRetry)
+- **Exact Match Success**: Bookmark resolves on first attempt with all constraints → no relaxation needed
+- **ControlType Relaxation**: PACS UI update changes control types → second attempt succeeds without ControlType
+- **ClassName Relaxation**: Major UI rearrangement → third attempt succeeds with only Name + AutomationId
+- **Complete Failure**: Bookmark completely invalid → all 3 attempts fail, return (IntPtr.Zero, null)
+- **Performance**: First attempt ~100ms, retry attempts add 150-300ms each only when needed
+
+### Risks / Mitigations (ResolveWithRetry)
+- **Risk**: Relaxed constraints may match wrong element (false positive).
+  - **Mitigation**: Relaxation is progressive; AutomationId + Name kept until final attempt; users can still re-pick for exact match.
+- **Risk**: Deep copy of bookmark chain may have performance impact.
+  - **Mitigation**: Only called on retry (rare); chain is typically <10 nodes; copy is lightweight.
+- **Risk**: Users may rely on relaxed matching and not fix underlying bookmark issues.
+  - **Mitigation**: Trace logging shows which attempt succeeded; SpyWindow validation shows health; documented as fallback, not primary.
+
+### Usage
+**Option 1: Use standard Resolve() (existing behavior)**:
+```csharp
+var (hwnd, element) = UiBookmarks.Resolve(KnownControl.WorklistWindow);
+```
+
+**Option 2: Use ResolveWithRetry() for critical bookmarks**:
+```csharp
+var (hwnd, element) = UiBookmarks.ResolveWithRetry(KnownControl.WorklistWindow, maxAttempts: 3);
+```
+
+**Recommendation**: Update `ProcedureExecutor.ResolveElement()` to use `ResolveWithRetry()` instead of `Resolve()` for automatic progressive relaxation in automation scenarios.
+
+### FR-960: Multi-Root Window Discovery (Medium Priority) - ⚠️ Partially Implemented
+**Pattern from Legacy**: `InitializeWorklistAsync()` checks `eViewer1` then `eViewer2` as alternate roots.
+```csharp
+// Legacy pattern:
+eWinWorklist = await _uia.GetFirstChildByNameAsync(eViewer1, @"INFINITT G3 Worklist...");
+if (eWinWorklist == null)
+{                       
+    eWinWorklist = await _uia.GetFirstChildByNameAsync(eViewer2, @"INFINITT G3 Worklist...");
+}
+```
+
+**Current Status**: `DiscoverRoots()` already tries multiple approaches (attach, PID search, name search), but doesn't explicitly handle multiple PACS viewer instances like legacy.
+
+**Future Enhancement**: Explicitly store and alternate between viewer window handles when primary fails.
+- Store window handles (`hwndViewer1`, `hwndViewer2`) in bookmark metadata
+- Try each window as potential root when process has multiple top-level windows
+- **Trigger**: Implement when users report bookmarks failing due to worklist appearing in secondary PACS window
+
+**Implementation Location**: `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs` - `DiscoverRoots()` method
+
+### FR-961: Index-Based Navigation Fallback (Low Priority)
+**Pattern from Legacy**: `GetChildByIndexAsync(parent, index)` - no attributes, just "get child at index N".
+```csharp
+// Legacy pattern:
+ePanWorklistToolBar = await _uia.GetChildByIndexAsync(eWinWorklist, 1);  // Get 2nd child (index 1)
+```
+
+**Current Status**: User can achieve this with `UseIndex=true` and all other attributes false. E.g.:
+```json
+{
+  "Name": "WorklistToolbar",
+  "Chain": [
+    { "Name": "INFINITT G3 Worklist...", "UseName": true, "Scope": "Descendants" },
+    { 
+      "UseName": false, 
+      "UseClassName": false, 
+      "UseControlTypeId": false, 
+      "UseAutomationId": false,
+      "UseIndex": true,
+      "IndexAmongMatches": 1,
+      "Scope": "Children"
+    }
+  ]
+}
+```
+
+**Status**: ✅ Already implemented in `UiBookmarks.Walk()` method (2025-01-16).
+
+**How It Works**:
+- When a node has **no attributes enabled** (UseName=false, UseClassName=false, UseAutomationId=false, UseControlTypeId=false)
+- **AND** `UseIndex=true` with `Scope=Children`
+- The resolver performs **pure index-based navigation**: `current.FindAllChildren()[IndexAmongMatches]`
+
+**Recommendation**: Use only when attributes are truly unavailable or unstable. Prefer attribute-based matching for maintainability.
+
+### FR-964: Dual Pattern Fallback (Invoke → Toggle)
+**Pattern from Legacy**: Operations try Invoke pattern first, fall back to Toggle if not supported.
+```csharp
+// Already implemented in ProcedureExecutor:
+var inv = el.Patterns.Invoke.PatternOrDefault; 
+if (inv != null) inv.Invoke(); 
+else el.Patterns.Toggle.PatternOrDefault?.Toggle();
+```
+
+**Status**: ✅ Already implemented in `ProcedureExecutor.ExecuteElemental()` for `Invoke` operation.
+
+### FR-966: Pure Index-Based Navigation (Legacy Pattern) - ✅ IMPLEMENTED
+**Pattern from Legacy**: `GetChildByIndexAsync(parent, index)` - no attributes, just "get child at index N".
+```csharp
+// Legacy pattern:
+ePanWorklistToolBar = await _uia.GetChildByIndexAsync(eWinWorklist, 1);  // Get 2nd child (index 1)
+```
+
+**Status**: ✅ Implemented in `UiBookmarks.Walk()` method (2025-01-16).
+
+**How It Works**:
+- When a node has **no attributes enabled** (UseName=false, UseClassName=false, UseAutomationId=false, UseControlTypeId=false)
+- **AND** `UseIndex=true` with `Scope=Children`
+- The resolver performs **pure index-based navigation**: `current.FindAllChildren()[IndexAmongMatches]`
+
+**Usage in SpyWindow**:
+1. **Disable all attributes** for the node:
+   - UseName=false, UseClassName=false, UseControlTypeId=false, UseAutomationId=false
+2. **Enable UseIndex=true**
+3. **Set IndexAmongMatches** to desired child index (0-based)
+4. **Set Scope=Children** (required for pure index)
+
+**Example Bookmark** (matching legacy `GetChildByIndexAsync(eWinWorklist, 1)`):
+```json
+{
+  "Name": "WorklistToolbar",
+  "Chain": [
+    { "Name": "INFINITT G3 Worklist...", "UseName": true, "Scope": "Descendants" },
+    { 
+      "UseName": false, 
+      "UseClassName": false, 
+      "UseControlTypeId": false, 
+      "UseAutomationId": false,
+      "UseIndex": true,
+      "IndexAmongMatches": 1,
+      "Scope": "Children"
+    }
+  ]
+}
+```
+
+**Trace Output**:
+```
+Step 3: Pure index navigation (no attributes, using index 1)
+Step 3: Pure index success - selected child at index 1 (5 ms)
+```
+
+**Benefits**:
+- ✅ Exact legacy pattern replication
+- ✅ Fast (no attribute matching overhead)
+- ✅ Works when attributes are unstable/unavailable
+
+**Trade-offs**:
+- ⚠️ Brittle: breaks if UI adds/removes/reorders children
+- ⚠️ Not self-documenting: unclear what element you're selecting
+- ⚠️ Only works with `Scope=Children` (not Descendants)
+
+**Recommendation**: Use only when attributes are truly unavailable or unstable. Prefer attribute-based matching for maintainability.
+
+### FR-965: Bookmark Health Check Tool (Low Priority)
 

@@ -251,6 +251,8 @@
                 <ComboBoxItem Tag="WorklistToolbar">Worklist toolbar</ComboBoxItem>
                 <ComboBoxItem Tag="WorklistViewButton">Worklist view button</ComboBoxItem>
                 <ComboBoxItem Tag="WorklistWindow">Worklist window</ComboBoxItem>
+                <ComboBoxItem Tag="Screen_MainCurrentStudyTab">Screen_main current study tab</ComboBoxItem>
+                <ComboBoxItem Tag="Screen_SubPreviousStudyTab">Screen_sub previous study tab</ComboBoxItem>
             </ComboBox>
             <Button Content="Map" Margin="6,0,0,0" Click="OnMapSelected"/>
             <Button Content="Resolve" Margin="6,0,0,0" Click="OnResolveSelected"/>
@@ -444,6 +446,8 @@
                         <!-- Custom mouse click procedures -->
                         <ComboBoxItem Tag="CustomMouseClick1">Custom mouse click 1</ComboBoxItem>
                         <ComboBoxItem Tag="CustomMouseClick2">Custom mouse click 2</ComboBoxItem>
+                        <ComboBoxItem Tag="SetCurrentStudyInMainScreen">Set current study in main screen</ComboBoxItem>
+                        <ComboBoxItem Tag="SetPreviousStudyInSubScreen">Set previous study in sub screen</ComboBoxItem>
                     </ComboBox>
                     <Button Content="Add" Click="OnAddProcRow"/>
                     <Button Content="Save" Margin="6,0,0,0" Click="OnSaveProcedure"/>
@@ -475,6 +479,7 @@
                                         <ComboBoxItem Content="Replace"/>
                                         <ComboBoxItem Content="GetHTML"/>
                                         <ComboBoxItem Content="MouseClick"/>
+                                        <ComboBoxItem Tag="ClickElement">ClickElement</ComboBoxItem>
                                     </ComboBox>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>

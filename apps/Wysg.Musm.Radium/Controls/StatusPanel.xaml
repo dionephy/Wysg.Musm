@@ -12,18 +12,14 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <ContentPresenter Grid.Row="0" Content="{Binding TopContent, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-        <TextBox Grid.Row="1"
+        <RichTextBox x:Name="richStatusBox" Grid.Row="1"
                  Margin="6,0,6,6"
                  IsReadOnly="True"
                  Background="#1E1E1E"
                  BorderBrush="#2D2D30"
                  BorderThickness="1"
-                 TextWrapping="Wrap"
-                 AcceptsReturn="True"
                  Height="60"
                  VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Disabled"
-                 Text="{Binding StatusText}"
-                 Foreground="{Binding StatusIsError, Converter={StaticResource BoolToBrushConverter}}"/>
+                 HorizontalScrollBarVisibility="Disabled"/>
     </Grid>
 </UserControl>

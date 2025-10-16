@@ -552,7 +552,7 @@ myocardial infarction,22298006,exact,1.0,"Standard mapping"
 **Validation Rules**:
 1. Process name must not be empty
 2. Chain must not be empty
-3. First node must have at least 2 enabled identifying attributes (Name, ClassName, AutomationId, ControlTypeId)
+3. First node must have at least 1 enabled identifying attribute (Name, ClassName, AutomationId, ControlTypeId)
 4. Nodes relying solely on UseIndex=true with IndexAmongMatches=0 generate warnings (recommend adding more attributes)
 
 **Error Handling**:
@@ -620,9 +620,124 @@ myocardial infarction,22298006,exact,1.0,"Standard mapping"
 
 **Rationale**: Eliminates non-deterministic bookmark resolution; prioritizes most distinctive attributes; improves reliability when PACS has multiple windows.
 
-### Notes
-- Snowstorm base URL configurable in settings (e.g., `http://localhost:8080`)
-- Support multiple SNOMED editions/branches (INT, US, KR) via Snowstorm branch parameter
-- Handle API failures gracefully (offline mode uses cached concepts only)
-- Consider rate limiting and batching for bulk operations
-- Future: Support SNOMED relationships and expression constraints for advanced mappings
+## FR-950 through FR-956: Status Log, UI Bookmarks, and PACS Methods (2025-01-15)
+
+### FR-950: Status Textbox Auto-Scroll and Line-by-Line Colorization
+**Requirement**: Status log in MainWindow must auto-scroll to show the most recent entries and support line-by-line color coding for better visibility.
+
+**FR-950a: Auto-Scroll Behavior**
+- Status textbox must automatically scroll to the end whenever new log entries are added
+- Users should always see the most recent log message without manual scrolling
+- Implemented by using RichTextBox instead of plain TextBox and calling `ScrollToEnd()` after content updates
+
+**FR-950b: Line-by-Line Colorization**
+- Error lines (containing "error", "failed", "exception", "validation failed") must appear in red (#FF5A5A)
+- Non-error lines must appear in default color (#D0D0D0)
+- Colorization applied per line during status text updates
+- Preserves readability with appropriate contrast ratios
+
+**Rationale**: Improves user awareness of automation status; errors stand out immediately; recent activity always visible without scrolling.
+
+### FR-951: New UI Bookmarks for Screen Areas
+**Requirement**: Add new KnownControl bookmarks for specific screen tab areas in PACS.
+
+**Screen_MainCurrentStudyTab**:
+- Maps to the current study tab area in the main screen
+- Used by `SetCurrentStudyInMainScreen` automation action
+- Allows automated switching to current study view
+
+**Screen_SubPreviousStudyTab**:
+- Maps to the previous study tab area in the sub/auxiliary screen
+- Used by `SetPreviousStudyInSubScreen` automation action
+- Allows automated switching to previous study view for comparison
+
+**Rationale**: Enables multi-monitor or split-screen PACS workflows where studies are displayed in different areas; supports automated view switching for comparison tasks.
+
+### FR-952: PACS Method – Set Current Study in Main Screen
+**Requirement**: Add new PACS custom procedure method `SetCurrentStudyInMainScreen` for automated screen switching.
+
+**Method Behavior**:
+- Executes custom procedure tag `SetCurrentStudyInMainScreen`
+- Default auto-seed: Single `ClickElement` operation targeting `Screen_MainCurrentStudyTab` bookmark
+- PacsService exposes `SetCurrentStudyInMainScreenAsync()` wrapper
+
+**Use Cases**:
+- Automation sequences that need to ensure main screen shows current study before performing actions
+- Multi-screen PACS workflows where studies open in different monitors
+- Quality control workflows requiring specific screen configurations
+
+**Rationale**: Standardizes screen state management across automation sequences; reduces manual coordination in multi-screen setups.
+
+### FR-953: PACS Method – Set Previous Study in Sub Screen
+**Requirement**: Add new PACS custom procedure method `SetPreviousStudyInSubScreen` for automated screen switching.
+
+**Method Behavior**:
+- Executes custom procedure tag `SetPreviousStudyInSubScreen`
+- Default auto-seed: Single `ClickElement` operation targeting `Screen_SubPreviousStudyTab` bookmark
+- PacsService exposes `SetPreviousStudyInSubScreenAsync()` wrapper
+
+**Use Cases**:
+- Comparison workflows requiring previous study visible in auxiliary screen
+- Side-by-side review automation
+- Teaching/demonstration scenarios with controlled screen layouts
+
+**Rationale**: Complements FR-952 for complete dual-screen automation; enables sophisticated comparison workflows.
+
+### FR-954: Custom Procedure Operation – ClickElement
+**Requirement**: Add new operation `ClickElement` to Custom Procedures for clicking at the center of a resolved UI element.
+
+**Operation Signature**:
+- Arg1: Element (Type=Element, maps to UiBookmarks.KnownControl)
+- Arg2: Disabled
+- Arg3: Disabled
+
+**Behavior**:
+1. Resolve UI element via bookmark system
+2. Get element's bounding rectangle
+3. Calculate center point: `(Left + Width/2, Top + Height/2)`
+4. Perform left mouse click at calculated screen coordinates
+5. Preview text: `(clicked element center X,Y)` on success
+
+**Error Handling**:
+- No element: `(no element)`
+- No bounds: `(no bounds)`
+- Click error: `(error: {message})`
+
+**Rationale**: Bridges gap between bookmark resolution and mouse actions; more reliable than hardcoded coordinates for dynamic UI elements; natural complement to existing `MouseClick` operation.
+
+### FR-955: SpyWindow Custom Procedures – New PACS Methods UI
+**Requirement**: SpyWindow Custom Procedures combo must list the new PACS methods for user configuration.
+
+**Methods to Add**:
+- "Set current study in main screen" (tag: `SetCurrentStudyInMainScreen`)
+- "Set previous study in sub screen" (tag: `SetPreviousStudyInSubScreen`)
+
+**Editor Behavior**:
+- Selecting these methods loads existing procedure or auto-seeds default (ClickElement operation)
+- Users can edit operation sequence and test via SpyWindow Run button
+- Saved procedures persist per-PACS profile
+
+**Rationale**: Discoverability of new automation capabilities; consistent with existing SpyWindow UI patterns.
+
+### FR-956: SpyWindow Operations Dropdown – ClickElement
+**Requirement**: SpyWindow Custom Procedures operation dropdown must include `ClickElement` with appropriate editor presets.
+
+**Editor Presets**:
+- Operation name: `ClickElement`
+- Arg1: Type=Element, enabled
+- Arg2: Disabled
+- Arg3: Disabled
+- Preview: Shows clicked coordinates after execution
+
+**Usage Flow**:
+1. Select `ClickElement` operation from dropdown
+2. Arg1 automatically preset to Element type
+3. User selects KnownControl from Element dropdown (e.g., `Screen_MainCurrentStudyTab`)
+4. Click Run to test operation
+5. Preview shows `(clicked element center X,Y)`
+
+**Rationale**: Consistent operation UI pattern; guides users to correct argument configuration; testable in SpyWindow before deployment.
+
+## Bug Fixes (2025-10-16)
+- BF-101: SpyWindow Custom Procedures now supports executing `ClickElement` from the UI editor. Operation clicks the center of the resolved element and shows preview `(clicked element center X,Y)`.
+- BF-102: Enforced single-instance behavior for `SpyWindow` across the app. MainWindow now opens the Spy via `SpyWindow.ShowInstance()` for both the menu/button and the Ctrl+Alt+S shortcut, preventing multiple windows.

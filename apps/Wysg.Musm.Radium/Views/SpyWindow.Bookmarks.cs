@@ -154,7 +154,7 @@ namespace Wysg.Musm.Radium.Views
             if (b.Chain == null || b.Chain.Count == 0)
                 errors.Add("Chain is empty");
             
-            // Check first node has sufficient identifying attributes
+            // Check first node has at least one identifying attribute (changed from 2 to 1)
             var firstNode = b.Chain?.FirstOrDefault();
             if (firstNode != null && firstNode.Include)
             {
@@ -164,8 +164,8 @@ namespace Wysg.Musm.Radium.Views
                 if (firstNode.UseAutomationId && !string.IsNullOrWhiteSpace(firstNode.AutomationId)) attrCount++;
                 if (firstNode.UseControlTypeId && firstNode.ControlTypeId.HasValue) attrCount++;
                 
-                if (attrCount < 2)
-                    errors.Add("First node has insufficient attributes (need at least 2 enabled)");
+                if (attrCount < 1)
+                    errors.Add("First node has insufficient attributes (need at least 1 enabled)");
             }
             
             // Check for nodes with UseIndex=true and IndexAmongMatches=0 (potential ambiguity)

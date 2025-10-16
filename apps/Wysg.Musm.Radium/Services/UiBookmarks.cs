@@ -42,7 +42,9 @@ public sealed class UiBookmarks
         ReportCommitButton,
         StudyRemark, // existing
         PatientRemark, // new: distinct bookmark for patient remark field
-        TestInvoke // new: generic target for testing Invoke operation
+        TestInvoke, // new: generic target for testing Invoke operation
+        Screen_MainCurrentStudyTab, // NEW: main screen current study tab area
+        Screen_SubPreviousStudyTab // NEW: sub screen previous study tab area
     }
 
     public enum MapMethod { Chain = 0, AutomationIdOnly = 1 }
@@ -167,6 +169,116 @@ public sealed class UiBookmarks
     {
         var b = GetMapping(key);
         return b == null ? (IntPtr.Zero, null) : ResolveBookmark(b);
+    }
+
+    /// <summary>
+    /// Resolves a KnownControl with automatic retry and progressive constraint relaxation.
+    /// Inspired by legacy PacsService pattern of trying multiple approaches (e.g., eViewer1 then eViewer2, AutomationId then ClassName).
+    /// </summary>
+    /// <param name="key">The KnownControl to resolve</param>
+    /// <param name="maxAttempts">Maximum number of resolution attempts (default 3)</param>
+    /// <returns>Tuple of (window handle, AutomationElement) or (IntPtr.Zero, null) if all attempts fail</returns>
+    public static (IntPtr hwnd, AutomationElement? element) ResolveWithRetry(KnownControl key, int maxAttempts = 3)
+    {
+        var b = GetMapping(key);
+        if (b == null) return (IntPtr.Zero, null);
+
+        for (int attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            // Attempt 1: Try exact match with all constraints
+            if (attempt == 0)
+            {
+                var result = ResolveBookmark(b);
+                if (result.element != null) return result;
+            }
+            // Attempt 2: Progressive relaxation - relax ControlType for all nodes
+            else if (attempt == 1)
+            {
+                var relaxed = RelaxBookmarkControlType(b);
+                var result = ResolveBookmark(relaxed);
+                if (result.element != null) return result;
+            }
+            // Attempt 3: Further relaxation - relax ClassName (keep Name + AutomationId)
+            else if (attempt == 2)
+            {
+                var relaxed = RelaxBookmarkClassName(b);
+                var result = ResolveBookmark(relaxed);
+                if (result.element != null) return result;
+            }
+
+            // Wait before next attempt (exponential backoff)
+            if (attempt < maxAttempts - 1)
+            {
+                System.Threading.Thread.Sleep(150 * (attempt + 1)); // 150ms, 300ms
+            }
+        }
+
+        // All attempts exhausted
+        return (IntPtr.Zero, null);
+    }
+
+    /// <summary>
+    /// Creates a copy of the bookmark with ControlType constraint relaxed on all nodes.
+    /// Inspired by legacy pattern: try AutomationId first, fall back without ControlType constraint.
+    /// </summary>
+    private static Bookmark RelaxBookmarkControlType(Bookmark b)
+    {
+        return new Bookmark
+        {
+            Name = b.Name,
+            ProcessName = b.ProcessName,
+            Method = b.Method,
+            DirectAutomationId = b.DirectAutomationId,
+            CrawlFromRoot = b.CrawlFromRoot,
+            Chain = b.Chain.Select(n => new Node
+            {
+                Name = n.Name,
+                ClassName = n.ClassName,
+                ControlTypeId = n.ControlTypeId,
+                AutomationId = n.AutomationId,
+                IndexAmongMatches = n.IndexAmongMatches,
+                Include = n.Include,
+                UseName = n.UseName,
+                UseClassName = n.UseClassName,
+                UseControlTypeId = false, // Relax ControlType
+                UseAutomationId = n.UseAutomationId,
+                UseIndex = n.UseIndex,
+                Scope = n.Scope,
+                Order = n.Order
+            }).ToList()
+        };
+    }
+
+    /// <summary>
+    /// Creates a copy of the bookmark with ClassName constraint relaxed on all nodes (keeps Name + AutomationId).
+    /// Most aggressive relaxation - only use when other attempts fail.
+    /// </summary>
+    private static Bookmark RelaxBookmarkClassName(Bookmark b)
+    {
+        return new Bookmark
+        {
+            Name = b.Name,
+            ProcessName = b.ProcessName,
+            Method = b.Method,
+            DirectAutomationId = b.DirectAutomationId,
+            CrawlFromRoot = b.CrawlFromRoot,
+            Chain = b.Chain.Select(n => new Node
+            {
+                Name = n.Name,
+                ClassName = n.ClassName,
+                ControlTypeId = n.ControlTypeId,
+                AutomationId = n.AutomationId,
+                IndexAmongMatches = n.IndexAmongMatches,
+                Include = n.Include,
+                UseName = n.UseName,
+                UseClassName = false, // Relax ClassName
+                UseControlTypeId = false, // Also relax ControlType
+                UseAutomationId = n.UseAutomationId,
+                UseIndex = n.UseIndex,
+                Scope = n.Scope,
+                Order = n.Order
+            }).ToList()
+        };
     }
 
     public static (IntPtr hwnd, AutomationElement? element) Resolve(string name)
@@ -330,7 +442,43 @@ public sealed class UiBookmarks
             }
 
             var cond = BuildAndCondition(node, cf);
-            if (cond == null) { trace?.AppendLine($"Step {i}: No constraints"); continue; }
+            if (cond == null) 
+            { 
+                // FIX: Support pure index-based navigation (legacy pattern)
+                // When no attributes are enabled but UseIndex=true, use index-based child selection
+                if (node.UseIndex && node.Scope == SearchScope.Children)
+                {
+                    trace?.AppendLine($"Step {i}: Pure index navigation (no attributes, using index {node.IndexAmongMatches})");
+                    
+                    try
+                    {
+                        var children = current.FindAllChildren();
+                        if (children.Length > node.IndexAmongMatches)
+                        {
+                            current = children[node.IndexAmongMatches];
+                            path.Add(current);
+                            stepSw.Stop();
+                            trace?.AppendLine($"Step {i}: Pure index success - selected child at index {node.IndexAmongMatches} ({stepSw.ElapsedMilliseconds} ms)");
+                            continue;
+                        }
+                        else
+                        {
+                            stepSw.Stop();
+                            trace?.AppendLine($"Step {i}: Pure index failed - index {node.IndexAmongMatches} out of range (only {children.Length} children) ({stepSw.ElapsedMilliseconds} ms)");
+                            return (null, new());
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        stepSw.Stop();
+                        trace?.AppendLine($"Step {i}: Pure index failed - {ex.Message} ({stepSw.ElapsedMilliseconds} ms)");
+                        return (null, new());
+                    }
+                }
+                
+                trace?.AppendLine($"Step {i}: No constraints"); 
+                continue; 
+            }
 
             AutomationElement[] matches = Array.Empty<AutomationElement>();
             // FIX: Detailed retry timing breakdown
