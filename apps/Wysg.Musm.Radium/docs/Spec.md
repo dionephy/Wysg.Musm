@@ -103,7 +103,7 @@
 - FR-600 Multi-PACS tenancy: A local tenant represents a unique (account_id × PACS combination). Persist tenants in `app.tenant` with `(account_id, pacs_key)` unique.
 - FR-601 Patient tenancy: `med.patient` MUST include `tenant_id` FK to `app.tenant`. Patient uniqueness MUST be `(tenant_id, patient_number)`.
 - FR-602 Studyname tenancy: `med.rad_studyname` MUST include `tenant_id` FK to `app.tenant`. Studyname uniqueness MUST be `(tenant_id, studyname)`.
-- FR-603 Repository behavior: RadStudyRepository and StudynameLoincRepository MUST scope CRUD/queries by current `ITenantContext.TenantId` when set (>0).
+- FR-603 Repository behavior: RadStudyRepository and StudynameLoincRepository MUST scope CRUD/queries to current `ITenantContext.TenantId` when set (>0).
 - FR-604 Technique table rename: All technique-related tables MUST be prefixed with `rad_technique`:
   - `med.rad_technique_prefix`, `med.rad_technique_tech`, `med.rad_technique_suffix`, `med.rad_technique`,
   - `med.rad_technique_combination`, `med.rad_technique_combination_item`.
@@ -738,6 +738,190 @@ myocardial infarction,22298006,exact,1.0,"Standard mapping"
 
 **Rationale**: Consistent operation UI pattern; guides users to correct argument configuration; testable in SpyWindow before deployment.
 
-## Bug Fixes (2025-10-16)
-- BF-101: SpyWindow Custom Procedures now supports executing `ClickElement` from the UI editor. Operation clicks the center of the resolved element and shows preview `(clicked element center X,Y)`.
-- BF-102: Enforced single-instance behavior for `SpyWindow` across the app. MainWindow now opens the Spy via `SpyWindow.ShowInstance()` for both the menu/button and the Ctrl+Alt+S shortcut, preventing multiple windows.
+### FR-957: PACS Method – Worklist Is Visible (2025-01-16)
+**Requirement**: Add new PACS custom procedure method `WorklistIsVisible` for checking if worklist window is visible.
+
+**Method Behavior**:
+- Executes custom procedure tag `WorklistIsVisible`
+- Default auto-seed: Single `IsVisible` operation targeting `WorklistWindow` bookmark
+- PacsService exposes `WorklistIsVisibleAsync()` wrapper
+- Returns "true" if worklist window is visible and reachable, "false" otherwise
+
+**Use Cases**:
+- Automation sequences that need to check worklist state before performing actions
+- Conditional logic workflows where actions depend on worklist visibility
+- Quality control workflows requiring specific UI states
+
+**Rationale**: Enables conditional automation based on UI visibility state; complements existing PACS control methods.
+
+### FR-970: PACS Method – ReportText Is Visible (2025-01-17)
+**Requirement**: Add new PACS custom procedure method `ReportTextIsVisible` for checking if the report text editor is visible in the current PACS view.
+
+**Method Behavior**:
+- Executes custom procedure tag `ReportTextIsVisible`
+- Default auto-seed: Single `IsVisible` operation targeting `ReportText` bookmark
+- PacsService exposes `ReportTextIsVisibleAsync()` wrapper
+- Returns "true" if report text editor is visible and reachable, "false" otherwise
+
+**Use Cases**:
+- AddPreviousStudy automation module to determine which getter methods to use
+- Conditional report extraction based on PACS UI state
+- Quality control workflows requiring specific report editor states
+
+**Rationale**: Different PACS UI states require different methods to extract report content; visibility check enables automatic adaptation to current UI layout.
+
+### FR-971: AddPreviousStudy – Conditional Getter Selection (2025-01-17)
+**Requirement**: Modify AddPreviousStudy automation module to check ReportText visibility and conditionally select appropriate getter methods for findings and conclusion.
+
+**Logic Flow**:
+1. Before extracting report content, call `ReportTextIsVisibleAsync()` to check editor visibility
+2. If `ReportTextIsVisible` returns "true":
+   - Use `GetCurrentFindings` and `GetCurrentConclusion` methods (primary getters)
+   - These methods target the visible report text editor elements
+   - Set status: "ReportText visible - using primary getters"
+3. If `ReportTextIsVisible` returns "false":
+   - Use `GetCurrentFindings2` and `GetCurrentConclusion2` methods (alternate getters)
+   - These methods target alternate UI elements when report text is not visible
+   - Set status: "ReportText not visible - using alternate getters"
+4. Continue with existing logic to persist and load previous study
+
+**Behavior Changes**:
+- Previous behavior: Always called all four getters and picked the longer result
+- New behavior: Conditionally calls only the appropriate getters based on visibility
+- Fallback: If visibility check fails or returns unexpected value, uses alternate getters (safe default)
+
+**Rationale**: Improves reliability by selecting the correct extraction method based on actual PACS UI state; reduces redundant API calls; provides clearer diagnostic status messages.
+
+### FR-974: AddPreviousStudy – Fallback to Alternate Getters When Primary Returns Blank (2025-01-17)
+**Requirement**: Enhance AddPreviousStudy conditional getter logic to support fallback to alternate getters when primary getters return blank results.
+
+**Previous Behavior (FR-971)**:
+- If ReportText visible: use primary getters only
+- If ReportText not visible: use alternate getters only
+- No fallback mechanism when primary getters succeeded but returned blank content
+
+**New Behavior (Enhanced)**:
+1. Check ReportText visibility using `ReportTextIsVisibleAsync()`
+2. If ReportText is visible:
+   - First, try primary getters (`GetCurrentFindings`, `GetCurrentConclusion`)
+   - If BOTH findings AND conclusion are blank → try alternate getters as fallback
+   - Use longer result from primary/alternate for each field (findings, conclusion)
+   - Status: "ReportText visible - using primary + alternate getters (fallback)" when fallback triggered
+   - Status: "ReportText visible - using primary getters" when primary returns content
+3. If ReportText is not visible:
+   - Use alternate getters only (unchanged from FR-971)
+   - Status: "ReportText not visible - using alternate getters"
+
+**Rationale**:
+- Handles edge case where ReportText is visible but empty (e.g., new blank report)
+- Provides automatic fallback without requiring user intervention
+- Maximizes chance of capturing report content regardless of PACS UI state
+- Maintains clear status messages for troubleshooting
+
+**Example Scenarios**:
+1. **Primary Success**: ReportText visible with content → primary getters return content → use primary results
+2. **Primary Blank + Alternate Success**: ReportText visible but blank → primary returns "" → alternate getters tried → use alternate results
+3. **Both Blank**: ReportText visible but all getters return blank → both attempted → blank results accepted
+4. **ReportText Hidden**: ReportText not visible → only alternate getters tried → use alternate results
+
+**Implementation Details**:
+- Fallback logic checks `string.IsNullOrWhiteSpace()` for both findings and conclusion
+- PickLonger helper selects result with most characters (fallback to first if equal)
+- Sequential async execution: primary first, then alternate only if needed
+- Status messages clearly indicate which path was taken for diagnostics
+
+### FR-975: GetPatientRemark – Remove Duplicate Lines (2025-01-17)
+**Requirement**: After retrieving the patient remark string via `GetCurrentPatientRemarkAsync()`, the system MUST automatically remove duplicate lines before storing in the `PatientRemark` property.
+
+**Duplicate Definition**:
+- Lines are considered duplicate if the text wrapped within angle brackets (`<` and `>`) is the same (case-insensitive).
+- Example:
+  - Line 1: `Patient has <diabetes> since 2020`
+  - Line 2: `History of <diabetes> with complications`
+  - These lines are duplicates because both contain `<diabetes>`
+
+**Behavior**:
+1. After retrieving patient remark string from PACS, split into lines
+2. For each line, extract the text between `<` and `>` (if present)
+3. Track seen angle-bracket content in a case-insensitive set
+4. Keep only the first occurrence of each unique angle-bracket content
+5. Lines without angle-bracket content are always kept (no deduplication)
+6. Rejoin lines with newline separator
+
+**Implementation**:
+- Method: `RemoveDuplicateLinesInPatientRemark(string input)` in `MainViewModel.Commands.cs`
+- Helper: `ExtractAngleBracketContent(string line)` extracts text between `<` and `>`
+- Uses `HashSet<string>` with `StringComparer.OrdinalIgnoreCase` for duplicate detection
+- Called automatically in `AcquirePatientRemarkAsync()` before setting `PatientRemark` property
+
+**Edge Cases**:
+- Empty or null input: returns unchanged
+- Lines with no angle brackets: always kept (not considered for deduplication)
+- Lines with only opening `<` or only closing `>`: not considered for deduplication
+- Lines with `<>` (empty content): not considered for deduplication
+- Multiple angle bracket pairs per line: only first pair is extracted
+- Malformed brackets (`>` before `<`): not considered for deduplication
+
+**Example**:
+```
+Input:
+<DM> diagnosed in 2020
+<HTN> under control
+<DM> with complications
+No angle brackets here
+<CKD> stage 3
+
+Output:
+<DM> diagnosed in 2020
+<HTN> under control
+No angle brackets here
+<CKD> stage 3
+```
+
+**Rationale**:
+- Patient remarks often contain redundant entries with similar structured tags
+- Duplicate lines clutter the UI and report editor
+- Removing duplicates based on tag content reduces noise while preserving unique information
+- Case-insensitive matching handles inconsistent capitalization in PACS data
+
+## Update: Enhanced Manage Studyname Techniques Window with Combination Building (2025-01-17)
+- FR-1020 StudynameTechniqueWindow MUST provide a split-panel layout with left panel for building new combinations and right panel for managing existing combinations.
+- FR-1021 The left panel MUST include ComboBoxes for selecting Prefix, Tech, and Suffix components with "+" buttons to add new components inline.
+- FR-1022 The left panel MUST display a "Current Combination" list showing techniques added to the working combination before saving.
+- FR-1023 Users MUST be able to click "Add to Combination" to add the selected prefix+tech+suffix to the current combination list.
+- FR-1024 The window MUST prevent duplicate techniques (same prefix, tech, suffix triple) from being added to the current combination.
+- FR-1025 Users MUST be able to save the current combination as a new non-default combination using a "Save as New Combination" button.
+- FR-1026 The saved combination MUST automatically appear in the existing combinations list on the right panel without requiring window close/reopen.
+- FR-1027 The right panel MUST continue to display existing combinations with their display text and default status indicator.
+- FR-1028 The ComboBox items MUST display properly by overriding ToString() in TechText, CombinationItem, and ComboRow classes.
+- FR-1029 The window layout MUST use a GridSplitter between left and right panels for user-adjustable sizing.
+- FR-1030 All UI components MUST follow the dark theme styling consistent with other Radium windows.
+- FR-1031 The "+" buttons MUST open simple modal dialogs prompting for text input to add new prefix/tech/suffix components.
+- FR-1032 After adding a new component via "+" button, the component MUST be automatically selected in the corresponding ComboBox.
+
+## Update: Set Default Technique Combination in Manage Studyname Techniques Window (2025-01-17)
+- FR-1000 StudynameTechniqueWindow MUST display a list of existing technique combinations for the selected studyname with their default status.
+- FR-1001 The combinations list MUST show combination display text and an indicator (e.g., checkmark) for the currently marked default combination.
+- FR-1002 Users MUST be able to select any combination from the list and click a "Set Selected As Default" button to change the default for the studyname.
+- FR-1003 After setting a new default, the combinations list MUST refresh to show the updated default status without requiring the user to close and reopen the window.
+- FR-1004 The "Set Selected As Default" button MUST only be enabled when a combination is selected from the list.
+- FR-1005 The combinations list MUST be displayed in a DataGrid with columns for the combination display text and default status.
+- FR-1006 The default status indicator MUST use a checkmark symbol (✓) for clarity.
+- FR-1007 The window layout MUST accommodate the combinations list and button below the header information, with proper spacing and sizing.
+- FR-1008 The SetDefaultCommand in StudynameTechniqueViewModel MUST reload the combinations list after successfully setting a new default to reflect the change immediately.
+- FR-1009 The implementation MUST maintain existing functionality for adding new default combinations via the "Add And Set As Default" button.
+- FR-1010 The window MUST maintain proper dark theme styling consistent with other Radium windows.
+
+## Update: DataGrid Text Visibility Fix (2025-01-17)
+- FR-1042 The "Technique Combination" DataGridTextColumn MUST display text in visible Gainsboro color by setting ElementStyle with Foreground property to ensure visibility against black background in dark theme.
+
+## Update: Delete Combination and ListBox Display Fix in Manage Studyname Techniques Window (2025-01-17)
+- FR-1033 The "Current Combination" ListBox MUST display technique text properly by setting DisplayMemberPath to "TechniqueDisplay" as a string property, not via binding.
+- FR-1034 Users MUST be able to delete existing combinations from the studyname via a "Delete Selected Combination" button.
+- FR-1035 The delete button MUST be placed next to the "Set Selected As Default" button in a vertical stack layout.
+- FR-1036 Clicking delete MUST show a confirmation dialog with the combination display text and Yes/No buttons.
+- FR-1037 After successful deletion, the combinations list MUST refresh automatically and the selected combination MUST be cleared.
+- FR-1038 The "Delete Selected Combination" button MUST only be enabled when a combination is selected from the list.
+- FR-1039 The delete operation MUST only remove the link between the studyname and combination (not delete the combination itself from the database).
+- FR-1040 If deletion fails, an error message MUST be displayed to the user with the exception message.
+- FR-1041 The info text in the right panel MUST be updated to indicate that users can "set default or delete" combinations.

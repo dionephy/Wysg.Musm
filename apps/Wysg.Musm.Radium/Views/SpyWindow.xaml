@@ -5,207 +5,17 @@
         Title="UI Spy" Height="900" Width="1200"
         Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-        <!-- Dark palette -->
-        <SolidColorBrush x:Key="Dark.Background" Color="#1E1E1E"/>
-        <SolidColorBrush x:Key="Dark.Panel" Color="#252526"/>
-        <SolidColorBrush x:Key="Dark.Accent" Color="#2D2D30"/>
-        <SolidColorBrush x:Key="Dark.Border" Color="#3C3C3C"/>
-        <SolidColorBrush x:Key="Dark.Foreground" Color="#D0D0D0"/>
-        <SolidColorBrush x:Key="Dark.ForegroundDim" Color="#B0B0B0"/>
-        <SolidColorBrush x:Key="Dark.Hover" Color="#2F2F33"/>
-        <SolidColorBrush x:Key="Dark.HoverBorder" Color="#5A5A5A"/>
-        <SolidColorBrush x:Key="Dark.HoverOverlay" Color="#203A3A3D"/>
-        <SolidColorBrush x:Key="Dark.Pressed" Color="#454549"/>
-        <!-- Path highlight brushes -->
-        <SolidColorBrush x:Key="Path.Level1" Color="#332B6CB0"/>
-        <SolidColorBrush x:Key="Path.Level2" Color="#334CAF50"/>
-        <SolidColorBrush x:Key="Path.Level3" Color="#33FF9800"/>
-        <SolidColorBrush x:Key="Path.Level4" Color="#33E91E63"/>
-        <SolidColorBrush x:Key="Path.Deep"   Color="#333A3D41"/>
-
-        <!-- Buttons -->
-        <Style TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource Dark.Accent}"/>
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="6,3"/>
-            <Setter Property="SnapsToDevicePixels" Value="True"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{StaticResource Dark.Pressed}"/>
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="{StaticResource Dark.Pressed}"/>
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Foreground" Value="#808080"/>
-                    <Setter Property="Background" Value="#2A2A2A"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- TextBox -->
-        <Style x:Key="DarkTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CaretBrush" Value="White"/>
-        </Style>
-        <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}"/>
-
-        <!-- Toggle overlay template -->
-        <ControlTemplate x:Key="OverlayToggleTemplate" TargetType="ToggleButton">
-            <Border Background="Transparent"/>
-        </ControlTemplate>
-
-        <!-- ComboBox template -->
-        <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBox">
-                        <Grid>
-                            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="2"/>
-                            <Border x:Name="HoverOverlay" Background="Transparent" CornerRadius="2"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="22"/>
-                                </Grid.ColumnDefinitions>
-                                <!-- Show selected text reliably -->
-                                <TextBlock Grid.Column="0" Margin="6,2,4,2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                    <TextBlock.Text>
-                                        <PriorityBinding>
-                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectedValue"/>
-                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectedItem.Name"/>
-                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Text"/>
-                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectionBoxItem"/>
-                                        </PriorityBinding>
-                                    </TextBlock.Text>
-                                </TextBlock>
-                                <Border Grid.Column="1" Background="{StaticResource Dark.Accent}" IsHitTestVisible="False">
-                                    <Path HorizontalAlignment="Center" VerticalAlignment="Center" Data="M 0 0 L 4 4 L 8 0 Z" Fill="{StaticResource Dark.Foreground}"/>
-                                </Border>
-                                <ToggleButton x:Name="Toggle" Grid.ColumnSpan="2" Background="Transparent" BorderBrush="Transparent" BorderThickness="0"
-                                              FocusVisualStyle="{x:Null}"
-                                              Template="{StaticResource OverlayToggleTemplate}"
-                                              IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"/>
-                            </Grid>
-                            <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
-                                <Border Background="{StaticResource Dark.Panel}" BorderBrush="{StaticResource Dark.Border}" BorderThickness="1" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
-                                    <ScrollViewer>
-                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
-                                    </ScrollViewer>
-                                </Border>
-                            </Popup>
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Dark.HoverBorder}"/>
-                                <Setter TargetName="HoverOverlay" Property="Background" Value="{StaticResource Dark.HoverOverlay}"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Bd" Property="Background" Value="#2A2A2A"/>
-                                <Setter Property="Foreground" Value="#808080"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style TargetType="ComboBoxItem">
-            <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-        </Style>
-
-        <!-- CheckBox -->
-        <Style x:Key="DarkCheckBox" TargetType="CheckBox">
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="CheckBox">
-                        <StackPanel Orientation="Horizontal">
-                            <Border x:Name="Box" Width="14" Height="14" Background="{StaticResource Dark.Panel}" BorderBrush="{StaticResource Dark.Border}" BorderThickness="1" CornerRadius="2">
-                                <Path x:Name="CheckMark" Visibility="Collapsed" Stroke="#E6E6E6" StrokeThickness="2" Data="M 2 8 L 6 12 L 12 3"/>
-                            </Border>
-                            <ContentPresenter Margin="6,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True"/>
-                        </StackPanel>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
-                                <Setter TargetName="Box" Property="Background" Value="{StaticResource Dark.Accent}"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Box" Property="Background" Value="#2A2A2A"/>
-                                <Setter TargetName="Box" Property="BorderBrush" Value="#3A3A3A"/>
-                                <Setter TargetName="CheckMark" Property="Stroke" Value="#A8A8A8"/>
-                                <Setter Property="Foreground" Value="#9B9B9B"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style TargetType="CheckBox" BasedOn="{StaticResource DarkCheckBox}"/>
-
-        <!-- ScrollBar -->
-        <Style TargetType="ScrollBar">
-            <Setter Property="Background" Value="{StaticResource Dark.Accent}"/>
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-        </Style>
-
-        <!-- TreeView styles -->
-        <Style TargetType="TreeView">
-            <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-        <Style TargetType="TreeViewItem">
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-            <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{StaticResource Dark.Hover}"/>
-                </Trigger>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#2F2F33"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <!-- DataGrid -->
-        <Style TargetType="DataGrid">
-            <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
-            <Setter Property="GridLinesVisibility" Value="All"/>
-            <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource Dark.Border}"/>
-            <Setter Property="VerticalGridLinesBrush" Value="{StaticResource Dark.Border}"/>
-            <Setter Property="RowBackground" Value="#222"/>
-            <Setter Property="AlternatingRowBackground" Value="#262626"/>
-        </Style>
-        <Style TargetType="DataGridColumnHeader">
-            <Setter Property="Background" Value="{StaticResource Dark.Accent}"/>
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
-        </Style>
-        <Style TargetType="DataGridCell">
-            <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
-        </Style>
-        <Style TargetType="GroupBox">
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-        </Style>
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
-        </Style>
+        <!-- Merge external resource dictionaries -->
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="SpyWindow.Styles.xaml"/>
+                <ResourceDictionary Source="SpyWindow.PacsMethodItems.xaml"/>
+                <ResourceDictionary Source="SpyWindow.OperationItems.xaml"/>
+                <ResourceDictionary Source="SpyWindow.KnownControlItems.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid Margin="8">
@@ -222,44 +32,18 @@
             <TextBlock x:Name="txtPacsKey" Width="160" VerticalAlignment="Center"/>
             <TextBlock Text="  |  " VerticalAlignment="Center" Margin="6,0,6,0"/>
             <TextBlock Text="Process:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <TextBox x:Name="txtProcess" Width="160" Text=""/>
+            <TextBox x:Name="txtProcess" Width="160" Text="" Style="{StaticResource DarkTextBox}"/>
             <TextBlock Text="Delay(ms):" VerticalAlignment="Center" Margin="8,0,4,0"/>
-            <TextBox x:Name="txtDelay" Width="60" Text="1500"/>
-            <Button Content="Pick" Margin="8,0,0,0" Click="OnPick"/>
+            <TextBox x:Name="txtDelay" Width="60" Text="1500" Style="{StaticResource DarkTextBox}"/>
+            <Button Content="Pick" Margin="8,0,0,0" Click="OnPick" Style="{StaticResource SpyWindowButtonStyle}"/>
             <TextBlock Text="Map to:" Margin="12,0,6,0" VerticalAlignment="Center"/>
-            <ComboBox x:Name="cmbKnown" Width="300" SelectionChanged="OnKnownSelectionChanged" SelectedValuePath="Tag">
-                <ComboBoxItem Tag="CloseWorklistButton">Close worklist button</ComboBoxItem>
-                <ComboBoxItem Tag="OpenWorklistButton">Open worklist button</ComboBoxItem>
-                <ComboBoxItem Tag="RelatedStudyList">Related studies list</ComboBoxItem>
-                <ComboBoxItem Tag="ReportCommitButton">Report commit button</ComboBoxItem>
-                <ComboBoxItem Tag="ReportInput">Report input</ComboBoxItem>
-                <ComboBoxItem Tag="ReportPane">Report pane</ComboBoxItem>
-                <ComboBoxItem Tag="ReportText">Report text</ComboBoxItem>
-                <ComboBoxItem Tag="ReportText2">Report text 2</ComboBoxItem>
-                <ComboBoxItem Tag="SearchResultsList">Search results list</ComboBoxItem>
-                <ComboBoxItem Tag="SelectedStudyInRelated">Selected study in related studies</ComboBoxItem>
-                <ComboBoxItem Tag="SelectedStudyInSearch">Selected study in search results</ComboBoxItem>
-                <ComboBoxItem Tag="StudyInfoBanner">Study info banner</ComboBoxItem>
-                <ComboBoxItem Tag="StudyList">Study list</ComboBoxItem>
-                <ComboBoxItem Tag="StudyRemark">Study remark</ComboBoxItem>
-                <ComboBoxItem Tag="PatientRemark">Patient remark</ComboBoxItem>
-                <ComboBoxItem Tag="TestInvoke">Test button</ComboBoxItem>
-                <ComboBoxItem Tag="ViewerToolbar">Viewer toolbar</ComboBoxItem>
-                <ComboBoxItem Tag="ViewerWindow">Viewer window</ComboBoxItem>
-                <ComboBoxItem Tag="WorklistListsPane">Worklist lists pane</ComboBoxItem>
-                <ComboBoxItem Tag="WorklistPane">Worklist pane</ComboBoxItem>
-                <ComboBoxItem Tag="WorklistToolbar">Worklist toolbar</ComboBoxItem>
-                <ComboBoxItem Tag="WorklistViewButton">Worklist view button</ComboBoxItem>
-                <ComboBoxItem Tag="WorklistWindow">Worklist window</ComboBoxItem>
-                <ComboBoxItem Tag="Screen_MainCurrentStudyTab">Screen_main current study tab</ComboBoxItem>
-                <ComboBoxItem Tag="Screen_SubPreviousStudyTab">Screen_sub previous study tab</ComboBoxItem>
-            </ComboBox>
-            <Button Content="Map" Margin="6,0,0,0" Click="OnMapSelected"/>
-            <Button Content="Resolve" Margin="6,0,0,0" Click="OnResolveSelected"/>
-            <Button Content="Reload" Margin="6,0,0,0" Click="OnReload"/>
-            <!-- Picked screen coordinates (X,Y) shown after Pick -->
-            <TextBox x:Name="txtPickedPoint" Width="120" IsReadOnly="True" Margin="12,0,0,0" ToolTip="Picked point (X,Y)"/>
-            <CheckBox x:Name="chkEnableTree" Content="Enable Tree" Margin="12,0,0,0" IsChecked="False"/>
+            <ComboBox x:Name="cmbKnown" Width="300" SelectionChanged="OnKnownSelectionChanged" SelectedValuePath="Tag"
+                      Style="{StaticResource SpyWindowComboBoxStyle}" ItemsSource="{StaticResource KnownControlItems}"/>
+            <Button Content="Map" Margin="6,0,0,0" Click="OnMapSelected" Style="{StaticResource SpyWindowButtonStyle}"/>
+            <Button Content="Resolve" Margin="6,0,0,0" Click="OnResolveSelected" Style="{StaticResource SpyWindowButtonStyle}"/>
+            <Button Content="Reload" Margin="6,0,0,0" Click="OnReload" Style="{StaticResource SpyWindowButtonStyle}"/>
+            <TextBox x:Name="txtPickedPoint" Width="120" IsReadOnly="True" Margin="12,0,0,0" ToolTip="Picked point (X,Y)" Style="{StaticResource DarkTextBox}"/>
+            <CheckBox x:Name="chkEnableTree" Content="Enable Tree" Margin="12,0,0,0" IsChecked="False" Style="{StaticResource DarkCheckBox}"/>
         </StackPanel>
 
         <!-- Middle: Left tree + Right editor -->
@@ -268,13 +52,9 @@
                 <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="3*"/>
             </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
 
             <!-- Left: UI tree -->
-            <GroupBox Grid.Column="0" Header="UI Tree (root -> descendants)" Margin="0,0,6,0">
+            <GroupBox Grid.Column="0" Header="UI Tree (root -> descendants)" Margin="0,0,6,0" Style="{StaticResource SpyWindowGroupBoxStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
@@ -282,6 +62,7 @@
                     </Grid.RowDefinitions>
 
                     <TreeView x:Name="tvAncestry" Grid.Row="0" SelectedItemChanged="OnAncestrySelected"
+                              Style="{StaticResource SpyWindowTreeViewStyle}"
                               ScrollViewer.HorizontalScrollBarVisibility="Auto"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
                               Visibility="{Binding IsChecked, ElementName=chkEnableTree, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -305,42 +86,44 @@
                         </TreeView.ItemTemplate>
                     </TreeView>
 
-                    <GroupBox Grid.Row="1" Header="Selected node properties" Margin="0,6,0,0">
-                        <TextBox x:Name="txtNodeProps" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" Height="90" VerticalScrollBarVisibility="Auto"
-                                 Background="{StaticResource Dark.Panel}" Foreground="{StaticResource Dark.Foreground}" BorderBrush="{StaticResource Dark.Border}" BorderThickness="1"/>
+                    <GroupBox Grid.Row="1" Header="Selected node properties" Margin="0,6,0,0" Style="{StaticResource SpyWindowGroupBoxStyle}">
+                        <TextBox x:Name="txtNodeProps" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" Height="90" 
+                                 VerticalScrollBarVisibility="Auto" Style="{StaticResource DarkTextBox}"/>
                     </GroupBox>
                 </Grid>
             </GroupBox>
 
             <!-- Right: Crawl Editor -->
-            <GroupBox Grid.Column="1" Header="Crawl Editor">
+            <GroupBox Grid.Column="1" Header="Crawl Editor" Style="{StaticResource SpyWindowGroupBoxStyle}">
                 <DockPanel>
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,6">
                         <TextBlock Text="Map Method:" VerticalAlignment="Center"/>
-                        <ComboBox x:Name="cmbMethod" Width="150" Margin="6,0,12,0">
+                        <ComboBox x:Name="cmbMethod" Width="150" Margin="6,0,12,0" Style="{StaticResource SpyWindowComboBoxStyle}">
                             <ComboBoxItem Tag="Chain">Chain</ComboBoxItem>
                             <ComboBoxItem Tag="AutomationIdOnly">AutomationIdOnly</ComboBoxItem>
                         </ComboBox>
-                        <Button Content="Validate" Click="OnValidateChain"/>
-                        <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke"/>
-                        <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText"/>
-                        <Button Content="Get Name" Margin="6,0,0,0" Click="OnGetName"/>
-                        <Button Content="Get HTML" Margin="6,0,0,0" Click="OnGetHtml"/>
-                        <Button Content="Row Data" Margin="6,0,0,0" Click="OnGetSelectedRow"/>
-                        <Button Content="Save" Margin="6,0,0,0" Click="OnSaveEdited"/>
+                        <Button Content="Validate" Click="OnValidateChain" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Get Name" Margin="6,0,0,0" Click="OnGetName" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Get HTML" Margin="6,0,0,0" Click="OnGetHtml" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Row Data" Margin="6,0,0,0" Click="OnGetSelectedRow" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Save" Margin="6,0,0,0" Click="OnSaveEdited" Style="{StaticResource SpyWindowButtonStyle}"/>
                         <Separator Margin="12,0" Width="10"/>
-                        <Button Content="Move Up" Click="OnMoveUp"/>
-                        <Button Content="Move Down" Margin="6,0,0,0" Click="OnMoveDown"/>
-                        <Button Content="Insert Above" Margin="6,0,0,0" Click="OnInsertAbove"/>
-                        <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteNode"/>
+                        <Button Content="Move Up" Click="OnMoveUp" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Move Down" Margin="6,0,0,0" Click="OnMoveDown" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Insert Above" Margin="6,0,0,0" Click="OnInsertAbove" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteNode" Style="{StaticResource SpyWindowButtonStyle}"/>
                     </StackPanel>
 
-                    <DataGrid x:Name="gridChain" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="True" CanUserDeleteRows="True" IsReadOnly="False" CellEditEnding="OnGridCellEditEnding">
+                    <DataGrid x:Name="gridChain" AutoGenerateColumns="False" HeadersVisibility="Column" 
+                              CanUserAddRows="True" CanUserDeleteRows="True" IsReadOnly="False" 
+                              CellEditEnding="OnGridCellEditEnding" Style="{StaticResource SpyWindowDataGridStyle}">
                         <DataGrid.Resources>
                             <Style TargetType="CheckBox" BasedOn="{StaticResource DarkCheckBox}">
                                 <EventSetter Event="Click" Handler="OnTemplateCheckBoxClick"/>
                             </Style>
-                            <Style TargetType="ComboBox">
+                            <Style TargetType="ComboBox" BasedOn="{StaticResource SpyWindowComboBoxStyle}">
                                 <EventSetter Event="SelectionChanged" Handler="OnTemplateComboSelectionChanged"/>
                             </Style>
                         </DataGrid.Resources>
@@ -348,7 +131,8 @@
                             <DataGridTemplateColumn Header="Scope" Width="105">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <ComboBox SelectedIndex="{Binding LocateIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="100">
+                                        <ComboBox SelectedIndex="{Binding LocateIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                  Width="100" Style="{StaticResource SpyWindowComboBoxStyle}">
                                             <ComboBoxItem Content="Exclude"/>
                                             <ComboBoxItem Content="Children"/>
                                             <ComboBoxItem Content="Descendants"/>
@@ -360,8 +144,10 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
-                                            <TextBox Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="160" Margin="6,0,0,0"/>
+                                            <CheckBox IsChecked="{Binding UseName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                      VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
+                                            <TextBox Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                     Width="160" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -370,8 +156,10 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
-                                            <TextBox Text="{Binding ClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="180" Margin="6,0,0,0"/>
+                                            <CheckBox IsChecked="{Binding UseClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                      VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
+                                            <TextBox Text="{Binding ClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                     Width="180" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -380,8 +168,10 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
-                                            <TextBox Text="{Binding ControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="100" Margin="6,0,0,0"/>
+                                            <CheckBox IsChecked="{Binding UseControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                      VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
+                                            <TextBox Text="{Binding ControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                     Width="100" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -390,8 +180,10 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseAutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
-                                            <TextBox Text="{Binding AutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="160" Margin="6,0,0,0"/>
+                                            <CheckBox IsChecked="{Binding UseAutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                      VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
+                                            <TextBox Text="{Binding AutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                     Width="160" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -400,8 +192,10 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
-                                            <TextBox Text="{Binding IndexAmongMatches, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="40" Margin="6,0,0,0"/>
+                                            <CheckBox IsChecked="{Binding UseIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                      VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
+                                            <TextBox Text="{Binding IndexAmongMatches, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                     Width="40" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -413,81 +207,41 @@
         </Grid>
 
         <!-- Custom Procedures -->
-        <GroupBox Grid.Row="2" Header="Custom Procedures" Margin="0,8,0,8">
+        <GroupBox Grid.Row="2" Header="Custom Procedures" Margin="0,8,0,8" Style="{StaticResource SpyWindowGroupBoxStyle}">
             <DockPanel>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,8">
                     <TextBlock Text="PACS Method:" VerticalAlignment="Center"/>
-                    <ComboBox x:Name="cmbProcMethod" Width="220" Margin="6,0,12,0" SelectedValuePath="Tag">
-                        <ComboBoxItem Tag="GetSelectedIdFromSearchResults">Get selected ID from search results list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedNameFromSearchResults">Get selected name from search results list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedSexFromSearchResults">Get selected sex from search results list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedBirthDateFromSearchResults">Get selected birth date from search results list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedAgeFromSearchResults">Get selected age from search results list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedStudynameFromSearchResults">Get selected studyname from search results list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedStudyDateTimeFromSearchResults">Get selected study date time from search results list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedRadiologistFromSearchResults">Get selected radiologist from search results list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedStudyRemarkFromSearchResults">Get selected study remark from search results list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedReportDateTimeFromSearchResults">Get selected report date time from search results list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedStudynameFromRelatedStudies">Get selected studyname from related studies list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedStudyDateTimeFromRelatedStudies">Get selected study date time from related studies list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedRadiologistFromRelatedStudies">Get selected radiologist from related studies list</ComboBoxItem>
-                        <ComboBoxItem Tag="GetSelectedReportDateTimeFromRelatedStudies">Get selected report date time from related studies list</ComboBoxItem>
-                        <!-- New PACS methods -->
-                        <ComboBoxItem Tag="GetCurrentPatientNumber">Get current patient number</ComboBoxItem>
-                        <ComboBoxItem Tag="GetCurrentStudyDateTime">Get current study date time</ComboBoxItem>
-                        <ComboBoxItem Tag="GetCurrentStudyRemark">Get current study remark</ComboBoxItem>
-                        <ComboBoxItem Tag="GetCurrentPatientRemark">Get current patient remark</ComboBoxItem>
-                        <ComboBoxItem Tag="GetCurrentFindings">Get current findings</ComboBoxItem>
-                        <ComboBoxItem Tag="GetCurrentConclusion">Get current conclusion</ComboBoxItem>
-                        <ComboBoxItem Tag="GetCurrentFindings2">Get current findings 2</ComboBoxItem>
-                        <ComboBoxItem Tag="GetCurrentConclusion2">Get current conclusion 2</ComboBoxItem>
-                        <ComboBoxItem Tag="InvokeOpenStudy">Invoke open study</ComboBoxItem>
-                        <ComboBoxItem Tag="InvokeTest">Invoke test</ComboBoxItem>
-                        <!-- Custom mouse click procedures -->
-                        <ComboBoxItem Tag="CustomMouseClick1">Custom mouse click 1</ComboBoxItem>
-                        <ComboBoxItem Tag="CustomMouseClick2">Custom mouse click 2</ComboBoxItem>
-                        <ComboBoxItem Tag="SetCurrentStudyInMainScreen">Set current study in main screen</ComboBoxItem>
-                        <ComboBoxItem Tag="SetPreviousStudyInSubScreen">Set previous study in sub screen</ComboBoxItem>
-                    </ComboBox>
-                    <Button Content="Add" Click="OnAddProcRow"/>
-                    <Button Content="Save" Margin="6,0,0,0" Click="OnSaveProcedure"/>
-                    <Button Content="Run" Margin="6,0,0,0" Click="OnRunProcedure"/>
+                    <ComboBox x:Name="cmbProcMethod" Width="220" Margin="6,0,12,0" SelectedValuePath="Tag"
+                              Style="{StaticResource SpyWindowComboBoxStyle}" ItemsSource="{StaticResource PacsMethodItems}"
+                              SelectionChanged="OnProcMethodChanged"/>
+                    <Button Content="Add" Click="OnAddProcRow" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="Save" Margin="6,0,0,0" Click="OnSaveProcedure" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="Run" Margin="6,0,0,0" Click="OnRunProcedure" Style="{StaticResource SpyWindowButtonStyle}"/>
                 </StackPanel>
                 <DataGrid x:Name="gridProcSteps" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
-                          VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+                          VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                          Style="{StaticResource SpyWindowDataGridStyle}">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Header="Operation" Width="150">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <ComboBox SelectedValuePath="Content"
                                               SelectedValue="{Binding Op, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              Width="140"
-                                              IsEditable="False"
-                                              StaysOpenOnEdit="True"
+                                              Width="140" IsEditable="False" StaysOpenOnEdit="True"
                                               PreviewMouseLeftButtonDown="OnOpComboPreviewMouseDown"
                                               PreviewKeyDown="OnOpComboPreviewKeyDown"
-                                              SelectionChanged="OnProcOpChanged">
-                                        <ComboBoxItem Content="GetText"/>
-                                        <ComboBoxItem Content="GetName"/>
-                                        <ComboBoxItem Content="GetTextOCR"/>
-                                        <ComboBoxItem Content="Split"/>
-                                        <ComboBoxItem Content="TakeLast"/>
-                                        <ComboBoxItem Content="Trim"/>
-                                        <ComboBoxItem Content="Invoke"/>
-                                        <ComboBoxItem Content="GetValueFromSelection"/>
-                                        <ComboBoxItem Content="ToDateTime"/>
-                                        <ComboBoxItem Content="Replace"/>
-                                        <ComboBoxItem Content="GetHTML"/>
-                                        <ComboBoxItem Content="MouseClick"/>
-                                        <ComboBoxItem Tag="ClickElement">ClickElement</ComboBoxItem>
-                                    </ComboBox>
+                                              SelectionChanged="OnProcOpChanged"
+                                              Style="{StaticResource SpyWindowComboBoxStyle}"
+                                              ItemsSource="{StaticResource OperationItems}"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         <DataGridTemplateColumn Header="Arg1 Type" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox Width="80" SelectedValuePath="Content" SelectedValue="{Binding Arg1.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg1Enabled}">
+                                    <ComboBox Width="80" SelectedValuePath="Content" 
+                                              SelectedValue="{Binding Arg1.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                              IsEnabled="{Binding Arg1Enabled}" Style="{StaticResource SpyWindowComboBoxStyle}">
                                         <ComboBoxItem Content="Element"/>
                                         <ComboBoxItem Content="String"/>
                                         <ComboBoxItem Content="Number"/>
@@ -501,7 +255,7 @@
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.Resources>
-                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo">
+                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo" BasedOn="{StaticResource SpyWindowComboBoxStyle}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </Style>
                                         </Grid.Resources>
@@ -555,7 +309,9 @@
                         <DataGridTemplateColumn Header="Arg2 Type" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox Width="80" SelectedValuePath="Content" SelectedValue="{Binding Arg2.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg2Enabled}">
+                                    <ComboBox Width="80" SelectedValuePath="Content" 
+                                              SelectedValue="{Binding Arg2.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                              IsEnabled="{Binding Arg2Enabled}" Style="{StaticResource SpyWindowComboBoxStyle}">
                                         <ComboBoxItem Content="Element"/>
                                         <ComboBoxItem Content="String"/>
                                         <ComboBoxItem Content="Number"/>
@@ -569,7 +325,7 @@
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.Resources>
-                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo2">
+                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo2" BasedOn="{StaticResource SpyWindowComboBoxStyle}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </Style>
                                         </Grid.Resources>
@@ -626,7 +382,9 @@
                         <DataGridTemplateColumn Header="Arg3 Type" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox Width="80" SelectedValuePath="Content" SelectedValue="{Binding Arg3.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Arg3Enabled}">
+                                    <ComboBox Width="80" SelectedValuePath="Content" 
+                                              SelectedValue="{Binding Arg3.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                              IsEnabled="{Binding Arg3Enabled}" Style="{StaticResource SpyWindowComboBoxStyle}">
                                         <ComboBoxItem Content="Element"/>
                                         <ComboBoxItem Content="String"/>
                                         <ComboBoxItem Content="Number"/>
@@ -640,11 +398,12 @@
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.Resources>
-                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo3">
+                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo3" BasedOn="{StaticResource SpyWindowComboBoxStyle}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </Style>
                                         </Grid.Resources>
-                                        <ComboBox Width="110" ItemsSource="{Binding DataContext.KnownControlTags, ElementName=Root}" SelectedValue="{Binding Arg3.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                        <ComboBox Width="110" ItemsSource="{Binding DataContext.KnownControlTags, ElementName=Root}" 
+                                                  SelectedValue="{Binding Arg3.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <ComboBox.Style>
                                                 <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenDarkCombo3}">
                                                     <Style.Triggers>
@@ -656,7 +415,8 @@
                                                 </Style>
                                             </ComboBox.Style>
                                         </ComboBox>
-                                        <ComboBox Width="110" ItemsSource="{Binding DataContext.ProcedureVars, ElementName=Root}" SelectedValue="{Binding Arg3.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                        <ComboBox Width="110" ItemsSource="{Binding DataContext.ProcedureVars, ElementName=Root}" 
+                                                  SelectedValue="{Binding Arg3.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <ComboBox.Style>
                                                 <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenDarkCombo3}">
                                                     <Style.Triggers>
@@ -698,8 +458,10 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                        <Button Content="Set" Margin="0,0,6,0" Padding="8,2" Click="OnSetProcRow" Tag="{Binding}"/>
-                                        <Button Content="x" Padding="8,2" Click="OnRemoveProcRow" Tag="{Binding}"/>
+                                        <Button Content="Set" Margin="0,0,6,0" Padding="8,2" Click="OnSetProcRow" 
+                                                Tag="{Binding}" Style="{StaticResource SpyWindowButtonStyle}"/>
+                                        <Button Content="x" Padding="8,2" Click="OnRemoveProcRow" 
+                                                Tag="{Binding}" Style="{StaticResource SpyWindowButtonStyle}"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -710,6 +472,7 @@
         </GroupBox>
 
         <!-- Bottom status -->
-        <TextBox Grid.Row="3" x:Name="txtStatus" IsReadOnly="True" Height="120" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"/>
+        <TextBox Grid.Row="3" x:Name="txtStatus" IsReadOnly="True" Height="120" TextWrapping="Wrap" 
+                 AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Style="{StaticResource DarkTextBox}"/>
     </Grid>
 </Window>

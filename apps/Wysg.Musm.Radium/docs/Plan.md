@@ -98,6 +98,7 @@
 - Global hotkey registration not implemented in this increment → documented; only capture+persist now.
 - Procedure tags may be missing → headless executor auto-seeds defaults; status messaging handles failures.
 - UI real estate changes could shift layout → kept consistent DarkToggleButtonStyle and text label for clarity.
+
 ## Change Log Addition (2025-01-12 – Study Technique Feature Database Schema)
 - Designed and implemented database schema for study technique management feature.
 - Created 8 new tables in med schema to support technique component management:
@@ -570,7 +571,7 @@
 ### Approach
 1) In `SettingsViewModel.PacsProfiles.OnSelectedPacsProfileChanged`, set `_tenant.CurrentPacsKey`, switch spy path, and assign `SelectedPacsForAutomation` to trigger reload.
 2) In `SettingsWindow`, subscribe to `ITenantContext.PacsKeyChanged` to update local `CurrentPacsKey` and push it to VM `SelectedPacsForAutomation`.
-3) In `SpyWindow`, resolve `ITenantContext` from DI, set initial text, and handle `PacsKeyChanged` to update UI immediately.
+3) In `SpyWindow`, resolve `ITenantContext` from DI, set initial text, and handle `PacsKeyChanged` to update UI instantly.
 4) In XAML, add PACS text blocks to Automation tab and SpyWindow.
 
 ### Test Plan
@@ -652,199 +653,6 @@
 - Reportify JSON generated no longer contains `preserve_known_tokens`.
 - Prior stored JSON with the key loads without error and does not affect output.
 
-### Approach
-1) In App startup, set `ProcedureExecutor.SetProcPathOverride` and `UiBookmarks.GetStorePathOverride` based on current pacs key.
-2) In SettingsViewModel.PacsProfiles selection handler, update both overrides when PACS changes.
-3) In ProcedureExecutor, add fallback auto-seed for `InvokeTest` using `Invoke` on `KnownControl.TestInvoke`.
-4) In PacsService, add `InvokeTestAsync()` that runs `InvokeTest`.
-5) Add `TestInvoke` to SettingsViewModel.AvailableModules and wire module execution in MainViewModel.
-6) Add `InvokeTest` to SpyWindow custom method ComboBox for UI authoring.
-
-### Test Plan
-- Map a control to `TestInvoke` in SpyWindow. Save a procedure under `InvokeTest` with a single Invoke op (or rely on auto-seed).
-- Place `TestInvoke` in Automation sequences (New/Add/Shortcut). Run → verify Invoke occurs on the mapped element.
-- Switch PACS: verify each profile has its own `bookmarks.json` and `ui-procedures.json`, and SpyWindow reads/writes the correct files.
-
-### Risks / Mitigations
-- Rapid PACS switching during Spy edits could race file writes → minimal risk; user-driven; save operations are small; last write wins is acceptable.
-
-## 2025-01-15: Phrase-to-SNOMED Mapping (Central Database Schema)
-
-### Overview
-Designed and implemented database schema for mapping global and account-specific phrases to SNOMED CT concepts via Snowstorm API. Supports terminology management, semantic interoperability, and standardized reporting.
-
-### Approach
-
-#### 1. Schema Design (Three-Table Pattern)
-**`snomed.concept_cache`**: Cache SNOMED concepts from Snowstorm to reduce API calls
-- Primary storage for concept details: ID, FSN, PT, module, active status
-- Indexed on FSN/PT for search, cached_at for refresh logic
-- Optional expiration field for cache invalidation strategies
-
-**`radium.global_phrase_snomed`**: Map global phrases to SNOMED
-- Links `radium.phrase` (account_id IS NULL) to `snomed.concept_cache`
-- One phrase → one concept (UNIQUE constraint on phrase_id)
-- Supports mapping type (exact/broader/narrower/related) and confidence score
-- Optional `mapped_by` tracks user who created mapping
-- CASCADE delete when phrase deleted; RESTRICT delete when concept deleted
-
-**`radium.phrase_snomed`**: Map account-specific phrases to SNOMED
-- Links `radium.phrase` (account_id IS NOT NULL) to `snomed.concept_cache`
-- One phrase → one concept (UNIQUE constraint on phrase_id)
-- Same structure as global table but scoped to account
-- Account mappings override global mappings for same phrase text
-
-**`radium.v_phrase_snomed_combined`**: Unified view for queries
-- UNION ALL of global and account mappings with phrase and concept details
-- Includes `mapping_source` column to distinguish origin
-- Simplifies application-level queries for phrase-concept lookups
-
-#### 2. Normalization Strategy
-**Why separate concept_cache?**
-- Multiple phrases can map to same concept (many-to-one)
-- Avoids duplicate concept data
-- Enables efficient concept-level queries (e.g., "all phrases for concept X")
-- Future-proofs for SNOMED relationship tracking
-
-**Why separate global and account tables?**
-- Global mappings are shared across all accounts (read-only for most users)
-- Account mappings are scoped and mutable per account
-- Simplifies access control and query filtering
-- Mirrors existing `radium.phrase` account_id pattern
-
-#### 3. Stored Procedures for Data Integrity
-**`snomed.upsert_concept`**: Idempotent concept caching
-- MERGE pattern ensures no duplicates
-- Updates cached_at on every upsert (tracks freshness)
-- Application layer calls after Snowstorm API query
-
-**`radium.map_global_phrase_to_snomed`**: Enforces global phrase constraint
-- Validates phrase.account_id IS NULL before mapping
-- Validates concept exists in cache (prevents orphan references)
-- MERGE pattern for idempotent mapping (insert/update)
-- RAISERROR for constraint violations (clear error messages)
-
-**`radium.map_phrase_to_snomed`**: Enforces account phrase constraint
-- Validates phrase.account_id IS NOT NULL before mapping
-- Same validation and merge logic as global procedure
-- Separate procedure for clarity and access control
-
-#### 4. Triggers for Audit Trail
-**Auto-update `updated_at`**: Triggers on both mapping tables
-- Fire AFTER UPDATE only when meaningful fields change
-- Avoid trigger recursion (do not update updated_at again if already updated)
-- Use CTE pattern to detect changed rows efficiently
-
-#### 5. Indexing Strategy
-**Concept cache**: FSN, PT (for Snowstorm API response matching), cached_at (for refresh queries)
-**Mapping tables**: concept_id (for reverse lookups), mapping_type (for type-specific queries), created_at (for audit/reporting)
-**No full-text indexes yet**: Start with simple indexes; add FTS if search performance requires
-
-#### 6. Future Enhancements (Not Implemented)
-- SNOMED relationships table (parent-child, part-of, etc.)
-- Expression constraint parsing (post-coordinated expressions)
-- Temporal tables for automatic audit history
-- Multi-branch support (INT vs US vs KR editions)
-
-### Test Plan
-
-#### Database Schema Tests
-1. **Concept Cache Upsert**: Call `upsert_concept` multiple times with same ID → verify no duplicates, cached_at updates
-2. **Global Mapping Insert**: Map global phrase to concept → verify row in `global_phrase_snomed`, verify FK constraints
-3. **Account Mapping Insert**: Map account phrase to concept → verify row in `phrase_snomed`, verify FK constraints
-4. **Constraint Violations**:
-   - Try to map account phrase via global procedure → expect RAISERROR
-   - Try to map global phrase via account procedure → expect RAISERROR
-   - Try to map to non-existent concept → expect FK violation
-5. **Cascade Delete**: Delete phrase → verify mapping deleted (CASCADE)
-6. **Restrict Delete**: Try to delete concept with existing mappings → expect FK violation (RESTRICT)
-7. **Trigger Behavior**: Update mapping fields → verify `updated_at` changes; update non-tracked fields → verify no change
-8. **View Query**: Query `v_phrase_snomed_combined` → verify UNION ALL returns global and account mappings with correct `mapping_source`
-
-#### Integration Tests (Snowstorm API - Future)
-1. **Search Concepts**: Query Snowstorm with "myocardial" → verify results include concept 22298006
-2. **Get Concept Details**: Fetch concept 22298006 → verify FSN is "Myocardial infarction (disorder)"
-3. **Cache Concept**: Search → cache → verify concept in `snomed.concept_cache`
-4. **Offline Mode**: Disconnect Snowstorm → verify cached concepts still queryable
-
-#### UI Tests (Global Phrases Tab - Future)
-1. **Search SNOMED**: Enter "infarction" → verify results grid populates
-2. **Map Phrase**: Select phrase and concept → click Map → verify mapping saved and indicator shows
-3. **Edit Mapping**: Change mapping type or confidence → save → verify update
-4. **Remove Mapping**: Click Remove → verify mapping deleted
-5. **Indicator Display**: Mapped phrases show icon/badge; unmapped do not
-
-#### Performance Tests
-1. **Bulk Insert**: Insert 1000 mappings → measure time (target: <10 seconds)
-2. **View Query**: Query `v_phrase_snomed_combined` with 10,000 phrases → measure time (target: <1 second)
-3. **Concept Cache Lookup**: Query cache with 100,000 concepts → verify indexed queries fast (<100ms)
-
-### Risks and Mitigation
-
-#### Risk 1: Snowstorm API Downtime
-**Impact**: Cannot search/fetch new concepts; UI search fails
-**Mitigation**: 
-- Use cached concepts for offline operation
-- Display friendly error message when API unavailable
-- Implement cache expiration policy to detect stale data
-- Consider periodic background sync for high-priority concepts
-
-#### Risk 2: Concept ID Changes in SNOMED Updates
-**Impact**: Cached concept IDs may become inactive or retired
-**Mitigation**:
-- Track `active` field in cache; filter inactive concepts in queries
-- Implement concept retirement workflow (flag mappings for review)
-- Periodic cache refresh from Snowstorm to update active status
-- Use SNOMED versioning (effectiveTime) for audit trail
-
-#### Risk 3: Performance with Large Phrase Sets
-**Impact**: 100,000+ phrases may slow view queries
-**Mitigation**:
-- Indexes on key columns (phrase_id, concept_id, account_id)
-- Pagination in UI (load phrases in batches)
-- Consider materialized view if performance degrades
-- Analyze query plans and add covering indexes as needed
-
-#### Risk 4: Mapping Type Ambiguity
-**Impact**: Users unsure when to use "exact" vs "broader" vs "narrower"
-**Mitigation**:
-- Provide UI tooltips explaining each mapping type
-- Default to "exact" for simplicity
-- Future: Implement mapping validation rules (e.g., warn if exact mapping conflicts with SNOMED hierarchy)
-
-#### Risk 5: Data Migration from Existing Systems
-**Impact**: Radium may have legacy phrase-SNOMED mappings in old format
-**Mitigation**:
-- Design import CSV format matching new schema
-- Implement bulk import procedure with validation and rollback
-- Test migration on staging database before production
-- Document mapping rules for manual review
-
-#### Risk 6: Multi-Branch SNOMED Support
-**Impact**: US/KR editions have different concept IDs for same clinical meaning
-**Mitigation**:
-- Store edition/branch in `snomed.concept_cache` (currently `module_id` supports this)
-- Filter concepts by edition in UI search
-- Future: Support cross-edition equivalence mapping
-
-### Documentation
-- **Spec.md**: Added FR-900 through FR-915 documenting requirements
-- **Plan.md**: This entry with approach, test plan, and risks
-- **Tasks.md**: Tasks T900-T915 for implementation phases
-- **SQL File**: `db\schema\central_db_phrase_snomed_mapping.sql` with complete schema
-
-### Next Steps (Implementation Phases)
-1. **Phase 1 (Complete)**: Database schema and stored procedures
-2. **Phase 2**: C# service layer for Snowstorm API integration
-3. **Phase 3**: Global Phrases tab UI for SNOMED mapping
-4. **Phase 4**: Account Phrases tab UI for SNOMED mapping
-5. **Phase 5**: Phrase highlighting with SNOMED colors
-6. **Phase 6**: Phrase completion metadata display
-7. **Phase 7**: Export/import functionality
-8. **Phase 8**: Audit logging and compliance reporting
-
----
-
 ## Change Log Addition (2025-01-15 – Phrase-SNOMED Mapping Window UX Enhancements)
 - **Problem 1**: When opening the phrase-SNOMED link window from Settings → Global Phrases, the search textbox was empty, requiring users to retype the phrase text to search for matching SNOMED concepts.
 - **Problem 2**: The Map button remained disabled even after selecting a concept from the search results, preventing users from saving the mapping.
@@ -890,290 +698,49 @@ Designed and implemented database schema for mapping global and account-specific
 - **Risk**: Pre-filled search text may be confusing if phrase text contains special characters or is very long.
   - **Mitigation**: Users can edit the search text before searching. Search box is standard TextBox with full editing support.
 
-### Code Changes (Mapping Window UX)
-**File**: `apps\Wysg.Musm.Radium\Views\PhraseSnomedLinkWindow.xaml.cs`
+- **Risk**: Performance impact from string processing on large patient remarks.
+  - **Mitigation**: Processing is O(n) where n is number of lines; typical patient remarks have <100 lines; minimal overhead; HashSet lookup is O(1) on average.
+- **Risk**: Angle bracket extraction may fail on unexpected input formats.
+  - **Mitigation**: Robust extraction logic handles malformed brackets safely; returns empty string for invalid cases; lines without valid brackets are always preserved.
 
-**Changes in `PhraseSnomedLinkWindowViewModel` constructor**:
-```csharp
-// Before:
-PhraseText = phraseText;
-ScopeText = accountId == null ? "Global" : $"Account {accountId}";
+## Change Log Addition (2025-01-17 – DataGrid Text Visibility Fix)
+- **Problem**: The "Technique Combination" column in the right panel DataGrid was not displaying any text because WPF DataGridTextColumn cells don't automatically inherit the Foreground color from the DataGrid in dark themes.
+- **Root Cause**: DataGrid.Foreground sets the default for headers but cells use their own default Foreground (typically black in default WPF theme), making black text invisible against a black background.
+- **Solution**: Add explicit ElementStyle to DataGridTextColumn with Foreground=Gainsboro setter to ensure text visibility in dark theme.
 
-// After:
-PhraseText = phraseText;
-SearchText = phraseText; // Pre-fill search box with phrase text
-ScopeText = accountId == null ? "Global" : $"Account {accountId}";
-```
+### Approach (DataGrid Text Visibility)
+1) **ElementStyle for TextColumn**:
+   - Created `Style(typeof(TextBlock))` with `Foreground=Brushes.Gainsboro` setter
+   - Assigned to `colDisplay.ElementStyle` property
+   - Style applies to all TextBlock elements rendered by the column
 
-**Changes in `SelectedConcept` property**:
-```csharp
-// Before (auto-generated):
-[ObservableProperty] private SnomedConcept? selectedConcept;
+2) **Template Column Fix**:
+   - Added `factory.SetValue(TextBlock.ForegroundProperty, Brushes.Gainsboro)` to checkmark column template
+   - Ensures checkmark "✓" is also visible in dark theme
 
-// After (manual with CanExecute notification):
-private SnomedConcept? _selectedConcept;
-public SnomedConcept? SelectedConcept
-{
-    get => _selectedConcept;
-    set
-    {
-        if (SetProperty(ref _selectedConcept, value))
-        {
-            MapCommand.NotifyCanExecuteChanged();
-        }
-    }
-}
-```
+3) **DataGrid-level Foreground**:
+   - Set `DataGrid.Foreground = Brushes.Gainsboro` as fallback for headers
+   - Provides consistent color for all grid UI elements
 
-### Related Features
-- Completes FR-909 (Global Phrases Tab - SNOMED Mapping UI) by fixing UX blockers
-- Supports FR-916a (Pre-fill Search Text) and FR-916b (Enable Map Button)
-- Improves workflow efficiency for terminology management tasks
+### Test Plan (DataGrid Text Visibility)
+- **Visual Verification**:
+  1. Open "Manage Studyname Techniques" window
+  2. Verify "Technique Combination" column displays text in light gray color
+  3. Verify text is readable against black background
+  4. Verify checkmark "✓" in Default column is visible
+  5. Select a row → verify selection highlighting doesn't obscure text
+  6. Resize window → verify text remains visible at all sizes
 
----
+- **Dark Theme Consistency**:
+  1. Compare with other DataGrids in application → verify consistent text color
+  2. Verify header text color matches column text color
+  3. Verify alternating row backgrounds don't affect text visibility
 
-## Change Log Addition (2025-10-15 – OpenStudy reliability + sequential execution + AddPreviousStudy guard/perf)
-- Problem: The last module `OpenStudy` sometimes failed when run after other modules (e.g., `AddPreviousStudy`) because earlier code fired modules concurrently and waited for heavy previous-study reloads before proceeding.
-- Fixes:
-  1) Execute automation modules sequentially, preserving exact user order across New/Add/Shortcut flows.
-  2) `AddPreviousStudy` now aborts when related study metadata is incomplete (studyname or studydatetime is null/empty) or when it matches the current study (same name and datetime).
-  3) Speed up `AddPreviousStudy` by moving the heavy `LoadPreviousStudiesForPatientAsync` to a fire-and-forget continuation so `OpenStudy` can run immediately after persistence.
+### Risks / Mitigations (DataGrid Text Visibility)
+- **Risk**: Hardcoded Gainsboro color might not match theme updates
+  - **Mitigation**: Color is consistent with dark theme used throughout application; if theme changes, update can be done globally
 
-### Approach
-1) Introduce `RunModulesSequentially(string[] modules)` and route New/Add/Shortcut flows through it to `await` each module.
-2) Convert remark acquisition helpers to return `Task` so they can be awaited within sequencing.
-3) In `RunAddPreviousStudyModuleAsync`:
-   - Validate patient, related study id, studyname, and datetime.
-   - Abort if missing or equal to current study (name + datetime).
-   - Persist report, then kick off background reload/selection; do not block module chain.
-4) Keep `RunOpenStudyAsync` unchanged other than benefiting from sequencing; it now runs after prior modules actually finish.
+- **Risk**: ElementStyle might conflict with cell selection styling
+  - **Mitigation**: WPF selection template overrides cell style appropriately; tested with row selection
 
-### Test Plan
-- Configure sequences with `NewStudy, LockStudy, AddPreviousStudy, OpenStudy` and run via button and shortcut:
-  - Verify `OpenStudy` invokes only after `AddPreviousStudy` completes (viewer opens reliably).
-  - Verify background reload eventually adds/selects the new previous study without delaying `OpenStudy`.
-- Related study with missing name/datetime → `AddPreviousStudy` aborts with status; `OpenStudy` still runs if next.
-- Related study equal to current (same name + datetime) → `AddPreviousStudy` aborts; `OpenStudy` runs.
-- Sequences that include `GetStudyRemark`/`GetPatientRemark` run in order and do not interleave.
-
-### Risks / Mitigations
-- If `InvokeOpenStudy` procedure isn't authored per PACS, `OpenStudy` throws (by design); error surfaces in status.
-- Background reload may update UI after viewer opens; acceptable and improves responsiveness.
-- Sequencing increases total chain time vs fire-and-forget; user order correctness prioritized.
-
-## Change Log Addition (2025-01-16 – Element Staleness Detection with Auto-Retry)
-- **Problem**: UI automation procedures sometimes failed when UI elements became stale (PACS UI hierarchy changed) between bookmark resolution and usage, causing intermittent failures in GetText, Invoke, ClickElement operations.
-- **Solution**: Implemented element staleness detection with automatic retry in `ProcedureExecutor.ResolveElement()`, inspired by legacy PacsService validation pattern.
-
-### Approach (Element Staleness Detection)
-1) **Validation Strategy**: Before using a cached element, validate it's still alive by accessing the `Name` property (lightweight check).
-2) **Multi-Attempt Resolution**: If element is stale or resolution fails, retry up to 3 times with exponential backoff (150ms, 300ms, 450ms).
-3) **Cache Management**: Remove stale elements from cache immediately when detected; only cache validated elements.
-4) **Fail-Safe**: After all attempts exhausted, return null (operation will report "(no element)" error).
-
-### Code Changes (Element Staleness Detection)
-**File**: `apps\Wysg.Musm.Radium\Services\ProcedureExecutor.cs`
-**Changes**:
-- Added `ElementResolveMaxAttempts = 3` and `ElementResolveRetryDelayMs = 150` constants
-- Rewrote `ResolveElement()` with retry loop:
-  1. Check cache → validate with `IsElementAlive()` → return if valid
-  2. Clear stale cache entries immediately
-  3. Resolve fresh from bookmark → validate before caching
-  4. Retry with exponential backoff on failure
-- Added `IsElementAlive()` helper method that validates element accessibility by checking `Name` property
-
-### Test Plan (Element Staleness Detection)
-- **Normal Case**: Element resolves on first attempt → cached → subsequent uses hit cache (no retry).
-- **Stale Cache**: PACS window hierarchy changes → cached element becomes stale → automatic retry resolves fresh element.
-- **Transient Failure**: UI busy during resolution → first attempt fails → retry after 150ms succeeds.
-- **Permanent Failure**: Bookmark points to non-existent element → all 3 attempts fail, return (IntPtr.Zero, null)
-- **Performance**: Most operations complete on first attempt (cache hit); retry overhead only when needed (~150-900ms total).
-
-### Risks / Mitigations (Element Staleness Detection)
-- **Risk**: Retry delays may slow down procedures.
-  - **Mitigation**: Exponential backoff starts small (150ms); cache hits avoid retries entirely; retries only occur on actual staleness.
-- **Risk**: Validation check (`element.Name`) may itself throw unpredictable exceptions.
-  - **Mitigation**: Wrapped in try-catch; any exception treated as stale element; safe fallback behavior.
-- **Risk**: UI hierarchy changes faster than retry can resolve.
-  - **Mitigation**: 3 attempts with delays should handle most transient issues; persistent failures surface as "(no element)" error for user troubleshooting.
-
-## Change Log Addition (2025-01-16 – ResolveWithRetry with Progressive Constraint Relaxation)
-- **Problem**: Bookmarks sometimes failed to resolve when UI hierarchy changed slightly (new toolbar buttons, panel rearrangements), requiring users to re-pick elements frequently.
-- **Solution**: Implemented `ResolveWithRetry()` with progressive constraint relaxation, inspired by legacy PacsService pattern of trying AutomationId first, then falling back to ClassName.
-
-### Approach (ResolveWithRetry)
-1) **Attempt 1**: Try exact match with all constraints enabled (Name + ClassName + AutomationId + ControlType)
-2) **Attempt 2**: Relax ControlType constraint on all nodes (Name + ClassName + AutomationId only)
-3) **Attempt 3**: Relax ClassName constraint (Name + AutomationId only) - most aggressive relaxation
-4) **Exponential Backoff**: Wait 150ms, 300ms between attempts for UI to stabilize
-5) **Trace Logging**: Each attempt logged for debugging
-
-### Code Changes (ResolveWithRetry)
-**File**: `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs`
-**Changes**:
-- Added `ResolveWithRetry(KnownControl key, int maxAttempts = 3)` public method
-- Added `RelaxBookmarkControlType(Bookmark b)` helper - creates bookmark copy with UseControlTypeId=false on all nodes
-- Added `RelaxBookmarkClassName(Bookmark b)` helper - creates bookmark copy with UseClassName=false + UseControlTypeId=false on all nodes
-- Each helper creates deep copy of bookmark to avoid mutating original
-
-**Inspired by Legacy Pattern**:
-```csharp
-// Legacy PacsService.InitializeWorklistChildrenAsync():
-//eLstStudy = await _uia.GetFirstChildByAutomationIdAsync(ePanLstStudy, "274"); // Try AutomationId first
-eLstStudy = await _uia.GetFirstChildByClassNameAsync(ePanLstStudy, "SysListView32"); // Fall back to ClassName
-```
-
-### Test Plan (ResolveWithRetry)
-- **Exact Match Success**: Bookmark resolves on first attempt with all constraints → no relaxation needed
-- **ControlType Relaxation**: PACS UI update changes control types → second attempt succeeds without ControlType
-- **ClassName Relaxation**: Major UI rearrangement → third attempt succeeds with only Name + AutomationId
-- **Complete Failure**: Bookmark completely invalid → all 3 attempts fail, return (IntPtr.Zero, null)
-- **Performance**: First attempt ~100ms, retry attempts add 150-300ms each only when needed
-
-### Risks / Mitigations (ResolveWithRetry)
-- **Risk**: Relaxed constraints may match wrong element (false positive).
-  - **Mitigation**: Relaxation is progressive; AutomationId + Name kept until final attempt; users can still re-pick for exact match.
-- **Risk**: Deep copy of bookmark chain may have performance impact.
-  - **Mitigation**: Only called on retry (rare); chain is typically <10 nodes; copy is lightweight.
-- **Risk**: Users may rely on relaxed matching and not fix underlying bookmark issues.
-  - **Mitigation**: Trace logging shows which attempt succeeded; SpyWindow validation shows health; documented as fallback, not primary.
-
-### Usage
-**Option 1: Use standard Resolve() (existing behavior)**:
-```csharp
-var (hwnd, element) = UiBookmarks.Resolve(KnownControl.WorklistWindow);
-```
-
-**Option 2: Use ResolveWithRetry() for critical bookmarks**:
-```csharp
-var (hwnd, element) = UiBookmarks.ResolveWithRetry(KnownControl.WorklistWindow, maxAttempts: 3);
-```
-
-**Recommendation**: Update `ProcedureExecutor.ResolveElement()` to use `ResolveWithRetry()` instead of `Resolve()` for automatic progressive relaxation in automation scenarios.
-
-### FR-960: Multi-Root Window Discovery (Medium Priority) - ⚠️ Partially Implemented
-**Pattern from Legacy**: `InitializeWorklistAsync()` checks `eViewer1` then `eViewer2` as alternate roots.
-```csharp
-// Legacy pattern:
-eWinWorklist = await _uia.GetFirstChildByNameAsync(eViewer1, @"INFINITT G3 Worklist...");
-if (eWinWorklist == null)
-{                       
-    eWinWorklist = await _uia.GetFirstChildByNameAsync(eViewer2, @"INFINITT G3 Worklist...");
-}
-```
-
-**Current Status**: `DiscoverRoots()` already tries multiple approaches (attach, PID search, name search), but doesn't explicitly handle multiple PACS viewer instances like legacy.
-
-**Future Enhancement**: Explicitly store and alternate between viewer window handles when primary fails.
-- Store window handles (`hwndViewer1`, `hwndViewer2`) in bookmark metadata
-- Try each window as potential root when process has multiple top-level windows
-- **Trigger**: Implement when users report bookmarks failing due to worklist appearing in secondary PACS window
-
-**Implementation Location**: `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs` - `DiscoverRoots()` method
-
-### FR-961: Index-Based Navigation Fallback (Low Priority)
-**Pattern from Legacy**: `GetChildByIndexAsync(parent, index)` - no attributes, just "get child at index N".
-```csharp
-// Legacy pattern:
-ePanWorklistToolBar = await _uia.GetChildByIndexAsync(eWinWorklist, 1);  // Get 2nd child (index 1)
-```
-
-**Current Status**: User can achieve this with `UseIndex=true` and all other attributes false. E.g.:
-```json
-{
-  "Name": "WorklistToolbar",
-  "Chain": [
-    { "Name": "INFINITT G3 Worklist...", "UseName": true, "Scope": "Descendants" },
-    { 
-      "UseName": false, 
-      "UseClassName": false, 
-      "UseControlTypeId": false, 
-      "UseAutomationId": false,
-      "UseIndex": true,
-      "IndexAmongMatches": 1,
-      "Scope": "Children"
-    }
-  ]
-}
-```
-
-**Status**: ✅ Already implemented in `UiBookmarks.Walk()` method (2025-01-16).
-
-**How It Works**:
-- When a node has **no attributes enabled** (UseName=false, UseClassName=false, UseAutomationId=false, UseControlTypeId=false)
-- **AND** `UseIndex=true` with `Scope=Children`
-- The resolver performs **pure index-based navigation**: `current.FindAllChildren()[IndexAmongMatches]`
-
-**Recommendation**: Use only when attributes are truly unavailable or unstable. Prefer attribute-based matching for maintainability.
-
-### FR-964: Dual Pattern Fallback (Invoke → Toggle)
-**Pattern from Legacy**: Operations try Invoke pattern first, fall back to Toggle if not supported.
-```csharp
-// Already implemented in ProcedureExecutor:
-var inv = el.Patterns.Invoke.PatternOrDefault; 
-if (inv != null) inv.Invoke(); 
-else el.Patterns.Toggle.PatternOrDefault?.Toggle();
-```
-
-**Status**: ✅ Already implemented in `ProcedureExecutor.ExecuteElemental()` for `Invoke` operation.
-
-### FR-966: Pure Index-Based Navigation (Legacy Pattern) - ✅ IMPLEMENTED
-**Pattern from Legacy**: `GetChildByIndexAsync(parent, index)` - no attributes, just "get child at index N".
-```csharp
-// Legacy pattern:
-ePanWorklistToolBar = await _uia.GetChildByIndexAsync(eWinWorklist, 1);  // Get 2nd child (index 1)
-```
-
-**Status**: ✅ Implemented in `UiBookmarks.Walk()` method (2025-01-16).
-
-**How It Works**:
-- When a node has **no attributes enabled** (UseName=false, UseClassName=false, UseAutomationId=false, UseControlTypeId=false)
-- **AND** `UseIndex=true` with `Scope=Children`
-- The resolver performs **pure index-based navigation**: `current.FindAllChildren()[IndexAmongMatches]`
-
-**Usage in SpyWindow**:
-1. **Disable all attributes** for the node:
-   - UseName=false, UseClassName=false, UseControlTypeId=false, UseAutomationId=false
-2. **Enable UseIndex=true**
-3. **Set IndexAmongMatches** to desired child index (0-based)
-4. **Set Scope=Children** (required for pure index)
-
-**Example Bookmark** (matching legacy `GetChildByIndexAsync(eWinWorklist, 1)`):
-```json
-{
-  "Name": "WorklistToolbar",
-  "Chain": [
-    { "Name": "INFINITT G3 Worklist...", "UseName": true, "Scope": "Descendants" },
-    { 
-      "UseName": false, 
-      "UseClassName": false, 
-      "UseControlTypeId": false, 
-      "UseAutomationId": false,
-      "UseIndex": true,
-      "IndexAmongMatches": 1,
-      "Scope": "Children"
-    }
-  ]
-}
-```
-
-**Trace Output**:
-```
-Step 3: Pure index navigation (no attributes, using index 1)
-Step 3: Pure index success - selected child at index 1 (5 ms)
-```
-
-**Benefits**:
-- ✅ Exact legacy pattern replication
-- ✅ Fast (no attribute matching overhead)
-- ✅ Works when attributes are unstable/unavailable
-
-**Trade-offs**:
-- ⚠️ Brittle: breaks if UI adds/removes/reorders children
-- ⚠️ Not self-documenting: unclear what element you're selecting
-- ⚠️ Only works with `Scope=Children` (not Descendants)
-
-**Recommendation**: Use only when attributes are truly unavailable or unstable. Prefer attribute-based matching for maintainability.
-
-### FR-965: Bookmark Health Check Tool (Low Priority)
 

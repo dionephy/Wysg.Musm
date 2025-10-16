@@ -104,6 +104,13 @@ namespace Wysg.Musm.Radium.ViewModels
             try
             {
                 var s = await _pacs.GetCurrentPatientRemarkAsync();
+                
+                // Remove duplicate lines based on text between < and >
+                if (!string.IsNullOrEmpty(s))
+                {
+                    s = RemoveDuplicateLinesInPatientRemark(s);
+                }
+                
                 PatientRemark = s ?? string.Empty; // property triggers JSON update
                 SetStatus("Patient remark captured");
             }
@@ -112,6 +119,53 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine("[Automation] GetPatientRemark error: " + ex.Message);
                 SetStatus("Patient remark capture failed", true);
             }
+        }
+
+        /// <summary>
+        /// Removes duplicate lines from patient remark text.
+        /// Lines are considered duplicate if the text wrapped within angle brackets (&lt; and &gt;) is the same.
+        /// </summary>
+        private static string RemoveDuplicateLinesInPatientRemark(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return input;
+
+            var lines = input.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var result = new System.Collections.Generic.List<string>();
+
+            foreach (var line in lines)
+            {
+                // Extract text between < and >
+                var key = ExtractAngleBracketContent(line);
+                
+                // If we haven't seen this key before, or if line has no angle bracket content, keep it
+                if (string.IsNullOrEmpty(key) || seen.Add(key))
+                {
+                    result.Add(line);
+                }
+            }
+
+            return string.Join("\n", result);
+        }
+
+        /// <summary>
+        /// Extracts the text content wrapped within angle brackets (&lt; and &gt;).
+        /// Returns empty string if no angle bracket content is found.
+        /// </summary>
+        private static string ExtractAngleBracketContent(string line)
+        {
+            if (string.IsNullOrEmpty(line)) return string.Empty;
+
+            int startIndex = line.IndexOf('<');
+            int endIndex = line.IndexOf('>');
+
+            // Both brackets must exist and be in correct order
+            if (startIndex >= 0 && endIndex > startIndex)
+            {
+                return line.Substring(startIndex + 1, endIndex - startIndex - 1).Trim();
+            }
+
+            return string.Empty;
         }
 
         // Execute modules sequentially to preserve user-defined order
@@ -126,6 +180,16 @@ namespace Wysg.Musm.Radium.ViewModels
                     else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { await AcquireStudyRemarkAsync(); }
                     else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { await AcquirePatientRemarkAsync(); }
                     else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { await RunAddPreviousStudyModuleAsync(); }
+                    else if (string.Equals(m, "AbortIfWorklistClosed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var isVisible = await _pacs.WorklistIsVisibleAsync();
+                        if (string.Equals(isVisible, "false", StringComparison.OrdinalIgnoreCase))
+                        {
+                            SetStatus("Worklist closed - automation aborted", true);
+                            return; // Abort the rest of the sequence
+                        }
+                        SetStatus("Worklist visible - continuing");
+                    }
                     else if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { await RunOpenStudyAsync(); }
                     else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { await _pacs.CustomMouseClick1Async(); }
                     else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { await _pacs.CustomMouseClick2Async(); }
@@ -235,17 +299,60 @@ namespace Wysg.Musm.Radium.ViewModels
                     { SetStatus("Same as current study; skipping add", true); return; }
                 }
 
-                // 3) Fetch findings/conclusion from current report editors using dual getters and pick longer
-                var f1Task = _pacs.GetCurrentFindingsAsync();
-                var f2Task = _pacs.GetCurrentFindings2Async();
-                var c1Task = _pacs.GetCurrentConclusionAsync();
-                var c2Task = _pacs.GetCurrentConclusion2Async();
-                await Task.WhenAll(f1Task, f2Task, c1Task, c2Task);
-                string PickLonger(string? a, string? b) => (b?.Length ?? 0) > (a?.Length ?? 0) ? (b ?? string.Empty) : (a ?? string.Empty);
-                string findings = PickLonger(f1Task.Result, f2Task.Result);
-                string conclusion = PickLonger(c1Task.Result, c2Task.Result);
+                // 3) Check if ReportText is visible to determine which getters to use
+                var reportTextVisible = await _pacs.ReportTextIsVisibleAsync();
+                bool useReportText = string.Equals(reportTextVisible, "true", StringComparison.OrdinalIgnoreCase);
 
-                // 4) Persist as previous study via existing repo methods
+                // 4) Fetch findings/conclusion based on ReportText visibility with new fallback logic
+                string findings = string.Empty, conclusion = string.Empty;
+                
+                if (useReportText)
+                {
+                    // ReportText is visible: try primary getters first
+                    var f1Task = _pacs.GetCurrentFindingsAsync();
+                    var c1Task = _pacs.GetCurrentConclusionAsync();
+                    await Task.WhenAll(f1Task, c1Task);
+                    
+                    string f1 = f1Task.Result ?? string.Empty;
+                    string c1 = c1Task.Result ?? string.Empty;
+                    
+                    // NEW LOGIC: If BOTH findings and conclusion are blank, try alternate getters
+                    if (string.IsNullOrWhiteSpace(f1) && string.IsNullOrWhiteSpace(c1))
+                    {
+                        SetStatus("ReportText visible - primary getters returned blank, trying alternates");
+                        var f2Task = _pacs.GetCurrentFindings2Async();
+                        var c2Task = _pacs.GetCurrentConclusion2Async();
+                        await Task.WhenAll(f2Task, c2Task);
+                        
+                        string f2 = f2Task.Result ?? string.Empty;
+                        string c2 = c2Task.Result ?? string.Empty;
+                        
+                        // Use the longer result from each getter pair
+                        string PickLonger(string? a, string? b) => (b?.Length ?? 0) > (a?.Length ?? 0) ? (b ?? string.Empty) : (a ?? string.Empty);
+                        findings = PickLonger(f1, f2);
+                        conclusion = PickLonger(c1, c2);
+                        SetStatus("ReportText visible - used primary + alternate getters (fallback)");
+                    }
+                    else
+                    {
+                        // At least one primary getter returned content - use primary results
+                        findings = f1;
+                        conclusion = c1;
+                        SetStatus("ReportText visible - using primary getters");
+                    }
+                }
+                else
+                {
+                    // ReportText is not visible: use alternate getters only
+                    var f2Task = _pacs.GetCurrentFindings2Async();
+                    var c2Task = _pacs.GetCurrentConclusion2Async();
+                    await Task.WhenAll(f2Task, c2Task);
+                    findings = f2Task.Result ?? string.Empty;
+                    conclusion = c2Task.Result ?? string.Empty;
+                    SetStatus("ReportText not visible - using alternate getters");
+                }
+
+                // 5) Persist as previous study via existing repo methods
                 if (_studyRepo == null) return;
                 var studyId = await _studyRepo.EnsureStudyAsync(PatientNumber, PatientName, PatientSex, null, studyName, studyDt);
                 if (studyId == null) { SetStatus("Study save failed", true); return; }

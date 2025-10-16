@@ -149,6 +149,18 @@ namespace Wysg.Musm.Radium.Services
             return true;
         }
 
+        // NEW: Check if worklist is visible
+        public async Task<string?> WorklistIsVisibleAsync()
+        {
+            return await ExecCustom("WorklistIsVisible");
+        }
+
+        // NEW: Check if report text editor is visible
+        public async Task<string?> ReportTextIsVisibleAsync()
+        {
+            return await ExecCustom("ReportTextIsVisible");
+        }
+
         public async Task<bool> IsViewerWindowAsync(IntPtr hwnd)
         {
             using var mfc = MfcUi.Attach(_proc);

@@ -104,7 +104,7 @@ namespace Wysg.Musm.Radium.Services
             }
 
             var vars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-            string? last = null;
+            string? lastOperationResult = null; // Changed: track ONLY the last operation result
             for (int i = 0; i < steps.Count; i++)
             {
                 var row = steps[i];
@@ -112,9 +112,11 @@ namespace Wysg.Musm.Radium.Services
                 var implicitKey = $"var{i + 1}";
                 vars[implicitKey] = value;
                 if (!string.IsNullOrWhiteSpace(row.OutputVar)) vars[row.OutputVar!] = value;
-                if (value != null) last = value;
+                // Changed: Always update lastOperationResult to the current operation's result
+                lastOperationResult = value;
             }
-            return last;
+            // Changed: Return blank string if last operation returned null
+            return lastOperationResult ?? string.Empty;
         }
 
         private static List<ProcOpRow> TryCreateFallbackProcedure(string methodTag)
@@ -174,6 +176,13 @@ namespace Wysg.Musm.Radium.Services
                     new ProcOpRow { Op = "ClickElement", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.Screen_SubPreviousStudyTab.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
                 };
             }
+            if (string.Equals(methodTag, "WorklistIsVisible", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "IsVisible", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.WorklistWindow.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
+                };
+            }
             return new List<ProcOpRow>();
         }
 
@@ -231,6 +240,7 @@ namespace Wysg.Musm.Radium.Services
                 case "GetTextOCR":
                 case "Invoke":
                 case "ClickElement":
+                case "IsVisible":
                 case "MouseClick":
                 case "GetValueFromSelection":
                 case "ToDateTime":
@@ -377,6 +387,24 @@ namespace Wysg.Musm.Radium.Services
                             return ($"(clicked element center {centerX},{centerY})", null);
                         }
                         catch (Exception ex) { return ($"(error: {ex.Message})", null); }
+                    }
+                    case "IsVisible":
+                    {
+                        var el = ResolveElement(row.Arg1);
+                        if (el == null) return ("false", "false");
+                        try
+                        {
+                            // Check if element is reachable and has valid bounds
+                            var rect = el.BoundingRectangle;
+                            bool isVisible = rect.Width > 0 && rect.Height > 0;
+                            string result = isVisible ? "true" : "false";
+                            return (result, result);
+                        }
+                        catch
+                        {
+                            // Element exists but not accessible - consider it not visible
+                            return ("false", "false");
+                        }
                     }
                 }
             }

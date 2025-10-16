@@ -105,6 +105,17 @@ ON CONFLICT (studyname_id, combination_id) DO UPDATE SET is_default = EXCLUDED.i
             await cmd.ExecuteNonQueryAsync();
         }
 
+        public async Task DeleteStudynameCombinationLinkAsync(long studynameId, long combinationId)
+        {
+            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            const string sql = @"DELETE FROM med.rad_studyname_technique_combination 
+WHERE studyname_id = @sid AND combination_id = @cid";
+            await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@sid", studynameId);
+            cmd.Parameters.AddWithValue("@cid", combinationId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
         public async Task<IReadOnlyList<SimpleTextRow>> GetTechsAsync()
         {
             var list = new List<SimpleTextRow>();

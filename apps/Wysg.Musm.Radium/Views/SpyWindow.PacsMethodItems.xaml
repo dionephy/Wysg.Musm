@@ -1,0 +1,52 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- PACS Method ComboBox Items -->
+    <x:Array x:Key="PacsMethodItems" Type="ComboBoxItem">
+        <!-- Search Results List -->
+        <ComboBoxItem Tag="GetSelectedIdFromSearchResults">Get selected ID from search results list</ComboBoxItem>
+        <ComboBoxItem Tag="GetSelectedNameFromSearchResults">Get selected name from search results list</ComboBoxItem>
+        <ComboBoxItem Tag="GetSelectedSexFromSearchResults">Get selected sex from search results list</ComboBoxItem>
+        <ComboBoxItem Tag="GetSelectedBirthDateFromSearchResults">Get selected birth date from search results list</ComboBoxItem>
+        <ComboBoxItem Tag="GetSelectedAgeFromSearchResults">Get selected age from search results list</ComboBoxItem>
+        <ComboBoxItem Tag="GetSelectedStudynameFromSearchResults">Get selected studyname from search results list</ComboBoxItem>
+        <ComboBoxItem Tag="GetSelectedStudyDateTimeFromSearchResults">Get selected study date time from search results list</ComboBoxItem>
+        <ComboBoxItem Tag="GetSelectedRadiologistFromSearchResults">Get selected radiologist from search results list</ComboBoxItem>
+        <ComboBoxItem Tag="GetSelectedStudyRemarkFromSearchResults">Get selected study remark from search results list</ComboBoxItem>
+        <ComboBoxItem Tag="GetSelectedReportDateTimeFromSearchResults">Get selected report date time from search results list</ComboBoxItem>
+        
+        <!-- Related Studies List -->
+        <ComboBoxItem Tag="GetSelectedStudynameFromRelatedStudies">Get selected studyname from related studies list</ComboBoxItem>
+        <ComboBoxItem Tag="GetSelectedStudyDateTimeFromRelatedStudies">Get selected study date time from related studies list</ComboBoxItem>
+        <ComboBoxItem Tag="GetSelectedRadiologistFromRelatedStudies">Get selected radiologist from related studies list</ComboBoxItem>
+        <ComboBoxItem Tag="GetSelectedReportDateTimeFromRelatedStudies">Get selected report date time from related studies list</ComboBoxItem>
+        
+        <!-- Current Study Data -->
+        <ComboBoxItem Tag="GetCurrentPatientNumber">Get current patient number</ComboBoxItem>
+        <ComboBoxItem Tag="GetCurrentStudyDateTime">Get current study date time</ComboBoxItem>
+        <ComboBoxItem Tag="GetCurrentStudyRemark">Get current study remark</ComboBoxItem>
+        <ComboBoxItem Tag="GetCurrentPatientRemark">Get current patient remark</ComboBoxItem>
+        <ComboBoxItem Tag="GetCurrentFindings">Get current findings</ComboBoxItem>
+        <ComboBoxItem Tag="GetCurrentConclusion">Get current conclusion</ComboBoxItem>
+        <ComboBoxItem Tag="GetCurrentFindings2">Get current findings 2</ComboBoxItem>
+        <ComboBoxItem Tag="GetCurrentConclusion2">Get current conclusion 2</ComboBoxItem>
+        
+        <!-- Actions -->
+        <ComboBoxItem Tag="InvokeOpenStudy">Invoke open study</ComboBoxItem>
+        <ComboBoxItem Tag="InvokeTest">Invoke test</ComboBoxItem>
+        
+        <!-- Custom Mouse Clicks -->
+        <ComboBoxItem Tag="CustomMouseClick1">Custom mouse click 1</ComboBoxItem>
+        <ComboBoxItem Tag="CustomMouseClick2">Custom mouse click 2</ComboBoxItem>
+        
+        <!-- Screen Control -->
+        <ComboBoxItem Tag="SetCurrentStudyInMainScreen">Set current study in main screen</ComboBoxItem>
+        <ComboBoxItem Tag="SetPreviousStudyInSubScreen">Set previous study in sub screen</ComboBoxItem>
+        
+        <!-- Visibility Check -->
+        <ComboBoxItem Tag="WorklistIsVisible">Worklist is visible</ComboBoxItem>
+        <ComboBoxItem Tag="ReportTextIsVisible">ReportText is visible</ComboBoxItem>
+    </x:Array>
+
+</ResourceDictionary>

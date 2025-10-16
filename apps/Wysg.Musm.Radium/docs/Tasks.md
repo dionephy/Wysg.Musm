@@ -134,61 +134,6 @@
 - [X] T737 Add auto-seed fallback for CustomMouseClick1/2 with a single MouseClick row (FR-529).
 - [X] T738 PacsService: add wrappers `CustomMouseClick1Async` and `CustomMouseClick2Async` (FR-528).
 - [X] T739 SpyWindow: add read-only `txtPickedPoint` to show picked screen coordinates (FR-530, FR-531).
-
-## Verification
-- [X] V190 Resize Edit Study Technique window; verify groups and list stretch with window.
-- [X] V191 Select combo items; verify selected area shows friendly text.
-- [X] V192 Add new prefix/tech/suffix; verify row persists and selection applied.
-- [X] V193 Save combination then set default for studyname; verify refresh.
-- [X] V200 SpyWindow shows "Invoke open study" in PACS Method list; selecting it loads/saves steps.
-- [X] V201 Running the procedure invokes UIA `Invoke` (or `Toggle`) on selected row; viewer opens where supported.
-- [X] V202 PacsService.InvokeOpenStudyAsync() returns without exception and triggers the action.
-- [X] V203 SpyWindow Map-to shows "Test invoke"; mapping saves/loads and Invoke works against it.
-- [X] V204 Custom mouse click 1/2 appear in PACS method combo; saving/running with MouseClick(X,Y) triggers a click at coordinates.
-- [X] V205 Selecting operation `MouseClick` enables numeric Arg1/Arg2; Arg3 disabled.
-- [X] V206 After Pick, `txtPickedPoint` shows coordinates in "X,Y" format and is selectable.
-
-## Previously Added
-- [X] T707 Fix short scrollbar length (remove along-axis size in Thumb style) (FR-476).
-- [X] T708 Increase min thumb length (MinHeight/MinWidth = 36px) (FR-477).
-
----
-## Validation Checklist
-- [X] FR-478..FR-482 implemented; window resizes properly; selection text fixed; inline add works.
-- [X] DarkTheme ComboBox change verified in Edit Study Technique; no regressions detected in other common ComboBoxes (to be observed).
-- [X] Build passes.
-
-## New (2025-10-13)
-- [X] T720 Implement `TechniqueFormatter.BuildGroupedDisplay` to group by (prefix, suffix) and join techs with ","; join groups by ";".
-- [X] T721 Extend TechniqueRepository with `GetDefaultCombinationForStudynameAsync`, `GetCombinationItemsAsync`, and `GetStudynameIdByNameAsync`.
-- [X] T722 Autofill current study `StudyTechniques` in NewStudyProcedure after PACS fetch using default combination (if present).
-- [X] T723 Add `MainViewModel.RefreshStudyTechniqueFromDefaultAsync` and call after closing StudynameTechniqueWindow and after saving new default.
-- [X] T724 Prevent duplicate (prefix,tech,suffix) within a single combination in `StudyTechniqueViewModel` at add-time and save-time.
-
-### New (2025-10-13 – Automation Modules + Keyboard + Toggles)
-- [X] T740 Add modules to library in `SettingsViewModel`: OpenStudy, MouseClick1, MouseClick2 (apps/Wysg.Musm.Radium/ViewModels/SettingsViewModel.cs).
-- [X] T741 Map modules in `MainViewModel.Commands`: call PacsService for clicks and OpenStudy; set `StudyOpened=true` (apps/Wysg.Musm.Radium/ViewModels/MainViewModel.Commands.cs).
-- [X] T742 Add `StudyOpened` property to VM and bind to new toggle (apps/Wysg.Musm.Radium/ViewModels/MainViewModel.Commands.cs).
-- [X] T743 Replace icon "Reportified" toggle near Study locked with text "Study opened" toggle (apps/Wysg.Musm.Radium/Views/MainWindow.xaml).
-- [X] T744 Remove icon-only Reportified toggle in previous report area (apps/Wysg.Musm.Radium/Views/MainWindow.xaml).
-- [X] T745 Add Keyboard tab UI with two capture TextBoxes and Save button (apps/Wysg.Musm.Radium/Views/SettingsWindow.xaml).
-- [X] T746 Implement capture handler `OnHotkeyTextBoxPreviewKeyDown` (apps/Wysg.Musm.Radium/Views/SettingsWindow.xaml.cs).
-- [X] T747 Add local settings keys for hotkeys in `IRadiumLocalSettings` and `RadiumLocalSettings` (apps/Wysg.Musm.Radium/Services/IRadiumLocalSettings.cs, .../RadiumLocalSettings.cs).
-- [X] T748 Add `SaveKeyboardCommand` and VM properties `OpenStudyHotkey`, `SendStudyHotkey` (apps/Wysg.Musm.Radium/ViewModels/SettingsViewModel.cs).
-- [X] T749 Docs: Update Spec.md and Plan.md with FR-540..FR-544 and keyboard capture behavior.
-
-### New (2025-10-13 – Open Study Shortcut Panes)
-- [X] T750 Add three panes in Settings → Automation (apps/Wysg.Musm.Radium/Views/SettingsWindow.xaml):
-  - Shortcut: Open study (new) ListBox `lstShortcutOpenNew`
-  - Shortcut: Open study (add) ListBox `lstShortcutOpenAdd`
-  - Shortcut: Open study (after open) ListBox `lstShortcutOpenAfterOpen`
-- [X] T751 Wire ListBoxes to VM collections in code-behind (apps/Wysg.Musm.Radium/Views/SettingsWindow.xaml.cs).
-- [X] T752 Add VM collections and load/save logic (apps/Wysg.Musm.Radium/ViewModels/SettingsViewModel.cs).
-- [X] T753 Add local settings keys in interface and implementation (apps/Wysg.Musm.Radium/Services/IRadiumLocalSettings.cs, .../RadiumLocalSettings.cs).
-- [X] T754 Add `MainViewModel.RunOpenStudyShortcut()` to execute proper sequence (apps/Wysg.Musm.Radium/ViewModels/MainViewModel.Commands.cs).
-- [X] T755 Docs: Update Spec.md with FR-545..FR-547 and Plan.md with approach/test/risks.
-
-## New (2025-10-14 – Multi-PACS Tenant + Account-Scoped Techniques)
 - [X] T760 Add local tenant table `app.tenant` with `(account_id, pacs_key)` unique and `created_at`.
 - [X] T761 Add `tenant_id` column (FK → app.tenant) to `med.patient`; change unique to `(tenant_id, patient_number)`.
 - [X] T762 Add `tenant_id` column (FK → app.tenant) to `med.rad_studyname`; change unique to `(tenant_id, studyname)`.
@@ -236,8 +181,8 @@
 
 ## New (2025-10-14 – PACS-scoped Automation Execution Fix)
 - [X] T796 Replace reads of `_localSettings.Automation*` with PACS-scoped `automation.json` loader.
-- [X] V241 New Study pane set to only `ShowTestMessage` → pressing New shows the message and does not lock study.
-- [X] V242 Add `LockStudy` to New Study pane explicitly → pressing New locks study as designed.
+- [ ] V241 New Study pane set to only `ShowTestMessage` → pressing New shows the message and does not lock study.
+- [ ] V242 Add `LockStudy` to New Study pane explicitly → pressing New locks study as designed.
 
 ## New (2025-10-14 – Global Hotkey routes to Shortcut Sequences)
 - [X] T800 Register global Open Study hotkey from Settings and handle WM_HOTKEY in MainWindow to call `RunOpenStudyShortcut()`.
@@ -606,4 +551,189 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [ ] V314 Integration: full bookmark chain with pure index step → resolves successfully
 - [ ] V315 Performance: pure index vs. attribute matching → pure index faster (<10ms)
 
-### FR-965: Bookmark Health Check Tool (Low Priority)
+## New (2025-01-16 – ReportText Visibility Check and Conditional AddPreviousStudy Logic)
+- [X] T1050 Add ReportTextIsVisible PACS method to SpyWindow.PacsMethodItems.xaml (FR-970)
+- [X] T1051 Add ReportTextIsVisibleAsync() method to PacsService.cs that calls ProcedureExecutor (FR-970)
+- [X] T1052 Modify RunAddPreviousStudyModuleAsync() to check ReportText visibility before fetching content (FR-971)
+- [X] T1053 Implement conditional branch: use primary getters (GetCurrentFindings/Conclusion) when visible (FR-971)
+- [X] T1054 Implement conditional branch: use alternate getters (GetCurrentFindings2/Conclusion2) when not visible (FR-971)
+- [X] T1055 Add status messages: "ReportText visible - using primary getters" and "ReportText not visible - using alternate getters" (FR-973)
+- [X] T1056 Update Spec.md with FR-970 through FR-973 documenting ReportText visibility check and conditional logic (cumulative)
+- [X] T1057 Update Plan.md with change log entry for ReportText visibility including approach, test plan, and risks (cumulative)
+- [X] T1058 Update Tasks.md with T1050-T1065 and V360-V370 (this file, cumulative)
+- [X] T1059 Verify build passes with no compilation errors
+- [ ] T1060 Manual: Add ReportText bookmark to UiBookmarks.KnownControl enum (future work)
+- [ ] T1061 Manual: Add "ReportText" to SpyWindow Map-to ComboBox dropdown (future work)
+- [ ] T1062 Test ReportTextIsVisible custom procedure in SpyWindow with mapped bookmark (future work)
+- [ ] T1063 Test AddPreviousStudy with ReportText visible state (future work)
+- [ ] T1064 Test AddPreviousStudy with ReportText hidden state (future work)
+- [ ] T1065 Integration test: full automation sequence with both UI states (future work)
+
+## Verification (ReportText Visibility Check and Conditional AddPreviousStudy)
+- [ ] V340 Open SpyWindow Custom Procedures → verify "ReportText is visible" listed in PACS Method dropdown (pending manual enum/XAML update)
+- [ ] V341 Select ReportTextIsVisible method → verify auto-seeded with IsVisible operation targeting ReportText (pending bookmark addition)
+- [ ] V342 Map ReportText bookmark to PACS report editor → run procedure → verify returns "true" when visible, "false" when hidden
+- [ ] V343 Configure Add Study with AddPreviousStudy → PACS showing report text editor → verify status "ReportText visible - using primary getters"
+- [ ] V344 Run AddPreviousStudy with visible ReportText → verify previous study added with correct content from primary getters
+- [ ] V345 Change PACS view to hide report editor → run AddPreviousStudy → verify status "ReportText not visible - using alternate getters"
+- [ ] V346 Run AddPreviousStudy with hidden ReportText → verify previous study added with correct content from alternate getters
+- [ ] V347 Test error handling: ReportText bookmark not mapped → verify falls back to alternate getters without crashing
+
+## New (2025-01-17 – Set Default Technique Combination in Manage Studyname Techniques Window)
+- [X] T1100 Add DataGrid to StudynameTechniqueWindow to display combinations list (FR-1000, FR-1001)
+- [X] T1101 Create combination display column with Star sizing for auto-width (FR-1005)
+- [X] T1102 Create default status column with checkmark converter and 80px fixed width (FR-1001, FR-1006)
+- [X] T1103 Implement BoolToCheckmarkConverter to display "✓" for IsDefault=true (FR-1006)
+- [X] T1104 Add "Set Selected As Default" button below DataGrid with command binding (FR-1002)
+- [X] T1105 Update window layout with 4 rows: Header, Info, List container, Footer (FR-1007)
+- [X] T1106 Update info text to "Existing combinations for this studyname (select and click 'Set Default' to change default):" (FR-1000)
+- [X] T1107 Convert SetDefaultCommand to RelayCommand field with CanExecute logic in StudynameTechniqueViewModel (FR-1004)
+- [X] T1108 Implement CanExecute: enable button only when studyname ID and selected combination both exist (FR-1004)
+- [X] T1109 Update SelectedCombination property setter to call MapCommand.NotifyCanExecuteChanged() (FR-1004)
+- [X] T1110 Modify SetDefaultCommand execution to call ReloadAsync() after setting default (FR-1003, FR-1008)
+- [X] T1111 Update Initialize() method to raise CanExecuteChanged after setting studyname ID (FR-1004)
+- [X] T1112 Apply dark theme styling: black background, DimGray borders, alternating row colors (FR-1010)
+- [X] T1113 Verify build passes with no compilation errors
+- [X] T1114 Update Spec.md with FR-1000 through FR-1010 documenting set default feature (cumulative)
+- [X] T1115 Update Plan.md with change log entry including approach, test plan, and risks (cumulative)
+- [X] T1116 Update Tasks.md with T1100-T1125 and V360-V370 (this file, cumulative)
+
+## Verification (Set Default Technique Combination in Manage Window)
+- [ ] V360 Open Manage Studyname Techniques window → verify combinations list displays with proper columns
+- [ ] V361 Verify default combination shows checkmark "✓" in Default column
+- [ ] V362 Verify "Set Selected As Default" button is disabled with no selection
+- [ ] V363 Select a non-default combination → verify button becomes enabled
+- [ ] V364 Click "Set Selected As Default" → verify list refreshes automatically
+- [ ] V365 Verify checkmark moves to newly selected combination
+- [ ] V366 Verify previous default no longer shows checkmark
+- [ ] V367 Close and reopen window → verify default setting persisted correctly
+- [ ] V368 Click "Add And Set As Default" → verify opens Edit window and refreshes list after save
+- [ ] V369 Test with studyname having no combinations → verify empty list and disabled button
+- [ ] V370 Resize window → verify DataGrid resizes proportionally and scrolls if needed
+
+## New (2025-01-17 – Delete Combination and ListBox Display Fix)
+- [X] T1150 Fix ListBox DisplayMemberPath to use direct string assignment instead of Binding (FR-1033)
+- [X] T1151 Add DeleteCombinationCommand to StudynameTechniqueViewModel with confirmation dialog (FR-1034, FR-1036)
+- [X] T1152 Implement CanExecute logic for Delete command checking studyname ID and selected combination (FR-1038)
+- [X] T1153 Update SelectedCombination setter to raise CanExecuteChanged for both SetDefault and Delete commands (FR-1038)
+- [X] T1154 Add DeleteStudynameCombinationLinkAsync method to ITechniqueRepository interface (FR-1039)
+- [X] T1155 Implement DeleteStudynameCombinationLinkAsync in TechniqueRepository.Pg.cs with DELETE statement (FR-1039)
+- [X] T1156 Add "Delete Selected Combination" button to StudynameTechniqueWindow (FR-1034, FR-1035)
+- [X] T1157 Restructure right panel layout to add buttons container row (FR-1035)
+- [X] T1158 Create vertical StackPanel for Set Default and Delete buttons with consistent spacing (FR-1035)
+- [X] T1159 Update info text to "Existing combinations (select to set default or delete):" (FR-1041)
+- [X] T1160 Implement error handling in Delete command with MessageBox display (FR-1040)
+- [X] T1161 Add automatic list reload and selection clearing after successful deletion (FR-1037)
+- [X] T1162 Update Spec.md with FR-1033 through FR-1041 documenting delete functionality (cumulative)
+- [X] T1163 Update Plan.md with change log entry including approach, test plan, and risks (cumulative)
+- [X] T1164 Update Tasks.md with T1150-T1174 and V386-V400 (this file, cumulative)
+- [X] T1165 Verify build passes with no compilation errors
+
+## Verification (Delete Combination and ListBox Display Fix)
+- [ ] V386 Open window → verify "Current Combination" ListBox displays technique text (e.g., "axial T1")
+- [ ] V387 Verify no CLR type names visible in Current Combination list
+- [ ] V388 Verify Delete button is disabled when no combination selected
+- [ ] V389 Select a combination → verify Delete button becomes enabled
+- [ ] V390 Click Delete → verify confirmation dialog shows combination text
+- [ ] V391 Click No in confirmation → verify dialog closes and combination remains
+- [ ] V392 Click Yes in confirmation → verify combination removed from list
+- [ ] V393 Verify list refreshes automatically after delete
+- [ ] V394 Verify selection is cleared after delete (Delete button disables)
+- [ ] V395 Close and reopen window → verify deleted combination is gone
+- [ ] V396 Delete the default combination → verify checkmark disappears
+- [ ] V397 Set another combination as default after deleting previous default → verify checkmark appears
+- [ ] V398 Attempt to delete with database error → verify error MessageBox displays
+- [ ] V399 Verify info text says "select to set default or delete"
+- [ ] V400 Verify Set Default and Delete buttons are vertically stacked with consistent spacing
+
+## New (2025-01-17 – Enhanced Manage Studyname Techniques Window with Combination Building)
+- [X] T1120 Fix ToString() override in ComboRow class to return Display property (FR-1028)
+- [X] T1121 Add ToString() override in TechText class to return Text property (FR-1028)
+- [X] T1122 Add ToString() override in CombinationItem class to return TechniqueDisplay property (FR-1028)
+- [X] T1123 Add Prefixes, Techs, Suffixes collections to StudynameTechniqueViewModel (FR-1021)
+- [X] T1124 Add SelectedPrefix, SelectedTech, SelectedSuffix properties to ViewModel (FR-1021)
+- [X] T1125 Add CurrentCombinationItems collection to ViewModel (FR-1022)
+- [X] T1126 Implement AddTechniqueCommand with duplicate prevention logic (FR-1023, FR-1024)
+- [X] T1127 Implement SaveNewCombinationCommand with CanExecute checking studyname ID and items count (FR-1025)
+- [X] T1128 Modify ReloadAsync() to load both combinations and component lookup lists (FR-1026)
+- [X] T1129 Add AddPrefixAndSelectAsync, AddTechAndSelectAsync, AddSuffixAndSelectAsync methods (FR-1031, FR-1032)
+- [X] T1130 Restructure StudynameTechniqueWindow layout to 3-column (left, splitter, right) (FR-1020)
+- [X] T1131 Add left panel with GroupBox "Add Techniques" containing Prefix/Tech/Suffix ComboBoxes (FR-1021)
+- [X] T1132 Add "+" buttons next to each ComboBox with click handlers opening modal dialogs (FR-1031)
+- [X] T1133 Add GroupBox "Current Combination" with ListBox displaying working combination (FR-1022)
+- [X] T1134 Add "Add to Combination" button bound to AddTechniqueCommand (FR-1023)
+- [X] T1135 Add "Save as New Combination" button bound to SaveNewCombinationCommand (FR-1025)
+- [X] T1136 Add GridSplitter between left and right panels for user-adjustable sizing (FR-1029)
+- [X] T1137 Maintain right panel with existing combinations DataGrid and set default button (FR-1027)
+- [X] T1138 Implement AddPrefixAsync, AddTechAsync, AddSuffixAsync modal dialog methods (FR-1031)
+- [X] T1139 Apply dark theme styling to all new UI components (FR-1030)
+- [X] T1140 Increase window width from 780px to 900px to accommodate dual panels (FR-1020)
+- [X] T1141 Update Spec.md with FR-1020 through FR-1032 documenting enhanced window (cumulative)
+- [X] T1142 Update Plan.md with change log entry including approach, test plan, and risks (cumulative)
+- [X] T1143 Update Tasks.md with T1120-T1153 and V371-V385 (this file, cumulative)
+- [X] T1144 Verify build passes with no compilation errors
+
+## Verification (Enhanced Manage Studyname Techniques Window)
+- [ ] V371 Open window → verify split-panel layout displays correctly
+- [ ] V372 Verify left panel shows "Build New Combination" header and builder controls
+- [ ] V373 Verify right panel shows studyname header and existing combinations list
+- [ ] V374 Verify ComboBoxes display actual text values (e.g., "axial", "T1") not type names
+- [ ] V375 Verify existing combinations DataGrid displays combination text not type names
+- [ ] V376 Select components and click "Add to Combination" → verify appears in Current Combination list
+- [ ] V377 Verify Current Combination items display formatted text (e.g., "axial T1")
+- [ ] V378 Attempt to add duplicate technique → verify ignored silently
+- [ ] V379 Add 3-4 techniques → verify "Save as New Combination" button enables
+- [ ] V380 Click "Save as New Combination" → verify right panel refreshes and shows new combination
+- [ ] V381 Verify Current Combination list clears after save
+- [ ] V382 Click "+" next to Prefix → verify modal opens, enter text, verify selected in ComboBox
+- [ ] V383 Repeat for Tech and Suffix "+" buttons → verify same behavior
+- [ ] V384 Drag GridSplitter → verify panels resize proportionally
+- [ ] V385 Build and save combination, then set it as default → verify checkmark updates
+- [ ] V386 Open window → verify "Current Combination" ListBox displays technique text (e.g., "axial T1")
+- [ ] V387 Verify no CLR type names visible in Current Combination list
+- [ ] V388 Verify Delete button is disabled when no combination selected
+- [ ] V389 Select a combination → verify Delete button becomes enabled
+- [ ] V390 Click Delete → verify confirmation dialog shows combination text
+- [ ] V391 Click No in confirmation → verify dialog closes and combination remains
+- [ ] V392 Click Yes in confirmation → verify combination removed from list
+- [ ] V393 Verify list refreshes automatically after delete
+- [ ] V394 Verify selection is cleared after delete (Delete button disables)
+- [ ] V395 Close and reopen window → verify deleted combination is gone
+- [ ] V396 Delete the default combination → verify checkmark disappears
+- [ ] V397 Set another combination as default after deleting previous default → verify checkmark appears
+- [ ] V398 Attempt to delete with database error → verify error MessageBox displays
+- [ ] V399 Verify info text says "select to set default or delete"
+- [ ] V400 Verify Set Default and Delete buttons are vertically stacked with consistent spacing
+- [ ] V401 Open "Manage Studyname Techniques" window → verify "Technique Combination" column text is visible in light gray
+- [ ] V402 Verify text is readable against black background without eye strain
+- [ ] V403 Verify checkmark "✓" in Default column is visible in light gray
+- [ ] V404 Select a row → verify text remains readable with selection highlight
+- [ ] V405 Verify alternating row background colors don't obscure text
+- [ ] V406 Resize window to minimum width → verify text doesn't disappear or become unreadable
+- [ ] V407 Compare text color with other DataGrids in app → verify consistency
+- [ ] V408 Verify header text color matches column cell text color
+- [ ] V409 Open window with no combinations → verify empty grid displays properly
+- [ ] V410 Open window with 10+ combinations → verify all rows display text properly
+
+## New (2025-01-17 – DataGrid Text Visibility Fix)
+- [X] T1170 Add `using System.Windows.Media` to StudynameTechniqueWindow.xaml.cs for Brushes reference (FR-1042)
+- [X] T1171 Create Style for TextBlock with Foreground=Gainsboro setter (FR-1042)
+- [X] T1172 Assign ElementStyle to DataGridTextColumn for "Technique Combination" column (FR-1042)
+- [X] T1173 Add Foreground property to checkmark template factory for Default column (FR-1042)
+- [X] T1174 Set DataGrid.Foreground to Gainsboro as fallback for headers (FR-1042)
+- [X] T1175 Update Spec.md with FR-1042 documenting text visibility fix (cumulative)
+- [X] T1176 Update Plan.md with change log entry including root cause, approach, test plan, and risks (cumulative)
+- [X] T1177 Update Tasks.md with T1170-T1180 and V401-V410 (this file, cumulative)
+- [X] T1178 Verify build passes with no compilation errors
+
+## Verification (DataGrid Text Visibility Fix)
+- [ ] V401 Open "Manage Studyname Techniques" window → verify "Technique Combination" column text is visible in light gray
+- [ ] V402 Verify text is readable against black background without eye strain
+- [ ] V403 Verify checkmark "✓" in Default column is visible in light gray
+- [ ] V404 Select a row → verify text remains readable with selection highlight
+- [ ] V405 Verify alternating row background colors don't obscure text
+- [ ] V406 Resize window to minimum width → verify text doesn't disappear or become unreadable
+- [ ] V407 Compare text color with other DataGrids in app → verify consistency
+- [ ] V408 Verify header text color matches column cell text color
+- [ ] V409 Open window with no combinations → verify empty grid displays properly
+- [ ] V410 Open window with 10+ combinations → verify all rows display text properly

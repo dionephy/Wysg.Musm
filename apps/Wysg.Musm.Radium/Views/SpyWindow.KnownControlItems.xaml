@@ -1,0 +1,48 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Known Control (Map-to) ComboBox Items -->
+    <x:Array x:Key="KnownControlItems" Type="ComboBoxItem">
+        <!-- Worklist Controls -->
+        <ComboBoxItem Tag="CloseWorklistButton">Close worklist button</ComboBoxItem>
+        <ComboBoxItem Tag="OpenWorklistButton">Open worklist button</ComboBoxItem>
+        <ComboBoxItem Tag="WorklistWindow">Worklist window</ComboBoxItem>
+        <ComboBoxItem Tag="WorklistPane">Worklist pane</ComboBoxItem>
+        <ComboBoxItem Tag="WorklistToolbar">Worklist toolbar</ComboBoxItem>
+        <ComboBoxItem Tag="WorklistViewButton">Worklist view button</ComboBoxItem>
+        <ComboBoxItem Tag="WorklistListsPane">Worklist lists pane</ComboBoxItem>
+        
+        <!-- Lists -->
+        <ComboBoxItem Tag="StudyList">Study list</ComboBoxItem>
+        <ComboBoxItem Tag="SearchResultsList">Search results list</ComboBoxItem>
+        <ComboBoxItem Tag="RelatedStudyList">Related studies list</ComboBoxItem>
+        
+        <!-- Selected Items -->
+        <ComboBoxItem Tag="SelectedStudyInSearch">Selected study in search results</ComboBoxItem>
+        <ComboBoxItem Tag="SelectedStudyInRelated">Selected study in related studies</ComboBoxItem>
+        
+        <!-- Report Controls -->
+        <ComboBoxItem Tag="ReportPane">Report pane</ComboBoxItem>
+        <ComboBoxItem Tag="ReportInput">Report input</ComboBoxItem>
+        <ComboBoxItem Tag="ReportText">Report text</ComboBoxItem>
+        <ComboBoxItem Tag="ReportText2">Report text 2</ComboBoxItem>
+        <ComboBoxItem Tag="ReportCommitButton">Report commit button</ComboBoxItem>
+        
+        <!-- Study Info -->
+        <ComboBoxItem Tag="StudyInfoBanner">Study info banner</ComboBoxItem>
+        <ComboBoxItem Tag="StudyRemark">Study remark</ComboBoxItem>
+        <ComboBoxItem Tag="PatientRemark">Patient remark</ComboBoxItem>
+        
+        <!-- Viewer -->
+        <ComboBoxItem Tag="ViewerWindow">Viewer window</ComboBoxItem>
+        <ComboBoxItem Tag="ViewerToolbar">Viewer toolbar</ComboBoxItem>
+        
+        <!-- Screen Areas -->
+        <ComboBoxItem Tag="Screen_MainCurrentStudyTab">Screen_main current study tab</ComboBoxItem>
+        <ComboBoxItem Tag="Screen_SubPreviousStudyTab">Screen_sub previous study tab</ComboBoxItem>
+        
+        <!-- Test -->
+        <ComboBoxItem Tag="TestInvoke">Test button</ComboBoxItem>
+    </x:Array>
+
+</ResourceDictionary>

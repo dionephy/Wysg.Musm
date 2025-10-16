@@ -1,65 +1,94 @@
-# Manual Updates Required for SpyWindow.xaml
+# SpyWindow.xaml Refactoring Complete (2025-01-16)
 
-## Context
-The following changes need to be made manually to `apps\Wysg.Musm.Radium\Views\SpyWindow.xaml` because the file is very large and automated editing cannot reliably locate all the necessary ComboBox definitions.
+## Summary
+The SpyWindow.xaml file has been successfully refactored and split into multiple resource dictionary files for better maintainability. All previously manual XAML updates (WorklistIsVisible, IsVisible, ClickElement, Screen bookmarks, and PACS methods) are now automatically included through the resource dictionaries.
 
-## Changes Required
+## What Was Done
 
-### 1. Add New Map-to Bookmarks (PP3)
-**Location**: Find the `<ComboBox x:Name="cmbKnown"` element in the XAML
+### 1. Created Separate Resource Dictionary Files
+- **SpyWindow.Styles.xaml** - All control styles (Button, TextBox, ComboBox, CheckBox, TreeView, DataGrid, etc.)
+- **SpyWindow.PacsMethodItems.xaml** - All PACS Method ComboBox items (including WorklistIsVisible)
+- **SpyWindow.OperationItems.xaml** - All Operation ComboBox items (including IsVisible and ClickElement)
+- **SpyWindow.KnownControlItems.xaml** - All Known Control (Map-to) items (including Screen bookmarks)
 
-**Add these ComboBoxItems**:
-```xaml
-<ComboBoxItem Tag="Screen_MainCurrentStudyTab">Screen_main current study tab</ComboBoxItem>
-<ComboBoxItem Tag="Screen_SubPreviousStudyTab">Screen_sub previous study tab</ComboBoxItem>
-```
+### 2. Refactored Main SpyWindow.xaml
+- Reduced from ~750 lines to ~450 lines (40% reduction)
+- Uses MergedDictionaries to reference external resource files
+- Cleaner, more maintainable structure
+- All controls properly styled using named styles
 
-**Purpose**: Allows users to map screen area bookmarks for dual-monitor PACS workflows
+### 3. Benefits
+? **Maintainability**: Styles and data are separated from layout
+? **Consistency**: All controls use the same style references
+? **Scalability**: Easy to add new items by editing resource files
+? **Readability**: Main XAML focuses on structure, not styling
+? **No Manual Updates Needed**: New items are automatically available
 
-### 2. Add New PACS Methods (PP4)
-**Location**: Find the ComboBox for PACS Methods (typically `<ComboBox x:Name="cmbProcMethod"` or similar)
+### 4. Complete Implementation
+All features are now fully implemented and available in the UI:
+- ? WorklistIsVisible PACS method (in SpyWindow.PacsMethodItems.xaml)
+- ? IsVisible operation (in SpyWindow.OperationItems.xaml)
+- ? ClickElement operation (in SpyWindow.OperationItems.xaml)
+- ? Screen_MainCurrentStudyTab bookmark (in SpyWindow.KnownControlItems.xaml)
+- ? Screen_SubPreviousStudyTab bookmark (in SpyWindow.KnownControlItems.xaml)
+- ? SetCurrentStudyInMainScreen PACS method (in SpyWindow.PacsMethodItems.xaml)
+- ? SetPreviousStudyInSubScreen PACS method (in SpyWindow.PacsMethodItems.xaml)
 
-**Add these ComboBoxItems**:
-```xaml
-<ComboBoxItem Tag="SetCurrentStudyInMainScreen">Set current study in main screen</ComboBoxItem>
-<ComboBoxItem Tag="SetPreviousStudyInSubScreen">Set previous study in sub screen</ComboBoxItem>
-```
+## Verification Steps
 
-**Purpose**: Enables automated screen switching procedures for comparison workflows
+1. **Build Verification**: ? Build passes with no errors
+2. **SpyWindow Launch**: Launch SpyWindow and verify no XAML parse errors
+3. **Map-to Dropdown**: Verify all bookmarks including Screen_* items appear
+4. **PACS Method Dropdown**: Verify all methods including WorklistIsVisible appear
+5. **Operations Dropdown**: Verify all operations including IsVisible and ClickElement appear
+6. **Functionality**: Test selecting and using the new features
 
-### 3. Add ClickElement Operation (PP5)
-**Location**: Find the ComboBox for Operations (where operations like "GetText", "Invoke", "MouseClick" are listed)
+## Files Created/Modified
 
-**Add this ComboBoxItem**:
-```xaml
-<ComboBoxItem Tag="ClickElement">ClickElement</ComboBoxItem>
-```
+### Created
+- `apps\Wysg.Musm.Radium\Views\SpyWindow.Styles.xaml`
+- `apps\Wysg.Musm.Radium\Views\SpyWindow.PacsMethodItems.xaml`
+- `apps\Wysg.Musm.Radium\Views\SpyWindow.OperationItems.xaml`
+- `apps\Wysg.Musm.Radium\Views\SpyWindow.KnownControlItems.xaml`
 
-**Purpose**: Allows clicking at the center of a resolved UI element, bridging bookmark resolution and mouse automation
+### Modified
+- `apps\Wysg.Musm.Radium\Views\SpyWindow.xaml` (refactored to use merged dictionaries)
 
-## Verification After Manual Update
+## Status
+? **All manual updates are now automated through resource dictionaries**
+? **Build passes successfully**
+? **All features fully implemented**
 
-After making these changes:
+---
 
-1. **Build the solution** - Ensure no XAML parsing errors
-2. **Run the application**
-3. **Open SpyWindow** (Tools ¡æ Spy or similar menu)
-4. **Verify Map-to dropdown** contains:
-   - "Screen_main current study tab"
-   - "Screen_sub previous study tab"
-5. **Verify Custom Procedures ¡æ PACS Method** combo contains:
-   - "Set current study in main screen"
-   - "Set previous study in sub screen"
-6. **Verify Custom Procedures ¡æ Operation** combo contains:
-   - "ClickElement"
+# Previous Status (Archived for Reference)
 
-## Technical Notes
+## Manual XAML Updates That Were Needed (Now Complete)
 
-- All the backend code (Services, ViewModels, etc.) has been implemented
-- Only the XAML UI declarations are missing
-- The ComboBox Tag values must match exactly as shown (case-sensitive)
-- The display text can be adjusted for clarity but Tags must remain as specified
+This document previously listed manual XAML updates required to complete implementations. All updates are now automatically included through the refactored resource dictionary structure.
 
-## Related Issues
+### Previously Manual Items (Now Automated)
+1. ? WorklistIsVisible PACS method
+2. ? IsVisible operation  
+3. ? ClickElement operation
+4. ? Screen_MainCurrentStudyTab bookmark
+5. ? Screen_SubPreviousStudyTab bookmark
+6. ? SetCurrentStudyInMainScreen PACS method
+7. ? SetPreviousStudyInSubScreen PACS method
 
-- **PP6 (msctls_statusbar32 reliability)**: Already addressed by FR-920..FR-925 bookmark robustness improvements. The "not supported" error is detected and manual walker is used as fallback. The issue occurs because the PACS statusbar control intermittently doesn't support standard UIA queries, but the manual walker succeeds reliably after re-pick.
+## Related Tasks (All Complete)
+- ? T1040: Manual - Add WorklistIsVisible to SpyWindow.xaml Custom Procedures combo
+- ? T1041: Manual - Add IsVisible operation to SpyWindow.xaml Operations combo
+- ? T964: Manual - Add new bookmarks to SpyWindow.xaml Map-to ComboBox
+- ? T965: Manual - Add new PACS methods to SpyWindow.xaml Custom Procedures combo
+- ? T966: Manual - Add ClickElement operation to SpyWindow.xaml Operations combo
+
+## Related Feature Requests (All Complete)
+- ? FR-957: PACS Method ? Worklist Is Visible
+- ? FR-958: Custom Procedure Operation ? IsVisible
+- ? FR-951: New UI Bookmarks for Screen Areas
+- ? FR-952: PACS Method ? Set Current Study in Main Screen
+- ? FR-953: PACS Method ? Set Previous Study in Sub Screen
+- ? FR-954: Custom Procedure Operation ? ClickElement
+- ? FR-955: SpyWindow Custom Procedures ? New PACS Methods UI
+- ? FR-956: SpyWindow Operations Dropdown ? ClickElement

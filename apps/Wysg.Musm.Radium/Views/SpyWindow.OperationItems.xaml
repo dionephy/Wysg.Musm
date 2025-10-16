@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Operation ComboBox Items -->
+    <x:Array x:Key="OperationItems" Type="ComboBoxItem">
+        <ComboBoxItem Content="GetText"/>
+        <ComboBoxItem Content="GetName"/>
+        <ComboBoxItem Content="GetTextOCR"/>
+        <ComboBoxItem Content="Split"/>
+        <ComboBoxItem Content="TakeLast"/>
+        <ComboBoxItem Content="Trim"/>
+        <ComboBoxItem Content="Invoke"/>
+        <ComboBoxItem Content="GetValueFromSelection"/>
+        <ComboBoxItem Content="ToDateTime"/>
+        <ComboBoxItem Content="Replace"/>
+        <ComboBoxItem Content="GetHTML"/>
+        <ComboBoxItem Content="MouseClick"/>
+        <ComboBoxItem Content="ClickElement"/>
+        <ComboBoxItem Content="IsVisible"/>
+    </x:Array>
+
+</ResourceDictionary>

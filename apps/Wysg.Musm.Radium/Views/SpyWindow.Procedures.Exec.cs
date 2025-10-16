@@ -37,6 +37,7 @@ namespace Wysg.Musm.Radium.Views
                         case "GetName":
                         case "Invoke":
                         case "ClickElement":
+                        case "IsVisible":
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
@@ -226,6 +227,26 @@ namespace Wysg.Musm.Radium.Views
                         preview = $"(clicked element center {cx},{cy})";
                     }
                     catch { preview = "(error)"; }
+                    break;
+                }
+                case "IsVisible":
+                {
+                    var elVisible = ResolveElement(row.Arg1);
+                    if (elVisible == null) { valueToStore = "false"; preview = "false"; break; }
+                    try
+                    {
+                        // Check if element is reachable and has valid bounds
+                        var r = elVisible.BoundingRectangle;
+                        bool isVisible = r.Width > 0 && r.Height > 0;
+                        valueToStore = isVisible ? "true" : "false";
+                        preview = valueToStore;
+                    }
+                    catch 
+                    { 
+                        // Element exists but not accessible - consider it not visible
+                        valueToStore = "false"; 
+                        preview = "false"; 
+                    }
                     break;
                 }
                 case "TakeLast":
