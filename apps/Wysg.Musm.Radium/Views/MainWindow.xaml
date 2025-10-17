@@ -71,7 +71,8 @@
       
         <!-- Style for our wrapper EditorControl -->
         <Style TargetType="editor:EditorControl">
-            <Setter Property="MinHeight" Value="120"/>
+            <!--<Setter Property="MinHeight" Value="120"/>-->
+            <Setter Property="MinHeight" Value="0"/>
             <Setter Property="Margin" Value="0"/>
             <Setter Property="Background" Value="#1E1E1E"/>
             <Setter Property="FontFamily" Value="{StaticResource UiMonospaceFont}"/>
@@ -431,6 +432,14 @@
                                       Padding="4" Height="28" ToolTip="Toggle Study Opened">
                             <TextBlock Text="Study opened"/>
                         </ToggleButton>
+                        <ToggleButton x:Name="btnSyncText"
+                                      Margin="2,0,0,2"
+                                      VerticalAlignment="Center"
+                                      IsChecked="{Binding TextSyncEnabled, Mode=TwoWay}"
+                                      Style="{StaticResource DarkToggleButtonStyle}"
+                                      Padding="4" Height="28" ToolTip="Sync text with foreign textbox (e.g. Notepad)">
+                            <TextBlock Text="Sync Text"/>
+                        </ToggleButton>
                         <!-- Selectable Current Study Label (read-only TextBox) -->
                         <TextBox Text="{Binding CurrentStudyLabel, Mode=OneWay}" Margin="2,0,0,0" FontFamily="{StaticResource UiMonospaceFont}" Foreground="#5A9FD6" Background="Transparent" BorderThickness="0" IsReadOnly="True" IsReadOnlyCaretVisible="False" TextWrapping="Wrap" MinWidth="260" Cursor="" Padding="0,0,0,0"/>
                     </StackPanel>
@@ -439,7 +448,54 @@
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
                 <editor:EditorControl x:Name="EditorHeader" Grid.Row="2" MinHeight="70" DocumentText="{Binding HeaderText, Mode=OneWay}" IsReadOnly="True" PhraseSnapshot="{Binding CurrentPhraseSnapshot}" PhraseSemanticTags="{Binding PhraseSemanticTags}"/>
                 <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="2"/>
-                <editor:EditorControl x:Name="EditorFindings" Grid.Row="4" DocumentText="{Binding FindingsText, Mode=TwoWay}" PhraseSnapshot="{Binding CurrentPhraseSnapshot}" PhraseSemanticTags="{Binding PhraseSemanticTags}"/>
+                
+                <!-- Foreign text editor (read-only, synced from external textbox) + Findings editor with shared scrollbar -->
+                <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid MinHeight="{Binding RelativeSource={RelativeSource AncestorType=ScrollViewer}, Path=ActualHeight}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <editor:EditorControl x:Name="EditorForeignText" Grid.Row="0"
+                                              DocumentText="{Binding ForeignText, Mode=OneWay}" 
+                                              IsReadOnly="True"
+                                              PhraseSnapshot="{Binding CurrentPhraseSnapshot}" 
+                                              PhraseSemanticTags="{Binding PhraseSemanticTags}"
+                                              BorderThickness="1,1,1,0"
+                                              BorderBrush="#2D2D30"
+                                              Margin="0"
+                                              VerticalScrollBarVisibility="Disabled"
+                                              HorizontalScrollBarVisibility="Disabled">
+                            <editor:EditorControl.Style>
+                                <Style TargetType="editor:EditorControl" BasedOn="{StaticResource {x:Type editor:EditorControl}}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Setter Property="Height" Value="0"/>
+                                    <Setter Property="MinHeight" Value="0"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding TextSyncEnabled}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Setter Property="Height" Value="Auto"/>
+                                            <Setter Property="MinHeight" Value="0"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </editor:EditorControl.Style>
+                        </editor:EditorControl>
+                        
+                        <editor:EditorControl x:Name="EditorFindings" Grid.Row="1"
+                                              DocumentText="{Binding FindingsText, Mode=TwoWay}" 
+                                              PhraseSnapshot="{Binding CurrentPhraseSnapshot}" 
+                                              PhraseSemanticTags="{Binding PhraseSemanticTags}"
+                                              BorderThickness="1,0,1,1"
+                                              BorderBrush="#2D2D30"
+                                              Margin="0"
+                                              MinHeight="20"
+                                              VerticalScrollBarVisibility="Disabled"
+                                              HorizontalScrollBarVisibility="Disabled"/>
+                    </Grid>
+                </ScrollViewer>
+                
                 <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="2"/>
                 <editor:EditorControl x:Name="EditorConclusion" Grid.Row="6" DocumentText="{Binding ConclusionText, Mode=TwoWay}" PhraseSnapshot="{Binding CurrentPhraseSnapshot}" PhraseSemanticTags="{Binding PhraseSemanticTags}"/>
             </Grid>

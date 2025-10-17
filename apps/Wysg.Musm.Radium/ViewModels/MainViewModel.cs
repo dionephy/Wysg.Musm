@@ -46,12 +46,44 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly IRadiumLocalSettings? _localSettings;
         private readonly ILockStudyProcedure? _lockStudyProc;
         private readonly ISnomedMapService? _snomedMapService; // SNOMED mapping service for semantic tags
+        private readonly TextSyncService? _textSyncService; // Text sync service for foreign textbox sync
 
         // ------------------------------------------------------------------
         // Status / UI flags
         // ------------------------------------------------------------------
         private string _statusText = "Ready"; public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
         private bool _statusIsError; public bool StatusIsError { get => _statusIsError; set => SetProperty(ref _statusIsError, value); }
+
+        // Text sync toggle
+        private bool _textSyncEnabled;
+        public bool TextSyncEnabled
+        {
+            get => _textSyncEnabled;
+            set
+            {
+                if (SetProperty(ref _textSyncEnabled, value))
+                {
+                    _textSyncService?.SetEnabled(value);
+                    if (value)
+                    {
+                        SetStatus("Text sync enabled");
+                    }
+                    else
+                    {
+                        SetStatus("Text sync disabled");
+                        ForeignText = string.Empty; // Clear foreign text when disabled
+                    }
+                }
+            }
+        }
+
+        // Foreign text from external textbox (read-only, synced from foreign source)
+        private string _foreignText = string.Empty;
+        public string ForeignText
+        {
+            get => _foreignText;
+            private set => SetProperty(ref _foreignText, value);
+        }
 
         // Cumulative status buffer (last 50 lines)
         private readonly object _statusSync = new();
@@ -117,6 +149,10 @@ namespace Wysg.Musm.Radium.ViewModels
                 _studyRepo = studyRepo; _newStudyProc = newStudyProc; _localSettings = localSettings; _lockStudyProc = lockStudyProc;
                 _snomedMapService = snomedMapService;
                 
+                // Initialize text sync service
+                _textSyncService = new TextSyncService(System.Windows.Application.Current.Dispatcher);
+                _textSyncService.ForeignTextChanged += OnForeignTextChanged;
+                
                 Debug.WriteLine("[MainViewModel] Creating PreviousStudies collection...");
                 PreviousStudies = new ObservableCollection<PreviousStudyTab>();
                 
@@ -160,6 +196,16 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine($"[MainViewModel] Message: {ex.Message}");
                 Debug.WriteLine($"[MainViewModel] StackTrace: {ex.StackTrace}");
                 throw;
+            }
+        }
+
+        private void OnForeignTextChanged(object? sender, string foreignText)
+        {
+            // Update ForeignText property when foreign textbox changes (one-way sync)
+            if (_textSyncEnabled && foreignText != null)
+            {
+                ForeignText = foreignText;
+                Debug.WriteLine($"[TextSync] Updated ForeignText from foreign: {foreignText.Length} chars");
             }
         }
 

@@ -44,7 +44,8 @@ public sealed class UiBookmarks
         PatientRemark, // new: distinct bookmark for patient remark field
         TestInvoke, // new: generic target for testing Invoke operation
         Screen_MainCurrentStudyTab, // NEW: main screen current study tab area
-        Screen_SubPreviousStudyTab // NEW: sub screen previous study tab area
+        Screen_SubPreviousStudyTab, // NEW: sub screen previous study tab area
+        ForeignTextbox // NEW: external textbox for two-way sync with Findings editor
     }
 
     public enum MapMethod { Chain = 0, AutomationIdOnly = 1 }

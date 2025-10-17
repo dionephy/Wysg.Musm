@@ -185,7 +185,10 @@ namespace Wysg.Musm.Radium.ViewModels
                         return; // Cancel the text change
                     }
                     if (!_reportified) _rawFindings = value; 
-                    if (SetProperty(ref _findingsText, value)) UpdateCurrentReportJson(); 
+                    if (SetProperty(ref _findingsText, value)) 
+                    {
+                        UpdateCurrentReportJson();
+                    }
                 } 
             } 
         }

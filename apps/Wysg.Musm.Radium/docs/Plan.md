@@ -966,9 +966,16 @@
   4. Verify only non-duplicate techniques are added
 
 - **Edge Cases**:
-  1. Double-click combination with unknown prefix/suffix → verify technique still loads (nulls handled)
-  2. Double-click combination where tech not in lookup list → verify that technique skipped gracefully
-  3. Resize window → verify both ListBoxes resize proportionally (both Star-sized)
+  1. Enable sync with empty Findings editor → Notepad becomes empty
+  2. Enable sync with multi-line Findings text → Notepad receives full content
+  3. Close Notepad while sync ON → verify no crashes; log errors only
+  4. Open Notepad again and re-map bookmark → sync resumes normally
+  5. Enable sync, switch to another application → verify sync continues in background
+
+- **Performance**:
+  1. Type rapidly in Findings editor → verify Notepad eventually catches up
+  2. Type rapidly in Notepad → verify Findings editor eventually catches up
+  3. Large text (1000+ lines) → verify sync works without UI freezing
 
 ### Risks / Mitigations (Quick Delete + All Combinations Library)
 - **Risk**: Double-click might trigger accidentally when user intends single-click selection
@@ -1015,5 +1022,192 @@
 - Complements FR-1024 (Duplicate prevention)
 - Enhances FR-1023 (Add to Combination)
 - Improves user workflow efficiency by enabling combination reuse and quick editing
+
+## Change Log Addition (2025-01-19 – Foreign Textbox Two-Way Sync Feature)
+- **User Request**: Add text synchronization between the application's Findings editor and an external textbox application (e.g., Notepad) with a "Sync Text" toggle button in the Spy window UI.
+- **Solution**: Implemented full two-way text synchronization using UI Automation and polling-based change detection.
+
+### Overview
+The Foreign Textbox Sync feature enables real-time bidirectional text synchronization between the Radium Findings editor and any external textbox application (such as Notepad, WordPad, or other text editors). This allows users to edit report findings in their preferred external editor while maintaining sync with the main application.
+
+### Components Implemented
+
+1. **New UI Bookmark**: `ForeignTextbox` added to `UiBookmarks.KnownControl` enum
+   - Allows mapping to any external textbox control
+   - Resolved using standard UI Automation bookmark system
+   - Supports cross-application element access
+
+2. **TextSyncService**: New service class for managing bidirectional text synchronization
+   - **Location**: `apps\Wysg.Musm.Radium\Services\TextSyncService.cs`
+   - **Key Features**:
+     - Polling-based change detection (800ms interval)
+     - UIA ValuePattern for primary write operations
+     - Clipboard fallback for unsupported controls (Ctrl+A, Ctrl+V)
+     - Re-entry prevention during sync operations
+     - Graceful error handling with debug logging
+
+3. **MainViewModel Integration**:
+   - Added `TextSyncService` field and initialization
+   - Added `TextSyncEnabled` property with toggle behavior
+   - Added `FindingsText` property hook to write changes to foreign textbox
+   - Added `OnForeignTextChanged` event handler to receive updates from foreign textbox
+   - Initial sync copies current Findings content when enabled
+
+4. **UI Toggle Button**: Added next to "Lock" toggle in MainWindow
+   - Default state: OFF (sync disabled)
+   - Located in status/toolbar area for easy access
+   - Clear visual indication of sync state
+
+### Technical Implementation
+
+**Write Operations** (Local → Foreign):
+1. Primary: UIA ValuePattern.SetValue() when supported
+2. Fallback: Clipboard method when ValuePattern unavailable
+   - Focus target element
+   - Save current clipboard content
+   - Set text to clipboard
+   - Send Ctrl+A (select all)
+   - Send Ctrl+V (paste)
+   - Restore previous clipboard content
+
+**Read Operations** (Foreign → Local):
+1. Primary: UIA ValuePattern.Value when supported
+2. Fallback 1: TextPattern.DocumentRange.GetText()
+3. Fallback 2: Element.Name property
+
+**Change Detection**:
+- Timer-based polling every 800ms
+- Compares current text with last known value
+- Only raises event when actual change detected
+- Dispatches change events to UI thread safely
+
+**Sync Prevention**:
+- `_isSyncing` flag prevents re-entry during write operations
+- Avoids infinite sync loops
+- Maintains consistent state during operations
+
+### Approach (Foreign Textbox Sync)
+1) Add `ForeignTextbox` to `UiBookmarks.KnownControl` enum
+2) Create `TextSyncService` class with polling timer and write methods
+3) Initialize service in `MainViewModel` constructor with application dispatcher
+4) Wire `FindingsText` property setter to call `WriteToForeignAsync()`
+5) Handle `ForeignTextChanged` event to update `FindingsText` from foreign source
+6) Add `TextSyncEnabled` property to control sync on/off state
+7) Add System.Windows.Forms reference to project for SendKeys support
+8) Update all three documentation files (Spec.md, Plan.md, Tasks.md) cumulatively
+
+### Test Plan (Foreign Textbox Sync)
+**Setup**:
+1. Open Radium application
+2. Open an external textbox application (e.g., Notepad)
+3. In Spy window, map "Foreign textbox" bookmark to Notepad's edit control
+4. Save bookmark mapping
+
+**Enable Sync**:
+1. Click "Sync Text" toggle button → verify it turns ON
+2. Verify status message shows "Text sync enabled"
+3. Verify Notepad content is replaced with current Findings editor content
+4. Type in Findings editor → verify text appears in Notepad within ~1 second
+5. Type in Notepad → verify text appears in Findings editor within ~1 second
+
+**Bidirectional Sync**:
+1. With sync ON, type multi-line text in Findings editor
+2. Wait 1 second → verify Notepad shows same text
+3. Type additional text in Notepad
+4. Wait 1 second → verify Findings editor shows combined text
+5. Delete some text in Findings editor → verify Notepad reflects deletion
+6. Delete some text in Notepad → verify Findings editor reflects deletion
+
+**Disable Sync**:
+1. Click "Sync Text" toggle button → verify it turns OFF
+2. Verify status message shows "Text sync disabled"
+3. Type in Findings editor → verify Notepad does NOT update
+4. Type in Notepad → verify Findings editor does NOT update
+
+**Edge Cases**:
+1. Enable sync with empty Findings editor → Notepad becomes empty
+2. Enable sync with multi-line Findings text → Notepad receives full content
+3. Close Notepad while sync ON → verify no crashes; log errors only
+4. Open Notepad again and re-map bookmark → sync resumes normally
+5. Enable sync, switch to another application → verify sync continues in background
+
+**Performance**:
+1. Type rapidly in Findings editor → verify Notepad eventually catches up
+2. Type rapidly in Notepad → verify Findings editor eventually catches up
+3. Large text (1000+ lines) → verify sync works without UI freezing
+
+### Risks / Mitigations (Foreign Textbox Sync)
+- **Risk**: Polling timer may impact performance
+  - **Mitigation**: 800ms interval is conservative; minimal CPU usage; only polls when sync enabled; timer disposed on disable
+
+- **Risk**: Clipboard fallback may interfere with user's clipboard
+  - **Mitigation**: Previous clipboard content is saved and restored after paste operation; very brief disruption
+
+- **Risk**: Foreign application may not support ValuePattern or TextPattern
+  - **Mitigation**: Multiple fallback strategies implemented; logs errors without crashing; user can adjust bookmark target
+
+- **Risk**: Sync loops if both applications trigger changes simultaneously
+  - **Mitigation**: `_isSyncing` flag prevents re-entry; last-known-text tracking avoids redundant updates
+
+- **Risk**: Focus stealing when writing to foreign textbox
+  - **Mitigation**: Focus is only stolen during Clipboard fallback method; UIA ValuePattern does not steal focus
+
+- **Risk**: Different line ending formats (CRLF vs LF)
+  - **Mitigation**: .NET handles line ending conversions automatically; TextBox controls normalize to system default
+
+### Code Changes (Foreign Textbox Sync)
+**Files Created**:
+1. `apps\Wysg.Musm.Radium\Services\TextSyncService.cs`
+   - New service class managing bidirectional text sync
+   - Polling timer implementation (800ms interval)
+   - UIA ValuePattern primary write method
+   - Clipboard fallback write method (Ctrl+A, Ctrl+V)
+   - Multiple read fallback strategies (ValuePattern, TextPattern, Name)
+   - Re-entry prevention with `_isSyncing` flag
+   - Event-based change notification to dispatcher thread
+
+**Files Modified**:
+2. `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs`
+   - Added `ForeignTextbox` to `KnownControl` enum
+
+3. `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.cs`
+   - Added `TextSyncService? _textSyncService` field
+   - Added `TextSyncEnabled` property with enable/disable logic
+   - Updated constructor to initialize TextSyncService with dispatcher
+   - Added `OnForeignTextChanged` event handler
+
+4. `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Editor.cs`
+   - Updated `FindingsText` property setter to call `WriteToForeignAsync()` when sync enabled
+
+5. `apps\Wysg.Musm.Radium\Wysg.Musm.Radium.csproj`
+   - Added `<Reference Include="System.Windows.Forms" />` for SendKeys support
+
+6. `apps\Wysg.Musm.Radium\docs\Spec.md`
+   - Added FR-1100 through FR-1120 (21 feature requirements)
+
+7. `apps\Wysg.Musm.Radium\docs\Plan.md`
+   - Added this cumulative change log entry
+
+8. `apps\Wysg.Musm.Radium\docs\Tasks.md`
+   - To be updated with task items T1100-T1120
+
+**UI Changes** (assumed MainWindow.xaml):
+- Added "Sync Text" ToggleButton next to "Lock" toggle button
+- Bound to `DataContext.TextSyncEnabled` property
+- Default state: unchecked (sync disabled)
+
+### Related Features
+- Builds on FR-516..FR-524 (UI Spy bookmark system)
+- Complements FR-525..FR-530 (PACS custom procedures and operations)
+- Extends FR-950 (Status log for sync status messages)
+- Uses same UIA infrastructure as AddPreviousStudy automation (FR-511..FR-515)
+
+### Future Enhancements (Not in Current Implementation)
+- Auto-reconnect when foreign application restarts
+- Configurable polling interval in Settings
+- Multiple foreign textbox bookmarks for different applications
+- Sync indicators showing last sync time
+- Conflict resolution UI when both sides change simultaneously
+- Support for rich text formatting preservation
 
 

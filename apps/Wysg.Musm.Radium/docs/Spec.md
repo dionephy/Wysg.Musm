@@ -968,3 +968,28 @@ No angle brackets here
 - FR-1094 MinHeight bindings MUST reference corresponding main textbox elements (e.g., txtChiefComplaint, txtPatientHistory) to ensure proofread textboxes don't shrink below main textbox height.
 - FR-1095 The layout change MUST maintain backward compatibility with existing bindings (ChiefComplaint, PatientHistory, FindingsText, ConclusionText, and their Proofread counterparts).
 - FR-1096 The window MUST remain responsive and functional on both landscape and portrait orientations used in gridTop and gridSideTop panels.
+
+## Update: Foreign Textbox One-Way Sync Feature (2025-01-19)
+- FR-1100 Add new UI bookmark `ForeignTextbox` to KnownControl enum for mapping external application textboxes (e.g., Notepad).
+- FR-1101 Add "Sync Text" toggle button next to the "Lock" toggle button in MainWindow, default off.
+- FR-1102 When sync toggle is ON, start polling foreign textbox for changes (800ms interval).
+- FR-1103 When foreign textbox content changes (detected via polling), update read-only EditorForeignText automatically.
+- FR-1104 EditorForeignText MUST appear between EditorHeader and EditorFindings with seamless borders (top border on foreign, bottom border on findings).
+- FR-1105 EditorForeignText MUST be read-only and collapse to 0 height when sync is disabled.
+- FR-1106 EditorForeignText MUST expand to 60-300px height when sync is enabled, with scroll if content exceeds height.
+- FR-1107 EditorFindings MUST occupy remaining vertical space in the shared row.
+- FR-1108 Border styling MUST make EditorForeignText and EditorFindings appear as one continuous editor.
+- FR-1109 TextSyncService MUST use UIA ValuePattern, TextPattern, or Name property as fallback read methods.
+- FR-1110 TextSyncService MUST poll foreign textbox at 800ms intervals when sync is enabled.
+- FR-1111 TextSyncService MUST raise ForeignTextChanged event on dispatcher thread when changes detected.
+- FR-1112 MainViewModel MUST initialize TextSyncService with application dispatcher in constructor.
+- FR-1113 MainViewModel MUST handle ForeignTextChanged event to update ForeignText property.
+- FR-1114 ForeignText property MUST be read-only (private setter) and cleared when sync is disabled.
+- FR-1115 TextSyncEnabled property setter MUST call TextSyncService.SetEnabled to start/stop sync.
+- FR-1116 TextSyncService MUST dispose timer and clear state when sync is disabled.
+- FR-1117 Foreign textbox resolution MUST use UiBookmarks.Resolve(KnownControl.ForeignTextbox).
+- FR-1118 Status messages MUST display "Text sync enabled" and "Text sync disabled" on toggle changes.
+- FR-1119 Implementation MUST NOT block UI thread during polling operations (all async).
+- FR-1120 TextSyncService MUST handle exceptions gracefully and log to debug output without crashes.
+- FR-1121 EditorForeignText and EditorFindings MUST allow seamless caret movement between them (future enhancement).
+- FR-1122 Sync is one-way only (foreign → app) to avoid focus stealing and sluggish performance.

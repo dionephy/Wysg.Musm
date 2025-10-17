@@ -41,8 +41,11 @@
         <ComboBoxItem Tag="Screen_MainCurrentStudyTab">Screen_main current study tab</ComboBoxItem>
         <ComboBoxItem Tag="Screen_SubPreviousStudyTab">Screen_sub previous study tab</ComboBoxItem>
         
+        <!-- Sync -->
+        <ComboBoxItem Tag="ForeignTextbox">Foreign textbox</ComboBoxItem>
+        
         <!-- Test -->
-        <ComboBoxItem Tag="TestInvoke">Test button</ComboBoxItem>
+        <ComboBoxItem Tag="TestInvoke">Test invoke</ComboBoxItem>
     </x:Array>
 
 </ResourceDictionary>
