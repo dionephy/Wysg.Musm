@@ -143,6 +143,58 @@ namespace Wysg.Musm.Radium.Services
             });
         }
         
+        /// <summary>
+        /// Write text to foreign textbox using UIA patterns.
+        /// </summary>
+        /// <param name="avoidFocus">When true, attempts to avoid setting focus (best-effort)</param>
+        public async Task<bool> WriteToForeignAsync(string text, bool avoidFocus = true)
+        {
+            return await Task.Run(() =>
+            {
+                try
+                {
+                    var (hwnd, element) = UiBookmarks.Resolve(UiBookmarks.KnownControl.ForeignTextbox);
+                    if (element == null)
+                    {
+                        Debug.WriteLine("[TextSync] Write failed: element not found");
+                        return false;
+                    }
+                    
+                    // Try ValuePattern first (most reliable)
+                    if (element.Patterns.Value.IsSupported)
+                    {
+                        var valuePattern = element.Patterns.Value.Pattern;
+                        if (valuePattern != null && !valuePattern.IsReadOnly)
+                        {
+                            // IMPORTANT: We do NOT call SetFocus() here to prevent focus stealing
+                            // However, some applications (like Notepad) may still bring themselves
+                            // to the foreground when their content changes via UIA ValuePattern.
+                            // This is application-specific behavior and cannot be fully prevented.
+                            // 
+                            // Alternative approaches (not implemented):
+                            // 1. SendKeys without focus: unreliable, requires exact focus state
+                            // 2. Windows messages: application-specific, not portable
+                            // 3. Clipboard + Paste: too invasive, disrupts user clipboard
+                            //
+                            // Current approach is the least invasive option available via UIA.
+                            
+                            valuePattern.SetValue(text ?? string.Empty);
+                            Debug.WriteLine($"[TextSync] Wrote {text?.Length ?? 0} chars via ValuePattern (focus may have changed)");
+                            return true;
+                        }
+                    }
+                    
+                    Debug.WriteLine("[TextSync] Write failed: ValuePattern not supported or read-only");
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[TextSync] Write error: {ex.Message}");
+                    return false;
+                }
+            });
+        }
+        
         public void Dispose()
         {
             SetEnabled(false);

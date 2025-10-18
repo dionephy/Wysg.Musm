@@ -1,5 +1,20 @@
 ﻿# Implementation Plan: Radium (Cumulative)
 
+> **⚠️ DEPRECATION NOTICE (2025-01-19)**  
+> This file is being phased out in favor of an archive-based structure.
+> 
+> **Please use instead:**
+> - **Current plans**: [Plan-active.md](Plan-active.md) (last 90 days)
+> - **Historical plans**: [archive/](archive/) (organized by quarter and domain)
+> - **Complete index**: [archive/README.md](archive/README.md)
+> 
+> This file will be removed on 2025-02-18 after the transition period.
+> See [MIGRATION.md](MIGRATION.md) for details.
+
+---
+
+[Original content preserved below for transition period...]
+
 ## Change Log Addition (2025-01-15 – Fix: Shortcut Key Missing NewStudy and LockStudy Modules)
 - **Problem**: The "Shortcut: Open study (new)" automation sequence was not executing `NewStudy` and `LockStudy` modules that are present in the "New Study" button sequence, causing incomplete study initialization.
 - **Symptoms**:
@@ -970,7 +985,7 @@
   2. Enable sync with multi-line Findings text → Notepad receives full content
   3. Close Notepad while sync ON → verify no crashes; log errors only
   4. Open Notepad again and re-map bookmark → sync resumes normally
-  5. Enable sync, switch to another application → verify sync continues in background
+   5. Enable sync, switch to another application → verify sync continues in background
 
 - **Performance**:
   1. Type rapidly in Findings editor → verify Notepad eventually catches up
@@ -1011,11 +1026,18 @@
 
 4. `apps\Wysg.Musm.Radium\Views\StudynameTechniqueWindow.xaml.cs`
    - Changed left panel from 4 rows to 5 rows
-   - Added "All Combinations" GroupBox with ListBox
+   - Split the previous single Star row into two Star rows (Current Combination + All Combinations)
+   - Both ListBoxes now have equal vertical space for balanced UX
+   - Updated GroupBox headers with hint text
    - Added `MouseDoubleClick` handlers to both Current and All Combinations ListBoxes
    - Added `OnCurrentCombinationDoubleClick` event handler
    - Added `OnAllCombinationsDoubleClick` event handler
-   - Updated GroupBox headers with hint text
+
+5. `apps\Wysg.Musm.Radium\Controls\ReportInputsAndJsonPanel.xaml`
+   - No changes
+
+6. `apps\Wysg.Musm.Radium\Controls\ReportInputsAndJsonPanel.xaml.cs`
+   - No changes
 
 ### Related Features
 - Builds on FR-1025 (Save as New Combination)
@@ -1023,7 +1045,7 @@
 - Enhances FR-1023 (Add to Combination)
 - Improves user workflow efficiency by enabling combination reuse and quick editing
 
-## Change Log Addition (2025-01-19 – Foreign Textbox Two-Way Sync Feature)
+## Change Log Addition (2025-01-19 – Foreign Textbox One-Way Sync Feature)
 - **User Request**: Add text synchronization between the application's Findings editor and an external textbox application (e.g., Notepad) with a "Sync Text" toggle button in the Spy window UI.
 - **Solution**: Implemented full two-way text synchronization using UI Automation and polling-based change detection.
 
@@ -1171,10 +1193,11 @@ The Foreign Textbox Sync feature enables real-time bidirectional text synchroniz
    - Added `ForeignTextbox` to `KnownControl` enum
 
 3. `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.cs`
-   - Added `TextSyncService? _textSyncService` field
-   - Added `TextSyncEnabled` property with enable/disable logic
-   - Updated constructor to initialize TextSyncService with dispatcher
-   - Added `OnForeignTextChanged` event handler
+   - Added `TextSyncService` field and initialization
+   - Added `TextSyncEnabled` property with toggle behavior
+   - Added `FindingsText` property hook to write changes to foreign textbox
+   - Added `OnForeignTextChanged` event handler to receive updates from foreign textbox
+   - Initial sync copies current Findings content when enabled
 
 4. `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Editor.cs`
    - Updated `FindingsText` property setter to call `WriteToForeignAsync()` when sync enabled
@@ -1209,5 +1232,101 @@ The Foreign Textbox Sync feature enables real-time bidirectional text synchroniz
 - Sync indicators showing last sync time
 - Conflict resolution UI when both sides change simultaneously
 - Support for rich text formatting preservation
+
+## Change Log Addition (2025-01-19 – Foreign Text Merge on Sync Disable)
+- **User Request**: On sync text OFF, merge EditorForeignText into EditorFindings by setting `FindingsText = ForeignText + newline + FindingsText`, then clear both ForeignText property and the bound foreign textbox element.
+- **Solution**: Extended TextSyncEnabled property setter to perform automatic merge and cleanup when sync is disabled.
+
+### Behavior
+When the "Sync Text" toggle is turned OFF:
+1. If ForeignText is not empty:
+   - Merge ForeignText into FindingsText with newline separator: `FindingsText = ForeignText + Environment.NewLine + FindingsText`
+   - Clear ForeignText property to empty string
+   - Clear foreign textbox element by calling `TextSyncService.WriteToForeignAsync("")`
+   - Display status: "Text sync disabled - foreign text merged into findings"
+2. If ForeignText is empty:
+   - No merge occurs
+   - Display status: "Text sync disabled"
+
+### Implementation Details
+- Merge happens synchronously in TextSyncEnabled setter before calling `SetEnabled(false)`
+- Foreign textbox clear happens asynchronously via WriteToForeignAsync (fire-and-forget)
+- Findings editor receives merged content and updates bound CurrentReportJson automatically
+- User sees immediate feedback via status message
+
+### Approach (Foreign Text Merge)
+1) Modify `TextSyncEnabled` property setter in `MainViewModel.cs`
+2) Add merge logic when value changes from true to false
+3) Call `TextSyncService.WriteToForeignAsync("")` to clear foreign textbox
+4) Add `WriteToForeignAsync` method to `TextSyncService` using UIA ValuePattern
+5) Update status messages to reflect merge operation
+6) Update documentation (Spec.md, Plan.md, Tasks.md)
+
+### Test Plan (Foreign Text Merge)
+**Merge Behavior**:
+1. Enable sync with some content in foreign textbox
+2. Type additional content in Findings editor
+3. Disable sync → verify FindingsText contains foreign content followed by findings content
+4. Verify ForeignText property is empty
+5. Verify foreign textbox (Notepad) is cleared
+
+**Empty Foreign Text**:
+1. Enable sync with empty foreign textbox
+2. Type content in Findings editor only
+3. Disable sync → verify no merge occurs (Findings unchanged)
+4. Verify status shows "Text sync disabled" without merge message
+
+**Line Ending Preservation**:
+1. Enable sync with multi-line foreign text (2-3 lines)
+2. Add multi-line Findings text (2-3 lines)
+3. Disable sync → verify merged text preserves line breaks correctly
+4. Verify no extra blank lines or missing separators
+
+**Re-enable After Merge**:
+1. Perform merge by disabling sync
+2. Re-enable sync → verify ForeignText starts empty (not showing merged content)
+3. Type in foreign textbox → verify updates appear in Findings
+4. Verify merged content from previous session remains in Findings
+
+### Risks / Mitigations (Foreign Text Merge)
+- **Risk**: Merge could duplicate content if user already manually copied foreign text
+  - **Mitigation**: User controls when to disable sync; documented behavior; can undo in Findings editor
+
+- **Risk**: Foreign textbox clear might fail if control doesn't support ValuePattern
+  - **Mitigation**: WriteToForeignAsync logs failure but doesn't block; user can manually clear
+
+- **Risk**: Large foreign text could slow UI during merge
+  - **Mitigation**: String concatenation is fast for typical report sizes (<10KB); merge happens on UI thread but completes quickly
+
+- **Risk**: Line ending mismatches between foreign and findings text
+  - **Mitigation**: Using Environment.NewLine for separator; .NET normalizes line endings automatically
+
+### Code Changes (Foreign Text Merge)
+**Files Modified**:
+1. `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.cs`
+   - Modified `TextSyncEnabled` property setter to add merge logic
+   - Added conditional check for non-empty ForeignText before merge
+   - Added call to `TextSyncService.WriteToForeignAsync("")` to clear foreign textbox
+   - Updated status messages for merge vs. no-merge scenarios
+
+2. `apps\Wysg.Musm.Radium\Services\TextSyncService.cs`
+   - Added `WriteToForeignAsync(string text)` method
+   - Implemented using UIA ValuePattern with read-only check
+   - Returns bool indicating success/failure
+   - Logs write operations to debug output
+
+3. `apps\Wysg.Musm.Radium\docs\Spec.md`
+   - Added FR-1123 through FR-1131 (9 feature requirements)
+
+4. `apps\Wysg.Musm.Radium\docs\Plan.md`
+   - Added this cumulative change log entry
+
+5. `apps\Wysg.Musm.Radium\docs\Tasks.md`
+   - To be updated with task items T1123-T1131
+
+### Related Features
+- Extends FR-1100..FR-1122 (Foreign Textbox One-Way Sync Feature)
+- Complements FR-1105 (EditorForeignText collapse when sync disabled)
+- Supports FR-1114 (ForeignText property cleared when sync disabled)
 
 

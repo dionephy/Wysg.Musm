@@ -57,11 +57,11 @@ namespace Wysg.Musm.Radium.Views
             // PACS profiles are now managed via Settings -> PACS and ITenantContext.CurrentPacsKey.
             // Do not initialize legacy local profiles here.
             
-            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Header"); InitEditor(vm, EditorHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Header: " + ex); throw; }
-            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Findings"); InitEditor(vm, EditorFindings); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Findings: " + ex); throw; }
-            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Conclusion"); InitEditor(vm, EditorConclusion); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Conclusion: " + ex); throw; }
-            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor PrevHeader"); InitEditor(vm, EditorPreviousHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor PrevHeader: " + ex); throw; }
-            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor PrevFindings"); InitEditor(vm, EditorPreviousFindings); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor PrevFindings: " + ex); throw; }
+            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Header"); InitEditor(vm, gridCenter.EditorHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Header: " + ex); throw; }
+            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Findings"); InitEditor(vm, gridCenter.EditorFindings); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Findings: " + ex); throw; }
+            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Conclusion"); InitEditor(vm, gridCenter.EditorConclusion); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Conclusion: " + ex); throw; }
+            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor PrevHeader"); InitEditor(vm, gridCenter.EditorPreviousHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor PrevHeader: " + ex); throw; }
+            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor PrevFindings"); InitEditor(vm, gridCenter.EditorPreviousFindings); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor PrevFindings: " + ex); throw; }
 
             UpdateGridCenterSize();
             UpdateGridCenterPositioning();
@@ -220,7 +220,7 @@ namespace Wysg.Musm.Radium.Views
         {
             if (DataContext is MainViewModel vm)
             {
-                EditorFindings.DebugSeedGhosts();
+                gridCenter.EditorFindings.DebugSeedGhosts();
             }
         }
 
@@ -238,22 +238,10 @@ namespace Wysg.Musm.Radium.Views
 
         private void SwapReportEditors(bool reversed)
         {
-            var children = gridCenter.Children;
-            var currentReportGrid = children[0] as UIElement;
-            var previousReportGrid = children[2] as UIElement;
-
-            if (currentReportGrid == null || previousReportGrid == null) return;
-            if (reversed)
-            {
-                Grid.SetColumn(currentReportGrid, 2);
-                Grid.SetColumn(previousReportGrid, 0);
-            }
-            else
-            {
-                Grid.SetColumn(currentReportGrid, 0);
-                Grid.SetColumn(previousReportGrid, 2);
-            }
-
+            // CenterEditingArea is a UserControl, not a Grid with Children.
+            // Column swapping now happens inside CenterEditingArea if needed,
+            // but for this initial refactoring we'll just update the overlay panels.
+            
             // Reverse Reports should ONLY affect top/bottom panels
             try { gridTopChild.Reverse = reversed; } catch { }
             try { gridBottomControl.Reverse = !reversed; } catch { }

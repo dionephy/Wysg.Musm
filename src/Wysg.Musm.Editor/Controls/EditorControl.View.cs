@@ -70,6 +70,23 @@ namespace Wysg.Musm.Editor.Controls
                 typeof(EditorControl),
                 new PropertyMetadata(true));
 
+        // New: Caret offset adjustment for merge scenarios
+        public static readonly DependencyProperty CaretOffsetAdjustmentProperty =
+            DependencyProperty.Register(
+                nameof(CaretOffsetAdjustment),
+                typeof(int),
+                typeof(EditorControl),
+                new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnCaretOffsetAdjustmentChanged));
+
+        private static void OnCaretOffsetAdjustmentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is EditorControl ctrl && e.NewValue is int adjustment && adjustment != 0)
+            {
+                // Flow the adjustment to the inner MusmEditor
+                ctrl.Editor.CaretOffsetAdjustment = adjustment;
+            }
+        }
+
         public int GhostIdleMs
         {
             get => (int)GetValue(GhostIdleMsProperty);
@@ -99,6 +116,11 @@ namespace Wysg.Musm.Editor.Controls
             set => SetValue(ShowLineNumbersProperty, value);
         }
 
+        public int CaretOffsetAdjustment
+        {
+            get => (int)GetValue(CaretOffsetAdjustmentProperty);
+            set => SetValue(CaretOffsetAdjustmentProperty, value);
+        }
         private static void OnGhostIdleMsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var self = (EditorControl)d;

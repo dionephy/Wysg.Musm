@@ -1,0 +1,183 @@
+<UserControl x:Class="Wysg.Musm.Radium.Controls.CurrentReportEditorPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:editor="clr-namespace:Wysg.Musm.Editor.Controls;assembly=Wysg.Musm.Editor"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="500">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48"/>
+            <RowDefinition Height="2"/>
+            <RowDefinition Height="Auto" MinHeight="21"/>
+            <RowDefinition Height="2"/>
+            <RowDefinition Height="*" MinHeight="100"/>
+            <RowDefinition Height="2"/>
+            <RowDefinition Height="Auto" MinHeight="200"/>
+        </Grid.RowDefinitions>
+
+        <!-- Two-line header area: top buttons/toggles; bottom label -->
+        <Grid Grid.Row="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="18"/>
+                <RowDefinition Height="30"/>
+            </Grid.RowDefinitions>
+
+            <!-- Upper row: controls -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,0" VerticalAlignment="Center">
+                <Button Content="New" Command="{Binding NewStudyCommand}" FontSize="12" Margin="2,2,0,2"/>
+                <Button Content="Send Report Preview" Command="{Binding SendReportPreviewCommand}" Margin="2,2,0,2"/>
+                <Button Content="Send Report" Command="{Binding SendReportCommand}" Margin="2,2,0,2"/>
+                <Button Content="Extract Phrases" Click="OnExtractPhrasesClick" Margin="2,2,0,2"/>
+                <Button Content="Test NewStudy Proc" Command="{Binding TestNewStudyProcedureCommand}" Margin="2,2,0,2"/>
+                <ToggleButton Content="Proofread" Margin="4,2,0,2" 
+                              Style="{StaticResource DarkToggleButtonStyle}" 
+                              IsChecked="{Binding ProofreadMode, Mode=TwoWay}"/>
+                <ToggleButton Content="Reportified" Margin="4,2,0,2" 
+                              Style="{StaticResource DarkToggleButtonStyle}" 
+                              IsChecked="{Binding Reportified, Mode=TwoWay}"/>
+            </StackPanel>
+
+            <!-- Lower row: toggles and label -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">
+                <ToggleButton x:Name="btnStudyLocked"
+                              Margin="2,0,0,2"
+                              VerticalAlignment="Center"
+                              IsChecked="{Binding PatientLocked, Mode=TwoWay}"
+                              Style="{StaticResource DarkToggleButtonStyle}"
+                              Padding="4" Width="28" Height="28" 
+                              ToolTip="Toggle Study Lock"
+                              FontFamily="./Fonts/#D2Coding">
+                    <ToggleButton.Resources>
+                        <Geometry x:Key="LockedGeometry">M4,9 L4,16 C4,17.1 4.9,18 6,18 L14,18 C15.1,18 16,17.1 16,16 L16,9 L14,9 L14,7 C14,4.8 12.2,3 10,3 C7.8,3 6,4.8 6,7 L6,9 L4,9 Z M8,9 L8,7 C8,5.9 8.9,5 10,5 C11.1,5 12,5.9 12,7 L12,9 Z</Geometry>
+                        <Geometry x:Key="UnlockedGeometry">M4,9 L4,16 C4,17.1 4.9,18 6,18 L14,18 C15.1,18 16,17.1 16,16 L16,9 L10,9 L10,7 C10,5.9 10.9,5 12,5 C12.7,5 13.3,5.3 13.7,5.8 L15.1,4.4 C14.2,3.5 13.1,3 12,3 C9.8,3 8,4.8 8,7 L8,9 L4,9 Z</Geometry>
+                    </ToggleButton.Resources>
+                    <Grid>
+                        <Path Width="16" Height="16" Stretch="Uniform" Fill="#C8C8C8">
+                            <Path.Style>
+                                <Style TargetType="Path">
+                                    <Setter Property="Data" Value="{StaticResource UnlockedGeometry}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                            <Setter Property="Data" Value="{StaticResource LockedGeometry}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Path.Style>
+                        </Path>
+                    </Grid>
+                </ToggleButton>
+                
+                <ToggleButton x:Name="btnStudyOpened"
+                              Margin="2,0,0,2"
+                              VerticalAlignment="Center"
+                              IsChecked="{Binding StudyOpened, Mode=TwoWay}"
+                              Style="{StaticResource DarkToggleButtonStyle}"
+                              Padding="4" Height="28" 
+                              ToolTip="Toggle Study Opened">
+                    <TextBlock Text="Study opened"/>
+                </ToggleButton>
+                
+                <ToggleButton x:Name="btnSyncText"
+                              Margin="2,0,0,2"
+                              VerticalAlignment="Center"
+                              IsChecked="{Binding TextSyncEnabled, Mode=TwoWay}"
+                              Style="{StaticResource DarkToggleButtonStyle}"
+                              Padding="4" Height="28" 
+                              ToolTip="Sync text with foreign textbox (e.g. Notepad)">
+                    <TextBlock Text="Sync Text"/>
+                </ToggleButton>
+                
+                <!-- Selectable Current Study Label -->
+                <TextBox Text="{Binding CurrentStudyLabel, Mode=OneWay}" 
+                         Margin="2,0,0,0" 
+                         FontFamily="{StaticResource UiMonospaceFont}" 
+                         Foreground="#5A9FD6" 
+                         Background="Transparent" 
+                         BorderThickness="0" 
+                         IsReadOnly="True" 
+                         IsReadOnlyCaretVisible="False" 
+                         TextWrapping="Wrap" 
+                         MinWidth="260" 
+                         Padding="0,0,0,0"/>
+            </StackPanel>
+        </Grid>
+
+        <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
+        
+        <!-- Header Editor -->
+        <editor:EditorControl x:Name="EditorHeader" 
+                              Grid.Row="2" 
+                              MinHeight="70" 
+                              DocumentText="{Binding HeaderText, Mode=OneWay}" 
+                              IsReadOnly="True" 
+                              PhraseSnapshot="{Binding CurrentPhraseSnapshot}" 
+                              PhraseSemanticTags="{Binding PhraseSemanticTags}"/>
+        
+        <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="2"/>
+        
+        <!-- Foreign text + Findings with shared scrollbar -->
+        <ScrollViewer Grid.Row="4" 
+                      VerticalScrollBarVisibility="Auto" 
+                      HorizontalScrollBarVisibility="Disabled">
+            <Grid MinHeight="{Binding RelativeSource={RelativeSource AncestorType=ScrollViewer}, Path=ActualHeight}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Foreign Text Editor (synced from external textbox) -->
+                <editor:EditorControl x:Name="EditorForeignText" 
+                                      Grid.Row="0"
+                                      DocumentText="{Binding ForeignText, Mode=OneWay}" 
+                                      IsReadOnly="True"
+                                      PhraseSnapshot="{Binding CurrentPhraseSnapshot}" 
+                                      PhraseSemanticTags="{Binding PhraseSemanticTags}"
+                                      BorderThickness="1,1,1,0"
+                                      BorderBrush="#2D2D30"
+                                      Margin="0"
+                                      VerticalScrollBarVisibility="Disabled"
+                                      HorizontalScrollBarVisibility="Disabled">
+                    <editor:EditorControl.Style>
+                        <Style TargetType="editor:EditorControl">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Setter Property="Height" Value="0"/>
+                            <Setter Property="MinHeight" Value="0"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding TextSyncEnabled}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Setter Property="Height" Value="Auto"/>
+                                    <Setter Property="MinHeight" Value="0"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </editor:EditorControl.Style>
+                </editor:EditorControl>
+                
+                <!-- Findings Editor -->
+                <editor:EditorControl x:Name="EditorFindings" 
+                                      Grid.Row="1"
+                                      DocumentText="{Binding FindingsText, Mode=TwoWay}" 
+                                      CaretOffsetAdjustment="{Binding FindingsCaretOffsetAdjustment, Mode=OneWay}"
+                                      PhraseSnapshot="{Binding CurrentPhraseSnapshot}" 
+                                      PhraseSemanticTags="{Binding PhraseSemanticTags}"
+                                      BorderThickness="1,0,1,1"
+                                      BorderBrush="#2D2D30"
+                                      Margin="0"
+                                      MinHeight="20"
+                                      VerticalScrollBarVisibility="Disabled"
+                                      HorizontalScrollBarVisibility="Disabled"/>
+            </Grid>
+        </ScrollViewer>
+        
+        <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="2"/>
+        
+        <!-- Conclusion Editor -->
+        <editor:EditorControl x:Name="EditorConclusion" 
+                              Grid.Row="6" 
+                              DocumentText="{Binding ConclusionText, Mode=TwoWay}" 
+                              PhraseSnapshot="{Binding CurrentPhraseSnapshot}" 
+                              PhraseSemanticTags="{Binding PhraseSemanticTags}"/>
+    </Grid>
+</UserControl>

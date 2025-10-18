@@ -1,4 +1,17 @@
-﻿# Feature Specification: Radium Cumulative – Reporting Workflow, Editor Experience, PACS & Studyname→LOINC Mapping
+﻿# Feature Specification: Radium (Cumulative)
+
+> **⚠️ DEPRECATION NOTICE (2025-01-19)**  
+> This file is being phased out in favor of an archive-based structure.
+> 
+> **Please use instead:**
+> - **Current features**: [Spec-active.md](Spec-active.md) (last 90 days)
+> - **Historical features**: [archive/](archive/) (organized by quarter and domain)
+> - **Complete index**: [archive/README.md](archive/README.md)
+> 
+> This file will be removed on 2025-02-18 after the transition period.
+> See [MIGRATION.md](MIGRATION.md) for details.
+
+---
 
 ## Update: Technique Combination Grouped String (2025-10-13)
 - FR-500 Technique grouped display: Build a single string from a technique combination by grouping items by (prefix, suffix) pair, preserving first-seen order (by sequence_order). Within each group, join tech names with ", ". Join groups with "; ".
@@ -830,60 +843,6 @@ myocardial infarction,22298006,exact,1.0,"Standard mapping"
 - Sequential async execution: primary first, then alternate only if needed
 - Status messages clearly indicate which path was taken for diagnostics
 
-### FR-975: GetPatientRemark – Remove Duplicate Lines (2025-01-17)
-**Requirement**: After retrieving the patient remark string via `GetCurrentPatientRemarkAsync()`, the system MUST automatically remove duplicate lines before storing in the `PatientRemark` property.
-
-**Duplicate Definition**:
-- Lines are considered duplicate if the text wrapped within angle brackets (`<` and `>`) is the same (case-insensitive).
-- Example:
-  - Line 1: `Patient has <diabetes> since 2020`
-  - Line 2: `History of <diabetes> with complications`
-  - These lines are duplicates because both contain `<diabetes>`
-
-**Behavior**:
-1. After retrieving patient remark string from PACS, split into lines
-2. For each line, extract the text between `<` and `>` (if present)
-3. Track seen angle-bracket content in a case-insensitive set
-4. Keep only the first occurrence of each unique angle-bracket content
-5. Lines without angle-bracket content are always kept (no deduplication)
-6. Rejoin lines with newline separator
-
-**Implementation**:
-- Method: `RemoveDuplicateLinesInPatientRemark(string input)` in `MainViewModel.Commands.cs`
-- Helper: `ExtractAngleBracketContent(string line)` extracts text between `<` and `>`
-- Uses `HashSet<string>` with `StringComparer.OrdinalIgnoreCase` for duplicate detection
-- Called automatically in `AcquirePatientRemarkAsync()` before setting `PatientRemark` property
-
-**Edge Cases**:
-- Empty or null input: returns unchanged
-- Lines with no angle brackets: always kept (not considered for deduplication)
-- Lines with only opening `<` or only closing `>`: not considered for deduplication
-- Lines with `<>` (empty content): not considered for deduplication
-- Multiple angle bracket pairs per line: only first pair is extracted
-- Malformed brackets (`>` before `<`): not considered for deduplication
-
-**Example**:
-```
-Input:
-<DM> diagnosed in 2020
-<HTN> under control
-<DM> with complications
-No angle brackets here
-<CKD> stage 3
-
-Output:
-<DM> diagnosed in 2020
-<HTN> under control
-No angle brackets here
-<CKD> stage 3
-```
-
-**Rationale**:
-- Patient remarks often contain redundant entries with similar structured tags
-- Duplicate lines clutter the UI and report editor
-- Removing duplicates based on tag content reduces noise while preserving unique information
-- Case-insensitive matching handles inconsistent capitalization in PACS data
-
 ## Update: Enhanced Manage Studyname Techniques Window with Combination Building (2025-01-17)
 - FR-1020 StudynameTechniqueWindow MUST provide a split-panel layout with left panel for building new combinations and right panel for managing existing combinations.
 - FR-1021 The left panel MUST include ComboBoxes for selecting Prefix, Tech, and Suffix components with "+" buttons to add new components inline.
@@ -993,3 +952,41 @@ No angle brackets here
 - FR-1120 TextSyncService MUST handle exceptions gracefully and log to debug output without crashes.
 - FR-1121 EditorForeignText and EditorFindings MUST allow seamless caret movement between them (future enhancement).
 - FR-1122 Sync is one-way only (foreign → app) to avoid focus stealing and sluggish performance.
+
+## Update: Foreign Text Merge on Sync Disable (2025-01-19)
+- FR-1123 When TextSyncEnabled is set to OFF, the system MUST merge ForeignText into FindingsText automatically.
+- FR-1124 Merge behavior: `FindingsText = ForeignText + newline + FindingsText`
+- FR-1125 After merge, ForeignText property MUST be cleared to empty string.
+- FR-1126 After merge, the foreign textbox element MUST be cleared by calling `TextSyncService.WriteToForeignAsync("")`.
+- FR-1127 TextSyncService MUST provide `WriteToForeignAsync(string text)` method using UIA ValuePattern.
+- FR-1128 Write operation MUST verify ValuePattern is supported and not read-only before setting value.
+- FR-1129 Status message MUST display "Text sync disabled - foreign text merged into findings" when merge occurs.
+- FR-1130 If ForeignText is empty when sync is disabled, no merge occurs and status shows "Text sync disabled".
+- FR-1131 Merge operation MUST occur before sync is stopped to ensure clean state transition.
+
+## FR-1132: Caret Position Preservation on Foreign Text Merge
+When text sync is disabled and foreign text is merged into Findings editor, the caret position in the Findings editor must be preserved relative to its original position in the existing text.
+
+**Behavior**:
+- Before merge: User's caret is at position N in Findings editor
+- After merge: ForeignText (length M) is prepended with newline separator (length 1)
+- Caret should move to position N + M + 1 to maintain relative position in original text
+
+**Implementation**: Use `FindingsCaretOffsetAdjustment` property to communicate adjustment value from ViewModel to Editor control.
+
+## FR-1133: Prevent Focus Stealing on Foreign Textbox Clear (Best Effort)
+When text sync is disabled, clearing the foreign textbox should avoid stealing focus from the Radium application where possible.
+
+**Behavior**:
+- Clearing foreign textbox via UIA ValuePattern without calling SetFocus()
+- **Note**: Some applications (e.g., Notepad) may still bring themselves to foreground when content changes programmatically
+- This is application-specific behavior controlled by the target application, not by UIA
+- Application focus preservation is best-effort; complete prevention is not possible with all applications
+
+**Implementation**: WriteToForeignAsync uses ValuePattern.SetValue without preceding SetFocus() call.
+
+**Alternatives Considered**:
+- SendKeys without focus: unreliable, requires exact focus state
+- Windows messages (WM_SETTEXT): application-specific, not portable
+- Clipboard + Ctrl+V: too invasive, disrupts user clipboard
+- Current UIA approach is the least invasive option available

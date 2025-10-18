@@ -1,0 +1,32 @@
+<UserControl x:Class="Wysg.Musm.Radium.Controls.CenterEditingArea"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:rad="clr-namespace:Wysg.Musm.Radium.Controls"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="1000"
+             Background="#181818">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="2"/>
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Left: Current report editing panel -->
+        <rad:CurrentReportEditorPanel x:Name="CurrentReportPanel" 
+                                      Grid.Column="0" 
+                                      ExtractPhrasesClick="OnExtractPhrasesClick"/>
+
+        <!-- Vertical splitter -->
+        <GridSplitter Grid.Column="1" 
+                      HorizontalAlignment="Stretch" 
+                      Width="2" 
+                      Background="#2D2D30"/>
+
+        <!-- Right: Previous report editing panel -->
+        <rad:PreviousReportEditorPanel x:Name="PreviousReportPanel" 
+                                       Grid.Column="2"/>
+    </Grid>
+</UserControl>

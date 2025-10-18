@@ -70,11 +70,43 @@ namespace Wysg.Musm.Radium.ViewModels
                     }
                     else
                     {
-                        SetStatus("Text sync disabled");
-                        ForeignText = string.Empty; // Clear foreign text when disabled
+                        // On sync OFF: merge ForeignText into FindingsText and clear, preserving caret position
+                        if (!string.IsNullOrEmpty(_foreignText))
+                        {
+                            // Calculate foreign text length including newline separator
+                            int foreignLength = _foreignText.Length + Environment.NewLine.Length;
+                            
+                            // Merge: FindingsText = ForeignText + newline + FindingsText
+                            string merged = _foreignText + Environment.NewLine + FindingsText;
+                            FindingsText = merged;
+                            
+                            // Clear foreign text (both property and bound element)
+                            ForeignText = string.Empty;
+                            
+                            // Optionally write empty string to foreign textbox to clear it
+                            _ = _textSyncService?.WriteToForeignAsync(string.Empty);
+                            
+                            SetStatus("Text sync disabled - foreign text merged into findings");
+                            
+                            // Notify EditorFindings to adjust caret: new position = old position + foreign text length
+                            OnPropertyChanged(nameof(FindingsCaretOffsetAdjustment));
+                            FindingsCaretOffsetAdjustment = foreignLength;
+                        }
+                        else
+                        {
+                            SetStatus("Text sync disabled");
+                        }
                     }
                 }
             }
+        }
+        
+        // Property to communicate caret offset adjustment to EditorFindings
+        private int _findingsCaretOffsetAdjustment;
+        public int FindingsCaretOffsetAdjustment
+        {
+            get => _findingsCaretOffsetAdjustment;
+            set => SetProperty(ref _findingsCaretOffsetAdjustment, value);
         }
 
         // Foreign text from external textbox (read-only, synced from foreign source)

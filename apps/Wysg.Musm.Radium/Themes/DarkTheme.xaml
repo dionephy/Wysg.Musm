@@ -41,6 +41,9 @@
 
   <!-- Global Monospace Font -->
   <FontFamily x:Key="Dark.MonoFont">pack://application:,,,/Wysg.Musm.Radium;component/Fonts/#D2Coding</FontFamily>
+  
+  <!-- Alias for backward compatibility (MainWindow.xaml uses this name) -->
+  <FontFamily x:Key="UiMonospaceFont">pack://application:,,,/Wysg.Musm.Radium;component/Fonts/#D2Coding</FontFamily>
 
     <Style TargetType="{x:Type Control}">
         <Setter Property="FontFamily" Value="{StaticResource Dark.MonoFont}"/>
@@ -423,6 +426,48 @@
     <Setter Property="PanningMode" Value="Both"/>
     <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
     <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+  </Style>
+
+  <!-- Dark ToggleButton Style (used by Proofread, Reportified, etc.) -->
+  <Style x:Key="DarkToggleButtonStyle" TargetType="ToggleButton">
+    <Setter Property="Background" Value="{StaticResource Dark.Brush.PanelAlt}"/>
+    <Setter Property="Foreground" Value="{StaticResource Dark.Brush.Foreground}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource Dark.Brush.Border}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="8,4"/>
+    <Setter Property="Margin" Value="8,0,0,0"/>
+    <Setter Property="FontFamily" Value="{StaticResource Dark.MonoFont}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <Border x:Name="border"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="2">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="border" Property="Background" Value="{StaticResource Dark.Brush.Border}"/>
+              <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource Dark.Brush.AccentAlt}"/>
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource Dark.Brush.AccentAlt}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.6"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- GridSplitter Style -->
+  <Style TargetType="GridSplitter">
+    <Setter Property="Background" Value="{StaticResource Dark.Brush.Border}"/>
+    <Setter Property="ShowsPreview" Value="False"/>
   </Style>
 
 </ResourceDictionary>

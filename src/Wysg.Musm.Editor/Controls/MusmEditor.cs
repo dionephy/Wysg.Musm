@@ -121,6 +121,9 @@ public class MusmEditor : TextEditor
         var newText = e.NewValue as string ?? string.Empty;
         if (editor.Text == newText) return;
         
+        // Store current caret offset before text change
+        int oldCaretOffset = editor.CaretOffset;
+        
         editor._suppressTextSync = true;
         try 
         { 
@@ -136,6 +139,18 @@ public class MusmEditor : TextEditor
                     if (editor.Text != newText)
                     {
                         editor.Text = newText;
+                        
+                        // Check if we need to adjust caret based on CaretOffsetAdjustment
+                        int adjustment = editor.CaretOffsetAdjustment;
+                        if (adjustment > 0)
+                        {
+                            // Adjust caret position: new_caret = old_caret + adjustment
+                            int newCaretOffset = Math.Min(oldCaretOffset + adjustment, editor.Document.TextLength);
+                            editor.CaretOffset = newCaretOffset;
+                            
+                            // Reset adjustment to zero after applying
+                            editor.SetCurrentValue(CaretOffsetAdjustmentProperty, 0);
+                        }
                     }
                 }
                 finally
@@ -164,6 +179,17 @@ public class MusmEditor : TextEditor
             if (value != base.CaretOffset)
                 base.CaretOffset = Math.Max(0, Math.Min(value, Document?.TextLength ?? 0));
         }
+    }
+
+    // ===== New: CaretOffsetAdjustment to support merge scenarios =====
+    public static readonly DependencyProperty CaretOffsetAdjustmentProperty =
+        DependencyProperty.Register(nameof(CaretOffsetAdjustment), typeof(int), typeof(MusmEditor),
+            new FrameworkPropertyMetadata(0));
+
+    public int CaretOffsetAdjustment
+    {
+        get => (int)GetValue(CaretOffsetAdjustmentProperty);
+        set => SetValue(CaretOffsetAdjustmentProperty, value);
     }
 
     public static readonly DependencyProperty SelectionStartBindableProperty =
