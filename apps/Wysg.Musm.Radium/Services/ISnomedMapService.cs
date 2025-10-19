@@ -6,6 +6,24 @@ namespace Wysg.Musm.Radium.Services
 {
     public sealed record SnomedConcept(long ConceptId, string ConceptIdStr, string Fsn, string? Pt, bool Active, DateTime CachedAt);
 
+    /// <summary>
+    /// Extended concept with all descriptions/synonyms for browsing.
+    /// Used by SNOMED Browser to show all terms per concept.
+    /// </summary>
+    public sealed record SnomedConceptWithTerms(
+        long ConceptId, 
+        string ConceptIdStr, 
+        string Fsn, 
+        string? Pt, 
+        bool Active, 
+        DateTime CachedAt,
+        IReadOnlyList<SnomedTerm> AllTerms); // All descriptions including FSN, PT, synonyms
+
+    /// <summary>
+    /// Represents a single term/description for a SNOMED concept.
+    /// </summary>
+    public sealed record SnomedTerm(string Term, string Type); // Type: "FSN", "PT", "Synonym"
+
     public sealed record PhraseSnomedMapping(
         long PhraseId,
         long? AccountId,

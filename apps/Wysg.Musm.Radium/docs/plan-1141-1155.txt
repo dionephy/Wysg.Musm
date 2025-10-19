@@ -1,0 +1,178 @@
+
+## Change Log Addition (2025-01-19 ? Global Hotkey for Toggle Sync Text)
+- **User Request**: Add global hotkey support for toggling the "Sync Text" feature without needing to click the toggle button in MainWindow.
+- **Solution**: Implemented system-wide hotkey registration using Win32 RegisterHotKey API with hotkey configuration in Settings ¡æ Keyboard tab.
+
+### Overview
+The global hotkey feature allows users to toggle text synchronization with external applications (e.g., Notepad) from anywhere using a configurable keyboard shortcut. This complements existing global hotkeys (Open Study, Send Study) and provides keyboard-first workflow for power users.
+
+### Components Implemented
+
+1. **Settings Storage** (`IRadiumLocalSettings` and `RadiumLocalSettings`):
+   - Added `GlobalHotkeyToggleSyncText` property to interface and implementation
+   - Persisted as `hotkey_toggle_sync_text` key in encrypted local settings file
+   - Value format: human-readable string (e.g., "Ctrl+Alt+T")
+
+2. **Settings UI** (`SettingsWindow.xaml` and `SettingsViewModel`):
+   - Added third hotkey textbox in Keyboard tab labeled "Toggle sync text:"
+   - Uses same `OnHotkeyTextBoxPreviewKeyDown` handler as existing hotkeys
+   - Added `ToggleSyncTextHotkey` property to ViewModel with two-way binding
+   - Loads persisted value on window open
+   - Saves value on "Save Keyboard" button click
+
+3. **MainWindow Hotkey Registration**:
+   - Added `HOTKEY_ID_TOGGLE_SYNC_TEXT = 0xB002` constant
+   - Added `_toggleSyncTextMods` and `_toggleSyncTextVk` fields to store parsed hotkey
+   - Implemented `TryRegisterToggleSyncTextHotkey()` method following same pattern as Open Study hotkey
+   - Calls `RegisterHotKey` Win32 API with parsed modifiers and virtual key code
+   - Registration occurs in `OnSourceInitialized` after window handle is created
+
+4. **WndProc Message Handler**:
+   - Extended `WndProc` to handle `HOTKEY_ID_TOGGLE_SYNC_TEXT` messages
+   - Toggles `MainViewModel.TextSyncEnabled` property when hotkey pressed
+   - Logs new sync state to debug output for troubleshooting
+
+5. **Cleanup**:
+   - Extended `OnClosed` to unregister toggle sync text hotkey
+   - Prevents leaking system-wide hotkey registration after window closes
+
+### Technical Implementation
+
+**Hotkey Parsing**:
+- Reuses existing `TryParseHotkey(text, out mods, out vk)` method
+- Supports Ctrl, Alt, Shift, Win modifiers
+- Converts WPF `Key` to Win32 virtual key code using `KeyInterop.VirtualKeyFromKey`
+- Fallback to explicit A-Z and 0-9 parsing if KeyConverter fails
+
+**Registration Flow**:
+1. User configures "Toggle sync text" hotkey in Settings ¡æ Keyboard (e.g., "Ctrl+Alt+T")
+2. User clicks Save ¡æ hotkey persisted to local settings
+3. On next app start, MainWindow reads hotkey from settings
+4. In `OnSourceInitialized`, calls `TryRegisterToggleSyncTextHotkey()`
+5. Parses hotkey string to modifiers + virtual key
+6. Calls Win32 `RegisterHotKey(hwnd, 0xB002, mods, vk)`
+7. Success/failure logged to debug output
+
+**Toggle Flow**:
+1. User presses configured hotkey (e.g., Ctrl+Alt+T) from any application
+2. Windows routes `WM_HOTKEY` message to MainWindow
+3. WndProc receives message, extracts hotkey ID from wParam
+4. If ID == `HOTKEY_ID_TOGGLE_SYNC_TEXT`, toggles `vm.TextSyncEnabled`
+5. If sync was OFF ¡æ turns ON (starts polling foreign textbox, shows foreign editor)
+6. If sync was ON ¡æ turns OFF (merges foreign text, clears foreign textbox, focuses Findings editor)
+7. Status bar updates to show new sync state
+
+### Approach (Toggle Sync Text Hotkey)
+1) Add `GlobalHotkeyToggleSyncText` property to `IRadiumLocalSettings` interface
+2) Implement storage in `RadiumLocalSettings` using encrypted key `hotkey_toggle_sync_text`
+3) Add textbox to Settings ¡æ Keyboard tab with binding to `SettingsViewModel.ToggleSyncTextHotkey`
+4) Load persisted hotkey in ViewModel constructor
+5) Save hotkey in `SaveKeyboard()` method
+6) Add hotkey ID constant `HOTKEY_ID_TOGGLE_SYNC_TEXT = 0xB002` to MainWindow
+7) Add mods/vk fields to store parsed hotkey
+8) Implement `TryRegisterToggleSyncTextHotkey()` following Open Study hotkey pattern
+9) Call registration method in `OnSourceInitialized`
+10) Extend `WndProc` to handle new hotkey ID and toggle sync state
+11) Extend `OnClosed` to unregister hotkey
+12) Update documentation (Spec.md, Plan.md, Tasks.md)
+
+### Test Plan (Toggle Sync Text Hotkey)
+**Configuration**:
+1. Open Settings ¡æ Keyboard tab
+2. Click "Toggle sync text" textbox
+3. Press Ctrl+Alt+T (or other combination)
+4. Verify textbox shows "Ctrl+Alt+T"
+5. Click Save Keyboard button
+6. Close and restart application
+
+**Registration Verification**:
+1. Check debug output for "[Hotkey] Registered ToggleSyncText hotkey 'Ctrl+Alt+T' mods=0x3 vk=0x54"
+2. If registration fails: "[Hotkey] Failed to register ToggleSyncText hotkey 'Ctrl+Alt+T' (may be in use)"
+
+**Toggle Behavior**:
+1. Map "Foreign textbox" bookmark to external app (e.g., Notepad's edit control)
+2. With MainWindow in background, press Ctrl+Alt+T
+3. Verify sync toggle turns ON in MainWindow
+4. Verify ForeignText editor appears below Header editor
+5. Type in Notepad ¡æ verify text appears in ForeignText editor
+6. Press Ctrl+Alt+T again
+7. Verify sync toggle turns OFF
+8. Verify foreign text merged into Findings editor
+9. Verify Notepad content cleared
+10. Verify focus returns to Findings editor
+
+**Edge Cases**:
+1. Hotkey not configured: No registration, no system-wide hotkey
+2. Hotkey already in use: Registration fails, debug log shows failure, toggle button still works
+3. Multiple applications using same hotkey: Windows prioritizes first registered
+4. MainWindow closed: Hotkey unregistered, no system-wide side effects
+5. Rapid toggle: Works correctly with each press, no state corruption
+
+### Risks / Mitigations (Toggle Sync Text Hotkey)
+- **Risk**: Hotkey conflicts with other applications
+  - **Mitigation**: Registration failure logged; user can choose different combination; toggle button always works
+
+- **Risk**: Hotkey not unregistered if MainWindow crashes
+  - **Mitigation**: Windows automatically releases hotkeys when process terminates
+
+- **Risk**: User forgets which hotkey they configured
+  - **Mitigation**: Hotkey visible in Settings ¡æ Keyboard tab; can reconfigure anytime
+
+- **Risk**: Parsing fails for complex key combinations
+  - **Mitigation**: Using same TryParseHotkey method as existing hotkeys (proven pattern)
+
+- **Risk**: WM_HOTKEY messages delayed or lost
+  - **Mitigation**: Windows message queue is reliable; toggle state change is immediate
+
+### Code Changes (Toggle Sync Text Hotkey)
+**Files Modified**:
+1. `apps\Wysg.Musm.Radium\Services\IRadiumLocalSettings.cs`
+   - Added `GlobalHotkeyToggleSyncText` property to interface
+
+2. `apps\Wysg.Musm.Radium\Services\RadiumLocalSettings.cs`
+   - Added `GlobalHotkeyToggleSyncText` property implementation
+   - Persists as `hotkey_toggle_sync_text` key in encrypted storage
+
+3. `apps\Wysg.Musm.Radium\ViewModels\SettingsViewModel.cs`
+   - Added `ToggleSyncTextHotkey` property with INotifyPropertyChanged
+   - Loaded hotkey from settings in constructor
+   - Saved hotkey in `SaveKeyboard()` method
+
+4. `apps\Wysg.Musm.Radium\Views\SettingsWindow.xaml`
+   - Added third hotkey textbox in Keyboard tab
+   - Label: "Toggle sync text:"
+   - Width: 220 (same as other hotkey textboxes)
+   - Binding: `{Binding ToggleSyncTextHotkey, UpdateSourceTrigger=PropertyChanged}`
+   - PreviewKeyDown: `OnHotkeyTextBoxPreviewKeyDown`
+
+5. `apps\Wysg.Musm.Radium\Views\MainWindow.xaml.cs`
+   - Added `HOTKEY_ID_TOGGLE_SYNC_TEXT = 0xB002` constant
+   - Added `_toggleSyncTextMods` and `_toggleSyncTextVk` fields
+   - Implemented `TryRegisterToggleSyncTextHotkey()` method
+   - Called registration in `OnSourceInitialized`
+   - Extended `WndProc` to handle `HOTKEY_ID_TOGGLE_SYNC_TEXT`
+   - Extended `OnClosed` to unregister toggle sync text hotkey
+   - Added debug logging for registration and toggle events
+
+6. `apps\Wysg.Musm.Radium\docs\Spec.md`
+   - Added FR-1141 through FR-1155 (15 feature requirements)
+
+7. `apps\Wysg.Musm.Radium\docs\Plan.md`
+   - Added this cumulative change log entry
+
+8. `apps\Wysg.Musm.Radium\docs\Tasks.md`
+   - To be updated with task items T1141-T1155
+
+### Related Features
+- Extends FR-1100..FR-1122 (Foreign Textbox One-Way Sync Feature)
+- Extends FR-1123..FR-1131 (Foreign Text Merge on Sync Disable)
+- Extends FR-1132..FR-1140 (Auto-Focus Findings After Foreign Text Clear)
+- Complements FR-660, FR-661 (Global Hotkey ? Open Study Shortcut)
+- Follows same pattern as FR-541 (Settings ¡æ Keyboard tab for hotkey configuration)
+
+### Future Enhancements (Not in Current Implementation)
+- Hotkey conflict detection UI (show warning if key already registered)
+- Hotkey suggestion/recommendation based on common patterns
+- Export/import hotkey configurations
+- Per-PACS hotkey profiles (different hotkeys for different PACS)
+- Hotkey quick reference overlay (show all registered hotkeys on demand)

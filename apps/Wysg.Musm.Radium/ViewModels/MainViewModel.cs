@@ -83,8 +83,12 @@ namespace Wysg.Musm.Radium.ViewModels
                             // Clear foreign text (both property and bound element)
                             ForeignText = string.Empty;
                             
-                            // Optionally write empty string to foreign textbox to clear it
-                            _ = _textSyncService?.WriteToForeignAsync(string.Empty);
+                            // Write empty string to foreign textbox to clear it, then request focus return to Findings
+                            _ = _textSyncService?.WriteToForeignAsync(string.Empty, avoidFocus: true, afterFocusCallback: () =>
+                            {
+                                // Notify UI to focus Findings editor after foreign element is focused
+                                OnPropertyChanged(nameof(RequestFocusFindings));
+                            });
                             
                             SetStatus("Text sync disabled - foreign text merged into findings");
                             
@@ -100,6 +104,9 @@ namespace Wysg.Musm.Radium.ViewModels
                 }
             }
         }
+        
+        // Property to communicate focus request to UI (MainWindow listens to property change)
+        public bool RequestFocusFindings { get; private set; }
         
         // Property to communicate caret offset adjustment to EditorFindings
         private int _findingsCaretOffsetAdjustment;

@@ -213,7 +213,8 @@ namespace Wysg.Musm.Radium.Services
 
         private async Task LoadGlobalSnapshotAsync(AccountPhraseState state)
         {
-            const string sql = @"SELECT TOP (100) id, account_id, text, active, updated_at, rev
+            // Load ALL global phrases (no limit) for accurate existence checks
+            const string sql = @"SELECT id, account_id, text, active, updated_at, rev
                                   FROM radium.phrase WHERE account_id IS NULL
                                   ORDER BY updated_at DESC";
             await using var con = CreateConnection();
@@ -337,6 +338,58 @@ namespace Wysg.Musm.Radium.Services
                     if (accountId.HasValue)
                         cmd.Parameters.AddWithValue("@aid", accountId.Value);
                     cmd.Parameters.AddWithValue("@pid", phraseId);
+                    var rows = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                    if (rows == 0) return null;
+                }
+                await using (var q = new SqlCommand(selectSql, con))
+                {
+                    if (accountId.HasValue)
+                        q.Parameters.AddWithValue("@aid", accountId.Value);
+                    q.Parameters.AddWithValue("@pid", phraseId);
+                    await using var rd = await q.ExecuteReaderAsync().ConfigureAwait(false);
+                    if (!await rd.ReadAsync().ConfigureAwait(false)) return null;
+                    var info = new PhraseInfo(
+                        rd.GetInt64(0), 
+                        rd.IsDBNull(1) ? null : rd.GetInt64(1), 
+                        rd.GetString(2), 
+                        rd.GetBoolean(3), 
+                        rd.GetDateTime(4), 
+                        rd.GetInt64(5));
+                    UpdateSnapshot(state, info);
+                    _cache.Clear(accountId ?? GLOBAL_KEY);
+                    return info;
+                }
+            }
+            finally { state.UpdateLock.Release(); }
+        }
+
+        // NEW: Update phrase text (FR-SNOMED-EDIT-2025-01-19)
+        public async Task<PhraseInfo?> UpdatePhraseTextAsync(long? accountId, long phraseId, string newText)
+        {
+            if (accountId.HasValue && accountId.Value <= 0) return null;
+            if (string.IsNullOrWhiteSpace(newText)) return null;
+            
+            var key = accountId ?? GLOBAL_KEY;
+            var state = _states.GetOrAdd(key, _ => new AccountPhraseState(accountId));
+            await state.UpdateLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                string updateSql = accountId.HasValue
+                    ? @"UPDATE radium.phrase SET [text]=@text WHERE account_id=@aid AND id=@pid;"
+                    : @"UPDATE radium.phrase SET [text]=@text WHERE account_id IS NULL AND id=@pid;";
+                    
+                string selectSql = accountId.HasValue
+                    ? @"SELECT id, account_id, [text], active, updated_at, rev FROM radium.phrase WHERE id=@pid AND account_id=@aid"
+                    : @"SELECT id, account_id, [text], active, updated_at, rev FROM radium.phrase WHERE id=@pid AND account_id IS NULL";
+                    
+                await using var con = CreateConnection();
+                await con.OpenAsync().ConfigureAwait(false);
+                await using (var cmd = new SqlCommand(updateSql, con))
+                {
+                    if (accountId.HasValue)
+                        cmd.Parameters.AddWithValue("@aid", accountId.Value);
+                    cmd.Parameters.AddWithValue("@pid", phraseId);
+                    cmd.Parameters.AddWithValue("@text", newText.Trim());
                     var rows = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
                     if (rows == 0) return null;
                 }

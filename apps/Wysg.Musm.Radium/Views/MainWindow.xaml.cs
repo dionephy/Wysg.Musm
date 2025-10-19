@@ -23,10 +23,13 @@ namespace Wysg.Musm.Radium.Views
         private bool _alignRight = false;
         private PacsService? _pacs;
 
-        // Global hotkey (system-wide) for Open Study Shortcut
+        // Global hotkeys (system-wide)
         private const int HOTKEY_ID_OPEN_STUDY = 0xB001;
+        private const int HOTKEY_ID_TOGGLE_SYNC_TEXT = 0xB002;
         private uint _openStudyMods;
         private uint _openStudyVk;
+        private uint _toggleSyncTextMods;
+        private uint _toggleSyncTextVk;
 
         public MainWindow()
         {
@@ -65,6 +68,10 @@ namespace Wysg.Musm.Radium.Views
 
             UpdateGridCenterSize();
             UpdateGridCenterPositioning();
+            
+            // Listen for focus request from ViewModel (e.g., after text sync disable)
+            vm.PropertyChanged += OnViewModelPropertyChanged;
+            
             try
             {
                 await vm.LoadPhrasesAsync();
@@ -75,6 +82,61 @@ namespace Wysg.Musm.Radium.Views
             }
 
             System.Diagnostics.Debug.WriteLine("[MainWindow] OnLoaded COMPLETE");
+        }
+        
+        private async void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(MainViewModel.RequestFocusFindings))
+            {
+                // Focus EditorFindings when ViewModel requests it
+                System.Diagnostics.Debug.WriteLine("[MainWindow] Focus request received - focusing EditorFindings");
+                
+                // Small delay to ensure foreign app has finished processing before we steal focus back
+                await Task.Delay(50);
+                
+                // Activate this window first to ensure it's in foreground
+                if (!this.IsActive)
+                {
+                    System.Diagnostics.Debug.WriteLine("[MainWindow] Window not active - calling Activate()");
+                    this.Activate();
+                }
+                
+                // Focus the underlying MusmEditor inside EditorControl
+                // The EditorControl is a UserControl wrapper; we need to focus the actual MusmEditor named "Editor" for keyboard input
+                var editorControl = gridCenter.EditorFindings;
+                if (editorControl != null)
+                {
+                    // Find the MusmEditor child control named "Editor"
+                    var musmEditor = editorControl.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
+                    if (musmEditor != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[MainWindow] Focusing underlying MusmEditor");
+                        musmEditor.Focus();
+                        
+                        // Ensure caret is visible by scrolling to it
+                        try
+                        {
+                            musmEditor.TextArea?.Caret.BringCaretToView();
+                            System.Diagnostics.Debug.WriteLine($"[MainWindow] Caret at offset: {musmEditor.CaretOffset}");
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[MainWindow] Caret scroll error: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("[MainWindow] MusmEditor not found - falling back to UserControl focus");
+                        editorControl.Focus();
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[MainWindow] EditorControl is null");
+                }
+                
+                System.Diagnostics.Debug.WriteLine("[MainWindow] Focus operation completed");
+            }
         }
 
         private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -308,8 +370,9 @@ namespace Wysg.Musm.Radium.Views
             // Apply saved placement before first paint; set manual startup to avoid CenterScreen overriding.
             this.WindowStartupLocation = WindowStartupLocation.Manual;
             TryRestoreWindowPlacement();
-            // Register global hotkey for Open Study (if configured) after HWND exists
+            // Register global hotkeys (if configured) after HWND exists
             TryRegisterOpenStudyHotkey();
+            TryRegisterToggleSyncTextHotkey();
         }
 
         private void OnOpenSpy(object sender, RoutedEventArgs e)
@@ -536,9 +599,36 @@ namespace Wysg.Musm.Radium.Views
             catch { return false; }
         }
 
+        private void TryRegisterToggleSyncTextHotkey()
+        {
+            try
+            {
+                var app = (App)Application.Current;
+                var local = app.Services.GetService<IRadiumLocalSettings>();
+                var text = local?.GlobalHotkeyToggleSyncText;
+                if (string.IsNullOrWhiteSpace(text)) return;
+
+                // Parse persisted hotkey text (e.g., "Ctrl+Alt+T") into user32 modifiers + virtual key
+                if (!TryParseHotkey(text!, out _toggleSyncTextMods, out _toggleSyncTextVk)) return;
+
+                // Acquire current HwndSource for this window; it exists only after OnSourceInitialized
+                _hotkeyHwndSource = (HwndSource?)PresentationSource.FromVisual(this);
+                if (_hotkeyHwndSource == null) return;
+                // Defensive: ensure previous registration is cleared to avoid duplicate-id registration
+                try { UnregisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_TOGGLE_SYNC_TEXT); } catch { }
+                var ok = RegisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_TOGGLE_SYNC_TEXT, _toggleSyncTextMods, _toggleSyncTextVk);
+                System.Diagnostics.Debug.WriteLine(ok
+                    ? $"[Hotkey] Registered ToggleSyncText hotkey '{text}' mods=0x{_toggleSyncTextMods:X} vk=0x{_toggleSyncTextVk:X}"
+                    : $"[Hotkey] Failed to register ToggleSyncText hotkey '{text}' (may be in use) mods=0x{_toggleSyncTextMods:X} vk=0x{_toggleSyncTextVk:X}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[Hotkey] ToggleSyncText register exception: " + ex.Message);
+            }
+        }
+
         // Global message hook to receive WM_HOTKEY from user32.
-        // When our registered id fires, route to ViewModel.RunOpenStudyShortcut() which executes the
-        // correct PACS-scoped shortcut sequence (new/add/after open).
+        // When our registered id fires, route to ViewModel methods
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             if (msg == WM_HOTKEY)
@@ -548,6 +638,16 @@ namespace Wysg.Musm.Radium.Views
                 {
                     if (DataContext is MainViewModel vm)
                         vm.RunOpenStudyShortcut();
+                    handled = true;
+                }
+                else if (id == HOTKEY_ID_TOGGLE_SYNC_TEXT)
+                {
+                    if (DataContext is MainViewModel vm)
+                    {
+                        // Toggle the TextSyncEnabled property
+                        vm.TextSyncEnabled = !vm.TextSyncEnabled;
+                        System.Diagnostics.Debug.WriteLine($"[Hotkey] ToggleSyncText executed - new state: {vm.TextSyncEnabled}");
+                    }
                     handled = true;
                 }
             }
@@ -562,6 +662,7 @@ namespace Wysg.Musm.Radium.Views
                 if (_hotkeyHwndSource != null)
                 {
                     UnregisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_OPEN_STUDY);
+                    UnregisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_TOGGLE_SYNC_TEXT);
                     _hotkeyHwndSource.RemoveHook(WndProc);
                 }
             }

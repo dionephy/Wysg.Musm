@@ -33,6 +33,11 @@ namespace Wysg.Musm.Radium.Services
             public DateTime CreatedAt { get; init; }
             public DateTime UpdatedAt { get; set; }
             public long Rev { get; set; }
+            
+            // SNOMED support (FR-SNOMED-2025-01-19)
+            public string? Tags { get; set; }
+            public string? TagsSource { get; set; }
+            public string? TagsSemanticTag { get; set; }
         }
 
         private sealed class AccountPhraseState
@@ -203,7 +208,7 @@ namespace Wysg.Musm.Radium.Services
         private static async Task<List<PhraseRow>> LoadPageOnConnectionAsync(NpgsqlConnection con, long accountId, long afterId, int take)
         {
             var list = new List<PhraseRow>(take);
-            const string sql = @"SELECT id, account_id, text, active, created_at, updated_at, rev
+            const string sql = @"SELECT id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag
                                    FROM radium.phrase
                                    WHERE account_id=@aid AND id > @after
                                    ORDER BY id
@@ -223,7 +228,10 @@ namespace Wysg.Musm.Radium.Services
                     Active = rd.GetBoolean(3),
                     CreatedAt = rd.GetDateTime(4),
                     UpdatedAt = rd.GetDateTime(5),
-                    Rev = rd.GetInt64(6)
+                    Rev = rd.GetInt64(6),
+                    Tags = rd.IsDBNull(7) ? null : rd.GetString(7),
+                    TagsSource = rd.IsDBNull(8) ? null : rd.GetString(8),
+                    TagsSemanticTag = rd.IsDBNull(9) ? null : rd.GetString(9)
                 });
             }
             return list;
@@ -232,7 +240,7 @@ namespace Wysg.Musm.Radium.Services
         private async Task<List<PhraseRow>> LoadPageAsync(long accountId, long afterId, int take)
         {
             var list = new List<PhraseRow>(take);
-            const string sql = @"SELECT id, account_id, text, active, created_at, updated_at, rev
+            const string sql = @"SELECT id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag
                                    FROM radium.phrase
                                    WHERE account_id=@aid AND id > @after
                                    ORDER BY id
@@ -254,7 +262,10 @@ namespace Wysg.Musm.Radium.Services
                     Active = rd.GetBoolean(3),
                     CreatedAt = rd.GetDateTime(4),
                     UpdatedAt = rd.GetDateTime(5),
-                    Rev = rd.GetInt64(6)
+                    Rev = rd.GetInt64(6),
+                    Tags = rd.IsDBNull(7) ? null : rd.GetString(7),
+                    TagsSource = rd.IsDBNull(8) ? null : rd.GetString(8),
+                    TagsSemanticTag = rd.IsDBNull(9) ? null : rd.GetString(9)
                 });
             }
             return list;
@@ -289,7 +300,7 @@ namespace Wysg.Musm.Radium.Services
             Debug.WriteLine($"[PhraseService][LoadSmall] Loading phrases for account={state.AccountId}");
             await using var con = CreateConnection();
             await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false);
-            const string sql = @"SELECT id, account_id, text, active, created_at, updated_at, rev
+            const string sql = @"SELECT id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag
                                    FROM radium.phrase
                                    WHERE account_id = @aid
                                    ORDER BY updated_at DESC
@@ -310,7 +321,10 @@ namespace Wysg.Musm.Radium.Services
                     Active = rd.GetBoolean(3),
                     CreatedAt = rd.GetDateTime(4),
                     UpdatedAt = rd.GetDateTime(5),
-                    Rev = rd.GetInt64(6)
+                    Rev = rd.GetInt64(6),
+                    Tags = rd.IsDBNull(7) ? null : rd.GetString(7),
+                    TagsSource = rd.IsDBNull(8) ? null : rd.GetString(8),
+                    TagsSemanticTag = rd.IsDBNull(9) ? null : rd.GetString(9)
                 };
                 state.ById[row.Id] = row;
                 if (row.Rev > state.MaxRev) state.MaxRev = row.Rev;
@@ -332,7 +346,7 @@ namespace Wysg.Musm.Radium.Services
                 try { await LoadSmallSetAsync(state).ConfigureAwait(false); } catch { return Array.Empty<PhraseInfo>(); }
             }
             return state.ById.Values.OrderByDescending(r => r.UpdatedAt).Take(1000)
-                .Select(r => new PhraseInfo(r.Id, r.AccountId, r.Text, r.Active, r.UpdatedAt, r.Rev)).ToList();
+                .Select(r => new PhraseInfo(r.Id, r.AccountId, r.Text, r.Active, r.UpdatedAt, r.Rev, r.Tags, r.TagsSource, r.TagsSemanticTag)).ToList();
         }
 
         // NEW: Non-global phrase metadata across all accounts (FR-280)
@@ -340,7 +354,7 @@ namespace Wysg.Musm.Radium.Services
         {
             await EnsureBackendAsync().ConfigureAwait(false);
             if (!_radiumAvailable) return Array.Empty<PhraseInfo>();
-            const string sql = @"SELECT id, account_id, text, active, created_at, updated_at, rev
+            const string sql = @"SELECT id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag
                                    FROM radium.phrase
                                    WHERE account_id IS NOT NULL
                                    ORDER BY updated_at DESC
@@ -359,7 +373,10 @@ namespace Wysg.Musm.Radium.Services
                     rd.GetString(2),
                     rd.GetBoolean(3),
                     rd.GetDateTime(5),
-                    rd.GetInt64(6)));
+                    rd.GetInt64(6),
+                    rd.IsDBNull(7) ? null : rd.GetString(7),
+                    rd.IsDBNull(8) ? null : rd.GetString(8),
+                    rd.IsDBNull(9) ? null : rd.GetString(9)));
             }
             return list;
         }
@@ -447,11 +464,11 @@ namespace Wysg.Musm.Radium.Services
             Debug.WriteLine("[PhraseService][LoadGlobal] Loading global phrases");
             await using var con = CreateConnection();
             await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false);
-            const string sql = @"SELECT id, account_id, text, active, created_at, updated_at, rev
+            // Load ALL global phrases (no limit) for accurate existence checks
+            const string sql = @"SELECT id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag
                                    FROM radium.phrase
                                    WHERE account_id IS NULL
-                                   ORDER BY updated_at DESC
-                                   LIMIT 100";
+                                   ORDER BY updated_at DESC";
             await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 12 };
             await using var rd = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess).ConfigureAwait(false);
             state.ById.Clear();
@@ -467,7 +484,10 @@ namespace Wysg.Musm.Radium.Services
                     Active = rd.GetBoolean(3),
                     CreatedAt = rd.GetDateTime(4),
                     UpdatedAt = rd.GetDateTime(5),
-                    Rev = rd.GetInt64(6)
+                    Rev = rd.GetInt64(6),
+                    Tags = rd.IsDBNull(7) ? null : rd.GetString(7),
+                    TagsSource = rd.IsDBNull(8) ? null : rd.GetString(8),
+                    TagsSemanticTag = rd.IsDBNull(9) ? null : rd.GetString(9)
                 };
                 state.ById[row.Id] = row;
                 if (row.Rev > state.MaxRev) state.MaxRev = row.Rev;
@@ -489,7 +509,7 @@ namespace Wysg.Musm.Radium.Services
                 catch { return Array.Empty<PhraseInfo>(); }
             }
             return state.ById.Values.OrderByDescending(r => r.UpdatedAt).Take(1000)
-                .Select(r => new PhraseInfo(r.Id, r.AccountId, r.Text, r.Active, r.UpdatedAt, r.Rev)).ToList();
+                .Select(r => new PhraseInfo(r.Id, r.AccountId, r.Text, r.Active, r.UpdatedAt, r.Rev, r.Tags, r.TagsSource, r.TagsSemanticTag)).ToList();
         }
 
         public async Task RefreshGlobalPhrasesAsync()
@@ -588,6 +608,38 @@ namespace Wysg.Musm.Radium.Services
             }
         }
 
+        public async Task<PhraseInfo?> UpdatePhraseTextAsync(long? accountId, long phraseId, string newText)
+        {
+            if (accountId.HasValue && accountId.Value <= 0) return null;
+            if (string.IsNullOrWhiteSpace(newText)) return null;
+            
+            await EnsureBackendAsync().ConfigureAwait(false);
+            if (!_radiumAvailable) return null;
+            
+            var key = accountId ?? GLOBAL_KEY;
+            var state = _states.GetOrAdd(key, _ => new AccountPhraseState(accountId));
+            await state.UpdateLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                state.UpdatingSnapshot = true;
+                var info = await UpdatePhraseTextInternalAsync(accountId, phraseId, newText).ConfigureAwait(false);
+                if (info != null)
+                {
+                    UpdateSnapshotAfterToggle(state, info);
+                    if (!accountId.HasValue)
+                        _cache.ClearAll();
+                    else
+                        _cache.Clear(accountId ?? GLOBAL_KEY);
+                }
+                return info;
+            }
+            finally
+            {
+                state.UpdatingSnapshot = false;
+                state.UpdateLock.Release();
+            }
+        }
+
         private async Task<PhraseInfo> UpsertPhraseInternalAsync(long? accountId, string text, bool active)
         {
             int attempts = 0;
@@ -601,10 +653,10 @@ namespace Wysg.Musm.Radium.Services
                     await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false);
                     
                     string selectSql = accountId.HasValue
-                        ? @"SELECT id, account_id, text, active, created_at, updated_at, rev
+                        ? @"SELECT id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag
                             FROM radium.phrase
                             WHERE account_id=@aid AND text=@text"
-                        : @"SELECT id, account_id, text, active, created_at, updated_at, rev
+                        : @"SELECT id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag
                             FROM radium.phrase
                             WHERE account_id IS NULL AND text=@text";
                             
@@ -623,7 +675,10 @@ namespace Wysg.Musm.Radium.Services
                                 rd.GetString(2), 
                                 rd.GetBoolean(3), 
                                 rd.GetDateTime(5), 
-                                rd.GetInt64(6));
+                                rd.GetInt64(6),
+                                rd.IsDBNull(7) ? null : rd.GetString(7),
+                                rd.IsDBNull(8) ? null : rd.GetString(8),
+                                rd.IsDBNull(9) ? null : rd.GetString(9));
                         }
                     }
                     
@@ -633,7 +688,7 @@ namespace Wysg.Musm.Radium.Services
                     if (existing == null)
                     {
                         const string insertSql = @"INSERT INTO radium.phrase(account_id,text,active) VALUES(@aid,@text,@active)
-                                                  RETURNING id, account_id, text, active, created_at, updated_at, rev";
+                                                  RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag";
                         await using var ins = new NpgsqlCommand(insertSql, con) { CommandTimeout = 12 };
                         if (accountId.HasValue)
                             ins.Parameters.AddWithValue("aid", accountId.Value);
@@ -649,17 +704,20 @@ namespace Wysg.Musm.Radium.Services
                             rd.GetString(2), 
                             rd.GetBoolean(3), 
                             rd.GetDateTime(5), 
-                            rd.GetInt64(6));
+                            rd.GetInt64(6),
+                            rd.IsDBNull(7) ? null : rd.GetString(7),
+                            rd.IsDBNull(8) ? null : rd.GetString(8),
+                            rd.IsDBNull(9) ? null : rd.GetString(9));
                     }
                     else
                     {
                         string updateSql = accountId.HasValue
                             ? @"UPDATE radium.phrase SET active=@active
                                 WHERE account_id=@aid AND text=@text
-                                RETURNING id, account_id, text, active, created_at, updated_at, rev"
+                                RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag"
                             : @"UPDATE radium.phrase SET active=@active
                                 WHERE account_id IS NULL AND text=@text
-                                RETURNING id, account_id, text, active, created_at, updated_at, rev";
+                                RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag";
                         await using var upd = new NpgsqlCommand(updateSql, con) { CommandTimeout = 12 };
                         if (accountId.HasValue)
                             upd.Parameters.AddWithValue("aid", accountId.Value);
@@ -673,7 +731,10 @@ namespace Wysg.Musm.Radium.Services
                             rd.GetString(2), 
                             rd.GetBoolean(3), 
                             rd.GetDateTime(5), 
-                            rd.GetInt64(6));
+                            rd.GetInt64(6),
+                            rd.IsDBNull(7) ? null : rd.GetString(7),
+                            rd.IsDBNull(8) ? null : rd.GetString(8),
+                            rd.IsDBNull(9) ? null : rd.GetString(9));
                     }
                     return result;
                 }
@@ -691,10 +752,10 @@ namespace Wysg.Musm.Radium.Services
             string sql = accountId.HasValue
                 ? @"UPDATE radium.phrase SET active = NOT active
                     WHERE account_id=@aid AND id=@pid
-                    RETURNING id, account_id, text, active, created_at, updated_at, rev"
+                    RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag"
                 : @"UPDATE radium.phrase SET active = NOT active
                     WHERE account_id IS NULL AND id=@pid
-                    RETURNING id, account_id, text, active, created_at, updated_at, rev";
+                    RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag";
                     
             int attempts = 0;
             const int maxAttempts = 3;
@@ -718,13 +779,65 @@ namespace Wysg.Musm.Radium.Services
                             rd.GetString(2), 
                             rd.GetBoolean(3), 
                             rd.GetDateTime(5), 
-                            rd.GetInt64(6));
+                            rd.GetInt64(6),
+                            rd.IsDBNull(7) ? null : rd.GetString(7),
+                            rd.IsDBNull(8) ? null : rd.GetString(8),
+                            rd.IsDBNull(9) ? null : rd.GetString(9));
                     }
                     return null;
                 }
                 catch (Exception ex) when ((IsTransient(ex) || IsTransientTimeout(ex)) && attempts < maxAttempts)
                 {
                     Debug.WriteLine($"[PhraseService][ToggleInternal][Transient] attempt={attempts} {ex.GetType().Name}: {ex.Message}");
+                    await Task.Delay(150 * attempts).ConfigureAwait(false);
+                }
+            }
+            return null;
+        }
+
+        private async Task<PhraseInfo?> UpdatePhraseTextInternalAsync(long? accountId, long phraseId, string newText)
+        {
+            string sql = accountId.HasValue
+                ? @"UPDATE radium.phrase SET text=@text
+                    WHERE account_id=@aid AND id=@pid
+                    RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag"
+                : @"UPDATE radium.phrase SET text=@text
+                    WHERE account_id IS NULL AND id=@pid
+                    RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag";
+                    
+            int attempts = 0;
+            const int maxAttempts = 3;
+            while (attempts < maxAttempts)
+            {
+                attempts++;
+                try
+                {
+                    await using var con = CreateConnection();
+                    await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false);
+                    await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 12 };
+                    if (accountId.HasValue)
+                        cmd.Parameters.AddWithValue("aid", accountId.Value);
+                    cmd.Parameters.AddWithValue("pid", phraseId);
+                    cmd.Parameters.AddWithValue("text", newText.Trim());
+                    await using var rd = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+                    if (await rd.ReadAsync().ConfigureAwait(false))
+                    {
+                        return new PhraseInfo(
+                            rd.GetInt64(0), 
+                            rd.IsDBNull(1) ? null : rd.GetInt64(1), 
+                            rd.GetString(2), 
+                            rd.GetBoolean(3), 
+                            rd.GetDateTime(5), 
+                            rd.GetInt64(6),
+                            rd.IsDBNull(7) ? null : rd.GetString(7),
+                            rd.IsDBNull(8) ? null : rd.GetString(8),
+                            rd.IsDBNull(9) ? null : rd.GetString(9));
+                    }
+                    return null;
+                }
+                catch (Exception ex) when ((IsTransient(ex) || IsTransientTimeout(ex)) && attempts < maxAttempts)
+                {
+                    Debug.WriteLine($"[PhraseService][UpdateTextInternal][Transient] attempt={attempts} {ex.GetType().Name}: {ex.Message}");
                     await Task.Delay(150 * attempts).ConfigureAwait(false);
                 }
             }
@@ -743,7 +856,10 @@ namespace Wysg.Musm.Radium.Services
                     Active = info.Active,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = info.UpdatedAt,
-                    Rev = info.Rev
+                    Rev = info.Rev,
+                    Tags = info.Tags,
+                    TagsSource = info.TagsSource,
+                    TagsSemanticTag = info.TagsSemanticTag
                 };
                 state.ById[info.Id] = row;
             }
@@ -753,6 +869,9 @@ namespace Wysg.Musm.Radium.Services
                 row.Active = info.Active;
                 row.UpdatedAt = info.UpdatedAt;
                 row.Rev = info.Rev;
+                row.Tags = info.Tags;
+                row.TagsSource = info.TagsSource;
+                row.TagsSemanticTag = info.TagsSemanticTag;
             }
             if (info.Rev > state.MaxRev) state.MaxRev = info.Rev;
             if (info.Id > state.MaxIdLoaded) state.MaxIdLoaded = info.Id;
@@ -765,6 +884,9 @@ namespace Wysg.Musm.Radium.Services
                 row.Active = info.Active;
                 row.UpdatedAt = info.UpdatedAt;
                 row.Rev = info.Rev;
+                row.Tags = info.Tags;
+                row.TagsSource = info.TagsSource;
+                row.TagsSemanticTag = info.TagsSemanticTag;
                 if (info.Rev > state.MaxRev) state.MaxRev = info.Rev;
             }
             else
@@ -777,7 +899,10 @@ namespace Wysg.Musm.Radium.Services
                     Active = info.Active,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = info.UpdatedAt,
-                    Rev = info.Rev
+                    Rev = info.Rev,
+                    Tags = info.Tags,
+                    TagsSource = info.TagsSource,
+                    TagsSemanticTag = info.TagsSemanticTag
                 };
                 state.ById[info.Id] = newRow;
                 if (info.Rev > state.MaxRev) state.MaxRev = info.Rev;
@@ -861,7 +986,7 @@ namespace Wysg.Musm.Radium.Services
                         
                         const string updateSql = @"UPDATE radium.phrase SET account_id = NULL 
                                                    WHERE id=@pid AND account_id=@aid
-                                                   RETURNING id, account_id, text, active, created_at, updated_at, rev";
+                                                   RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag";
                         await using var updCmd = new NpgsqlCommand(updateSql, con) { CommandTimeout = 12 };
                         updCmd.Parameters.AddWithValue("pid", firstId);
                         updCmd.Parameters.AddWithValue("aid", accountId);
@@ -875,7 +1000,10 @@ namespace Wysg.Musm.Radium.Services
                                 updRd.GetString(2),
                                 updRd.GetBoolean(3),
                                 updRd.GetDateTime(5),
-                                updRd.GetInt64(6)
+                                updRd.GetInt64(6),
+                                updRd.IsDBNull(7) ? null : updRd.GetString(7),
+                                updRd.IsDBNull(8) ? null : updRd.GetString(8),
+                                updRd.IsDBNull(9) ? null : updRd.GetString(9)
                             );
                             
                             // Remove from account snapshot
@@ -890,7 +1018,10 @@ namespace Wysg.Musm.Radium.Services
                                 Active = newInfo.Active,
                                 CreatedAt = updRd.GetDateTime(4),
                                 UpdatedAt = newInfo.UpdatedAt,
-                                Rev = newInfo.Rev
+                                Rev = newInfo.Rev,
+                                Tags = newInfo.Tags,
+                                TagsSource = newInfo.TagsSource,
+                                TagsSemanticTag = newInfo.TagsSemanticTag
                             };
                             globalState.ById[firstId] = globalRow;
                             if (newInfo.Rev > globalState.MaxRev) globalState.MaxRev = newInfo.Rev;

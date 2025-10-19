@@ -54,6 +54,7 @@ namespace Wysg.Musm.Radium.Services
         // Global hotkeys
         public string? GlobalHotkeyOpenStudy { get => ReadSecret("hotkey_open_study"); set => WriteSecret("hotkey_open_study", value ?? string.Empty); }
         public string? GlobalHotkeySendStudy { get => ReadSecret("hotkey_send_study"); set => WriteSecret("hotkey_send_study", value ?? string.Empty); }
+        public string? GlobalHotkeyToggleSyncText { get => ReadSecret("hotkey_toggle_sync_text"); set => WriteSecret("hotkey_toggle_sync_text", value ?? string.Empty); }
 
         // Snowstorm network settings
         public string? SnowstormBaseUrl { get => ReadSecret("snowstorm_base_url"); set => WriteSecret("snowstorm_base_url", value ?? string.Empty); }

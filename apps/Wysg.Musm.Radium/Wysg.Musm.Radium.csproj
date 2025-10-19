@@ -8,11 +8,17 @@
     <UseWPF>true</UseWPF>
     <!-- App executable icon -->
     <ApplicationIcon>radium.ico</ApplicationIcon>
+    <!-- Fix for XLS0414 XAML build error in .NET 9 -->
+    <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove="Assets\Images\radium.png" />
     <None Remove="Fonts\D2Coding-Ver1.3.2-20180524.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="docs\db\db_central_azure_migration_20251019.sql" />
   </ItemGroup>
 
   <!-- Ensure icon is included (will be picked automatically if present in root) -->

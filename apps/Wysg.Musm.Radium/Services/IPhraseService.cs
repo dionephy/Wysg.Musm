@@ -4,7 +4,18 @@ using System.Threading.Tasks;
 
 namespace Wysg.Musm.Radium.Services
 {
-    public record PhraseInfo(long Id, long? AccountId, string Text, bool Active, DateTime UpdatedAt, long Rev);
+    // SNOMED-enhanced phrase metadata (FR-SNOMED-2025-01-19)
+    public record PhraseInfo(
+        long Id, 
+        long? AccountId, 
+        string Text, 
+        bool Active, 
+        DateTime UpdatedAt, 
+        long Rev,
+        string? Tags = null,
+        string? TagsSource = null,
+        string? TagsSemanticTag = null
+    );
 
     public interface IPhraseService
     {
@@ -36,6 +47,9 @@ namespace Wysg.Musm.Radium.Services
         // Upsert with nullable accountId (null = global phrase)
         Task<PhraseInfo> UpsertPhraseAsync(long? accountId, string text, bool active = true);
         Task<PhraseInfo?> ToggleActiveAsync(long? accountId, long phraseId);
+        
+        // Update phrase text (FR-SNOMED-EDIT-2025-01-19)
+        Task<PhraseInfo?> UpdatePhraseTextAsync(long? accountId, long phraseId, string newText);
         
         // Convert account phrases to global (FR-279)
         Task<(int converted, int duplicatesRemoved)> ConvertToGlobalPhrasesAsync(long accountId, IEnumerable<long> phraseIds);

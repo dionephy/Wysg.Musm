@@ -241,6 +241,7 @@ namespace Wysg.Musm.Radium
             // SNOMED mapping (Azure SQL only). Safe to register unconditionally; uses CentralConnectionString
             services.AddSingleton<ISnomedMapService>(sp => new AzureSqlSnomedMapService(sp.GetRequiredService<IRadiumLocalSettings>()));
             services.AddSingleton<ISnowstormClient, SnowstormClient>();
+            services.AddSingleton<IPhraseSnomedBulkImporter, PhraseSnomedBulkImporter>();
 
             // Procedures (automation) ----------------------------------------------------------
             services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.INewStudyProcedure, Wysg.Musm.Radium.Services.Procedures.NewStudyProcedure>();

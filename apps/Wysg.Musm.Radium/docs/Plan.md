@@ -1329,4 +1329,291 @@ When the "Sync Text" toggle is turned OFF:
 - Complements FR-1105 (EditorForeignText collapse when sync disabled)
 - Supports FR-1114 (ForeignText property cleared when sync disabled)
 
+## Change Log Addition (2025-01-19 – Auto-Focus Findings After Foreign Text Clear)
+- **User Request**: When sync text toggle is turned OFF, the foreign element (e.g., Notepad) gets focused when its value is cleared. User wants EditorFindings to automatically get focus immediately after the foreign element is focused.
+- **Solution**: Extended `WriteToForeignAsync` to accept an optional callback that executes after write completes. MainWindow listens to ViewModel property changes and focuses EditorFindings when requested.
 
+### Behavior
+When the "Sync Text" toggle is turned OFF and foreign text is merged:
+1. Foreign textbox is cleared via `WriteToForeignAsync("")`
+2. Foreign application (e.g., Notepad) may bring itself to foreground (application-specific behavior)
+3. After a brief delay (150ms) to ensure foreign element has processed the write, a callback is invoked
+4. Callback raises `RequestFocusFindings` property change in MainViewModel
+5. MainWindow detects the property change and calls `gridCenter.EditorFindings.Focus()`
+6. EditorFindings receives focus and user can continue editing findings immediately
+
+### Implementation Details
+- `WriteToForeignAsync` now accepts optional `afterFocusCallback` parameter (Action delegate)
+- Callback is invoked on dispatcher thread after write completes successfully
+- 150ms delay ensures foreign element has finished processing UIA write operation before callback runs
+- MainWindow subscribes to ViewModel.PropertyChanged in OnLoaded to detect focus requests
+- Focus request is communicated via `RequestFocusFindings` property (no backing field needed; used only for notification)
+
+### Approach (Auto-Focus)
+1) Modify `TextSyncService.WriteToForeignAsync` signature to accept optional callback
+2) Add 150ms delay and callback invocation after successful write
+3) Add `RequestFocusFindings` property to MainViewModel (notification-only)
+4) Modify `TextSyncEnabled` setter to pass focus callback when clearing foreign textbox
+5) Add `OnViewModelPropertyChanged` handler in MainWindow.OnLoaded
+6) Call `gridCenter.EditorFindings.Focus()` when `RequestFocusFindings` changes
+7) Update documentation (Spec.md, Plan.md, Tasks.md)
+
+### Test Plan (Auto-Focus)
+**Basic Focus Return**:
+1. Enable sync with some content in foreign textbox
+2. Type additional content in Findings editor
+3. Disable sync → verify Notepad is cleared and briefly comes to foreground
+4. After ~150ms → verify EditorFindings receives focus automatically
+5. Verify caret is positioned correctly (after merged foreign text)
+6. Type in EditorFindings → verify typing works immediately without manual focus
+
+**Empty Foreign Text (No Focus)**:
+1. Enable sync with empty foreign textbox
+2. Type content in Findings editor only
+3. Disable sync → verify no write to foreign textbox occurs (no focus change)
+4. Verify EditorFindings remains focused (or no focus stolen)
+
+**Multi-Monitor Setup**:
+1. Place Radium on one monitor, Notepad on another
+2. Enable sync and disable sync
+3. Verify EditorFindings receives focus even when Notepad is on different monitor
+4. Verify no unexpected window switching or monitor focus issues
+
+**Rapid Toggle**:
+1. Enable sync, disable sync, enable sync, disable sync (quickly)
+2. Verify focus returns to EditorFindings each time
+3. Verify no focus race conditions or UI freezing
+
+### Risks / Mitigations (Auto-Focus)
+- **Risk**: 150ms delay might be too short for slow systems or remote desktop sessions
+  - **Mitigation**: Delay is conservative; callback is async and won't block UI; if foreign app takes longer, focus may return slightly later but won't fail
+
+- **Risk**: Foreign application might steal focus back after callback executes
+  - **Mitigation**: Application-specific behavior; most applications (Notepad, WordPad) don't re-steal focus after losing it; user can click EditorFindings if needed
+
+- **Risk**: Callback might be invoked even if write fails
+  - **Mitigation**: Callback only invoked if `WriteToForeignAsync` returns true (successful write)
+
+- **Risk**: PropertyChanged event might fire multiple times or miss the event
+  - **Mitigation**: Using standard INotifyPropertyChanged pattern; WPF ensures thread-safe property change notifications; single subscription in OnLoaded
+
+- **Risk**: Focus might not work if EditorFindings is not visible or enabled
+  - **Mitigation**: EditorFindings is always visible in MainWindow central area; Focus() handles disabled controls gracefully (no-op)
+
+### Code Changes (Auto-Focus)
+**Files Modified**:
+1. `apps\Wysg.Musm.Radium\Services\TextSyncService.cs`
+   - Modified `WriteToForeignAsync` signature to add optional `afterFocusCallback` parameter (Action delegate)
+   - Added 150ms Task.Delay after write completes
+   - Added callback invocation on dispatcher thread if write successful and callback provided
+   - Updated XML documentation comments
+
+2. `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.cs`
+   - Added `RequestFocusFindings` property (bool, notification-only, no backing field)
+   - Modified `TextSyncEnabled` setter to pass `afterFocusCallback` to `WriteToForeignAsync`
+   - Callback raises `OnPropertyChanged(nameof(RequestFocusFindings))` to trigger UI focus
+
+3. `apps\Wysg.Musm.Radium\Views\MainWindow.xaml.cs`
+- Added `OnViewModelPropertyChanged` event handler to listen for `RequestFocusFindings` property changes
+- Subscribed to `vm.PropertyChanged` in `OnLoaded` method
+- Handler includes 50ms delay to ensure foreign app has finished processing
+- Handler activates MainWindow if not already active before focusing editor
+- Uses `FindName("Editor")` to access the underlying `MusmEditor` (AvalonEdit TextEditor) inside the EditorControl UserControl wrapper
+- Calls `Focus()` on the actual TextEditor control (not the UserControl wrapper) to ensure keyboard input works
+- Calls `TextArea.Caret.BringCaretToView()` to ensure caret is visible after focus
+- Added comprehensive debug logging for troubleshooting
+
+4. `apps\Wysg.Musm.Radium\docs\Spec.md`
+   - To be updated with FR-1132 through FR-1140 (9 feature requirements)
+
+5. `apps\Wysg.Musm.Radium\docs\Plan.md`
+   - Added this cumulative change log entry
+
+6. `apps\Wysg.Musm.Radium\docs\Tasks.md`
+   - To be updated with task items T1132-T1140
+
+### Related Features
+- Extends FR-1123..FR-1131 (Foreign Text Merge on Sync Disable)
+- Complements FR-1100..FR-1122 (Foreign Textbox One-Way Sync Feature)
+- Improves UX by eliminating manual focus return step
+- Works with FR-1105 (EditorForeignText collapse when sync disabled)
+
+
+
+## Change Log Addition (2025-01-19 ? Global Hotkey for Toggle Sync Text)
+- **User Request**: Add global hotkey support for toggling the "Sync Text" feature without needing to click the toggle button in MainWindow.
+- **Solution**: Implemented system-wide hotkey registration using Win32 RegisterHotKey API with hotkey configuration in Settings → Keyboard tab.
+
+### Overview
+The global hotkey feature allows users to toggle text synchronization with external applications (e.g., Notepad) from anywhere using a configurable keyboard shortcut. This complements existing global hotkeys (Open Study, Send Study) and provides keyboard-first workflow for power users.
+
+### Components Implemented
+
+1. **Settings Storage** (`IRadiumLocalSettings` and `RadiumLocalSettings`):
+   - Added `GlobalHotkeyToggleSyncText` property to interface and implementation
+   - Persisted as `hotkey_toggle_sync_text` key in encrypted local settings file
+   - Value format: human-readable string (e.g., "Ctrl+Alt+T")
+
+2. **Settings UI** (`SettingsWindow.xaml` and `SettingsViewModel`):
+   - Added third hotkey textbox in Keyboard tab labeled "Toggle sync text:"
+   - Uses same `OnHotkeyTextBoxPreviewKeyDown` handler as existing hotkeys
+   - Added `ToggleSyncTextHotkey` property to ViewModel with two-way binding
+   - Loads persisted value on window open
+   - Saves value on "Save Keyboard" button click
+
+3. **MainWindow Hotkey Registration**:
+   - Added `HOTKEY_ID_TOGGLE_SYNC_TEXT = 0xB002` constant
+   - Added `_toggleSyncTextMods` and `_toggleSyncTextVk` fields to store parsed hotkey
+   - Implemented `TryRegisterToggleSyncTextHotkey()` method following same pattern as Open Study hotkey
+   - Calls `RegisterHotKey` Win32 API with parsed modifiers and virtual key code
+   - Registration occurs in `OnSourceInitialized` after window handle is created
+
+4. **WndProc Message Handler**:
+   - Extended `WndProc` to handle `HOTKEY_ID_TOGGLE_SYNC_TEXT` messages
+   - Toggles `MainViewModel.TextSyncEnabled` property when hotkey pressed
+   - Logs new sync state to debug output for troubleshooting
+
+5. **Cleanup**:
+   - Extended `OnClosed` to unregister toggle sync text hotkey
+   - Prevents leaking system-wide hotkey registration after window closes
+
+### Technical Implementation
+
+**Hotkey Parsing**:
+- Reuses existing `TryParseHotkey(text, out mods, out vk)` method
+- Supports Ctrl, Alt, Shift, Win modifiers
+- Converts WPF `Key` to Win32 virtual key code using `KeyInterop.VirtualKeyFromKey`
+- Fallback to explicit A-Z and 0-9 parsing if KeyConverter fails
+
+**Registration Flow**:
+1. User configures "Toggle sync text" hotkey in Settings → Keyboard (e.g., "Ctrl+Alt+T")
+2. User clicks Save → hotkey persisted to local settings
+3. On next app start, MainWindow reads hotkey from settings
+4. In `OnSourceInitialized`, calls `TryRegisterToggleSyncTextHotkey()`
+5. Parses hotkey string to modifiers + virtual key
+6. Calls Win32 `RegisterHotKey(hwnd, 0xB002, mods, vk)`
+7. Success/failure logged to debug output
+
+**Toggle Flow**:
+1. User presses configured hotkey (e.g., Ctrl+Alt+T) from any application
+2. Windows routes `WM_HOTKEY` message to MainWindow
+3. WndProc receives message, extracts hotkey ID from wParam
+4. If ID == `HOTKEY_ID_TOGGLE_SYNC_TEXT`, toggles `vm.TextSyncEnabled`
+5. If sync was OFF → turns ON (starts polling foreign textbox, shows foreign editor)
+6. If sync was ON → turns OFF (merges foreign text, clears foreign textbox, focuses Findings editor)
+7. Status bar updates to show new sync state
+
+### Approach (Toggle Sync Text Hotkey)
+1) Add `GlobalHotkeyToggleSyncText` property to `IRadiumLocalSettings` interface
+2) Implement storage in `RadiumLocalSettings` using encrypted key `hotkey_toggle_sync_text`
+3) Add textbox to Settings → Keyboard tab with binding to `SettingsViewModel.ToggleSyncTextHotkey`
+4) Load persisted hotkey in ViewModel constructor
+5) Save hotkey in `SaveKeyboard()` method
+6) Add hotkey ID constant `HOTKEY_ID_TOGGLE_SYNC_TEXT = 0xB002` to MainWindow
+7) Add mods/vk fields to store parsed hotkey
+8) Implement `TryRegisterToggleSyncTextHotkey()` following Open Study hotkey pattern
+9) Call registration method in `OnSourceInitialized`
+10) Extend `WndProc` to handle new hotkey ID and toggle sync state
+11) Extend `OnClosed` to unregister hotkey
+12) Update documentation (Spec.md, Plan.md, Tasks.md)
+
+### Test Plan (Toggle Sync Text Hotkey)
+**Configuration**:
+1. Open Settings → Keyboard tab
+2. Click "Toggle sync text" textbox
+3. Press Ctrl+Alt+T (or other combination)
+4. Verify textbox shows "Ctrl+Alt+T"
+5. Click Save Keyboard button
+6. Close and restart application
+
+**Registration Verification**:
+1. Check debug output for "[Hotkey] Registered ToggleSyncText hotkey 'Ctrl+Alt+T' mods=0x3 vk=0x54"
+2. If registration fails: "[Hotkey] Failed to register ToggleSyncText hotkey 'Ctrl+Alt+T' (may be in use)"
+
+**Toggle Behavior**:
+1. Map "Foreign textbox" bookmark to external app (e.g., Notepad's edit control)
+2. With MainWindow in background, press Ctrl+Alt+T
+3. Verify sync toggle turns ON in MainWindow
+4. Verify ForeignText editor appears below Header editor
+5. Type in Notepad → verify text appears in ForeignText editor
+6. Press Ctrl+Alt+T again
+7. Verify sync toggle turns OFF
+8. Verify foreign text merged into Findings editor
+9. Verify Notepad content cleared
+10. Verify focus returns to Findings editor
+
+**Edge Cases**:
+1. Hotkey not configured: No registration, no system-wide hotkey
+2. Hotkey already in use: Registration fails, debug log shows failure, toggle button still works
+3. Multiple applications using same hotkey: Windows prioritizes first registered
+4. MainWindow closed: Hotkey unregistered, no system-wide side effects
+5. Rapid toggle: Works correctly with each press, no state corruption
+
+### Risks / Mitigations (Toggle Sync Text Hotkey)
+- **Risk**: Hotkey conflicts with other applications
+  - **Mitigation**: Registration failure logged; user can choose different combination; toggle button always works
+
+- **Risk**: Hotkey not unregistered if MainWindow crashes
+  - **Mitigation**: Windows automatically releases hotkeys when process terminates
+
+- **Risk**: User forgets which hotkey they configured
+  - **Mitigation**: Hotkey visible in Settings → Keyboard tab; can reconfigure anytime
+
+- **Risk**: Parsing fails for complex key combinations
+  - **Mitigation**: Using same TryParseHotkey method as existing hotkeys (proven pattern)
+
+- **Risk**: WM_HOTKEY messages delayed or lost
+  - **Mitigation**: Windows message queue is reliable; toggle state change is immediate
+
+### Code Changes (Toggle Sync Text Hotkey)
+**Files Modified**:
+1. `apps\Wysg.Musm.Radium\Services\IRadiumLocalSettings.cs`
+   - Added `GlobalHotkeyToggleSyncText` property to interface
+
+2. `apps\Wysg.Musm.Radium\Services\RadiumLocalSettings.cs`
+   - Added `GlobalHotkeyToggleSyncText` property implementation
+   - Persists as `hotkey_toggle_sync_text` key in encrypted storage
+
+3. `apps\Wysg.Musm.Radium\ViewModels\SettingsViewModel.cs`
+   - Added `ToggleSyncTextHotkey` property with INotifyPropertyChanged
+   - Loaded hotkey from settings in constructor
+   - Saved hotkey in `SaveKeyboard()` method
+
+4. `apps\Wysg.Musm.Radium\Views\SettingsWindow.xaml`
+   - Added third hotkey textbox in Keyboard tab
+   - Label: "Toggle sync text:"
+   - Width: 220 (same as other hotkey textboxes)
+   - Binding: `{Binding ToggleSyncTextHotkey, UpdateSourceTrigger=PropertyChanged}`
+   - PreviewKeyDown: `OnHotkeyTextBoxPreviewKeyDown`
+
+5. `apps\Wysg.Musm.Radium\Views\MainWindow.xaml.cs`
+   - Added `HOTKEY_ID_TOGGLE_SYNC_TEXT = 0xB002` constant
+   - Added `_toggleSyncTextMods` and `_toggleSyncTextVk` fields
+   - Implemented `TryRegisterToggleSyncTextHotkey()` method
+   - Called registration in `OnSourceInitialized`
+   - Extended `WndProc` to handle `HOTKEY_ID_TOGGLE_SYNC_TEXT`
+   - Extended `OnClosed` to unregister toggle sync text hotkey
+   - Added debug logging for registration and toggle events
+
+6. `apps\Wysg.Musm.Radium\docs\Spec.md`
+   - Added FR-1141 through FR-1155 (15 feature requirements)
+
+7. `apps\Wysg.Musm.Radium\docs\Plan.md`
+   - Added this cumulative change log entry
+
+8. `apps\Wysg.Musm.Radium\docs\Tasks.md`
+   - To be updated with task items T1141-T1155
+
+### Related Features
+- Extends FR-1100..FR-1122 (Foreign Textbox One-Way Sync Feature)
+- Extends FR-1123..FR-1131 (Foreign Text Merge on Sync Disable)
+- Extends FR-1132..FR-1140 (Auto-Focus Findings After Foreign Text Clear)
+- Complements FR-660, FR-661 (Global Hotkey ? Open Study Shortcut)
+- Follows same pattern as FR-541 (Settings → Keyboard tab for hotkey configuration)
+
+### Future Enhancements (Not in Current Implementation)
+- Hotkey conflict detection UI (show warning if key already registered)
+- Hotkey suggestion/recommendation based on common patterns
+- Export/import hotkey configurations
+- Per-PACS hotkey profiles (different hotkeys for different PACS)
+- Hotkey quick reference overlay (show all registered hotkeys on demand)

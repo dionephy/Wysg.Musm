@@ -146,10 +146,12 @@ namespace Wysg.Musm.Radium.Services
         /// <summary>
         /// Write text to foreign textbox using UIA patterns.
         /// </summary>
+        /// <param name="text">Text to write to foreign textbox</param>
         /// <param name="avoidFocus">When true, attempts to avoid setting focus (best-effort)</param>
-        public async Task<bool> WriteToForeignAsync(string text, bool avoidFocus = true)
+        /// <param name="afterFocusCallback">Optional callback to invoke after foreign element receives focus (on dispatcher thread)</param>
+        public async Task<bool> WriteToForeignAsync(string text, bool avoidFocus = true, Action? afterFocusCallback = null)
         {
-            return await Task.Run(() =>
+            var result = await Task.Run(() =>
             {
                 try
                 {
@@ -193,6 +195,16 @@ namespace Wysg.Musm.Radium.Services
                     return false;
                 }
             });
+            
+            // Invoke callback on dispatcher thread after write completes (if successful and callback provided)
+            if (result && afterFocusCallback != null)
+            {
+                // Delay callback slightly to ensure foreign element has finished processing focus change
+                await Task.Delay(150);
+                await _dispatcher.InvokeAsync(afterFocusCallback);
+            }
+            
+            return result;
         }
         
         public void Dispose()

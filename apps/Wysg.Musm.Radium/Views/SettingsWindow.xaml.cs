@@ -35,6 +35,28 @@ namespace Wysg.Musm.Radium.Views
         }
     }
 
+    /// <summary>
+    /// Converter for bool to Visibility with optional inverse parameter.
+    /// </summary>
+    public class BoolToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            bool boolValue = value is bool b && b;
+            bool inverse = parameter?.ToString()?.Equals("Inverse", StringComparison.OrdinalIgnoreCase) == true;
+            
+            if (inverse)
+                boolValue = !boolValue;
+                
+            return boolValue ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     public partial class SettingsWindow : Window, INotifyPropertyChanged
     {
         private Border? _dragGhost; private string? _dragItem; private ListBox? _dragSource; private Border? _dropIndicator;
@@ -86,6 +108,9 @@ namespace Wysg.Musm.Radium.Views
             else DataContext = new SettingsViewModel();
             InitializeAutomationLists();
             if (_databaseOnly) ApplyDatabaseOnlyMode();
+            
+            // Subscribe to window closing event to refresh phrase data
+            Closing += OnWindowClosing;
         }
         
         public SettingsWindow(SettingsViewModel vm, bool databaseOnly = false)
@@ -113,6 +138,9 @@ namespace Wysg.Musm.Radium.Views
                     _tenantContext.PacsKeyChanged += OnPacsKeyChanged;
                 }
             }
+            
+            // Subscribe to window closing event to refresh phrase data
+            Closing += OnWindowClosing;
         }
 
         private void TryApplyCurrentPacsSpyPath()
@@ -196,10 +224,23 @@ namespace Wysg.Musm.Radium.Views
             // LoadAutomation is now handled by LoadAutomationForPacs in the ViewModel
         }
 
+        // Public method for child tabs to initialize their ListBoxes
+        public void InitializeAutomationListBoxes(ListBox newStudy, ListBox addStudy, ListBox library, 
+            ListBox shortcutOpenNew, ListBox shortcutOpenAdd, ListBox shortcutOpenAfterOpen)
+        {
+            if (DataContext is not SettingsViewModel vm) return;
+            library.ItemsSource = vm.AvailableModules;
+            newStudy.ItemsSource = vm.NewStudyModules;
+            addStudy.ItemsSource = vm.AddStudyModules;
+            shortcutOpenNew.ItemsSource = vm.ShortcutOpenNewModules;
+            shortcutOpenAdd.ItemsSource = vm.ShortcutOpenAddModules;
+            shortcutOpenAfterOpen.ItemsSource = vm.ShortcutOpenAfterOpenModules;
+        }
+
         private Point _dragStart;
         // Modify OnProcDrag to record source index
         private int _dragSourceIndex = -1;
-        private void OnProcDrag(object sender, MouseEventArgs e)
+        public void OnProcDrag(object sender, MouseEventArgs e)
         {
             if (e.LeftButton != MouseButtonState.Pressed) return;
             if (sender is ListBox lb && lb.SelectedItem is string item)
@@ -215,7 +256,7 @@ namespace Wysg.Musm.Radium.Views
         protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e) { base.OnPreviewMouseLeftButtonDown(e); _dragStart = e.GetPosition(this); }
 
         // Update OnProcDrop implementation for proper library behavior and indicator clearing
-        private void OnProcDrop(object sender, DragEventArgs e)
+        public void OnProcDrop(object sender, DragEventArgs e)
         {
             if (!e.Data.GetDataPresent("musm-proc")) { Debug.WriteLine("[AutoDrop] no data"); ClearDropIndicator(); RemoveGhost(); return; }
             if (sender is not ListBox target) { Debug.WriteLine("[AutoDrop] target not list"); ClearDropIndicator(); RemoveGhost(); return; }
@@ -393,7 +434,7 @@ namespace Wysg.Musm.Radium.Views
         private static extern int DwmSetWindowAttribute(System.IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
         // Add handler for remove button click
-        private void OnRemoveModuleClick(object sender, RoutedEventArgs e)
+        public void OnRemoveModuleClick(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -420,146 +461,10 @@ namespace Wysg.Musm.Radium.Views
         }
 
         // Clear indicator when leaving list area
-        private void OnListDragLeave(object sender, DragEventArgs e)
+        public void OnListDragLeave(object sender, DragEventArgs e)
         {
             // When pointer leaves a list's visual tree, clear indicator.
             ClearDropIndicator();
-        }
-
-        private void OnPhrasesTabLoaded(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is SettingsViewModel svm)
-            {
-                if (svm.Phrases != null)
-                {
-                    Debug.WriteLine("[SettingsWindow] Setting phrases DataContext from SettingsViewModel.Phrases");
-                    phrasesRoot.DataContext = svm.Phrases;
-                }
-                else if (Application.Current is App app)
-                {
-                    try
-                    {
-                        Debug.WriteLine("[SettingsWindow] SettingsViewModel.Phrases is null, getting PhrasesViewModel from DI");
-                        var phrasesVm = app.Services.GetService<PhrasesViewModel>();
-                        if (phrasesVm != null) 
-                        {
-                            phrasesRoot.DataContext = phrasesVm;
-                            Debug.WriteLine("[SettingsWindow] Successfully set phrases DataContext from DI");
-                        }
-                        else
-                        {
-                            Debug.WriteLine("[SettingsWindow] Failed to get PhrasesViewModel from DI");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[SettingsWindow] Error getting PhrasesViewModel from DI: {ex.Message}");
-                    }
-                }
-            }
-            else
-            {
-                Debug.WriteLine($"[SettingsWindow] DataContext is not SettingsViewModel, it is: {DataContext?.GetType().Name ?? "null"}");
-            }
-        }
-
-        private void OnGlobalPhrasesTabLoaded(object sender, RoutedEventArgs e)
-        {
-            if (Application.Current is App app)
-            {
-                try
-                {
-                    var vm = app.Services.GetService<GlobalPhrasesViewModel>();
-                    if (vm != null)
-                    {
-                        globalPhrasesRoot.DataContext = vm;
-                        Debug.WriteLine("[SettingsWindow] Successfully set GlobalPhrasesViewModel");
-                    }
-                    else
-                    {
-                        Debug.WriteLine("[SettingsWindow] Failed to get GlobalPhrasesViewModel from DI");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[SettingsWindow] Error loading GlobalPhrasesViewModel: {ex.Message}");
-                }
-            }
-        }
-
-        private void OnHotkeysTabLoaded(object sender, RoutedEventArgs e)
-        {
-            if (Application.Current is App app)
-            {
-                try
-                {
-                    var vm = app.Services.GetService<HotkeysViewModel>();
-                    if (vm != null)
-                    {
-                        hotkeysRoot.DataContext = vm;
-                        Debug.WriteLine("[SettingsWindow] Successfully set HotkeysViewModel");
-                    }
-                    else
-                    {
-                        Debug.WriteLine("[SettingsWindow] Failed to get HotkeysViewModel from DI");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[SettingsWindow] Error loading HotkeysViewModel: {ex.Message}");
-                }
-            }
-        }
-
-        private void OnSnippetsTabLoaded(object sender, RoutedEventArgs e)
-        {
-            if (Application.Current is App app)
-            {
-                try
-                {
-                    var vm = app.Services.GetService<SnippetsViewModel>();
-                    if (vm != null)
-                    {
-                        snippetsRoot.DataContext = vm;
-                        Debug.WriteLine("[SettingsWindow] Successfully set SnippetsViewModel");
-                    }
-                    else
-                    {
-                        Debug.WriteLine("[SettingsWindow] Failed to get SnippetsViewModel from DI");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[SettingsWindow] Error loading SnippetsViewModel: {ex.Message}");
-                }
-            }
-        }
-
-        private void OnLinkSnomedFromGlobal(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (sender is not Button btn) return;
-                if (FindAncestor<DataGridRow>(btn) is DataGridRow row && row.Item is Wysg.Musm.Radium.ViewModels.GlobalPhraseItem item)
-                {
-                    if (Application.Current is App app)
-                    {
-                        var svc = app.Services.GetService<Wysg.Musm.Radium.Services.ISnomedMapService>();
-                        var snow = app.Services.GetService<Wysg.Musm.Radium.Services.ISnowstormClient>();
-                        if (svc == null || snow == null)
-                        {
-                            MessageBox.Show("SNOMED services not available.", "SNOMED", MessageBoxButton.OK, MessageBoxImage.Error);
-                            return;
-                        }
-                        var win = new Views.PhraseSnomedLinkWindow(item.Id, item.Text, null, svc, snow) { Owner = this };
-                        win.ShowDialog();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("[SettingsWindow] Link SNOMED error: " + ex.Message);
-            }
         }
 
         // ---- Integrated Spy Tab Handlers (minimal reuse) ----
@@ -586,13 +491,13 @@ namespace Wysg.Musm.Radium.Views
         private void Spy_OnRunProcedure(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnRunProcedure", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
 
         // New: open Spy window directly from Settings Automation tab
-        private void OnOpenSpy(object sender, RoutedEventArgs e)
+        public void OnOpenSpy(object sender, RoutedEventArgs e)
         {
             SpyWindow.ShowInstance();
         }
 
         // Keyboard hotkey capture: capture modifiers + key and write as string into bound TextBox
-        private void OnHotkeyTextBoxPreviewKeyDown(object sender, KeyEventArgs e)
+        public void OnHotkeyTextBoxPreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (sender is not TextBox tb) return;
             e.Handled = true; // prevent beep / text input
@@ -615,6 +520,56 @@ namespace Wysg.Musm.Radium.Views
             if (key >= Key.A && key <= Key.Z) keyStr = keyStr.ToUpperInvariant();
             var combo = mods.Count > 0 ? string.Join("+", mods) + "+" + keyStr : keyStr;
             tb.Text = combo;
+        }
+
+        /// <summary>
+        /// Refresh phrase snapshot and completion cache when settings window closes.
+        /// This ensures the editor's phrase highlighting and autocomplete data is up to date
+        /// after any phrase modifications in the Settings tabs.
+        /// </summary>
+        private async void OnWindowClosing(object? sender, CancelEventArgs e)
+        {
+            try
+            {
+                if (_tenantContext == null || Application.Current is not App app)
+                {
+                    Debug.WriteLine("[SettingsWindow] OnWindowClosing: no tenant context or app, skipping refresh");
+                    return;
+                }
+
+                var accountId = _tenantContext.AccountId;
+                if (accountId <= 0)
+                {
+                    Debug.WriteLine("[SettingsWindow] OnWindowClosing: no valid account, skipping refresh");
+                    return;
+                }
+
+                Debug.WriteLine("[SettingsWindow] OnWindowClosing: refreshing phrase data for account {0}", accountId);
+
+                // Get services
+                var phraseService = app.Services.GetService<IPhraseService>();
+                var phraseCache = app.Services.GetService<IPhraseCache>();
+
+                if (phraseService == null || phraseCache == null)
+                {
+                    Debug.WriteLine("[SettingsWindow] OnWindowClosing: required services not available");
+                    return;
+                }
+
+                // Refresh both account-specific and global phrases in the service's in-memory snapshot
+                await phraseService.RefreshPhrasesAsync(accountId).ConfigureAwait(false);
+                await phraseService.RefreshGlobalPhrasesAsync().ConfigureAwait(false);
+
+                // Clear completion cache so it rebuilds with fresh combined phrases
+                phraseCache.Clear(accountId);
+                phraseCache.Clear(-1); // Clear global cache as well
+
+                Debug.WriteLine("[SettingsWindow] OnWindowClosing: phrase data refresh completed");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[SettingsWindow] OnWindowClosing: error refreshing phrase data - {0}", ex.Message);
+            }
         }
     }
 }

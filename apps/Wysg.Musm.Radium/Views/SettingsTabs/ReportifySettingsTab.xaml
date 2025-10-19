@@ -1,0 +1,140 @@
+<UserControl x:Class="Wysg.Musm.Radium.Views.SettingsTabs.ReportifySettingsTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="900">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="240"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <TextBlock Text="Reportify Formatting (Preview Skeleton)" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="{DynamicResource BrushSurface}">
+            <StackPanel Orientation="Vertical" Margin="0,8,0,0">
+                <!-- Core Normalization -->
+                <Expander Header="Core Normalization" IsExpanded="True">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Remove excessive blanks" IsChecked="{Binding RemoveExcessiveBlanks}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="remove_excessive_blanks"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Remove excessive blank lines" IsChecked="{Binding RemoveExcessiveBlankLines}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="remove_excessive_blank_lines"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Collapse whitespace" IsChecked="{Binding CollapseWhitespace}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="collapse_whitespace"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
+                <!-- Sentence Formatting -->
+                <Expander Header="Sentence Formatting" IsExpanded="True">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Capitalize first letter" IsChecked="{Binding CapitalizeSentence}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="capitalize_sentence"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Ensure trailing period" IsChecked="{Binding EnsureTrailingPeriod}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="ensure_trailing_period"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Preserve known tokens" IsChecked="{Binding PreserveKnownTokens}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="preserve_known_tokens"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
+                <!-- Symbols & Punctuation -->
+                <Expander Header="Symbols &amp; Punctuation">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Normalize arrows" IsChecked="{Binding NormalizeArrows}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="normalize_arrows"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Normalize bullets" IsChecked="{Binding NormalizeBullets}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="normalize_bullets"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Space after punctuation" IsChecked="{Binding SpaceAfterPunctuation}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="space_after_punctuation"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Normalize parentheses" IsChecked="{Binding NormalizeParentheses}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="normalize_parentheses"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Space number + unit" IsChecked="{Binding SpaceNumberUnit}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="space_number_unit"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
+                <!-- Conclusion Numbering -->
+                <Expander Header="Conclusion Numbering">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Number conclusion paragraphs" IsChecked="{Binding NumberConclusionParagraphs}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="number_conclusion_paragraphs"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Indent continuation lines" IsChecked="{Binding IndentContinuationLines}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="indent_continuation_lines"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
+                <!-- Defaults -->
+                <Expander Header="Defaults">
+                    <Grid Margin="0,4,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="240"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Default arrow" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" Margin="4,2,0,2" Text="{Binding DefaultArrow}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Default conclusion numbering" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Margin="4,2,0,2" Text="{Binding DefaultConclusionNumbering}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Default detailing prefix" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" Margin="4,2,0,2" Text="{Binding DefaultDetailingPrefix}"/>
+                    </Grid>
+                </Expander>
+                <Border Margin="0,12,0,0" Padding="10" Background="{DynamicResource BrushSurfaceAlt}" BorderBrush="{DynamicResource BrushBorderLight}" BorderThickness="1" CornerRadius="4">
+                    <TextBlock Text="Use checkboxes to toggle options; click hint buttons to preview single-option transformations. Non-functional skeleton." TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSecondary}"/>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Preview area -->
+        <Grid Grid.Row="2" Margin="0,8,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Sample Before" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="Sample After" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="Settings JSON" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+            <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding SampleBeforeText}" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="#202429" Foreground="#F0F0F0" FontFamily="Consolas"/>
+            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SampleAfterText}" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="#202429" Foreground="#8FFFA8" FontFamily="Consolas"/>
+            <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding ReportifySettingsJson, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="#202429" Foreground="#F0F0F0" FontFamily="Consolas"/>
+        </Grid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Save Settings" Width="120" Command="{Binding SaveReportifySettingsCommand}" IsEnabled="{Binding IsAccountValid}"/>
+            <Button Content="Close" Width="100" IsCancel="True" Margin="8,0,0,0"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

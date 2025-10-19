@@ -88,6 +88,8 @@ namespace Wysg.Musm.Radium.ViewModels
         public string? OpenStudyHotkey { get => _openStudyHotkey; set => SetProperty(ref _openStudyHotkey, value); }
         private string? _sendStudyHotkey;
         public string? SendStudyHotkey { get => _sendStudyHotkey; set => SetProperty(ref _sendStudyHotkey, value); }
+        private string? _toggleSyncTextHotkey;
+        public string? ToggleSyncTextHotkey { get => _toggleSyncTextHotkey; set => SetProperty(ref _toggleSyncTextHotkey, value); }
 
         private readonly IReportifySettingsService? _reportifySvc;
         private readonly ITenantContext? _tenant;
@@ -128,6 +130,7 @@ namespace Wysg.Musm.Radium.ViewModels
             // Load keyboard hotkeys from local settings
             OpenStudyHotkey = _local.GlobalHotkeyOpenStudy;
             SendStudyHotkey = _local.GlobalHotkeySendStudy;
+            ToggleSyncTextHotkey = _local.GlobalHotkeyToggleSyncText;
 
             // Initialize PACS profile commands and load from DB if repository is available
             InitializePacsProfileCommands();
@@ -214,6 +217,7 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             _local.GlobalHotkeyOpenStudy = OpenStudyHotkey ?? string.Empty;
             _local.GlobalHotkeySendStudy = SendStudyHotkey ?? string.Empty;
+            _local.GlobalHotkeyToggleSyncText = ToggleSyncTextHotkey ?? string.Empty;
             MessageBox.Show("Keyboard hotkeys saved.", "Keyboard", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 

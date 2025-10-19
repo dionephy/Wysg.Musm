@@ -7,6 +7,11 @@ using System.Threading.Tasks;
 namespace Wysg.Musm.Radium.Services
 {
     /// <summary>
+    /// Helper record for tracking concept info during term accumulation.
+    /// </summary>
+    internal sealed record ConceptInfo(long ConceptId, string ConceptIdStr, string Fsn, string? Pt, bool Active);
+
+    /// <summary>
     /// Minimal Snowstorm REST client. Tries multiple compatible endpoints across Snowstorm versions
     /// and avoids throwing on HTTP errors (returns empty list instead).
     /// </summary>
@@ -34,8 +39,8 @@ namespace Wysg.Musm.Radium.Services
             // We'll use whichever base the user provided and try both description-search and descriptions.
             var urls = new[]
             {
-                $"{BaseUrl}/browser/MAIN/description-search?term={Uri.EscapeDataString(query)}&activeFilter=true&conceptActive=true&groupByConcept=true&searchMode=STANDARD&limit={limit}",
-                $"{BaseUrl}/browser/MAIN/descriptions?term={Uri.EscapeDataString(query)}&active=true&conceptActive=true&groupByConcept=true&searchMode=STANDARD&limit={limit}"
+                $"{BaseUrl}/MAIN/description-search?term={Uri.EscapeDataString(query)}&activeFilter=true&conceptActive=true&groupByConcept=true&searchMode=STANDARD&limit={limit}",
+                $"{BaseUrl}/MAIN/descriptions?term={Uri.EscapeDataString(query)}&active=true&conceptActive=true&groupByConcept=true&searchMode=STANDARD&limit={limit}"
             };
 
             foreach (var url in urls)
@@ -92,6 +97,221 @@ namespace Wysg.Musm.Radium.Services
             }
 
             return list; // empty if no endpoint succeeded
+        }
+
+        public async Task<IReadOnlyList<SnomedConceptWithTerms>> BrowseBySemanticTagAsync(string semanticTag, int offset = 0, int limit = 10)
+        {
+            var list = new List<SnomedConceptWithTerms>();
+            
+            // Use ECL (Expression Constraint Language) queries for proper semantic tag filtering
+            string eclQuery;
+            switch (semanticTag.ToLowerInvariant())
+            {
+                case "all":
+                    eclQuery = "<<138875005"; // SNOMED CT Concept (all active concepts)
+                    break;
+                case "body structure":
+                    eclQuery = "<<123037004"; // Body structure (body structure)
+                    break;
+                case "finding":
+                    eclQuery = "<<404684003"; // Clinical finding (finding)
+                    break;
+                case "disorder":
+                    eclQuery = "<<64572001"; // Disease (disorder)
+                    break;
+                case "procedure":
+                    eclQuery = "<<71388002"; // Procedure (procedure)
+                    break;
+                case "observable entity":
+                    eclQuery = "<<363787002"; // Observable entity (observable entity)
+                    break;
+                case "substance":
+                    eclQuery = "<<105590001"; // Substance (substance)
+                    break;
+                default:
+                    System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Unknown domain: {semanticTag}, using 'all'");
+                    eclQuery = "<<138875005";
+                    break;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Fetching domain '{semanticTag}' using ECL: {eclQuery}");
+            System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Requested offset={offset}, limit={limit}");
+
+            try
+            {
+                // Snowstorm pagination works with searchAfter tokens, not numeric offsets
+                // We need to paginate through results to reach the desired offset
+                var currentOffset = 0;
+                string? searchAfterToken = null;
+                var allConcepts = new List<(string id, string fsn, string? pt, bool active)>();
+
+                // Keep fetching pages until we have enough concepts to satisfy offset + limit
+                while (currentOffset < offset + limit)
+                {
+                    // Use non-browser endpoint for ECL queries (browser API doesn't support ECL properly)
+                    var url = $"{BaseUrl}/MAIN/concepts?ecl={Uri.EscapeDataString(eclQuery)}&limit={limit}&activeFilter=true";
+                    if (!string.IsNullOrEmpty(searchAfterToken))
+                    {
+                        url += $"&searchAfter={Uri.EscapeDataString(searchAfterToken)}";
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Fetching page: {url}");
+
+                    using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                    using var resp = await _http.SendAsync(req).ConfigureAwait(false);
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[SnowstormClient] HTTP {resp.StatusCode}: {resp.ReasonPhrase}");
+                        break;
+                    }
+
+                    using var content = await resp.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                    using var doc = await JsonDocument.ParseAsync(content).ConfigureAwait(false);
+                    
+                    if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[SnowstormClient] No 'items' array in response");
+                        break;
+                    }
+
+                    var itemCount = 0;
+                    foreach (var conceptItem in items.EnumerateArray())
+                    {
+                        itemCount++;
+                        try
+                        {
+                            var idStr = conceptItem.TryGetProperty("conceptId", out var idEl) ? (idEl.GetString() ?? string.Empty) : string.Empty;
+                            if (string.IsNullOrEmpty(idStr))
+                                continue;
+
+                            // Non-browser API returns fsn and pt as objects with "term" property
+                            string fsn = idStr;
+                            if (conceptItem.TryGetProperty("fsn", out var fsnObj))
+                            {
+                                if (fsnObj.ValueKind == JsonValueKind.Object && fsnObj.TryGetProperty("term", out var fsnTerm))
+                                    fsn = fsnTerm.GetString() ?? idStr;
+                                else if (fsnObj.ValueKind == JsonValueKind.String)
+                                    fsn = fsnObj.GetString() ?? idStr;
+                            }
+
+                            string? pt = null;
+                            if (conceptItem.TryGetProperty("pt", out var ptObj))
+                            {
+                                if (ptObj.ValueKind == JsonValueKind.Object && ptObj.TryGetProperty("term", out var ptTerm))
+                                    pt = ptTerm.GetString();
+                                else if (ptObj.ValueKind == JsonValueKind.String)
+                                    pt = ptObj.GetString();
+                            }
+
+                            bool active = conceptItem.TryGetProperty("active", out var actEl) && actEl.ValueKind == JsonValueKind.True || false;
+
+                            allConcepts.Add((idStr, fsn, pt, active));
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Error processing concept: {ex.Message}");
+                        }
+                    }
+
+                    currentOffset += itemCount;
+                    System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Fetched {itemCount} concepts, total accumulated: {allConcepts.Count}, currentOffset: {currentOffset}");
+
+                    // Check if there are more results
+                    if (doc.RootElement.TryGetProperty("searchAfter", out var searchAfterEl))
+                    {
+                        searchAfterToken = searchAfterEl.GetString();
+                        System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Next searchAfter token: {searchAfterToken}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("[SnowstormClient] No more results available (no searchAfter token)");
+                        break;
+                    }
+
+                    // If we got fewer items than requested, we've reached the end
+                    if (itemCount < limit)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Reached end of results (got {itemCount} < {limit})");
+                        break;
+                    }
+                }
+
+                // Apply offset and limit to accumulated concepts
+                var pagedConcepts = allConcepts.Skip(offset).Take(limit).ToList();
+                System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Returning {pagedConcepts.Count} concepts after offset={offset}, limit={limit}");
+
+                // Step 2: For each paginated concept, fetch ALL its descriptions by concept ID
+                foreach (var (idStr, fsn, pt, active) in pagedConcepts)
+                {
+                    try
+                    {
+                        long id = 0; _ = long.TryParse(idStr, out id);
+                        if (id == 0)
+                            continue;
+
+                        // Fetch ALL descriptions for this concept using concept ID
+                        var descriptionsUrl = $"{BaseUrl}/browser/MAIN/descriptions?term={idStr}&conceptActive=true&limit=100";
+                        
+                        using var descReq = new HttpRequestMessage(HttpMethod.Get, descriptionsUrl);
+                        using var descResp = await _http.SendAsync(descReq).ConfigureAwait(false);
+                        if (!descResp.IsSuccessStatusCode)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Failed to fetch descriptions for {idStr}");
+                            continue;
+                        }
+
+                        using var descContent = await descResp.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                        using var descDoc = await JsonDocument.ParseAsync(descContent).ConfigureAwait(false);
+                        
+                        if (!descDoc.RootElement.TryGetProperty("items", out var descItems) || descItems.ValueKind != JsonValueKind.Array)
+                            continue;
+
+                        var terms = new List<SnomedTerm>();
+                        foreach (var descItem in descItems.EnumerateArray())
+                        {
+                            var descTerm = descItem.TryGetProperty("term", out var termEl) ? termEl.GetString() : null;
+                            if (string.IsNullOrEmpty(descTerm))
+                                continue;
+
+                            var termType = "Synonym";
+                            if (descItem.TryGetProperty("type", out var typeEl))
+                            {
+                                var typeStr = typeEl.GetString();
+                                if (typeStr == "FSN") 
+                                    termType = "FSN";
+                                else if (typeStr == "SYNONYM" && descItem.TryGetProperty("acceptabilityMap", out var accMap))
+                                {
+                                    foreach (var prop in accMap.EnumerateObject())
+                                    {
+                                        if (prop.Value.GetString() == "PREFERRED")
+                                        {
+                                            termType = "PT";
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            terms.Add(new SnomedTerm(descTerm, termType));
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Concept {idStr}: {fsn} has {terms.Count} terms");
+                        list.Add(new SnomedConceptWithTerms(id, idStr, fsn, pt, active, DateTime.UtcNow, terms));
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Error fetching descriptions for {idStr}: {ex.Message}");
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Successfully returned {list.Count} concepts with all their terms");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SnowstormClient] Error: {ex.Message}");
+            }
+
+            return list;
         }
     }
 }

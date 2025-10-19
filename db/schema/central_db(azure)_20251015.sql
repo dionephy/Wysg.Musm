@@ -38,13 +38,16 @@ GO
 
 
 
+
+
+
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [radium].[phrase](
 	[id] [bigint] IDENTITY(1,1) NOT NULL,
-	[account_id] [bigint] NOT NULL,
+	[account_id] [bigint] NULL,
 	[text] [nvarchar](400) NOT NULL,
 	[active] [bit] NOT NULL,
 	[created_at] [datetime2](3) NOT NULL,
@@ -55,14 +58,6 @@ GO
 ALTER TABLE [radium].[phrase] ADD PRIMARY KEY CLUSTERED 
 (
 	[id] ASC
-)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
-GO
-SET ANSI_PADDING ON
-GO
-ALTER TABLE [radium].[phrase] ADD  CONSTRAINT [UQ_phrase_account_text] UNIQUE NONCLUSTERED 
-(
-	[account_id] ASC,
-	[text] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 GO
 CREATE NONCLUSTERED INDEX [IX_phrase_account_active] ON [radium].[phrase]
@@ -76,6 +71,32 @@ CREATE NONCLUSTERED INDEX [IX_phrase_account_rev] ON [radium].[phrase]
 	[account_id] ASC,
 	[rev] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+CREATE UNIQUE NONCLUSTERED INDEX [IX_phrase_account_text_unique] ON [radium].[phrase]
+(
+	[account_id] ASC,
+	[text] ASC
+)
+WHERE ([account_id] IS NOT NULL)
+WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_phrase_global_active] ON [radium].[phrase]
+(
+	[active] ASC
+)
+WHERE ([account_id] IS NULL)
+WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+CREATE UNIQUE NONCLUSTERED INDEX [IX_phrase_global_text_unique] ON [radium].[phrase]
+(
+	[text] ASC
+)
+WHERE ([account_id] IS NULL)
+WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 GO
 ALTER TABLE [radium].[phrase] ADD  CONSTRAINT [DF_phrase_active]  DEFAULT ((1)) FOR [active]
 GO
@@ -91,6 +112,10 @@ ON DELETE CASCADE
 GO
 ALTER TABLE [radium].[phrase] CHECK CONSTRAINT [FK_phrase_account]
 GO
+ALTER TABLE [radium].[phrase]  WITH CHECK ADD  CONSTRAINT [CK_phrase_global_or_account_unique] CHECK  (([account_id] IS NULL OR [account_id] IS NOT NULL))
+GO
+ALTER TABLE [radium].[phrase] CHECK CONSTRAINT [CK_phrase_global_or_account_unique]
+GO
 ALTER TABLE [radium].[phrase]  WITH CHECK ADD  CONSTRAINT [CK_phrase_text_not_blank] CHECK  ((len(ltrim(rtrim([text])))>(0)))
 GO
 ALTER TABLE [radium].[phrase] CHECK CONSTRAINT [CK_phrase_text_not_blank]
@@ -103,6 +128,10 @@ CREATE TRIGGER [radium].[trg_phrase_touch] ON [radium].[phrase] AFTER UPDATE AS 
 GO
 ALTER TABLE [radium].[phrase] ENABLE TRIGGER [trg_phrase_touch]
 GO
+
+
+
+
 
 
 SET ANSI_NULLS ON
@@ -809,3 +838,146 @@ GO
 -- =====================================================
 -- End of Schema
 -- =====================================================
+
+
+
+
+-- Add this at the end of your central_db(azure)_20251015.sql file
+-- (after the existing SNOMED mapping tables section)
+
+-- =====================================================
+-- SNOMED Phrase Import Enhancements (2025-10-19)
+-- =====================================================
+
+-- Add tags column and computed columns
+ALTER TABLE [radium].[phrase] ADD [tags] NVARCHAR(MAX) NULL;
+ALTER TABLE [radium].[phrase] ADD CONSTRAINT [CK_phrase_tags_valid_json] 
+    CHECK ([tags] IS NULL OR ISJSON([tags]) = 1);
+
+ALTER TABLE [radium].[phrase] 
+    ADD [tags_source] AS CAST(JSON_VALUE([tags], '$.source') AS NVARCHAR(50)) PERSISTED;
+
+ALTER TABLE [radium].[phrase] 
+    ADD [tags_semantic_tag] AS CAST(JSON_VALUE([tags], '$.semantic_tag') AS NVARCHAR(100)) PERSISTED;
+
+-- Add semantic_tag to concept_cache
+ALTER TABLE [snomed].[concept_cache] ADD [semantic_tag] NVARCHAR(100) NULL;
+
+-- Add indexes
+CREATE NONCLUSTERED INDEX [IX_phrase_tags_source] 
+ON [radium].[phrase]([tags_source])
+INCLUDE ([id], [text], [active])
+WHERE [tags] IS NOT NULL;
+
+CREATE NONCLUSTERED INDEX [IX_phrase_tags_semantic_tag] 
+ON [radium].[phrase]([tags_semantic_tag])
+INCLUDE ([id], [text], [active], [tags_source])
+WHERE [tags] IS NOT NULL;
+
+CREATE INDEX [IX_snomed_concept_cache_semantic_tag] 
+ON [snomed].[concept_cache]([semantic_tag]) 
+WHERE [semantic_tag] IS NOT NULL;
+
+-- Update global phrase index
+DROP INDEX [IX_phrase_global_text] ON [radium].[phrase];
+CREATE NONCLUSTERED INDEX [IX_phrase_global_text] 
+ON [radium].[phrase]([text])
+INCLUDE ([id], [active], [tags], [tags_source], [tags_semantic_tag])
+WHERE [account_id] IS NULL
+WITH (ONLINE = ON);
+
+-- Create statistics view
+CREATE VIEW [radium].[v_snomed_phrase_stats] AS
+SELECT 
+    p.tags_semantic_tag AS semantic_tag,
+    JSON_VALUE(p.tags, '$.import_batch') AS import_batch,
+    COUNT(*) AS phrase_count,
+    SUM(CASE WHEN p.active = 1 THEN 1 ELSE 0 END) AS active_count,
+    MIN(p.created_at) AS first_imported,
+    MAX(p.created_at) AS last_imported,
+    COUNT(DISTINCT gps.id) AS mapped_count
+FROM radium.phrase p
+LEFT JOIN radium.global_phrase_snomed gps ON gps.phrase_id = p.id
+WHERE p.account_id IS NULL
+  AND p.tags_source = 'snomed'
+GROUP BY 
+    p.tags_semantic_tag,
+    JSON_VALUE(p.tags, '$.import_batch');
+GO
+
+-- Create import procedure
+-- (Use the corrected procedure from previous message)
+
+-- ===================================================
+-- 6. Bulk SNOMED Import Procedure
+-- ===================================================
+IF OBJECT_ID('radium.import_snomed_phrases', 'P') IS NOT NULL
+    DROP PROCEDURE radium.import_snomed_phrases;
+GO
+
+CREATE PROCEDURE [radium].[import_snomed_phrases]
+    @semantic_tag NVARCHAR(100),
+    @max_count INT = 5000,
+    @import_batch NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @batch NVARCHAR(100) = ISNULL(@import_batch, 
+        CONCAT('snomed-', @semantic_tag, '-', FORMAT(SYSUTCDATETIME(), 'yyyyMMdd')));
+    
+    -- Build JSON for each concept and insert
+    INSERT INTO radium.phrase (account_id, [text], active, tags)
+    SELECT TOP (@max_count)
+        NULL,  -- Global phrase
+        cc.pt,
+        1,
+        (SELECT 
+            'snomed' AS [source],
+            CAST(cc.concept_id AS NVARCHAR(20)) AS concept_id,
+            cc.semantic_tag AS semantic_tag,
+            @batch AS import_batch,
+            CAST(1 AS BIT) AS is_preferred
+         FOR JSON PATH, WITHOUT_ARRAY_WRAPPER)
+    FROM snomed.concept_cache cc
+    WHERE cc.semantic_tag = @semantic_tag
+      AND cc.active = 1
+      AND cc.pt IS NOT NULL
+      AND LEN(cc.pt) > 2
+      AND NOT EXISTS (
+          SELECT 1 FROM radium.phrase p 
+          WHERE p.text = cc.pt 
+            AND p.account_id IS NULL
+      )
+    ORDER BY LEN(cc.pt), cc.pt;
+    
+    DECLARE @imported INT = @@ROWCOUNT;
+    
+    -- Auto-create mappings for imported phrases
+    INSERT INTO radium.global_phrase_snomed (phrase_id, concept_id, mapping_type, confidence)
+    SELECT 
+        p.id,
+        CAST(JSON_VALUE(p.tags, '$.concept_id') AS BIGINT),
+        'exact',
+        1.0
+    FROM radium.phrase p
+    WHERE JSON_VALUE(p.tags, '$.import_batch') = @batch
+      AND NOT EXISTS (
+          SELECT 1 FROM radium.global_phrase_snomed gps 
+          WHERE gps.phrase_id = p.id
+      );
+    
+    DECLARE @mapped INT = @@ROWCOUNT;
+    
+    -- Return summary
+    SELECT 
+        @semantic_tag AS semantic_tag,
+        @imported AS phrases_imported,
+        @mapped AS mappings_created,
+        @batch AS import_batch;
+END
+GO
+
+PRINT 'SNOMED import procedure created successfully';
+GO
+

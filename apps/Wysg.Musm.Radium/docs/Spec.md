@@ -990,3 +990,52 @@ When text sync is disabled, clearing the foreign textbox should avoid stealing f
 - Windows messages (WM_SETTEXT): application-specific, not portable
 - Clipboard + Ctrl+V: too invasive, disrupts user clipboard
 - Current UIA approach is the least invasive option available
+
+## Update: Auto-Focus Findings After Foreign Text Clear (2025-01-19)
+- FR-1132 When TextSyncEnabled is set to OFF and foreign text is merged, the system MUST automatically return focus to EditorFindings after the foreign element processes the clear operation.
+- FR-1133 TextSyncService.WriteToForeignAsync MUST accept an optional `afterFocusCallback` parameter (Action delegate) that is invoked after write completes successfully.
+- FR-1134 Callback MUST be invoked on the dispatcher thread to ensure thread-safe UI operations.
+- FR-1135 System MUST wait 150ms after write completes before invoking callback to allow foreign element time to process UIA write operation.
+- FR-1136 MainViewModel MUST provide `RequestFocusFindings` property for communicating focus requests to MainWindow.
+- FR-1137 MainWindow MUST subscribe to ViewModel.PropertyChanged in OnLoaded to detect focus requests.
+- FR-1138 When `RequestFocusFindings` property changes, MainWindow MUST call `gridCenter.EditorFindings.Focus()` to return focus.
+- FR-1139 Focus return MUST happen automatically without user intervention, typically within 200ms of sync disable.
+- FR-1140 If foreign application brings itself to foreground (e.g., Notepad), focus will still return to EditorFindings after brief delay.
+
+**Behavior Flow**:
+1. User disables text sync toggle
+2. ForeignText merges into FindingsText (FR-1123..FR-1131)
+3. WriteToForeignAsync("") called with afterFocusCallback parameter
+4. Foreign element cleared via UIA (may bring foreign app to foreground)
+5. 150ms delay to ensure foreign element has processed write
+6. Callback invoked on dispatcher thread
+7. Callback raises `RequestFocusFindings` property change
+8. MainWindow detects property change and calls EditorFindings.Focus()
+9. EditorFindings receives focus and user can continue typing immediately
+
+**Edge Cases**:
+- Empty ForeignText: No write occurs, no callback, no focus change (EditorFindings already focused)
+- Write failure: Callback not invoked, user can manually click EditorFindings if needed
+- Foreign app steals focus after callback: Rare; most apps don't re-steal focus after losing it
+
+**Rationale**: Eliminates manual focus return step; improves workflow efficiency; user can immediately continue editing Findings after sync disable without clicking.
+
+
+## Update: Global Hotkey for Toggle Sync Text (2025-01-19)
+- FR-1141 Settings → Keyboard tab MUST include a new global hotkey textbox labeled "Toggle sync text:" for configuring the text sync toggle hotkey.
+- FR-1142 The textbox MUST use the same PreviewKeyDown handler as other hotkey textboxes to capture key combinations.
+- FR-1143 Key combination format MUST support Ctrl, Alt, Shift, and Win modifiers plus a single key (e.g., "Ctrl+Alt+T").
+- FR-1144 The hotkey value MUST be persisted to `IRadiumLocalSettings.GlobalHotkeyToggleSyncText`.
+- FR-1145 MainWindow MUST register the global hotkey (system-wide) using Win32 RegisterHotKey API after window handle is created.
+- FR-1146 MainWindow MUST use hotkey ID `0xB002` (HOTKEY_ID_TOGGLE_SYNC_TEXT) to distinguish from other hotkeys.
+- FR-1147 When the registered hotkey is pressed system-wide, MainWindow MUST toggle `MainViewModel.TextSyncEnabled` property.
+- FR-1148 Hotkey toggle MUST work regardless of whether MainWindow has focus or which application is in foreground.
+- FR-1149 The hotkey handler MUST toggle the property value: `vm.TextSyncEnabled = !vm.TextSyncEnabled`.
+- FR-1150 Debug logging MUST display the new sync state after toggle (e.g., "[Hotkey] ToggleSyncText executed - new state: True").
+- FR-1151 MainWindow MUST unregister the hotkey on window close using UnregisterHotKey API to avoid leaking system-wide registration.
+- FR-1152 Hotkey registration MUST occur in OnSourceInitialized after window handle is created (not in OnLoaded or constructor).
+- FR-1153 If hotkey registration fails (e.g., key already in use), system MUST log debug message with registration status and continue without error.
+- FR-1154 Hotkey parsing MUST use the same TryParseHotkey method as Open Study hotkey for consistency.
+- FR-1155 Settings → Keyboard tab tooltip MUST indicate the new hotkey field supports Ctrl/Alt/Win + key combinations.
+
+**Rationale**: Provides keyboard-first workflow for power users; complements existing global hotkeys (Open Study, Send Study); enables seamless toggling without interrupting work in external editor; follows established hotkey patterns in Radium.
