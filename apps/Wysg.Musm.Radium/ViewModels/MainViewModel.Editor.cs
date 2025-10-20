@@ -101,7 +101,19 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private void ToggleReportified(bool value)
         {
-            if (!SetProperty(ref _reportified, value)) return;
+            // CRITICAL FIX: Always raise PropertyChanged to ensure UI synchronization
+            // This ensures the UI toggle button updates when automation modules set Reportified=true
+            bool changed = SetProperty(ref _reportified, value);
+            
+            // FORCE PropertyChanged notification even if value didn't change
+            // This is necessary because automation modules may set the same value multiple times
+            if (!changed)
+            {
+                OnPropertyChanged(nameof(Reportified));
+            }
+            
+            if (!changed) return; // Value didn't change, skip transformation logic
+            
             if (value)
             {
                 CaptureRawIfNeeded();

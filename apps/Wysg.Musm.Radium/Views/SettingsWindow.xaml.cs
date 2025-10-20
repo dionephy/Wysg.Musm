@@ -226,7 +226,8 @@ namespace Wysg.Musm.Radium.Views
 
         // Public method for child tabs to initialize their ListBoxes
         public void InitializeAutomationListBoxes(ListBox newStudy, ListBox addStudy, ListBox library, 
-            ListBox shortcutOpenNew, ListBox shortcutOpenAdd, ListBox shortcutOpenAfterOpen)
+            ListBox shortcutOpenNew, ListBox shortcutOpenAdd, ListBox shortcutOpenAfterOpen, ListBox sendReport,
+            ListBox sendReportPreview, ListBox shortcutSendReportPreview, ListBox shortcutSendReportReportified)
         {
             if (DataContext is not SettingsViewModel vm) return;
             library.ItemsSource = vm.AvailableModules;
@@ -235,6 +236,10 @@ namespace Wysg.Musm.Radium.Views
             shortcutOpenNew.ItemsSource = vm.ShortcutOpenNewModules;
             shortcutOpenAdd.ItemsSource = vm.ShortcutOpenAddModules;
             shortcutOpenAfterOpen.ItemsSource = vm.ShortcutOpenAfterOpenModules;
+            sendReport.ItemsSource = vm.SendReportModules;
+            sendReportPreview.ItemsSource = vm.SendReportPreviewModules;
+            shortcutSendReportPreview.ItemsSource = vm.ShortcutSendReportPreviewModules;
+            shortcutSendReportReportified.ItemsSource = vm.ShortcutSendReportReportifiedModules;
         }
 
         private Point _dragStart;
@@ -354,6 +359,10 @@ namespace Wysg.Musm.Radium.Views
                     "lstShortcutOpenNew" => vm.ShortcutOpenNewModules,
                     "lstShortcutOpenAdd" => vm.ShortcutOpenAddModules,
                     "lstShortcutOpenAfterOpen" => vm.ShortcutOpenAfterOpenModules,
+                    "lstSendReport" => vm.SendReportModules,
+                    "lstSendReportPreview" => vm.SendReportPreviewModules,
+                    "lstShortcutSendReportPreview" => vm.ShortcutSendReportPreviewModules,
+                    "lstShortcutSendReportReportified" => vm.ShortcutSendReportReportifiedModules,
                     _ => null
                 };
                 if (list == null)

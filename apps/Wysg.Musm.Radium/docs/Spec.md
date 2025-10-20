@@ -164,6 +164,17 @@
 - FR-660 Application registers a global hotkey from Settings (Keyboard → Open study). When pressed, it MUST invoke `MainViewModel.RunOpenStudyShortcut()`.
 - FR-661 The invoked shortcut sequence MUST honor the PACS-scoped `automation.json` panes (new/add/after open). Modules like `ShowTestMessage` must execute if present.
 
+## Update: New PACS Methods and Automation Modules (2025-01-16)
+- FR-1100 Add PACS method "Invoke open worklist" (`InvokeOpenWorklist`) to open PACS worklist window programmatically by invoking worklist open button.
+- FR-1101 Add PACS method "Set focus search results list" (`SetFocusSearchResultsList`) to set keyboard focus on search results list element for user navigation.
+- FR-1102 Add PACS method "Send report" (`SendReport`) to submit findings and conclusion to PACS; user must configure actual UI interaction steps per PACS.
+- FR-1103 Add custom procedure operation "SetFocus" with single Element argument; calls `element.SetFocus()` on resolved UI automation element.
+- FR-1104 Add automation module "OpenWorklist" that executes `InvokeOpenWorklist` customProcedure; can be added to any automation sequence.
+- FR-1105 Add automation module "ResultsListSetFocus" that executes `SetFocusSearchResultsList` custom procedure; prepares list for keyboard navigation.
+- FR-1106 Add automation module "SendReport" that executes `SendReport` custom procedure passing current `FindingsText` and `ConclusionText` from MainViewModel.
+- FR-1107 Add three new KnownControl entries: `WorklistOpenButton`, `SearchResultsList`, `SendReportButton` for bookmark mapping in SpyWindow.
+- FR-1108 Auto-seed default procedures for all three PACS methods: `InvokeOpenWorklist` uses `Invoke` on `WorklistOpenButton`, `SetFocusSearchResultsList` uses `SetFocus` on `SearchResultsList`, `SendReport` uses `Invoke` on `SendReportButton`.
+
 ## Update: Editor Phrase-Based Syntax Highlighting (2025-01-14)
 - FR-700 Editor MUST provide real-time syntax highlighting based on phrase snapshots from the database.
 - FR-701 Phrases present in the current phrase snapshot MUST be highlighted with color #4A4A4A (Dark.Color.BorderLight from DarkTheme.xaml).
@@ -767,275 +778,283 @@ myocardial infarction,22298006,exact,1.0,"Standard mapping"
 
 **Rationale**: Enables conditional automation based on UI visibility state; complements existing PACS control methods.
 
-### FR-970: PACS Method – ReportText Is Visible (2025-01-17)
-**Requirement**: Add new PACS custom procedure method `ReportTextIsVisible` for checking if the report text editor is visible in the current PACS view.
+### FR-1160: Custom Procedure Operation – MouseMoveToElement (2025-01-18)
+**Requirement**: Add new operation `MouseMoveToElement` to Custom Procedures for moving the mouse cursor to the center of a UI element without clicking.
 
-**Method Behavior**:
-- Executes custom procedure tag `ReportTextIsVisible`
-- Default auto-seed: Single `IsVisible` operation targeting `ReportText` bookmark
-- PacsService exposes `ReportTextIsVisibleAsync()` wrapper
-- Returns "true" if report text editor is visible and reachable, "false" otherwise
+**Operation Signature**:
+- Arg1: Element (Type=Element, maps to UiBookmarks.KnownControl)
+- Arg2: Disabled
+- Arg3: Disabled
+
+**Behavior**:
+1. Resolve UI element via bookmark system
+2. Get element's bounding rectangle
+3. Calculate center point: `(Left + Width/2, Top + Height/2)`
+4. Move mouse cursor to calculated screen coordinates (no click)
+5. Preview text: `(moved to element center X,Y)` on success
+
+**Error Handling**:
+- No element: `(no element)`
+- No bounds: `(no bounds)`
+- Move error: `(error: {message})`
 
 **Use Cases**:
-- AddPreviousStudy automation module to determine which getter methods to use
-- Conditional report extraction based on PACS UI state
-- Quality control workflows requiring specific report editor states
+- Hover interactions that require mouse presence without clicking
+- Preparation for manual mouse actions by user
+- UI element highlighting for user guidance
+- Testing element accessibility by moving cursor to it
 
-**Rationale**: Different PACS UI states require different methods to extract report content; visibility check enables automatic adaptation to current UI layout.
+**Rationale**: Provides non-destructive cursor positioning for scenarios where clicking is undesirable; complements ClickElement operation; useful for hover-triggered UI elements and user guidance workflows.
 
-### FR-971: AddPreviousStudy – Conditional Getter Selection (2025-01-17)
-**Requirement**: Modify AddPreviousStudy automation module to check ReportText visibility and conditionally select appropriate getter methods for findings and conclusion.
+### FR-1170: Custom Procedure Operation – SetClipboard (2025-01-18)
+**Requirement**: Add new operation `SetClipboard` to Custom Procedures for setting the Windows clipboard with text content.
 
-**Logic Flow**:
-1. Before extracting report content, call `ReportTextIsVisibleAsync()` to check editor visibility
-2. If `ReportTextIsVisible` returns "true":
-   - Use `GetCurrentFindings` and `GetCurrentConclusion` methods (primary getters)
-   - These methods target the visible report text editor elements
-   - Set status: "ReportText visible - using primary getters"
-3. If `ReportTextIsVisible` returns "false":
-   - Use `GetCurrentFindings2` and `GetCurrentConclusion2` methods (alternate getters)
-   - These methods target alternate UI elements when report text is not visible
-   - Set status: "ReportText not visible - using alternate getters"
-4. Continue with existing logic to persist and load previous study
-
-**Behavior Changes**:
-- Previous behavior: Always called all four getters and picked the longer result
-- New behavior: Conditionally calls only the appropriate getters based on visibility
-- Fallback: If visibility check fails or returns unexpected value, uses alternate getters (safe default)
-
-**Rationale**: Improves reliability by selecting the correct extraction method based on actual PACS UI state; reduces redundant API calls; provides clearer diagnostic status messages.
-
-### FR-974: AddPreviousStudy – Fallback to Alternate Getters When Primary Returns Blank (2025-01-17)
-**Requirement**: Enhance AddPreviousStudy conditional getter logic to support fallback to alternate getters when primary getters return blank results.
-
-**Previous Behavior (FR-971)**:
-- If ReportText visible: use primary getters only
-- If ReportText not visible: use alternate getters only
-- No fallback mechanism when primary getters succeeded but returned blank content
-
-**New Behavior (Enhanced)**:
-1. Check ReportText visibility using `ReportTextIsVisibleAsync()`
-2. If ReportText is visible:
-   - First, try primary getters (`GetCurrentFindings`, `GetCurrentConclusion`)
-   - If BOTH findings AND conclusion are blank → try alternate getters as fallback
-   - Use longer result from primary/alternate for each field (findings, conclusion)
-   - Status: "ReportText visible - using primary + alternate getters (fallback)" when fallback triggered
-   - Status: "ReportText visible - using primary getters" when primary returns content
-3. If ReportText is not visible:
-   - Use alternate getters only (unchanged from FR-971)
-   - Status: "ReportText not visible - using alternate getters"
-
-**Rationale**:
-- Handles edge case where ReportText is visible but empty (e.g., new blank report)
-- Provides automatic fallback without requiring user intervention
-- Maximizes chance of capturing report content regardless of PACS UI state
-- Maintains clear status messages for troubleshooting
-
-**Example Scenarios**:
-1. **Primary Success**: ReportText visible with content → primary getters return content → use primary results
-2. **Primary Blank + Alternate Success**: ReportText visible but blank → primary returns "" → alternate getters tried → use alternate results
-3. **Both Blank**: ReportText visible but all getters return blank → both attempted → blank results accepted
-4. **ReportText Hidden**: ReportText not visible → only alternate getters tried → use alternate results
-
-**Implementation Details**:
-- Fallback logic checks `string.IsNullOrWhiteSpace()` for both findings and conclusion
-- PickLonger helper selects result with most characters (fallback to first if equal)
-- Sequential async execution: primary first, then alternate only if needed
-- Status messages clearly indicate which path was taken for diagnostics
-
-## Update: Enhanced Manage Studyname Techniques Window with Combination Building (2025-01-17)
-- FR-1020 StudynameTechniqueWindow MUST provide a split-panel layout with left panel for building new combinations and right panel for managing existing combinations.
-- FR-1021 The left panel MUST include ComboBoxes for selecting Prefix, Tech, and Suffix components with "+" buttons to add new components inline.
-- FR-1022 The left panel MUST display a "Current Combination" list showing techniques added to the working combination before saving.
-- FR-1023 Users MUST be able to click "Add to Combination" to add the selected prefix+tech+suffix to the current combination list.
-- FR-1024 The window MUST prevent duplicate techniques (same prefix, tech, suffix triple) from being added to the current combination.
-- FR-1025 Users MUST be able to save the current combination as a new non-default combination using a "Save as New Combination" button.
-- FR-1026 The saved combination MUST automatically appear in the existing combinations list on the right panel without requiring window close/reopen.
-- FR-1027 The right panel MUST continue to display existing combinations with their display text and default status indicator.
-- FR-1028 The ComboBox items MUST display properly by overriding ToString() in TechText, CombinationItem, and ComboRow classes.
-- FR-1029 The window layout MUST use a GridSplitter between left and right panels for user-adjustable sizing.
-- FR-1030 All UI components MUST follow the dark theme styling consistent with other Radium windows.
-- FR-1031 The "+" buttons MUST open simple modal dialogs prompting for text input to add new prefix/tech/suffix components.
-- FR-1032 After adding a new component via "+" button, the component MUST be automatically selected in the corresponding ComboBox.
-
-## Update: Set Default Technique Combination in Manage Studyname Techniques Window (2025-01-17)
-- FR-1000 StudynameTechniqueWindow MUST display a list of existing technique combinations for the selected studyname with their default status.
-- FR-1001 The combinations list MUST show combination display text and an indicator (e.g., checkmark) for the currently marked default combination.
-- FR-1002 Users MUST be able to select any combination from the list and click a "Set Selected As Default" button to change the default for the studyname.
-- FR-1003 After setting a new default, the combinations list MUST refresh to show the updated default status without requiring the user to close and reopen the window.
-- FR-1004 The "Set Selected As Default" button MUST only be enabled when a combination is selected from the list.
-- FR-1005 The combinations list MUST be displayed in a DataGrid with columns for the combination display text and default status.
-- FR-1006 The default status indicator MUST use a checkmark symbol (✓) for clarity.
-- FR-1007 The window layout MUST accommodate the combinations list and button below the header information, with proper spacing and sizing.
-- FR-1008 The SetDefaultCommand in StudynameTechniqueViewModel MUST reload the combinations list after successfully setting a new default to reflect the change immediately.
-- FR-1009 The implementation MUST maintain existing functionality for adding new default combinations via the "Add And Set As Default" button.
-- FR-1010 The window MUST maintain proper dark theme styling consistent with other Radium windows.
-
-## Update: DataGrid Text Visibility Fix (2025-01-17)
-- FR-1042 The "Technique Combination" DataGridTextColumn MUST display text in visible Gainsboro color by setting ElementStyle with Foreground property to ensure visibility against black background in dark theme.
-
-## Update: Delete Combination and ListBox Display Fix in Manage Studyname Techniques Window (2025-01-17)
-- FR-1033 The "Current Combination" ListBox MUST display technique text properly by setting DisplayMemberPath to "TechniqueDisplay" as a string property, not via binding.
-- FR-1034 Users MUST be able to delete existing combinations from the studyname via a "Delete Selected Combination" button.
-- FR-1035 The delete button MUST be placed next to the "Set Selected As Default" button in a vertical stack layout.
-- FR-1036 Clicking delete MUST show a confirmation dialog with the combination display text and Yes/No buttons.
-- FR-1037 After successful deletion, the combinations list MUST refresh automatically and the selected combination MUST be cleared.
-- FR-1038 The "Delete Selected Combination" button MUST only be enabled when a combination is selected from the list.
-- FR-1039 The delete operation MUST only remove the link between the studyname and combination (not delete the combination itself from the database).
-- FR-1040 If deletion fails, an error message MUST be displayed to the user with the exception message.
-- FR-1041 The info text in the right panel MUST be updated to indicate that users can "set default or delete" combinations.
-
-## Update: Save as New Combination Button Enablement Fix (2025-01-18)
-- FR-1050 The "Save as New Combination" button MUST enable automatically when at least one technique is added to the Current Combination list.
-- FR-1051 The "Save as New Combination" button MUST disable automatically when the Current Combination list is empty (after save or initially).
-- FR-1052 The button's CanExecute state MUST be updated by raising CanExecuteChanged on the SaveNewCombinationCommand when CurrentCombinationItems changes.
-- FR-1053 The AddTechniqueCommand MUST notify SaveNewCombinationCommand after adding an item to CurrentCombinationItems.
-- FR-1054 The SaveNewCombinationCommand MUST notify itself after clearing CurrentCombinationItems following a successful save.
-
-## Update: Current Combination Quick Delete and All Combinations Library (2025-01-18)
-- FR-1060 The "Current Combination" ListBox MUST support double-click to remove items from the working combination.
-- FR-1061 When a user double-clicks an item in the "Current Combination" ListBox, the item MUST be removed immediately without confirmation.
-- FR-1062 After removing an item via double-click, the SaveNewCombinationCommand's CanExecute state MUST be updated (button disables if list becomes empty).
-- FR-1063 The left panel MUST include an "All Combinations" ListBox displaying all technique combinations in the database regardless of studyname or study association.
-- FR-1064 The "All Combinations" ListBox MUST be populated from a new repository method GetAllCombinationsAsync() that queries all combinations.
-- FR-1065 When a user double-clicks an item in the "All Combinations" ListBox, all techniques from that combination MUST be loaded into the "Current Combination" list.
-- FR-1066 When loading techniques from "All Combinations", duplicate techniques (same prefix_id, tech_id, suffix_id) MUST be excluded from being added to "Current Combination".
-- FR-1067 Techniques loaded from "All Combinations" MUST be appended to the end of "Current Combination" with sequential sequence_order values.
-- FR-1068 The LoadCombinationIntoCurrentAsync method MUST fetch combination items via GetCombinationItemsAsync() and match them against loaded component lookup lists.
-- FR-1069 The RemoveFromCurrentCombination method MUST remove the specified CombinationItem from CurrentCombinationItems and notify SaveNewCombinationCommand.
-- FR-1070 The "Current Combination" GroupBox header MUST include hint text "(double-click to remove)" for user guidance.
-- FR-1071 The "All Combinations" GroupBox header MUST include hint text "(double-click to load)" for user guidance.
-- FR-1072 The left panel MUST use a 5-row layout: Header (Auto), Builder UI (Auto), Current Combination (Star), All Combinations (Star), Save Button (Auto).
-- FR-1073 Both "Current Combination" and "All Combinations" ListBoxes MUST share equal vertical space (both use Star sizing) for balanced UX.
-- FR-1074 The window layout MUST remain consistent with existing dark theme styling for the new "All Combinations" ListBox.
-
-## Update: ReportInputsAndJsonPanel Side-by-Side Row Layout for Y-Coordinate Alignment (2025-01-18)
-- FR-1080 The ReportInputsAndJsonPanel MUST restructure from column-based to side-by-side row layout to ensure natural Y-coordinate alignment between main and proofread textboxes.
-- FR-1081 The layout MUST use 3 columns: Main Input (1*) | Splitter (2px) | Proofread (1*) | Splitter (2px) | JSON (1*).
-- FR-1082 Each corresponding textbox pair MUST be placed in the same row to ensure their upper borders align naturally without custom layout code.
-- FR-1083 Chief Complaint textbox and Chief Complaint (Proofread) textbox MUST share the same row position and bind MinHeight to synchronize vertical space.
-- FR-1084 Patient History textbox and Patient History (Proofread) textbox MUST share the same row position and bind MinHeight to synchronize vertical space.
-- FR-1085 Findings textbox and Findings (Proofread) textbox MUST share the same row position and bind MinHeight to synchronize vertical space.
-- FR-1086 Conclusion textbox and Conclusion (Proofread) textbox MUST share the same row position and bind MinHeight to synchronize vertical space.
-- FR-1087 The Main Input column MUST include non-paired elements (Study Remark, Patient Remark, Edit Buttons) with appropriate spacing.
-- FR-1088 The Proofread column MUST display abbreviated labels (e.g., "Chief Complaint (PR)") and smaller controls to fit alongside main column.
-- FR-1089 Both Main and Proofread columns MUST use ScrollViewers to handle overflow content independently.
-- FR-1090 Scroll synchronization MUST be implemented via ScrollChanged event handler to link main and proofread column scrolling.
-- FR-1091 The reverse layout feature MUST continue to work by swapping column positions (Main ↔ JSON) while keeping side-by-side alignment intact.
-- FR-1092 All textboxes MUST maintain dark theme styling with appropriate background (#1E1E1E), foreground (#D0D0D0), and border colors (#2D2D30).
-- FR-1093 The implementation MUST NOT require custom Y-coordinate calculation, attached behaviors, or manual layout logic—WPF's Grid naturally aligns row elements.
-- FR-1094 MinHeight bindings MUST reference corresponding main textbox elements (e.g., txtChiefComplaint, txtPatientHistory) to ensure proofread textboxes don't shrink below main textbox height.
-- FR-1095 The layout change MUST maintain backward compatibility with existing bindings (ChiefComplaint, PatientHistory, FindingsText, ConclusionText, and their Proofread counterparts).
-- FR-1096 The window MUST remain responsive and functional on both landscape and portrait orientations used in gridTop and gridSideTop panels.
-
-## Update: Foreign Textbox One-Way Sync Feature (2025-01-19)
-- FR-1100 Add new UI bookmark `ForeignTextbox` to KnownControl enum for mapping external application textboxes (e.g., Notepad).
-- FR-1101 Add "Sync Text" toggle button next to the "Lock" toggle button in MainWindow, default off.
-- FR-1102 When sync toggle is ON, start polling foreign textbox for changes (800ms interval).
-- FR-1103 When foreign textbox content changes (detected via polling), update read-only EditorForeignText automatically.
-- FR-1104 EditorForeignText MUST appear between EditorHeader and EditorFindings with seamless borders (top border on foreign, bottom border on findings).
-- FR-1105 EditorForeignText MUST be read-only and collapse to 0 height when sync is disabled.
-- FR-1106 EditorForeignText MUST expand to 60-300px height when sync is enabled, with scroll if content exceeds height.
-- FR-1107 EditorFindings MUST occupy remaining vertical space in the shared row.
-- FR-1108 Border styling MUST make EditorForeignText and EditorFindings appear as one continuous editor.
-- FR-1109 TextSyncService MUST use UIA ValuePattern, TextPattern, or Name property as fallback read methods.
-- FR-1110 TextSyncService MUST poll foreign textbox at 800ms intervals when sync is enabled.
-- FR-1111 TextSyncService MUST raise ForeignTextChanged event on dispatcher thread when changes detected.
-- FR-1112 MainViewModel MUST initialize TextSyncService with application dispatcher in constructor.
-- FR-1113 MainViewModel MUST handle ForeignTextChanged event to update ForeignText property.
-- FR-1114 ForeignText property MUST be read-only (private setter) and cleared when sync is disabled.
-- FR-1115 TextSyncEnabled property setter MUST call TextSyncService.SetEnabled to start/stop sync.
-- FR-1116 TextSyncService MUST dispose timer and clear state when sync is disabled.
-- FR-1117 Foreign textbox resolution MUST use UiBookmarks.Resolve(KnownControl.ForeignTextbox).
-- FR-1118 Status messages MUST display "Text sync enabled" and "Text sync disabled" on toggle changes.
-- FR-1119 Implementation MUST NOT block UI thread during polling operations (all async).
-- FR-1120 TextSyncService MUST handle exceptions gracefully and log to debug output without crashes.
-- FR-1121 EditorForeignText and EditorFindings MUST allow seamless caret movement between them (future enhancement).
-- FR-1122 Sync is one-way only (foreign → app) to avoid focus stealing and sluggish performance.
-
-## Update: Foreign Text Merge on Sync Disable (2025-01-19)
-- FR-1123 When TextSyncEnabled is set to OFF, the system MUST merge ForeignText into FindingsText automatically.
-- FR-1124 Merge behavior: `FindingsText = ForeignText + newline + FindingsText`
-- FR-1125 After merge, ForeignText property MUST be cleared to empty string.
-- FR-1126 After merge, the foreign textbox element MUST be cleared by calling `TextSyncService.WriteToForeignAsync("")`.
-- FR-1127 TextSyncService MUST provide `WriteToForeignAsync(string text)` method using UIA ValuePattern.
-- FR-1128 Write operation MUST verify ValuePattern is supported and not read-only before setting value.
-- FR-1129 Status message MUST display "Text sync disabled - foreign text merged into findings" when merge occurs.
-- FR-1130 If ForeignText is empty when sync is disabled, no merge occurs and status shows "Text sync disabled".
-- FR-1131 Merge operation MUST occur before sync is stopped to ensure clean state transition.
-
-## FR-1132: Caret Position Preservation on Foreign Text Merge
-When text sync is disabled and foreign text is merged into Findings editor, the caret position in the Findings editor must be preserved relative to its original position in the existing text.
+**Operation Signature**:
+- Arg1: Text (Type=String, can be literal or variable reference)
+- Arg2: Disabled
+- Arg3: Disabled
 
 **Behavior**:
-- Before merge: User's caret is at position N in Findings editor
-- After merge: ForeignText (length M) is prepended with newline separator (length 1)
-- Caret should move to position N + M + 1 to maintain relative position in original text
+1. Resolve text value from Arg1 (supports variables like `var1`, `var2`)
+2. Set Windows clipboard content using `System.Windows.Clipboard.SetText()`
+3. Preview text: `(clipboard set, N chars)` where N is the character count
+4. Return value: null (operation is side-effect only)
 
-**Implementation**: Use `FindingsCaretOffsetAdjustment` property to communicate adjustment value from ViewModel to Editor control.
+**Error Handling**:
+- Null text: `(null)`
+- Clipboard error: `(error: {message})`
 
-## FR-1133: Prevent Focus Stealing on Foreign Textbox Clear (Best Effort)
-When text sync is disabled, clearing the foreign textbox should avoid stealing focus from the Radium application where possible.
+**Use Cases**:
+- Copy data from PACS UI elements to clipboard for pasting into external applications
+- Prepare text content for subsequent `SimulatePaste` operations
+- Extract and copy patient data, study information, or report text
+- Clipboard-based data transfer workflows
+
+**Rationale**: Enables clipboard-based data transfer from PACS to other applications; common pattern in legacy systems; complements SimulatePaste operation.
+
+### FR-1171: Custom Procedure Operation – SimulateTab (2025-01-18)
+**Requirement**: Add new operation `SimulateTab` to Custom Procedures for simulating keyboard Tab key press.
+
+**Operation Signature**:
+- Arg1: Disabled
+- Arg2: Disabled
+- Arg3: Disabled
 
 **Behavior**:
-- Clearing foreign textbox via UIA ValuePattern without calling SetFocus()
-- **Note**: Some applications (e.g., Notepad) may still bring themselves to foreground when content changes programmatically
-- This is application-specific behavior controlled by the target application, not by UIA
-- Application focus preservation is best-effort; complete prevention is not possible with all applications
+1. Send Tab key press using `System.Windows.Forms.SendKeys.SendWait("{TAB}")`
+2. Wait for key processing to complete before continuing
+3. Preview text: `(Tab key sent)`
+4. Return value: null (operation is side-effect only)
 
-**Implementation**: WriteToForeignAsync uses ValuePattern.SetValue without preceding SetFocus() call.
+**Error Handling**:
+- Send error: `(error: {message})`
 
-**Alternatives Considered**:
-- SendKeys without focus: unreliable, requires exact focus state
-- Windows messages (WM_SETTEXT): application-specific, not portable
-- Clipboard + Ctrl+V: too invasive, disrupts user clipboard
-- Current UIA approach is the least invasive option available
+**Use Cases**:
+- Navigate between form fields in PACS dialogs
+- Trigger field validation or auto-complete behaviors
+- Move focus to next control in tab order
+- Keyboard-driven navigation workflows
+- Legacy PACS systems that rely on Tab navigation
 
-## Update: Auto-Focus Findings After Foreign Text Clear (2025-01-19)
-- FR-1132 When TextSyncEnabled is set to OFF and foreign text is merged, the system MUST automatically return focus to EditorFindings after the foreign element processes the clear operation.
-- FR-1133 TextSyncService.WriteToForeignAsync MUST accept an optional `afterFocusCallback` parameter (Action delegate) that is invoked after write completes successfully.
-- FR-1134 Callback MUST be invoked on the dispatcher thread to ensure thread-safe UI operations.
-- FR-1135 System MUST wait 150ms after write completes before invoking callback to allow foreign element time to process UIA write operation.
-- FR-1136 MainViewModel MUST provide `RequestFocusFindings` property for communicating focus requests to MainWindow.
-- FR-1137 MainWindow MUST subscribe to ViewModel.PropertyChanged in OnLoaded to detect focus requests.
-- FR-1138 When `RequestFocusFindings` property changes, MainWindow MUST call `gridCenter.EditorFindings.Focus()` to return focus.
-- FR-1139 Focus return MUST happen automatically without user intervention, typically within 200ms of sync disable.
-- FR-1140 If foreign application brings itself to foreground (e.g., Notepad), focus will still return to EditorFindings after brief delay.
+**Rationale**: Provides keyboard navigation capability essential for form-based PACS workflows; simpler than element-based focus operations when tab order is predictable; based on legacy PacsService patterns.
 
-**Behavior Flow**:
-1. User disables text sync toggle
-2. ForeignText merges into FindingsText (FR-1123..FR-1131)
-3. WriteToForeignAsync("") called with afterFocusCallback parameter
-4. Foreign element cleared via UIA (may bring foreign app to foreground)
-5. 150ms delay to ensure foreign element has processed write
-6. Callback invoked on dispatcher thread
-7. Callback raises `RequestFocusFindings` property change
-8. MainWindow detects property change and calls EditorFindings.Focus()
-9. EditorFindings receives focus and user can continue typing immediately
+### FR-1172: Custom Procedure Operation – SimulatePaste (2025-01-18)
+**Requirement**: Add new operation `SimulatePaste` to Custom Procedures for simulating keyboard Ctrl+V paste action.
 
-**Edge Cases**:
-- Empty ForeignText: No write occurs, no callback, no focus change (EditorFindings already focused)
-- Write failure: Callback not invoked, user can manually click EditorFindings if needed
-- Foreign app steals focus after callback: Rare; most apps don't re-steal focus after losing it
+**Operation Signature**:
+- Arg1: Disabled
+- Arg2: Disabled
+- Arg3: Disabled
 
-**Rationale**: Eliminates manual focus return step; improves workflow efficiency; user can immediately continue editing Findings after sync disable without clicking.
+**Behavior**:
+1. Send Ctrl+V using `System.Windows.Forms.SendKeys.SendWait("^v")`
+2. Wait for paste processing to complete before continuing
+3. Preview text: `(Ctrl+V sent)`
+4. Return value: null (operation is side-effect only)
 
+**Error Handling**:
+- Send error: `(error: {message})`
 
-## Update: Global Hotkey for Toggle Sync Text (2025-01-19)
-- FR-1141 Settings → Keyboard tab MUST include a new global hotkey textbox labeled "Toggle sync text:" for configuring the text sync toggle hotkey.
-- FR-1142 The textbox MUST use the same PreviewKeyDown handler as other hotkey textboxes to capture key combinations.
-- FR-1143 Key combination format MUST support Ctrl, Alt, Shift, and Win modifiers plus a single key (e.g., "Ctrl+Alt+T").
-- FR-1144 The hotkey value MUST be persisted to `IRadiumLocalSettings.GlobalHotkeyToggleSyncText`.
-- FR-1145 MainWindow MUST register the global hotkey (system-wide) using Win32 RegisterHotKey API after window handle is created.
-- FR-1146 MainWindow MUST use hotkey ID `0xB002` (HOTKEY_ID_TOGGLE_SYNC_TEXT) to distinguish from other hotkeys.
-- FR-1147 When the registered hotkey is pressed system-wide, MainWindow MUST toggle `MainViewModel.TextSyncEnabled` property.
-- FR-1148 Hotkey toggle MUST work regardless of whether MainWindow has focus or which application is in foreground.
-- FR-1149 The hotkey handler MUST toggle the property value: `vm.TextSyncEnabled = !vm.TextSyncEnabled`.
-- FR-1150 Debug logging MUST display the new sync state after toggle (e.g., "[Hotkey] ToggleSyncText executed - new state: True").
-- FR-1151 MainWindow MUST unregister the hotkey on window close using UnregisterHotKey API to avoid leaking system-wide registration.
-- FR-1152 Hotkey registration MUST occur in OnSourceInitialized after window handle is created (not in OnLoaded or constructor).
-- FR-1153 If hotkey registration fails (e.g., key already in use), system MUST log debug message with registration status and continue without error.
-- FR-1154 Hotkey parsing MUST use the same TryParseHotkey method as Open Study hotkey for consistency.
-- FR-1155 Settings → Keyboard tab tooltip MUST indicate the new hotkey field supports Ctrl/Alt/Win + key combinations.
+**Use Cases**:
+- Paste clipboard content into PACS text fields
+- Combine with `SetClipboard` for automated text entry
+- Paste into fields that don't support UIA ValuePattern
+- Keyboard-driven data entry workflows
+- Legacy PACS systems that require keyboard input
 
-**Rationale**: Provides keyboard-first workflow for power users; complements existing global hotkeys (Open Study, Send Study); enables seamless toggling without interrupting work in external editor; follows established hotkey patterns in Radium.
+**Rationale**: Complements SetClipboard operation for complete clipboard-based data entry; keyboard paste is more reliable than UIA for some legacy controls; based on legacy PacsService patterns.
+
+### FR-1173: Custom Procedure Operation – GetSelectedElement (2025-01-18)
+**Requirement**: Add new operation `GetSelectedElement` to Custom Procedures for retrieving the selected element (item/row) from any list or container element.
+
+**Operation Signature**:
+- Arg1: Element (parent list/container element)
+- Arg2: Disabled
+- Arg3: Disabled
+
+**Behavior**:
+1. Resolve parent element from Arg1 (any Element bookmark)
+2. Get selected item using Selection pattern or SelectionItem pattern scan
+3. **Cache element in runtime memory** for use by subsequent operations (FR-1175)
+4. Return element reference with name and automation ID
+5. Preview text: `(element: {name}, automationId: {autoId})`
+6. Return value: `SelectedElement:{name}` (element identifier string)
+
+**Error Handling**:
+- Element not resolved: `(element not resolved)`
+- No selection: `(no selection)`
+- Resolution error: `(error: {message})`
+
+**Use Cases**:
+- Get reference to selected row from SearchResultsList
+- Get reference to selected item from RelatedStudiesList
+- Get reference to selected item from any list control
+- Extract element metadata (name, automation ID) for logging
+- Validate selection state before performing actions
+- **Chain with ClickElement, MouseMoveToElement, etc. using var output** (FR-1174, FR-1175)
+
+**Implementation Notes**:
+- Takes any Element as argument (generalized, not hardcoded to specific list)
+- Works with any list/container that supports Selection or SelectionItem patterns
+- Returns element reference as string identifier (name-based)
+- Supports both Selection pattern and SelectionItem pattern fallback
+- Can be used with SearchResultsList, RelatedStudiesList, or any custom list bookmark
+- **Stores actual AutomationElement in runtime cache** for operation chaining (FR-1175)
+- **Element cache cleared at start of each procedure run** to prevent stale references
+
+**Rationale**: Provides generalized element reference capability for any selected item; more flexible than hardcoded list-specific operations; enables reuse across different list controls; complements field-specific getters (GetValueFromSelection); follows same pattern as existing element operations but returns the element itself rather than field values.
+
+**Example Usage**:
+```
+# Get selected study from search results
+GetSelectedElement(SearchResultsList) → var1
+
+# Get selected study from related studies
+GetSelectedElement(RelatedStudiesList) → var2
+
+# Get field value from selected element (combine operations)
+GetValueFromSelection(SearchResultsList, "Patient Name") → var3
+
+# NEW: Chain operations - click the selected element (FR-1174)
+GetSelectedElement(SearchResultsList) → var1
+ClickElement(var1) → var2
+```
+
+### FR-1174: ClickElement Operation – Accept Var Type for Element Chaining (2025-01-18)
+**Requirement**: Enhance `ClickElement` operation to accept both `Element` (bookmark) and `Var` (from `GetSelectedElement` output) argument types, enabling operation chaining.
+
+**Operation Signature (Enhanced)**:
+- Arg1: Element **OR Var** (bookmark or variable containing element reference)
+- Arg2: Disabled
+- Arg3: Disabled
+
+**Behavior**:
+1. When Arg1 Type = Element: Resolve from bookmark (existing behavior)
+2. **When Arg1 Type = Var: Retrieve cached element from runtime cache** (new)
+3. Validate element is still alive (staleness check)
+4. Calculate element center coordinates
+5. Click element center
+
+**Error Handling**:
+- Cached element not found: `(no element)`
+- Cached element stale (UI changed): `(no element)` (element removed from cache)
+- Element has no bounds: `(no bounds)`
+- Click failed: `(error: {message})`
+
+**Use Cases**:
+- Click selected item from search results without creating explicit bookmark
+- Dynamic clicking based on runtime selection
+- Multi-step workflows where selection changes between steps
+- Testing scenarios where element position changes
+
+**Implementation Notes**:
+- `ResolveElement()` method enhanced to check argument type
+- If Arg1 Type = Var: look up value in runtime element cache
+- Element staleness validation using Name property access
+- Stale elements automatically removed from cache
+- Same click logic applies (calculate center, use NativeMouseHelper)
+
+**Rationale**: Enables powerful operation chaining without requiring bookmarks for every intermediate element; mirrors pattern from field extraction operations; reduces manual bookmark management; makes procedures more dynamic and adaptive.
+
+**Example Usage**:
+```
+# Traditional approach (still supported)
+ClickElement(SearchResultsList) → clicks the list itself
+
+# NEW: Chaining approach (dynamic element clicking)
+GetSelectedElement(SearchResultsList) → var1  # Get currently selected row
+ClickElement(var1) → var2                      # Click that specific row
+```
+
+### FR-1175: Runtime Element Cache for Operation Chaining (2025-01-18)
+**Requirement**: Implement runtime element cache to store `AutomationElement` objects from `GetSelectedElement` for use by subsequent operations (`ClickElement`, `MouseMoveToElement`, `IsVisible`, `SetFocus`).
+
+**Cache Design**:
+- **Scope**: Procedure execution lifetime (cleared at start of each run)
+- **Key**: String identifier (e.g., `SelectedElement:{name}`)
+- **Value**: `FlaUI.Core.AutomationElements.AutomationElement` object
+- **Storage**: Dictionary in SpyWindow and ProcedureExecutor classes
+- **Lifecycle**: Created when procedure starts, cleared before next run
+
+**Cache Operations**:
+1. **Store**: `GetSelectedElement` saves element with key = output variable value
+2. **Retrieve**: `ResolveElement(Var)` looks up element by variable value
+3. **Validate**: Check if element still alive (access Name property)
+4. **Evict**: Remove stale elements on validation failure
+5. **Clear**: Wipe entire cache at start of procedure run
+
+**Staleness Detection**:
+- Before using cached element: try accessing `element.Name` property
+- If exception thrown: element is stale (UI changed), remove from cache
+- Return null to indicate element unavailable
+- Operation reports `(no element)` error
+
+**Supported Operations** (via `ResolveElement` enhancement):
+- ClickElement (FR-1174)
+- MouseMoveToElement
+- IsVisible
+- SetFocus
+- GetText
+- GetName
+- GetTextOCR
+- Invoke
+- GetValueFromSelection
+
+**Implementation Locations**:
+- `SpyWindow.Procedures.Exec.cs`: Interactive execution cache (`_elementCache`)
+- `ProcedureExecutor.cs`: Headless execution cache (`_elementCache`)
+- Both caches operate independently (different execution contexts)
+
+**Limitations**:
+- Elements only valid within single procedure execution
+- Element references cannot persist across procedure runs
+- Element identifier based on Name property (may not be unique)
+- Cache does not handle multiple elements with same name
+
+**Future Enhancements** (Not Implemented):
+- Persistent element references across runs
+- Unique identifier generation (GUID-based)
+- Cache expiration based on time
+- Multi-element selection support
+
+**Rationale**: Enables operation chaining with actual element objects rather than string identifiers; provides foundation for dynamic, selection-based automation workflows; balances simplicity (clear cache each run) with power (full AutomationElement access); mirrors pattern from bookmark resolution but with runtime scope.
+
+**Example Internal Flow**:
+```csharp
+// Step 1: GetSelectedElement stores element
+GetSelectedElement(SearchResultsList)
+  → Resolves list bookmark
+  → Finds selected row (AutomationElement)
+  → Stores in cache: _elementCache["SelectedElement:MRI Brain"] = element
+  → Returns "SelectedElement:MRI Brain"
+
+// Step 2: ClickElement retrieves from cache
+ClickElement(var1)  // var1 = "SelectedElement:MRI Brain"
+  → ResolveElement checks Arg1.Type = Var
+  → Looks up _elementCache["SelectedElement:MRI Brain"]
+  → Validates element.Name (staleness check)
+  → Returns cached AutomationElement
+  → Clicks element center
+```
+
+### FR-970: PACS Method – ReportText Is Visible (2025-01-17)

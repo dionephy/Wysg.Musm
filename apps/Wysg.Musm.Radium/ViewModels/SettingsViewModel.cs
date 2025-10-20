@@ -40,7 +40,7 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         [ObservableProperty]
-        private ObservableCollection<string> availableModules = new(new[] { "NewStudy", "LockStudy", "GetStudyRemark", "GetPatientRemark", "AddPreviousStudy", "OpenStudy", "MouseClick1", "MouseClick2", "TestInvoke", "ShowTestMessage", "SetCurrentInMainScreen", "AbortIfWorklistClosed" });
+        private ObservableCollection<string> availableModules = new(new[] { "NewStudy", "LockStudy", "GetStudyRemark", "GetPatientRemark", "AddPreviousStudy", "OpenStudy", "MouseClick1", "MouseClick2", "TestInvoke", "ShowTestMessage", "SetCurrentInMainScreen", "AbortIfWorklistClosed", "AbortIfPatientNumberNotMatch", "AbortIfStudyDateTimeNotMatch", "OpenWorklist", "ResultsListSetFocus", "SendReport", "Reportify" });
         [ObservableProperty]
         private ObservableCollection<string> newStudyModules = new();
         [ObservableProperty]
@@ -51,6 +51,14 @@ namespace Wysg.Musm.Radium.ViewModels
         private ObservableCollection<string> shortcutOpenAddModules = new();
         [ObservableProperty]
         private ObservableCollection<string> shortcutOpenAfterOpenModules = new();
+        [ObservableProperty]
+        private ObservableCollection<string> sendReportModules = new();
+        [ObservableProperty]
+        private ObservableCollection<string> sendReportPreviewModules = new();
+        [ObservableProperty]
+        private ObservableCollection<string> shortcutSendReportPreviewModules = new();
+        [ObservableProperty]
+        private ObservableCollection<string> shortcutSendReportReportifiedModules = new();
 
         // ===== Reportify Settings (manual properties) =====
         private bool _removeExcessiveBlanks = true; public bool RemoveExcessiveBlanks { get => _removeExcessiveBlanks; set { if (SetProperty(ref _removeExcessiveBlanks, value)) UpdateReportifyJson(); } }
@@ -185,7 +193,7 @@ namespace Wysg.Musm.Radium.ViewModels
         public void LoadAutomation()
         {
             newStudyModules.Clear(); addStudyModules.Clear();
-            shortcutOpenNewModules.Clear(); shortcutOpenAddModules.Clear(); shortcutOpenAfterOpenModules.Clear();
+            shortcutOpenNewModules.Clear(); shortcutOpenAddModules.Clear(); shortcutOpenAfterOpenModules.Clear(); sendReportModules.Clear();
             var ns = _local.AutomationNewStudySequence;
             if (!string.IsNullOrWhiteSpace(ns)) foreach (var m in ns.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) newStudyModules.Add(m.Trim());
             var ad = _local.AutomationAddStudySequence;
@@ -196,6 +204,7 @@ namespace Wysg.Musm.Radium.ViewModels
             if (!string.IsNullOrWhiteSpace(s2)) foreach (var m in s2.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) shortcutOpenAddModules.Add(m.Trim());
             var s3 = _local.AutomationShortcutOpenAfterOpen;
             if (!string.IsNullOrWhiteSpace(s3)) foreach (var m in s3.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) shortcutOpenAfterOpenModules.Add(m.Trim());
+            // Note: SendReport sequence loaded from PACS-scoped automation.json, not local settings
         }
 
         private void Save()

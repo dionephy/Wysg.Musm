@@ -23,14 +23,18 @@
         <ComboBoxItem Tag="GetSelectedReportDateTimeFromRelatedStudies">Get selected report date time from related studies list</ComboBoxItem>
         
         <!-- Current Study Data -->
-        <ComboBoxItem Tag="GetCurrentPatientNumber">Get current patient number</ComboBoxItem>
-        <ComboBoxItem Tag="GetCurrentStudyDateTime">Get current study date time</ComboBoxItem>
+        <ComboBoxItem Tag="GetCurrentPatientNumber">Get banner patient number</ComboBoxItem>
+        <ComboBoxItem Tag="GetCurrentStudyDateTime">Get banner study date time</ComboBoxItem>
         <ComboBoxItem Tag="GetCurrentStudyRemark">Get current study remark</ComboBoxItem>
         <ComboBoxItem Tag="GetCurrentPatientRemark">Get current patient remark</ComboBoxItem>
         <ComboBoxItem Tag="GetCurrentFindings">Get current findings</ComboBoxItem>
         <ComboBoxItem Tag="GetCurrentConclusion">Get current conclusion</ComboBoxItem>
         <ComboBoxItem Tag="GetCurrentFindings2">Get current findings 2</ComboBoxItem>
         <ComboBoxItem Tag="GetCurrentConclusion2">Get current conclusion 2</ComboBoxItem>
+        
+        <!-- Matching / Validation -->
+        <ComboBoxItem Tag="PatientNumberMatch">Patient number match</ComboBoxItem>
+        <ComboBoxItem Tag="StudyDateTimeMatch">Study date time match</ComboBoxItem>
         
         <!-- Actions -->
         <ComboBoxItem Tag="InvokeOpenStudy">Invoke open study</ComboBoxItem>
@@ -47,6 +51,11 @@
         <!-- Visibility Check -->
         <ComboBoxItem Tag="WorklistIsVisible">Worklist is visible</ComboBoxItem>
         <ComboBoxItem Tag="ReportTextIsVisible">ReportText is visible</ComboBoxItem>
+        
+        <!-- NEW: UI Actions -->
+        <ComboBoxItem Tag="InvokeOpenWorklist">Invoke open worklist</ComboBoxItem>
+        <ComboBoxItem Tag="SetFocusSearchResultsList">Set focus search results list</ComboBoxItem>
+        <ComboBoxItem Tag="SendReport">Send report</ComboBoxItem>
     </x:Array>
 
 </ResourceDictionary>

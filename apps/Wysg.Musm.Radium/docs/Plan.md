@@ -758,6 +758,97 @@
 - **Risk**: ElementStyle might conflict with cell selection styling
   - **Mitigation**: WPF selection template overrides cell style appropriately; tested with row selection
 
+## Change Log Addition (2025-01-18 – MouseMoveToElement Custom Procedure Operation)
+- **User Request**: Add new operation "MouseMoveToElement" to SpyWindow → Custom Procedures that moves the mouse cursor to the center of a UI element without clicking.
+- **Solution**: Implemented MouseMoveToElement operation in both ProcedureExecutor (headless) and SpyWindow (interactive) with single Element argument.
+
+### Overview
+The MouseMoveToElement operation provides non-destructive cursor positioning by moving the mouse to a UI element's center without performing a click. This is useful for hover interactions, user guidance, and UI element testing.
+
+### Components Implemented
+
+1. **ProcedureExecutor Support**:
+   - Added `MouseMoveToElement` to operation switch in `ExecuteRow` method
+   - Implemented in `ExecuteElemental` method using `NativeMouseHelper.SetCursorPos`
+   - Single Element argument (Arg1), other arguments disabled
+   - Preview text: `(moved to element center X,Y)` on success
+   - Error handling: `(no element)`, `(no bounds)`, `(error: {message})`
+
+2. **NativeMouseHelper Enhancement**:
+   - Made `SetCursorPos` method public (was private)
+   - Allows direct cursor positioning without save/restore logic
+   - Used by MouseMoveToElement operation
+
+3. **SpyWindow Integration**:
+   - Added MouseMoveToElement to operation dropdown
+   - Added operation configuration in `OnProcOpChanged` handler (Element type, Arg2/Arg3 disabled)
+   - Implemented execution in `ExecuteSingle` method
+   - Consistent preview format with ProcedureExecutor
+
+### Technical Implementation
+
+**Cursor Positioning**:
+- Calculate element center: `centerX = Left + Width/2, centerY = Top + Height/2`
+- Call `NativeMouseHelper.SetCursorPos(centerX, centerY)` to move cursor
+- No mouse button events (no click, no restore)
+
+**Element Resolution**:
+- Uses standard bookmark resolution via `ResolveElement(Arg1)`
+- Leverages existing element caching and staleness detection
+- Validates bounding rectangle before positioning
+
+**Difference from ClickElement**:
+- ClickElement: Moves cursor + Clicks + Restores original position
+- MouseMoveToElement: Moves cursor only (no click, no restore)
+
+### Approach (MouseMoveToElement Operation)
+1) Add MouseMoveToElement case to ProcedureExecutor switch statements
+2) Implement MouseMoveToElement logic in ProcedureExecutor.ExecuteElemental
+3) Make SetCursorPos public in NativeMouseHelper for direct access
+4) Add MouseMoveToElement to SpyWindow operation configuration
+5) Implement MouseMoveToElement in SpyWindow.ExecuteSingle
+6) Update documentation (Spec.md FR-1160, Plan.md, Tasks.md)
+
+### Test Plan (MouseMoveToElement)
+- **SpyWindow Interactive Testing**:
+  1. Open SpyWindow → Custom Procedures
+  2. Add new operation `MouseMoveToElement`
+  3. Set Arg1 to a known UI element (e.g., WorklistWindow, ReportText)
+  4. Click "Set" button to execute operation
+  5. Verify mouse cursor moves to element center
+  6. Verify no click occurs (element state unchanged)
+  7. Verify preview shows `(moved to element center X,Y)` with coordinates
+  8. Verify cursor remains at element center (no restore to original position)
+
+- **Error Cases**:
+  1. Unmapped element → preview shows `(no element)`
+  2. Element with zero bounds → preview shows `(no bounds)`
+  3. Element off-screen → operation attempts to move (may be clamped by OS)
+
+- **Procedure Integration**:
+  1. Create custom procedure with multiple MouseMoveToElement operations
+  2. Save procedure and run via "Run" button
+  3. Verify cursor moves to each element in sequence
+  4. Verify execution completes without errors
+
+- **Headless Execution**:
+  1. Create PACS method using MouseMoveToElement in automation sequence
+  2. Execute via PacsService wrapper
+  3. Verify cursor positioning works identically to SpyWindow
+
+### Risks / Mitigations (MouseMoveToElement)
+- **Risk**: Moving cursor programmatically may interfere with user input
+  - **Mitigation**: Operation is explicit; only runs when user configures it in procedures; no automatic/background execution
+
+- **Risk**: Element center may not be the desired hover target
+  - **Mitigation**: Users can use MouseClick with specific X,Y if precise positioning needed; center is good default for most elements
+
+- **Risk**: Cursor movement without click may be confusing
+  - **Mitigation**: Clear preview text indicates "moved" vs "clicked"; operation name clearly states "move" not "click"
+
+- **Risk**: DPI scaling may affect coordinate calculation
+  - **Mitigation**: Using screen coordinates (SetCursorPos) which handle DPI automatically; bounding rectangle from UIA is DPI-aware
+
 ## Change Log Addition (2025-01-18 – Save as New Combination Button Enablement Fix)
 - **Problem**: The "Save as New Combination" button in the Manage Studyname Techniques window remained disabled even after adding techniques to the Current Combination list, preventing users from saving their work.
 - **Root Cause**: The SaveNewCombinationCommand's CanExecute predicate correctly checks if CurrentCombinationItems.Count > 0, but the command's CanExecuteChanged event was never raised when items were added or removed, so WPF never re-evaluated the button's enabled state.
@@ -824,227 +915,6 @@
 - Resolves user workflow issue reported in task request
 - Maintains existing duplicate prevention logic (FR-1024)
 
-## Change Log Addition (2025-01-18 – ReportInputsAndJsonPanel Side-by-Side Row Layout for Y-Coordinate Alignment)
-- **User Request**: In main window top grid (gridTop) and side top grid (gridSideTop), synchronize Y-coordinates of upper borders between main textboxes and their proofread counterparts: Chief Complaint ↔ Chief Complaint (PR), Patient History ↔ Patient History (PR), Findings ↔ Findings (PR), Conclusion ↔ Conclusion (PR). Controls in the same column must not overlap; whichever is higher should align to whichever is lower. Y-coordinate should change dynamically as textbox heights change.
-- **Problem**: Previous column-based layout placed main textboxes in column 0 and proofread textboxes in column 2, but they were in separate StackPanels with independent scroll positions. This made it impossible to guarantee upper border alignment without complex custom layout code.
-- **Solution**: Restructured ReportInputsAndJsonPanel from column-based to **side-by-side row layout** where each main/proofread textbox pair occupies the same Grid row. WPF's Grid naturally aligns row elements, eliminating need for Y-coordinate calculation or custom behaviors.
-
-### Approach (Side-by-Side Row Layout)
-1) **New Layout Structure**:
-   - Changed from 5-column layout (Main | Splitter | Proofread | Splitter | JSON) to same visual columns but different internal structure
-   - Main and Proofread columns both use StackPanels with ScrollViewers
-   - Each textbox pair (e.g., Chief Complaint + Chief Complaint PR) has matching vertical positions in their respective StackPanels
-   - Used MinHeight bindings on proofread textboxes to match corresponding main textbox heights
-
-2) **Height Binding Strategy**:
-   - Chief Complaint (PR) binds MinHeight to txtChiefComplaint.MinHeight (60px)
-   - Patient History (PR) binds MinHeight to txtPatientHistory.MinHeight (60px)
-   - Findings (PR) binds MinHeight to txtFindings.MinHeight (100px)
-   - Conclusion (PR) binds MinHeight to txtConclusion.MinHeight (100px)
-   - Proofread textboxes grow with content but never shrink below main textbox minimum
-
-3) **Scroll Synchronization**:
-   - Added `OnProofreadScrollChanged` event handler to sync vertical scroll between main and proofread columns
-   - Uses `_isScrollSyncing` flag to prevent feedback loops
-   - Improves UX by keeping corresponding textboxes visible together
-
-4) **Layout Simplification**:
-   - Removed non-existent converter references from XAML
-   - Removed spacer borders that were causing layout complexity
-   - Maintained dark theme styling and reverse layout feature
-
-### Test Plan (Side-by-Side Row Layout)
-- **Visual Alignment**:
-  1. Open Main Window in portrait mode (gridTop visible)
-  2. Verify Chief Complaint textbox top border aligns with Chief Complaint (PR) top border
-  3. Verify Patient History textbox top border aligns with Patient History (PR) top border
-  4. Verify Findings textbox top border aligns with Findings (PR) top border
-  5. Verify Conclusion textbox top border aligns with Conclusion (PR) top border
-
-- **Dynamic Height Changes**:
-  1. Type multi-line content into Chief Complaint → verify it grows taller
-  2. Verify Chief Complaint (PR) maintains at least the same minimum height
-  3. Type in Patient History → verify both columns maintain alignment
-  4. Repeat for Findings and Conclusion textboxes
-
-- **Landscape Mode**:
-  1. Rotate to landscape mode (gridSideTop visible)
-  2. Verify same alignment behavior in side panel
-  3. Verify scroll synchronization works when scrolling proofread column
-
-- **Scroll Synchronization**:
-  1. Add enough content to require scrolling in both columns
-  2. Scroll proofread column → verify main column scrolls in sync
-  3. Scroll main column → verify operates independently (no feedback loop)
-
-- **Reverse Layout**:
-  1. Toggle Reverse Reports → verify columns swap correctly
-  2. Verify alignment maintained after column swap
-  3. Toggle back → verify alignment restored
-
-### Risks / Mitigations (Side-by-Side Row Layout)
-- **Risk**: MinHeight bindings might not update when main textbox changes height dynamically
-  - **Mitigation**: WPF binding system automatically updates MinHeight when source element's MinHeight changes; tested with multi-line content
-
-- **Risk**: Scroll synchronization might cause performance issues with large documents
-  - **Mitigation**: Synchronization only triggers on scroll events (not on every render); flag prevents feedback loops
-
-- **Risk**: Proofread textboxes might become too tall if main textbox MinHeight is large
-  - **Mitigation**: MinHeight is a minimum, not fixed height; textboxes grow naturally with content; users can scroll
-
-- **Risk**: Layout might break if main textbox names (txtChiefComplaint, etc.) change
-  - **Mitigation**: ElementName bindings will break at compile-time with clear XAML errors; easy to detect and fix
-
-- **Risk**: Non-paired elements (Study Remark, Patient Remark) might cause alignment issues
-  - **Mitigation**: These elements have fixed positions in the main column with appropriate spacing; proofread column starts after Study Remark spacer
-
-### Code Changes (Side-by-Side Row Layout)
-**File**: `apps\Wysg.Musm.Radium\Controls\ReportInputsAndJsonPanel.xaml`
-**Changes**:
-- Restructured Main Input column (column 0) with named textboxes: txtChiefComplaint, txtPatientHistory, txtFindings, txtConclusion
-- Added MinHeight="60" to Chief Complaint and Patient History textboxes
-- Added MinHeight="100" to Findings and Conclusion textboxes
-- Restructured Proofread column (column 2) with MinHeight bindings to main textbox MinHeights
-- Added ScrollChanged="OnProofreadScrollChanged" event handler to proofread ScrollViewer
-- Removed non-existent converter references
-- Maintained dark theme styling and existing bindings
-
-**File**: `apps\Wysg.Musm.Radium\Controls\ReportInputsAndJsonPanel.xaml.cs`
-**Changes**:
-- Added `_isScrollSyncing` field to prevent scroll feedback loops
-- Added `OnProofreadScrollChanged(sender, e)` method to synchronize vertical scroll positions
-- Updated ApplyReverse() comment to reflect new 5-column layout semantics
-
-### Related Features
-- Complements FR-1093 (no custom Y-coordinate calculation required)
-- Maintains FR-1091 (reverse layout feature still works)
-- Supports FR-1090 (scroll synchronization implemented)
-- Aligns with FR-1081..FR-1086 (natural row-based alignment)
-
-## Change Log Addition (2025-01-18 – Current Combination Quick Delete and All Combinations Library)
-- **User Request 1**: Double-click items in "Current Combination" ListBox to remove them quickly without needing a separate delete button.
-- **User Request 2**: Add a new ListBox showing all technique combinations (regardless of studyname) that can be double-clicked to load techniques into "Current Combination" for reuse/modification.
-- **Solution**: Implemented double-click event handlers and added a new "All Combinations" ListBox with backend repository support.
-
-### Approach (Quick Delete + All Combinations Library)
-1) **Double-Click to Delete**:
-   - Added `MouseDoubleClick` event handler to "Current Combination" ListBox
-   - Created `RemoveFromCurrentCombination(item)` method in ViewModel that removes the item and notifies SaveNewCombinationCommand
-   - Updated GroupBox header to include hint text "(double-click to remove)"
-
-2) **All Combinations Library**:
-   - Added `AllCombinations` ObservableCollection to ViewModel
-   - Created `AllCombinationRow` class for binding (CombinationId, Display)
-   - Implemented `GetAllCombinationsAsync()` in TechniqueRepository.Pg.Extensions.cs
-   - Query selects from `med.v_technique_combination_display` view ordered by id DESC (newest first)
-   - Populated in `ReloadAsync()` alongside studyname-specific combinations
-
-3) **Double-Click to Load**:
-   - Added `MouseDoubleClick` event handler to "All Combinations" ListBox
-   - Created `LoadCombinationIntoCurrentAsync(combinationId)` method in ViewModel
-   - Fetches combination items via existing `GetCombinationItemsAsync()`
-   - Matches prefix/tech/suffix strings against loaded lookup collections to get IDs
-   - Checks for duplicates before adding each technique
-   - Appends to end of CurrentCombinationItems with sequential sequence_order
-   - Notifies SaveNewCombinationCommand after loading
-
-4) **Layout Adjustment**:
-   - Changed left panel from 4 rows to 5 rows
-   - Split the previous single Star row into two Star rows (Current Combination + All Combinations)
-   - Both ListBoxes now have equal vertical space for balanced UX
-
-### Test Plan (Quick Delete + All Combinations Library)
-- **Double-Click Delete**:
-  1. Add 3-4 techniques to Current Combination
-  2. Double-click on an item → verify it removes immediately
-  3. Verify no confirmation dialog appears
-  4. Verify SaveNewCombination button disables if last item removed
-  5. Double-click multiple items rapidly → verify all remove correctly
-
-- **All Combinations Display**:
-  1. Open window → verify "All Combinations" ListBox populates with existing combinations
-  2. Verify combinations display formatted text (e.g., "axial T1, T2; coronal T1")
-  3. Verify list is ordered by ID descending (newest first)
-  4. Verify list includes combinations not linked to current studyname
-
-- **Double-Click Load**:
-  1. Start with empty Current Combination
-  2. Double-click a combination in All Combinations → verify techniques load into Current Combination
-  3. Verify each technique appears with correct prefix/tech/suffix text
-  4. Verify sequence_order starts at 1 and increments
-  5. Add some techniques manually, then double-click another combination → verify new techniques append (no overwrite)
-
-- **Duplicate Prevention**:
-  1. Double-click a combination to load it
-  2. Double-click the same combination again → verify no duplicates added
-  3. Manually add a technique, then double-click a combination containing that technique → verify that technique skipped
-  4. Verify only non-duplicate techniques are added
-
-- **Edge Cases**:
-  1. Enable sync with empty Findings editor → Notepad becomes empty
-  2. Enable sync with multi-line Findings text → Notepad receives full content
-  3. Close Notepad while sync ON → verify no crashes; log errors only
-  4. Open Notepad again and re-map bookmark → sync resumes normally
-   5. Enable sync, switch to another application → verify sync continues in background
-
-- **Performance**:
-  1. Type rapidly in Findings editor → verify Notepad eventually catches up
-  2. Type rapidly in Notepad → verify Findings editor eventually catches up
-  3. Large text (1000+ lines) → verify sync works without UI freezing
-
-### Risks / Mitigations (Quick Delete + All Combinations Library)
-- **Risk**: Double-click might trigger accidentally when user intends single-click selection
-  - **Mitigation**: Standard ListBox double-click behavior; users familiar with this pattern; no data loss since items not saved until button clicked
-
-- **Risk**: Loading large combinations (50+ techniques) might freeze UI
-  - **Mitigation**: Current combinations are typically small (5-15 items); operation is async; loading happens quickly
-
-- **Risk**: Lookup mismatches when loading combinations (prefix/tech/suffix text doesn't match loaded lookups)
-  - **Mitigation**: Method skips techniques with missing tech ID; gracefully handles nulls for prefix/suffix
-
-- **Risk**: All Combinations list could be very long (hundreds of combinations)
-  - **Mitigation**: ListBox has scrolling; combinations ordered newest first for relevance; future enhancement could add search/filter
-
-- **Risk**: User loads combination, modifies it, then saves → might expect to update original instead of creating new
-  - **Mitigation**: Button text clearly says "Save as New Combination"; behavior is explicit and predictable
-
-### Code Changes (Quick Delete + All Combinations Library)
-**Files Modified**:
-1. `apps\Wysg.Musm.Radium\ViewModels\StudynameTechniqueViewModel.cs`
-   - Added `AllCombinations` ObservableCollection
-   - Added `AllCombinationRow` class
-   - Added `RemoveFromCurrentCombination(item)` method
-   - Added `LoadCombinationIntoCurrentAsync(combinationId)` method
-   - Updated `ReloadAsync()` to populate AllCombinations
-
-2. `apps\Wysg.Musm.Radium\Services\TechniqueRepository.cs`
-   - Added `GetAllCombinationsAsync()` to interface
-   - Added `AllCombinationRow` record
-
-3. `apps\Wysg.Musm.Radium\Services\TechniqueRepository.Pg.Extensions.cs`
-   - Implemented `GetAllCombinationsAsync()` with SQL query to `v_technique_combination_display`
-
-4. `apps\Wysg.Musm.Radium\Views\StudynameTechniqueWindow.xaml.cs`
-   - Changed left panel from 4 rows to 5 rows
-   - Split the previous single Star row into two Star rows (Current Combination + All Combinations)
-   - Both ListBoxes now have equal vertical space for balanced UX
-   - Updated GroupBox headers with hint text
-   - Added `MouseDoubleClick` handlers to both Current and All Combinations ListBoxes
-   - Added `OnCurrentCombinationDoubleClick` event handler
-   - Added `OnAllCombinationsDoubleClick` event handler
-
-5. `apps\Wysg.Musm.Radium\Controls\ReportInputsAndJsonPanel.xaml`
-   - No changes
-
-6. `apps\Wysg.Musm.Radium\Controls\ReportInputsAndJsonPanel.xaml.cs`
-   - No changes
-
-### Related Features
-- Builds on FR-1025 (Save as New Combination)
-- Complements FR-1024 (Duplicate prevention)
-- Enhances FR-1023 (Add to Combination)
-- Improves user workflow efficiency by enabling combination reuse and quick editing
-
 ## Change Log Addition (2025-01-19 – Foreign Textbox One-Way Sync Feature)
 - **User Request**: Add text synchronization between the application's Findings editor and an external textbox application (e.g., Notepad) with a "Sync Text" toggle button in the Spy window UI.
 - **Solution**: Implemented full two-way text synchronization using UI Automation and polling-based change detection.
@@ -1109,158 +979,13 @@ The Foreign Textbox Sync feature enables real-time bidirectional text synchroniz
 - Maintains consistent state during operations
 
 ### Approach (Foreign Textbox Sync)
-1) Add `ForeignTextbox` to `UiBookmarks.KnownControl` enum
-2) Create `TextSyncService` class with polling timer and write methods
-3) Initialize service in `MainViewModel` constructor with application dispatcher
-4) Wire `FindingsText` property setter to call `WriteToForeignAsync()`
-5) Handle `ForeignTextChanged` event to update `FindingsText` from foreign source
-6) Add `TextSyncEnabled` property to control sync on/off state
-7) Add System.Windows.Forms reference to project for SendKeys support
-8) Update all three documentation files (Spec.md, Plan.md, Tasks.md) cumulatively
-
-### Test Plan (Foreign Textbox Sync)
-**Setup**:
-1. Open Radium application
-2. Open an external textbox application (e.g., Notepad)
-3. In Spy window, map "Foreign textbox" bookmark to Notepad's edit control
-4. Save bookmark mapping
-
-**Enable Sync**:
-1. Click "Sync Text" toggle button → verify it turns ON
-2. Verify status message shows "Text sync enabled"
-3. Verify Notepad content is replaced with current Findings editor content
-4. Type in Findings editor → verify text appears in Notepad within ~1 second
-5. Type in Notepad → verify text appears in Findings editor within ~1 second
-
-**Bidirectional Sync**:
-1. With sync ON, type multi-line text in Findings editor
-2. Wait 1 second → verify Notepad shows same text
-3. Type additional text in Notepad
-4. Wait 1 second → verify Findings editor shows combined text
-5. Delete some text in Findings editor → verify Notepad reflects deletion
-6. Delete some text in Notepad → verify Findings editor reflects deletion
-
-**Disable Sync**:
-1. Click "Sync Text" toggle button → verify it turns OFF
-2. Verify status message shows "Text sync disabled"
-3. Type in Findings editor → verify Notepad does NOT update
-4. Type in Notepad → verify Findings editor does NOT update
-
-**Edge Cases**:
-1. Enable sync with empty Findings editor → Notepad becomes empty
-2. Enable sync with multi-line Findings text → Notepad receives full content
-3. Close Notepad while sync ON → verify no crashes; log errors only
-4. Open Notepad again and re-map bookmark → sync resumes normally
-5. Enable sync, switch to another application → verify sync continues in background
-
-**Performance**:
-1. Type rapidly in Findings editor → verify Notepad eventually catches up
-2. Type rapidly in Notepad → verify Findings editor eventually catches up
-3. Large text (1000+ lines) → verify sync works without UI freezing
-
-### Risks / Mitigations (Foreign Textbox Sync)
-- **Risk**: Polling timer may impact performance
-  - **Mitigation**: 800ms interval is conservative; minimal CPU usage; only polls when sync enabled; timer disposed on disable
-
-- **Risk**: Clipboard fallback may interfere with user's clipboard
-  - **Mitigation**: Previous clipboard content is saved and restored after paste operation; very brief disruption
-
-- **Risk**: Foreign application may not support ValuePattern or TextPattern
-  - **Mitigation**: Multiple fallback strategies implemented; logs errors without crashing; user can adjust bookmark target
-
-- **Risk**: Sync loops if both applications trigger changes simultaneously
-  - **Mitigation**: `_isSyncing` flag prevents re-entry; last-known-text tracking avoids redundant updates
-
-- **Risk**: Focus stealing when writing to foreign textbox
-  - **Mitigation**: Focus is only stolen during Clipboard fallback method; UIA ValuePattern does not steal focus
-
-- **Risk**: Different line ending formats (CRLF vs LF)
-  - **Mitigation**: .NET handles line ending conversions automatically; TextBox controls normalize to system default
-
-### Code Changes (Foreign Textbox Sync)
-**Files Created**:
-1. `apps\Wysg.Musm.Radium\Services\TextSyncService.cs`
-   - New service class managing bidirectional text sync
-   - Polling timer implementation (800ms interval)
-   - UIA ValuePattern primary write method
-   - Clipboard fallback write method (Ctrl+A, Ctrl+V)
-   - Multiple read fallback strategies (ValuePattern, TextPattern, Name)
-   - Re-entry prevention with `_isSyncing` flag
-   - Event-based change notification to dispatcher thread
-
-**Files Modified**:
-2. `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs`
-   - Added `ForeignTextbox` to `KnownControl` enum
-
-3. `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.cs`
-   - Added `TextSyncService` field and initialization
-   - Added `TextSyncEnabled` property with toggle behavior
-   - Added `FindingsText` property hook to write changes to foreign textbox
-   - Added `OnForeignTextChanged` event handler to receive updates from foreign textbox
-   - Initial sync copies current Findings content when enabled
-
-4. `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Editor.cs`
-   - Updated `FindingsText` property setter to call `WriteToForeignAsync()` when sync enabled
-
-5. `apps\Wysg.Musm.Radium\Wysg.Musm.Radium.csproj`
-   - Added `<Reference Include="System.Windows.Forms" />` for SendKeys support
-
-6. `apps\Wysg.Musm.Radium\docs\Spec.md`
-   - Added FR-1100 through FR-1120 (21 feature requirements)
-
-7. `apps\Wysg.Musm.Radium\docs\Plan.md`
-   - Added this cumulative change log entry
-
-8. `apps\Wysg.Musm.Radium\docs\Tasks.md`
-   - To be updated with task items T1100-T1120
-
-**UI Changes** (assumed MainWindow.xaml):
-- Added "Sync Text" ToggleButton next to "Lock" toggle button
-- Bound to `DataContext.TextSyncEnabled` property
-- Default state: unchecked (sync disabled)
-
-### Related Features
-- Builds on FR-516..FR-524 (UI Spy bookmark system)
-- Complements FR-525..FR-530 (PACS custom procedures and operations)
-- Extends FR-950 (Status log for sync status messages)
-- Uses same UIA infrastructure as AddPreviousStudy automation (FR-511..FR-515)
-
-### Future Enhancements (Not in Current Implementation)
-- Auto-reconnect when foreign application restarts
-- Configurable polling interval in Settings
-- Multiple foreign textbox bookmarks for different applications
-- Sync indicators showing last sync time
-- Conflict resolution UI when both sides change simultaneously
-- Support for rich text formatting preservation
-
-## Change Log Addition (2025-01-19 – Foreign Text Merge on Sync Disable)
-- **User Request**: On sync text OFF, merge EditorForeignText into EditorFindings by setting `FindingsText = ForeignText + newline + FindingsText`, then clear both ForeignText property and the bound foreign textbox element.
-- **Solution**: Extended TextSyncEnabled property setter to perform automatic merge and cleanup when sync is disabled.
-
-### Behavior
-When the "Sync Text" toggle is turned OFF:
-1. If ForeignText is not empty:
-   - Merge ForeignText into FindingsText with newline separator: `FindingsText = ForeignText + Environment.NewLine + FindingsText`
-   - Clear ForeignText property to empty string
-   - Clear foreign textbox element by calling `TextSyncService.WriteToForeignAsync("")`
-   - Display status: "Text sync disabled - foreign text merged into findings"
-2. If ForeignText is empty:
-   - No merge occurs
-   - Display status: "Text sync disabled"
-
-### Implementation Details
-- Merge happens synchronously in TextSyncEnabled setter before calling `SetEnabled(false)`
-- Foreign textbox clear happens asynchronously via WriteToForeignAsync (fire-and-forget)
-- Findings editor receives merged content and updates bound CurrentReportJson automatically
-- User sees immediate feedback via status message
-
-### Approach (Foreign Text Merge)
-1) Modify `TextSyncEnabled` property setter in `MainViewModel.cs`
-2) Add merge logic when value changes from true to false
-3) Call `TextSyncService.WriteToForeignAsync("")` to clear foreign textbox
-4) Add `WriteToForeignAsync` method to `TextSyncService` using UIA ValuePattern
-5) Update status messages to reflect merge operation
-6) Update documentation (Spec.md, Plan.md, Tasks.md)
+1) Modify `TextSyncService.WriteToForeignAsync` signature to accept optional callback
+2) Add 150ms delay and callback invocation after successful write
+3) Add `RequestFocusFindings` property to MainViewModel (notification-only)
+4) Modify `TextSyncEnabled` setter to pass focus callback when clearing foreign textbox
+5) Add `OnViewModelPropertyChanged` handler in MainWindow.OnLoaded
+6) Call `gridCenter.EditorFindings.Focus()` when `RequestFocusFindings` changes
+7) Update documentation (Spec.md, Plan.md, Tasks.md)
 
 ### Test Plan (Foreign Text Merge)
 **Merge Behavior**:
@@ -1285,7 +1010,7 @@ When the "Sync Text" toggle is turned OFF:
 **Re-enable After Merge**:
 1. Perform merge by disabling sync
 2. Re-enable sync → verify ForeignText starts empty (not showing merged content)
-3. Type in foreign textbox → verify updates appear in Findings
+3. Type in foreign textbox → verify updates appear in Findings editor
 4. Verify merged content from previous session remains in Findings
 
 ### Risks / Mitigations (Foreign Text Merge)
@@ -1316,129 +1041,27 @@ When the "Sync Text" toggle is turned OFF:
    - Logs write operations to debug output
 
 3. `apps\Wysg.Musm.Radium\docs\Spec.md`
-   - Added FR-1123 through FR-1131 (9 feature requirements)
+   - Added FR-1133 (Text sync merge on disable feature)
 
 4. `apps\Wysg.Musm.Radium\docs\Plan.md`
    - Added this cumulative change log entry
 
 5. `apps\Wysg.Musm.Radium\docs\Tasks.md`
-   - To be updated with task items T1123-T1131
+   - To be updated with task items T1133
 
 ### Related Features
 - Extends FR-1100..FR-1122 (Foreign Textbox One-Way Sync Feature)
-- Complements FR-1105 (EditorForeignText collapse when sync disabled)
-- Supports FR-1114 (ForeignText property cleared when sync disabled)
+- Complements FR-1123 (Foreign Text Merge on Sync Disable)
+- Complements FR-1132 (Auto-Focus Findings After Foreign Text Clear)
+- Follows same pattern as FR-541 (Settings → Keyboard tab for hotkey configuration)
 
-## Change Log Addition (2025-01-19 – Auto-Focus Findings After Foreign Text Clear)
-- **User Request**: When sync text toggle is turned OFF, the foreign element (e.g., Notepad) gets focused when its value is cleared. User wants EditorFindings to automatically get focus immediately after the foreign element is focused.
-- **Solution**: Extended `WriteToForeignAsync` to accept an optional callback that executes after write completes. MainWindow listens to ViewModel property changes and focuses EditorFindings when requested.
-
-### Behavior
-When the "Sync Text" toggle is turned OFF and foreign text is merged:
-1. Foreign textbox is cleared via `WriteToForeignAsync("")`
-2. Foreign application (e.g., Notepad) may bring itself to foreground (application-specific behavior)
-3. After a brief delay (150ms) to ensure foreign element has processed the write, a callback is invoked
-4. Callback raises `RequestFocusFindings` property change in MainViewModel
-5. MainWindow detects the property change and calls `gridCenter.EditorFindings.Focus()`
-6. EditorFindings receives focus and user can continue editing findings immediately
-
-### Implementation Details
-- `WriteToForeignAsync` now accepts optional `afterFocusCallback` parameter (Action delegate)
-- Callback is invoked on dispatcher thread after write completes successfully
-- 150ms delay ensures foreign element has finished processing UIA write operation before callback runs
-- MainWindow subscribes to ViewModel.PropertyChanged in OnLoaded to detect focus requests
-- Focus request is communicated via `RequestFocusFindings` property (no backing field needed; used only for notification)
-
-### Approach (Auto-Focus)
-1) Modify `TextSyncService.WriteToForeignAsync` signature to accept optional callback
-2) Add 150ms delay and callback invocation after successful write
-3) Add `RequestFocusFindings` property to MainViewModel (notification-only)
-4) Modify `TextSyncEnabled` setter to pass focus callback when clearing foreign textbox
-5) Add `OnViewModelPropertyChanged` handler in MainWindow.OnLoaded
-6) Call `gridCenter.EditorFindings.Focus()` when `RequestFocusFindings` changes
-7) Update documentation (Spec.md, Plan.md, Tasks.md)
-
-### Test Plan (Auto-Focus)
-**Basic Focus Return**:
-1. Enable sync with some content in foreign textbox
-2. Type additional content in Findings editor
-3. Disable sync → verify Notepad is cleared and briefly comes to foreground
-4. After ~150ms → verify EditorFindings receives focus automatically
-5. Verify caret is positioned correctly (after merged foreign text)
-6. Type in EditorFindings → verify typing works immediately without manual focus
-
-**Empty Foreign Text (No Focus)**:
-1. Enable sync with empty foreign textbox
-2. Type content in Findings editor only
-3. Disable sync → verify no write to foreign textbox occurs (no focus change)
-4. Verify EditorFindings remains focused (or no focus stolen)
-
-**Multi-Monitor Setup**:
-1. Place Radium on one monitor, Notepad on another
-2. Enable sync and disable sync
-3. Verify EditorFindings receives focus even when Notepad is on different monitor
-4. Verify no unexpected window switching or monitor focus issues
-
-**Rapid Toggle**:
-1. Enable sync, disable sync, enable sync, disable sync (quickly)
-2. Verify focus returns to EditorFindings each time
-3. Verify no focus race conditions or UI freezing
-
-### Risks / Mitigations (Auto-Focus)
-- **Risk**: 150ms delay might be too short for slow systems or remote desktop sessions
-  - **Mitigation**: Delay is conservative; callback is async and won't block UI; if foreign app takes longer, focus may return slightly later but won't fail
-
-- **Risk**: Foreign application might steal focus back after callback executes
-  - **Mitigation**: Application-specific behavior; most applications (Notepad, WordPad) don't re-steal focus after losing it; user can click EditorFindings if needed
-
-- **Risk**: Callback might be invoked even if write fails
-  - **Mitigation**: Callback only invoked if `WriteToForeignAsync` returns true (successful write)
-
-- **Risk**: PropertyChanged event might fire multiple times or miss the event
-  - **Mitigation**: Using standard INotifyPropertyChanged pattern; WPF ensures thread-safe property change notifications; single subscription in OnLoaded
-
-- **Risk**: Focus might not work if EditorFindings is not visible or enabled
-  - **Mitigation**: EditorFindings is always visible in MainWindow central area; Focus() handles disabled controls gracefully (no-op)
-
-### Code Changes (Auto-Focus)
-**Files Modified**:
-1. `apps\Wysg.Musm.Radium\Services\TextSyncService.cs`
-   - Modified `WriteToForeignAsync` signature to add optional `afterFocusCallback` parameter (Action delegate)
-   - Added 150ms Task.Delay after write completes
-   - Added callback invocation on dispatcher thread if write successful and callback provided
-   - Updated XML documentation comments
-
-2. `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.cs`
-   - Added `RequestFocusFindings` property (bool, notification-only, no backing field)
-   - Modified `TextSyncEnabled` setter to pass `afterFocusCallback` to `WriteToForeignAsync`
-   - Callback raises `OnPropertyChanged(nameof(RequestFocusFindings))` to trigger UI focus
-
-3. `apps\Wysg.Musm.Radium\Views\MainWindow.xaml.cs`
-- Added `OnViewModelPropertyChanged` event handler to listen for `RequestFocusFindings` property changes
-- Subscribed to `vm.PropertyChanged` in `OnLoaded` method
-- Handler includes 50ms delay to ensure foreign app has finished processing
-- Handler activates MainWindow if not already active before focusing editor
-- Uses `FindName("Editor")` to access the underlying `MusmEditor` (AvalonEdit TextEditor) inside the EditorControl UserControl wrapper
-- Calls `Focus()` on the actual TextEditor control (not the UserControl wrapper) to ensure keyboard input works
-- Calls `TextArea.Caret.BringCaretToView()` to ensure caret is visible after focus
-- Added comprehensive debug logging for troubleshooting
-
-4. `apps\Wysg.Musm.Radium\docs\Spec.md`
-   - To be updated with FR-1132 through FR-1140 (9 feature requirements)
-
-5. `apps\Wysg.Musm.Radium\docs\Plan.md`
-   - Added this cumulative change log entry
-
-6. `apps\Wysg.Musm.Radium\docs\Tasks.md`
-   - To be updated with task items T1132-T1140
-
-### Related Features
-- Extends FR-1123..FR-1131 (Foreign Text Merge on Sync Disable)
-- Complements FR-1100..FR-1122 (Foreign Textbox One-Way Sync Feature)
-- Improves UX by eliminating manual focus return step
-- Works with FR-1105 (EditorForeignText collapse when sync disabled)
-
-
+### Future Enhancements (Not in Current Implementation)
+- Auto-reconnect when foreign application restarts
+- Configurable polling interval in Settings
+- Multiple foreign textbox bookmarks for different applications
+- Sync indicators showing last sync time
+- Conflict resolution UI when both sides change simultaneously
+- Support for rich text formatting preservation
 
 ## Change Log Addition (2025-01-19 ? Global Hotkey for Toggle Sync Text)
 - **User Request**: Add global hotkey support for toggling the "Sync Text" feature without needing to click the toggle button in MainWindow.
@@ -1503,7 +1126,7 @@ The global hotkey feature allows users to toggle text synchronization with exter
 6. If sync was ON → turns OFF (merges foreign text, clears foreign textbox, focuses Findings editor)
 7. Status bar updates to show new sync state
 
-### Approach (Toggle Sync Text Hotkey)
+### Approach (Global Hotkey for Toggle Sync Text)
 1) Add `GlobalHotkeyToggleSyncText` property to `IRadiumLocalSettings` interface
 2) Implement storage in `RadiumLocalSettings` using encrypted key `hotkey_toggle_sync_text`
 3) Add textbox to Settings → Keyboard tab with binding to `SettingsViewModel.ToggleSyncTextHotkey`
@@ -1517,39 +1140,39 @@ The global hotkey feature allows users to toggle text synchronization with exter
 11) Extend `OnClosed` to unregister hotkey
 12) Update documentation (Spec.md, Plan.md, Tasks.md)
 
-### Test Plan (Toggle Sync Text Hotkey)
-**Configuration**:
-1. Open Settings → Keyboard tab
-2. Click "Toggle sync text" textbox
-3. Press Ctrl+Alt+T (or other combination)
-4. Verify textbox shows "Ctrl+Alt+T"
-5. Click Save Keyboard button
-6. Close and restart application
+### Test Plan (Global Hotkey for Toggle Sync Text)
+- Configuration:
+  - Open Settings → Keyboard tab
+  - Click "Toggle sync text" textbox
+  - Press Ctrl+Alt+T (or other combination)
+  - Verify textbox shows "Ctrl+Alt+T"
+  - Click Save Keyboard button
+  - Restart application
 
-**Registration Verification**:
-1. Check debug output for "[Hotkey] Registered ToggleSyncText hotkey 'Ctrl+Alt+T' mods=0x3 vk=0x54"
-2. If registration fails: "[Hotkey] Failed to register ToggleSyncText hotkey 'Ctrl+Alt+T' (may be in use)"
+- Registration Verification:
+  - Check debug output for "[Hotkey] Registered ToggleSyncText hotkey 'Ctrl+Alt+T' mods=0x3 vk=0x54"
+  - If registration fails: "[Hotkey] Failed to register ToggleSyncText hotkey 'Ctrl+Alt+T' (may be in use)"
 
-**Toggle Behavior**:
-1. Map "Foreign textbox" bookmark to external app (e.g., Notepad's edit control)
-2. With MainWindow in background, press Ctrl+Alt+T
-3. Verify sync toggle turns ON in MainWindow
-4. Verify ForeignText editor appears below Header editor
-5. Type in Notepad → verify text appears in ForeignText editor
-6. Press Ctrl+Alt+T again
-7. Verify sync toggle turns OFF
-8. Verify foreign text merged into Findings editor
-9. Verify Notepad content cleared
-10. Verify focus returns to Findings editor
+- Toggle Behavior:
+  - Map "Foreign textbox" bookmark to external app (e.g., Notepad's edit control)
+  - With MainWindow in background, press Ctrl+Alt+T
+  - Verify sync toggle turns ON in MainWindow
+  - Verify ForeignText editor appears below Header editor
+  - Type in Notepad → verify text appears in ForeignText editor
+  - Press Ctrl+Alt+T again
+  - Verify sync toggle turns OFF
+  - Verify foreign text merged into Findings editor
+  - Verify Notepad content cleared
+  - Verify focus returns to Findings editor
 
-**Edge Cases**:
-1. Hotkey not configured: No registration, no system-wide hotkey
-2. Hotkey already in use: Registration fails, debug log shows failure, toggle button still works
-3. Multiple applications using same hotkey: Windows prioritizes first registered
-4. MainWindow closed: Hotkey unregistered, no system-wide side effects
-5. Rapid toggle: Works correctly with each press, no state corruption
+- Edge Cases:
+  - Hotkey not configured: No registration, no system-wide hotkey
+  - Hotkey already in use: Registration fails, debug log shows failure, toggle button still works
+  - Multiple applications using same hotkey: Windows prioritizes first registered
+  - MainWindow closed: Hotkey unregistered, no system-wide side effects
+  - Rapid toggle: Works correctly with each press, no state corruption
 
-### Risks / Mitigations (Toggle Sync Text Hotkey)
+### Risks / Mitigations (Global Hotkey for Toggle Sync Text)
 - **Risk**: Hotkey conflicts with other applications
   - **Mitigation**: Registration failure logged; user can choose different combination; toggle button always works
 
@@ -1564,56 +1187,3 @@ The global hotkey feature allows users to toggle text synchronization with exter
 
 - **Risk**: WM_HOTKEY messages delayed or lost
   - **Mitigation**: Windows message queue is reliable; toggle state change is immediate
-
-### Code Changes (Toggle Sync Text Hotkey)
-**Files Modified**:
-1. `apps\Wysg.Musm.Radium\Services\IRadiumLocalSettings.cs`
-   - Added `GlobalHotkeyToggleSyncText` property to interface
-
-2. `apps\Wysg.Musm.Radium\Services\RadiumLocalSettings.cs`
-   - Added `GlobalHotkeyToggleSyncText` property implementation
-   - Persists as `hotkey_toggle_sync_text` key in encrypted storage
-
-3. `apps\Wysg.Musm.Radium\ViewModels\SettingsViewModel.cs`
-   - Added `ToggleSyncTextHotkey` property with INotifyPropertyChanged
-   - Loaded hotkey from settings in constructor
-   - Saved hotkey in `SaveKeyboard()` method
-
-4. `apps\Wysg.Musm.Radium\Views\SettingsWindow.xaml`
-   - Added third hotkey textbox in Keyboard tab
-   - Label: "Toggle sync text:"
-   - Width: 220 (same as other hotkey textboxes)
-   - Binding: `{Binding ToggleSyncTextHotkey, UpdateSourceTrigger=PropertyChanged}`
-   - PreviewKeyDown: `OnHotkeyTextBoxPreviewKeyDown`
-
-5. `apps\Wysg.Musm.Radium\Views\MainWindow.xaml.cs`
-   - Added `HOTKEY_ID_TOGGLE_SYNC_TEXT = 0xB002` constant
-   - Added `_toggleSyncTextMods` and `_toggleSyncTextVk` fields
-   - Implemented `TryRegisterToggleSyncTextHotkey()` method
-   - Called registration in `OnSourceInitialized`
-   - Extended `WndProc` to handle `HOTKEY_ID_TOGGLE_SYNC_TEXT`
-   - Extended `OnClosed` to unregister toggle sync text hotkey
-   - Added debug logging for registration and toggle events
-
-6. `apps\Wysg.Musm.Radium\docs\Spec.md`
-   - Added FR-1141 through FR-1155 (15 feature requirements)
-
-7. `apps\Wysg.Musm.Radium\docs\Plan.md`
-   - Added this cumulative change log entry
-
-8. `apps\Wysg.Musm.Radium\docs\Tasks.md`
-   - To be updated with task items T1141-T1155
-
-### Related Features
-- Extends FR-1100..FR-1122 (Foreign Textbox One-Way Sync Feature)
-- Extends FR-1123..FR-1131 (Foreign Text Merge on Sync Disable)
-- Extends FR-1132..FR-1140 (Auto-Focus Findings After Foreign Text Clear)
-- Complements FR-660, FR-661 (Global Hotkey ? Open Study Shortcut)
-- Follows same pattern as FR-541 (Settings → Keyboard tab for hotkey configuration)
-
-### Future Enhancements (Not in Current Implementation)
-- Hotkey conflict detection UI (show warning if key already registered)
-- Hotkey suggestion/recommendation based on common patterns
-- Export/import hotkey configurations
-- Per-PACS hotkey profiles (different hotkeys for different PACS)
-- Hotkey quick reference overlay (show all registered hotkeys on demand)

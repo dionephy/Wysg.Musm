@@ -26,10 +26,13 @@ namespace Wysg.Musm.Radium.Views
         // Global hotkeys (system-wide)
         private const int HOTKEY_ID_OPEN_STUDY = 0xB001;
         private const int HOTKEY_ID_TOGGLE_SYNC_TEXT = 0xB002;
+        private const int HOTKEY_ID_SEND_REPORT = 0xB003;
         private uint _openStudyMods;
         private uint _openStudyVk;
         private uint _toggleSyncTextMods;
         private uint _toggleSyncTextVk;
+        private uint _sendReportMods;
+        private uint _sendReportVk;
 
         public MainWindow()
         {
@@ -373,6 +376,7 @@ namespace Wysg.Musm.Radium.Views
             // Register global hotkeys (if configured) after HWND exists
             TryRegisterOpenStudyHotkey();
             TryRegisterToggleSyncTextHotkey();
+            TryRegisterSendReportHotkey();
         }
 
         private void OnOpenSpy(object sender, RoutedEventArgs e)
@@ -627,6 +631,34 @@ namespace Wysg.Musm.Radium.Views
             }
         }
 
+        private void TryRegisterSendReportHotkey()
+        {
+            try
+            {
+                var app = (App)Application.Current;
+                var local = app.Services.GetService<IRadiumLocalSettings>();
+                var text = local?.GlobalHotkeySendStudy;
+                if (string.IsNullOrWhiteSpace(text)) return;
+
+                // Parse persisted hotkey text (e.g., "Ctrl+Decimal") into user32 modifiers + virtual key
+                if (!TryParseHotkey(text!, out _sendReportMods, out _sendReportVk)) return;
+
+                // Acquire current HwndSource for this window; it exists only after OnSourceInitialized
+                _hotkeyHwndSource = (HwndSource?)PresentationSource.FromVisual(this);
+                if (_hotkeyHwndSource == null) return;
+                // Defensive: ensure previous registration is cleared to avoid duplicate-id registration
+                try { UnregisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_SEND_REPORT); } catch { }
+                var ok = RegisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_SEND_REPORT, _sendReportMods, _sendReportVk);
+                System.Diagnostics.Debug.WriteLine(ok
+                    ? $"[Hotkey] Registered SendReport hotkey '{text}' mods=0x{_sendReportMods:X} vk=0x{_sendReportVk:X}"
+                    : $"[Hotkey] Failed to register SendReport hotkey '{text}' (may be in use) mods=0x{_sendReportMods:X} vk=0x{_sendReportVk:X}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[Hotkey] SendReport register exception: " + ex.Message);
+            }
+        }
+
         // Global message hook to receive WM_HOTKEY from user32.
         // When our registered id fires, route to ViewModel methods
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -646,7 +678,16 @@ namespace Wysg.Musm.Radium.Views
                     {
                         // Toggle the TextSyncEnabled property
                         vm.TextSyncEnabled = !vm.TextSyncEnabled;
-                        System.Diagnostics.Debug.WriteLine($"[Hotkey] ToggleSyncText executed - new state: {vm.TextSyncEnabled}");
+                        System.Diagnostics.Debugger.Log(0, "Hotkey", $"[Hotkey] ToggleSyncText executed - new state: {vm.TextSyncEnabled}\n");
+                    }
+                    handled = true;
+                }
+                else if (id == HOTKEY_ID_SEND_REPORT)
+                {
+                    if (DataContext is MainViewModel vm)
+                    {
+                        vm.RunSendReportShortcut();
+                        System.Diagnostics.Debug.WriteLine("[Hotkey] SendReport executed");
                     }
                     handled = true;
                 }
@@ -663,6 +704,7 @@ namespace Wysg.Musm.Radium.Views
                 {
                     UnregisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_OPEN_STUDY);
                     UnregisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_TOGGLE_SYNC_TEXT);
+                    UnregisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_SEND_REPORT);
                     _hotkeyHwndSource.RemoveHook(WndProc);
                 }
             }

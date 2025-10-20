@@ -662,4 +662,3 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [ ] V458 Double-click combination with techniques having null prefix/suffix → verify techniques load correctly
 - [ ] V459 Verify Save button enables after loading techniques from All Combinations
 - [ ] V460 Load techniques from All Combinations, modify list (add/remove), then save → verify new combination created
-- [ ] V461 Resize window → verify both ListBoxes resize proportionally

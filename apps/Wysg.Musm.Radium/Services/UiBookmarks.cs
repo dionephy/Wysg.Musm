@@ -45,7 +45,10 @@ public sealed class UiBookmarks
         TestInvoke, // new: generic target for testing Invoke operation
         Screen_MainCurrentStudyTab, // NEW: main screen current study tab area
         Screen_SubPreviousStudyTab, // NEW: sub screen previous study tab area
-        ForeignTextbox // NEW: external textbox for two-way sync with Findings editor
+        ForeignTextbox, // NEW: external textbox for two-way sync with Findings editor
+        // NEW: Additional KnownControl entries for new features (2025-01-16)
+        WorklistOpenButton, // for InvokeOpenWorklist - button that opens worklist
+        SendReportButton // for SendReport - button that sends report in PACS
     }
 
     public enum MapMethod { Chain = 0, AutomationIdOnly = 1 }

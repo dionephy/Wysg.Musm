@@ -46,6 +46,11 @@
         
         <!-- Test -->
         <ComboBoxItem Tag="TestInvoke">Test invoke</ComboBoxItem>
+        
+        <!-- NEW: Worklist Actions (2025-01-16) -->
+        <ComboBoxItem Tag="WorklistOpenButton">Worklist open button</ComboBoxItem>
+        <ComboBoxItem Tag="SearchResultsList">Search results list</ComboBoxItem>
+        <ComboBoxItem Tag="SendReportButton">Send report button</ComboBoxItem>
     </x:Array>
 
 </ResourceDictionary>

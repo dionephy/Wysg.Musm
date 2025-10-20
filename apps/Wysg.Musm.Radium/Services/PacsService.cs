@@ -28,22 +28,37 @@ namespace Wysg.Musm.Radium.Services
         // Execute custom procedure only (caller must define it in ui-procedures.json)
         private static async Task<string?> ExecCustom(string methodTag)
         {
-            try { return await ProcedureExecutor.ExecuteAsync(methodTag); }
+            try 
+            { 
+                System.Diagnostics.Debug.WriteLine($"[PacsService][ExecCustom] Executing procedure: {methodTag}");
+                var result = await ProcedureExecutor.ExecuteAsync(methodTag);
+                System.Diagnostics.Debug.WriteLine($"[PacsService][ExecCustom] Result for {methodTag}: '{result}'");
+                System.Diagnostics.Debug.WriteLine($"[PacsService][ExecCustom] Result length: {result?.Length ?? 0} characters");
+                return result;
+            }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[PacsService] Procedure '{methodTag}' failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[PacsService][ExecCustom] Procedure '{methodTag}' failed: {ex.GetType().Name} - {ex.Message}");
                 return null;
             }
         }
 
         private static async Task<string?> ExecWithRetry(string tag, int attempts = 5, int delayMs = 140)
         {
+            System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] Starting {tag} with {attempts} attempts");
             for (int i = 0; i < attempts; i++)
             {
+                System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] {tag} attempt {i + 1}/{attempts}");
                 var val = await ExecCustom(tag);
-                if (!string.IsNullOrWhiteSpace(val)) return val;
+                if (!string.IsNullOrWhiteSpace(val)) 
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] {tag} SUCCESS on attempt {i + 1}: '{val}'");
+                    return val;
+                }
+                System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] {tag} attempt {i + 1} returned empty, retrying...");
                 await Task.Delay(delayMs + i * 40);
             }
+            System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] {tag} FAILED after {attempts} attempts");
             return null;
         }
 
@@ -159,6 +174,41 @@ namespace Wysg.Musm.Radium.Services
         public async Task<string?> ReportTextIsVisibleAsync()
         {
             return await ExecCustom("ReportTextIsVisible");
+        }
+
+        // NEW: Invoke open worklist
+        public async Task<bool> InvokeOpenWorklistAsync()
+        {
+            await ExecCustom("InvokeOpenWorklist");
+            return true;
+        }
+
+        // NEW: Set focus on search results list
+        public async Task<bool> SetFocusSearchResultsListAsync()
+        {
+            await ExecCustom("SetFocusSearchResultsList");
+            return true;
+        }
+
+        // NEW: Send report (findings and conclusion)
+        public async Task<bool> SendReportAsync(string findings, string conclusion)
+        {
+            // This would typically send the report through PACS UI
+            // For now, we execute the custom procedure which should handle the UI interaction
+            await ExecCustom("SendReport");
+            return true;
+        }
+
+        // NEW: Check if patient number matches between PACS and MainWindow
+        public async Task<string?> PatientNumberMatchAsync()
+        {
+            return await ExecCustom("PatientNumberMatch");
+        }
+
+        // NEW: Check if study datetime matches between PACS and MainWindow
+        public async Task<string?> StudyDateTimeMatchAsync()
+        {
+            return await ExecCustom("StudyDateTimeMatch");
         }
 
         public async Task<bool> IsViewerWindowAsync(IntPtr hwnd)

@@ -131,6 +131,10 @@ namespace Wysg.Musm.Radium.ViewModels
             ShortcutOpenNewModules.Clear();
             ShortcutOpenAddModules.Clear();
             ShortcutOpenAfterOpenModules.Clear();
+            SendReportModules.Clear();
+            SendReportPreviewModules.Clear();
+            ShortcutSendReportPreviewModules.Clear();
+            ShortcutSendReportReportifiedModules.Clear();
 
             try
             {
@@ -147,6 +151,10 @@ namespace Wysg.Musm.Radium.ViewModels
                         LoadModuleSequence(settings.ShortcutOpenNew, ShortcutOpenNewModules);
                         LoadModuleSequence(settings.ShortcutOpenAdd, ShortcutOpenAddModules);
                         LoadModuleSequence(settings.ShortcutOpenAfterOpen, ShortcutOpenAfterOpenModules);
+                        LoadModuleSequence(settings.SendReportSequence, SendReportModules);
+                        LoadModuleSequence(settings.SendReportPreviewSequence, SendReportPreviewModules);
+                        LoadModuleSequence(settings.ShortcutSendReportPreview, ShortcutSendReportPreviewModules);
+                        LoadModuleSequence(settings.ShortcutSendReportReportified, ShortcutSendReportReportifiedModules);
 
                         Debug.WriteLine($"[SettingsVM] Loaded automation settings from {automationFile}");
                     }
@@ -188,7 +196,11 @@ namespace Wysg.Musm.Radium.ViewModels
                     AddStudySequence = string.Join(",", AddStudyModules),
                     ShortcutOpenNew = string.Join(",", ShortcutOpenNewModules),
                     ShortcutOpenAdd = string.Join(",", ShortcutOpenAddModules),
-                    ShortcutOpenAfterOpen = string.Join(",", ShortcutOpenAfterOpenModules)
+                    ShortcutOpenAfterOpen = string.Join(",", ShortcutOpenAfterOpenModules),
+                    SendReportSequence = string.Join(",", SendReportModules),
+                    SendReportPreviewSequence = string.Join(",", SendReportPreviewModules),
+                    ShortcutSendReportPreview = string.Join(",", ShortcutSendReportPreviewModules),
+                    ShortcutSendReportReportified = string.Join(",", ShortcutSendReportReportifiedModules)
                 };
 
                 var automationFile = GetAutomationFilePath(SelectedPacsForAutomation);
@@ -234,6 +246,10 @@ namespace Wysg.Musm.Radium.ViewModels
             public string? ShortcutOpenNew { get; set; }
             public string? ShortcutOpenAdd { get; set; }
             public string? ShortcutOpenAfterOpen { get; set; }
+            public string? SendReportSequence { get; set; }
+            public string? SendReportPreviewSequence { get; set; }
+            public string? ShortcutSendReportPreview { get; set; }
+            public string? ShortcutSendReportReportified { get; set; }
         }
 
         private static string? Prompt(string title, string message, string defaultText)

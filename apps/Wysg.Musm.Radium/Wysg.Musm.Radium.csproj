@@ -17,8 +17,22 @@
     <None Remove="Fonts\D2Coding-Ver1.3.2-20180524.ttf" />
   </ItemGroup>
 
+  <!-- Exclude PostgreSQL SQL files completely from the project to avoid SQL Server validation -->
+  <ItemGroup>
+    <Compile Remove="docs\db\db_local_postgre_20251014.sql" />
+    <EmbeddedResource Remove="docs\db\db_local_postgre_20251014.sql" />
+    <None Remove="docs\db\db_local_postgre_20251014.sql" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="docs\db\db_central_azure_migration_20251019.sql" />
+  </ItemGroup>
+
+  <!-- Exclude root-level PostgreSQL SQL file completely -->
+  <ItemGroup>
+    <Compile Remove="..\..\local_db(wysg_dev)_20251014_after.sql" />
+    <EmbeddedResource Remove="..\..\local_db(wysg_dev)_20251014_after.sql" />
+    <None Remove="..\..\local_db(wysg_dev)_20251014_after.sql" />
   </ItemGroup>
 
   <!-- Ensure icon is included (will be picked automatically if present in root) -->

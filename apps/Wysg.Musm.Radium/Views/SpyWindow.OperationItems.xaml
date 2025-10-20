@@ -11,12 +11,22 @@
         <ComboBoxItem Content="Trim"/>
         <ComboBoxItem Content="Invoke"/>
         <ComboBoxItem Content="GetValueFromSelection"/>
+        <ComboBoxItem Content="GetSelectedElement"/>
         <ComboBoxItem Content="ToDateTime"/>
         <ComboBoxItem Content="Replace"/>
         <ComboBoxItem Content="GetHTML"/>
         <ComboBoxItem Content="MouseClick"/>
         <ComboBoxItem Content="ClickElement"/>
+        <ComboBoxItem Content="ClickElementAndStay"/>
+        <ComboBoxItem Content="MouseMoveToElement"/>
         <ComboBoxItem Content="IsVisible"/>
+        <ComboBoxItem Content="SetFocus"/>
+        <ComboBoxItem Content="SetClipboard"/>
+        <ComboBoxItem Content="SimulateTab"/>
+        <ComboBoxItem Content="SimulatePaste"/>
+        <ComboBoxItem Content="IsMatch"/>
+        <ComboBoxItem Content="GetCurrentPatientNumber"/>
+        <ComboBoxItem Content="GetCurrentStudyDateTime"/>
     </x:Array>
 
 </ResourceDictionary>

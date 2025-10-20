@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -14,7 +15,7 @@ namespace Wysg.Musm.Radium.Services
 {
     internal static class ProcedureExecutor
     {
-        private static readonly HttpClient _http = new HttpClient();
+        private static readonly HttpClient _http = new();
         private static bool _encProviderRegistered;
         private static Func<string>? _getProcPathOverride;
         public static void SetProcPathOverride(Func<string> resolver) => _getProcPathOverride = resolver;
@@ -26,6 +27,10 @@ namespace Wysg.Musm.Radium.Services
         }
 
         private static readonly Dictionary<UiBookmarks.KnownControl, AutomationElement> _controlCache = new();
+        
+        // Runtime element cache for storing elements from GetSelectedElement
+        private static readonly Dictionary<string, AutomationElement> _elementCache = new();
+        
         private static AutomationElement? GetCached(UiBookmarks.KnownControl key)
         {
             if (_controlCache.TryGetValue(key, out var el))
@@ -85,22 +90,153 @@ namespace Wysg.Musm.Radium.Services
             catch { }
         }
 
-        public static Task<string?> ExecuteAsync(string methodTag) => Task.Run(() => ExecuteInternal(methodTag));
+        public static Task<string?> ExecuteAsync(string methodTag) => Task.Run(() => 
+        {
+            Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] ===== START: {methodTag} =====");
+            try
+            {
+                var result = ExecuteInternal(methodTag);
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] ===== END: {methodTag} =====");
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] Final result: '{result}'");
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] Result length: {result?.Length ?? 0} characters");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] ===== EXCEPTION in {methodTag} =====");
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] Exception: {ex.GetType().Name} - {ex.Message}");
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] StackTrace: {ex.StackTrace}");
+                throw;
+            }
+        });
 
         private static string? ExecuteInternal(string methodTag)
         {
             if (string.IsNullOrWhiteSpace(methodTag)) return null;
+            
+            // Clear element cache before executing procedure
+            _elementCache.Clear();
+            
+            // Special handling for direct MainViewModel reads (no procedure needed)
+            if (string.Equals(methodTag, "GetCurrentPatientNumber", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    Debug.WriteLine("[ProcedureExecutor][GetCurrentPatientNumber] Starting direct read");
+                    
+                    // Access MainWindow on UI thread to avoid cross-thread exception
+                    string result = string.Empty;
+                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    {
+                        var mainWindow = System.Windows.Application.Current?.MainWindow;
+                        if (mainWindow != null)
+                        {
+                            Debug.WriteLine("[ProcedureExecutor][GetCurrentPatientNumber] MainWindow found");
+                            if (mainWindow.DataContext is ViewModels.MainViewModel mainVM)
+                            {
+                                result = mainVM.PatientNumber ?? string.Empty;
+                                Debug.WriteLine($"[ProcedureExecutor][GetCurrentPatientNumber] SUCCESS: PatientNumber='{result}'");
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"[ProcedureExecutor][GetCurrentPatientNumber] FAIL: MainWindow.DataContext is {mainWindow.DataContext?.GetType().Name ?? "null"}");
+                            }
+                        }
+                        else
+                        {
+                            Debug.WriteLine("[ProcedureExecutor][GetCurrentPatientNumber] FAIL: MainWindow is null");
+                        }
+                    });
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[ProcedureExecutor][GetCurrentPatientNumber] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                }
+                return string.Empty;
+            }
+            
+            if (string.Equals(methodTag, "GetCurrentStudyDateTime", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    Debug.WriteLine("[ProcedureExecutor][GetCurrentStudyDateTime] Starting direct read");
+                    
+                    // Access MainWindow on UI thread to avoid cross-thread exception
+                    string result = string.Empty;
+                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    {
+                        var mainWindow = System.Windows.Application.Current?.MainWindow;
+                        if (mainWindow != null)
+                        {
+                            Debug.WriteLine("[ProcedureExecutor][GetCurrentStudyDateTime] MainWindow found");
+                            if (mainWindow.DataContext is ViewModels.MainViewModel mainVM)
+                            {
+                                var rawValue = mainVM.StudyDateTime ?? string.Empty;
+                                Debug.WriteLine($"[ProcedureExecutor][GetCurrentStudyDateTime] Raw value: '{rawValue}'");
+                                
+                                // Try to parse and format as YYYY-MM-DD HH:mm:ss
+                                if (!string.IsNullOrWhiteSpace(rawValue) && DateTime.TryParse(rawValue, out var dt))
+                                {
+                                    result = dt.ToString("yyyy-MM-dd HH:mm:ss");
+                                    Debug.WriteLine($"[ProcedureExecutor][GetCurrentStudyDateTime] SUCCESS: Formatted='{result}'");
+                                }
+                                else
+                                {
+                                    // Return raw value if parsing fails
+                                    result = rawValue;
+                                    Debug.WriteLine($"[ProcedureExecutor][GetCurrentStudyDateTime] WARN: Failed to parse datetime, returning raw value");
+                                }
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"[ProcedureExecutor][GetCurrentStudyDateTime] FAIL: MainWindow.DataContext is {mainWindow.DataContext?.GetType().Name ?? "null"}");
+                            }
+                        }
+                        else
+                        {
+                            Debug.WriteLine("[ProcedureExecutor][GetCurrentStudyDateTime] FAIL: MainWindow is null");
+                        }
+                    });
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[ProcedureExecutor][GetCurrentStudyDateTime] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                }
+                return string.Empty;
+            }
+            
             var store = Load();
 
             if (!store.Methods.TryGetValue(methodTag, out var steps) || steps.Count == 0)
             {
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] Procedure '{methodTag}' not found in store");
+                
                 // No implicit fallback for InvokeOpenStudy; require explicit authoring
                 if (string.Equals(methodTag, "InvokeOpenStudy", StringComparison.OrdinalIgnoreCase))
+                {
+                    Debug.WriteLine("[ProcedureExecutor][ExecuteInternal] InvokeOpenStudy requires explicit configuration");
                     throw new InvalidOperationException("Custom procedure 'InvokeOpenStudy' is not defined. Please configure it in SpyWindow for this PACS profile.");
+                }
 
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] Attempting to create fallback procedure for '{methodTag}'");
                 steps = TryCreateFallbackProcedure(methodTag);
-                if (steps.Count > 0) { store.Methods[methodTag] = steps; Save(store); }
-                else return null;
+                if (steps.Count > 0) 
+                { 
+                    Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] Created fallback with {steps.Count} steps");
+                    store.Methods[methodTag] = steps; 
+                    Save(store); 
+                }
+                else 
+                {
+                    Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] No fallback available for '{methodTag}'");
+                    return null;
+                }
+            }
+            else
+            {
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] Found procedure '{methodTag}' with {steps.Count} steps");
             }
 
             var vars = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
@@ -108,13 +244,85 @@ namespace Wysg.Musm.Radium.Services
             for (int i = 0; i < steps.Count; i++)
             {
                 var row = steps[i];
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] Step {i + 1}/{steps.Count}: Op='{row.Op}'");
                 var (preview, value) = ExecuteRow(row, vars);
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] Step {i + 1} result: preview='{preview}', value='{value}'");
                 var implicitKey = $"var{i + 1}";
                 vars[implicitKey] = value;
-                if (!string.IsNullOrWhiteSpace(row.OutputVar)) vars[row.OutputVar!] = value;
+                if (!string.IsNullOrWhiteSpace(row.OutputVar)) 
+                {
+                    vars[row.OutputVar!] = value;
+                    Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] Stored to variable '{row.OutputVar}': '{value}'");
+                }
                 // Changed: Always update lastOperationResult to the current operation's result
                 lastOperationResult = value;
             }
+            
+            Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] All steps completed. Last result: '{lastOperationResult}'");
+
+            // Special handling for PatientNumberMatch and StudyDateTimeMatch
+            if (string.Equals(methodTag, "PatientNumberMatch", StringComparison.OrdinalIgnoreCase))
+            {
+                // Compare PACS patient number (lastOperationResult) with MainViewModel current patient
+                try
+                {
+                    Debug.WriteLine("[ProcedureExecutor][PatientNumberMatch] Starting comparison");
+                    var mainWindow = System.Windows.Application.Current?.MainWindow;
+                    if (mainWindow != null)
+                    {
+                        if (mainWindow.DataContext is ViewModels.MainViewModel mainVM)
+                        {
+                            string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : System.Text.RegularExpressions.Regex.Replace(s, "[^A-Za-z0-9]", "").ToUpperInvariant();
+                            var pacsPatientNumber = Normalize(lastOperationResult);
+                            var mainPatientNumber = Normalize(mainVM.PatientNumber);
+                            Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] PACS='{pacsPatientNumber}' Main='{mainPatientNumber}'");
+                            bool matches = string.Equals(pacsPatientNumber, mainPatientNumber, StringComparison.Ordinal);
+                            Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] Result: {matches}");
+                            return matches ? "true" : "false";
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                }
+                return "false"; // Default to false if comparison fails
+            }
+            
+            if (string.Equals(methodTag, "StudyDateTimeMatch", StringComparison.OrdinalIgnoreCase))
+            {
+                // Compare PACS study datetime (lastOperationResult) with MainViewModel current study datetime
+                try
+                {
+                    Debug.WriteLine("[ProcedureExecutor][StudyDateTimeMatch] Starting comparison");
+                    var mainWindow = System.Windows.Application.Current?.MainWindow;
+                    if (mainWindow != null)
+                    {
+                        if (mainWindow.DataContext is ViewModels.MainViewModel mainVM)
+                        {
+                            Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] PACS='{lastOperationResult}' Main='{mainVM.StudyDateTime}'");
+                            if (DateTime.TryParse(lastOperationResult, out var pacsDateTime) &&
+                                DateTime.TryParse(mainVM.StudyDateTime, out var mainDateTime))
+                            {
+                                // Compare dates only (ignore time component)
+                                bool matches = pacsDateTime.Date == mainDateTime.Date;
+                                Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] Result: {matches}");
+                                return matches ? "true" : "false";
+                            }
+                            else
+                            {
+                                Debug.WriteLine("[ProcedureExecutor][StudyDateTimeMatch] Failed to parse datetimes");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                }
+                return "false"; // Default to false if comparison fails
+            }
+            
             // Changed: Return blank string if last operation returned null
             return lastOperationResult ?? string.Empty;
         }
@@ -183,6 +391,68 @@ namespace Wysg.Musm.Radium.Services
                     new ProcOpRow { Op = "IsVisible", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.WorklistWindow.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
                 };
             }
+            // NEW: Auto-seed for InvokeOpenWorklist - invoke worklist open button
+            if (string.Equals(methodTag, "InvokeOpenWorklist", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "Invoke", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.WorklistOpenButton.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
+                };
+            }
+            // NEW: Auto-seed for SetFocusSearchResultsList - use SetFocus operation on search results list
+            if (string.Equals(methodTag, "SetFocusSearchResultsList", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "SetFocus", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.SearchResultsList.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
+                };
+            }
+            // NEW: Auto-seed for SendReport - placeholder for now (requires findings/conclusion parameters in future)
+            if (string.Equals(methodTag, "SendReport", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    // Placeholder: Invoke send report button (user will configure specific UI element)
+                    new ProcOpRow { Op = "Invoke", Arg1 = new ProcArg { Type = nameof(ArgKind.Element), Value = UiBookmarks.KnownControl.SendReportButton.ToString() }, Arg1Enabled = true, Arg2Enabled = false, Arg3Enabled = false }
+                };
+            }
+            // NEW: Auto-seed for PatientNumberMatch - compares PACS patient number with MainViewModel current patient
+            if (string.Equals(methodTag, "PatientNumberMatch", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "GetCurrentPatientNumber", Arg1Enabled = false, Arg2Enabled = false, Arg3Enabled = false, OutputVar = "var1" }
+                };
+            }
+            // NEW: Auto-seed for StudyDateTimeMatch - compares PACS study datetime with MainViewModel current study datetime
+            if (string.Equals(methodTag, "StudyDateTimeMatch", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    new ProcOpRow { Op = "GetCurrentStudyDateTime", Arg1Enabled = false, Arg2Enabled = false, Arg3Enabled = false, OutputVar = "var1" }
+                };
+            }
+            
+            // PLACEHOLDER FALLBACKS for GetCurrentPatientNumber and GetCurrentStudyDateTime
+            // These operations read from MainViewModel directly, no UI automation needed
+            // Users can override these with custom procedures if needed
+            if (string.Equals(methodTag, "GetCurrentPatientNumber", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    // This is a special operation that reads directly from MainViewModel.PatientNumber
+                    // No procedure steps needed - handled in ExecuteInternal
+                };
+            }
+            if (string.Equals(methodTag, "GetCurrentStudyDateTime", StringComparison.OrdinalIgnoreCase))
+            {
+                return new List<ProcOpRow>
+                {
+                    // This is a special operation that reads directly from MainViewModel.StudyDateTime
+                    // No procedure steps needed - handled in ExecuteInternal
+                };
+            }
+            
             return new List<ProcOpRow>();
         }
 
@@ -203,24 +473,36 @@ namespace Wysg.Musm.Radium.Services
                     var input = ResolveString(row.Arg1, vars);
                     var sepRaw = ResolveString(row.Arg2, vars) ?? string.Empty;
                     var indexStr = ResolveString(row.Arg3, vars);
-                    if (input == null) { return ("(null)", null); }
+                    
+                    // DIAGNOSTIC: Log separator details
+                    Debug.WriteLine($"[Split] Input length: {input?.Length ?? 0}");
+                    Debug.WriteLine($"[Split] SepRaw: '{sepRaw}' (length: {sepRaw.Length}, bytes: {string.Join(" ", System.Text.Encoding.UTF8.GetBytes(sepRaw).Select(b => b.ToString("X2")))})");
+                    Debug.WriteLine($"[Split] Input contains separator: {input?.Contains(sepRaw) ?? false}");
+                    
+                    if (input == null) { return "(null)", null; }
 
                     string[] parts;
                     if (sepRaw.StartsWith("re:", StringComparison.OrdinalIgnoreCase) || sepRaw.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
                     {
                         var pattern = sepRaw.StartsWith("re:", StringComparison.OrdinalIgnoreCase) ? sepRaw.Substring(3) : sepRaw.Substring(6);
-                        if (string.IsNullOrEmpty(pattern)) { return ("(empty pattern)", null); }
+                        if (string.IsNullOrEmpty(pattern)) { return "(empty pattern)", null; }
                         try { parts = Regex.Split(input, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase); }
                         catch (Exception ex) { return ($"(regex error: {ex.Message})", null); }
                     }
                     else
                     {
                         var sep = UnescapeUserText(sepRaw);
+                        Debug.WriteLine($"[Split] After unescape: '{sep}' (length: {sep.Length}, bytes: {string.Join(" ", System.Text.Encoding.UTF8.GetBytes(sep).Select(b => b.ToString("X2")))})");
+                        Debug.WriteLine($"[Split] Input contains unescaped separator: {input.Contains(sep)}");
+                        
                         parts = input.Split(new[] { sep }, StringSplitOptions.None);
+                        Debug.WriteLine($"[Split] Split result: {parts.Length} parts");
+                        
                         if (parts.Length == 1 && sep.Contains('\n') && !sep.Contains("\r\n"))
                         {
                             var crlfSep = sep.Replace("\n", "\r\n");
                             parts = input.Split(new[] { crlfSep }, StringSplitOptions.None);
+                            Debug.WriteLine($"[Split] After CRLF retry: {parts.Length} parts");
                         }
                     }
 
@@ -236,18 +518,38 @@ namespace Wysg.Musm.Radium.Services
                     }
                     return (preview, valueToStore);
                 }
+                case "IsMatch":
+                {
+                    var value1 = ResolveString(row.Arg1, vars) ?? string.Empty;
+                    var value2 = ResolveString(row.Arg2, vars) ?? string.Empty;
+                    
+                    bool match = string.Equals(value1, value2, StringComparison.Ordinal);
+                    string result = match ? "true" : "false";
+                    
+                    preview = $"{result} ('{value1}' vs '{value2}')";
+                    return (preview, result);
+                }
                 case "GetText":
                 case "GetTextOCR":
                 case "Invoke":
                 case "ClickElement":
+                case "ClickElementAndStay":
+                case "MouseMoveToElement":
                 case "IsVisible":
                 case "MouseClick":
                 case "GetValueFromSelection":
+                case "GetSelectedElement":
                 case "ToDateTime":
                 case "TakeLast":
                 case "Trim":
                 case "Replace":
                 case "GetHTML":
+                case "SetClipboard":
+                case "SimulateTab":
+                case "SimulatePaste":
+                case "Delay":
+                case "GetCurrentPatientNumber":
+                case "GetCurrentStudyDateTime":
                     return ExecuteElemental(row, vars);
                 default:
                     return ("(unsupported)", null);
@@ -294,6 +596,20 @@ namespace Wysg.Musm.Radium.Services
                         if (el == null) return ("(no element)", null);
                         try { var inv = el.Patterns.Invoke.PatternOrDefault; if (inv != null) inv.Invoke(); else el.Patterns.Toggle.PatternOrDefault?.Toggle(); return ("(invoked)", null); }
                         catch { return ("(error)", null); }
+                    }
+                    case "SetFocus":
+                    {
+                        var el = ResolveElement(row.Arg1);
+                        if (el == null) return ("(no element)", null);
+                        try 
+                        { 
+                            el.Focus(); 
+                            return ("(focused)", null); 
+                        }
+                        catch (Exception ex) 
+                        { 
+                            return ($"(error: {ex.Message})", null); 
+                        }
                     }
                     case "TakeLast":
                     {
@@ -388,6 +704,40 @@ namespace Wysg.Musm.Radium.Services
                         }
                         catch (Exception ex) { return ($"(error: {ex.Message})", null); }
                     }
+                    case "ClickElementAndStay":
+                    {
+                        var el = ResolveElement(row.Arg1);
+                        if (el == null) return ("(no element)", null);
+                        try
+                        {
+                            var rect = el.BoundingRectangle;
+                            if (rect.Width <= 0 || rect.Height <= 0) return ("(no bounds)", null);
+                            
+                            int centerX = (int)(rect.Left + rect.Width / 2);
+                            int centerY = (int)(rect.Top + rect.Height / 2);
+                            
+                            NativeMouseHelper.ClickScreen(centerX, centerY); // No restore - cursor stays
+                            return ($"(clicked and stayed at {centerX},{centerY})", null);
+                        }
+                        catch (Exception ex) { return ($"(error: {ex.Message})", null); }
+                    }
+                    case "MouseMoveToElement":
+                    {
+                        var el = ResolveElement(row.Arg1);
+                        if (el == null) return ("(no element)", null);
+                        try
+                        {
+                            var rect = el.BoundingRectangle;
+                            if (rect.Width <= 0 || rect.Height <= 0) return ("(no bounds)", null);
+                            
+                            int centerX = (int)(rect.Left + rect.Width / 2);
+                            int centerY = (int)(rect.Top + rect.Height / 2);
+                            
+                            NativeMouseHelper.SetCursorPos(centerX, centerY);
+                            return ($"(moved to element center {centerX},{centerY})", null);
+                        }
+                        catch (Exception ex) { return ($"(error: {ex.Message})", null); }
+                    }
                     case "IsVisible":
                     {
                         var el = ResolveElement(row.Arg1);
@@ -404,6 +754,96 @@ namespace Wysg.Musm.Radium.Services
                         {
                             // Element exists but not accessible - consider it not visible
                             return ("false", "false");
+                        }
+                    }
+                    case "SetClipboard":
+                    {
+                        var text = ResolveString(row.Arg1, vars);
+                        if (text == null) return ("(null)", null);
+                        try
+                        {
+                            // Use STA thread for clipboard operations
+                            var sta = new System.Threading.Thread(() =>
+                            {
+                                try { System.Windows.Clipboard.SetText(text); }
+                                catch { }
+                            });
+                            sta.SetApartmentState(System.Threading.ApartmentState.STA);
+                            sta.Start();
+                            sta.Join(1000); // Wait up to 1 second
+                            return ($"(clipboard set, {text.Length} chars)", null);
+                        }
+                        catch (Exception ex) { return ($"(error: {ex.Message})", null); }
+                    }
+                    case "SimulateTab":
+                    {
+                        try
+                        {
+                            System.Windows.Forms.SendKeys.SendWait("{TAB}");
+                            return ("(Tab key sent)", null);
+                        }
+                        catch (Exception ex) { return ($"(error: {ex.Message})", null); }
+                    }
+                    case "Delay":
+                    {
+                        var delayStr = ResolveString(row.Arg1, vars);
+                        if (!int.TryParse(delayStr, out var delayMs) || delayMs < 0) 
+                            return ("(invalid delay)", null);
+                        try
+                        {
+                            Task.Delay(delayMs).Wait();
+                            return ($"(delayed {delayMs} ms)", null);
+                        }
+                        catch (Exception ex) { return ($"(error: {ex.Message})", null); }
+                    }
+                    case "SimulatePaste":
+                    {
+                        try
+                        {
+                            System.Windows.Forms.SendKeys.SendWait("^v");
+                            return ("(Ctrl+V sent)", null);
+                        }
+                        catch (Exception ex) { return ($"(error: {ex.Message})", null); }
+                    }
+                    case "GetSelectedElement":
+                    {
+                        // Resolve parent element from Arg1
+                        var listEl = ResolveElement(row.Arg1);
+                        if (listEl == null)
+                            return ("(element not resolved)", null);
+
+                        try
+                        {
+                            // Get selected item
+                            var selection = listEl.Patterns.Selection.PatternOrDefault;
+                            var selected = selection?.Selection?.Value ?? Array.Empty<AutomationElement>();
+                            if (selected.Length == 0)
+                            {
+                                // Fallback: scan descendants
+                                selected = listEl.FindAllDescendants().Where(a =>
+                                {
+                                    try { return a.Patterns.SelectionItem.IsSupported && a.Patterns.SelectionItem.PatternOrDefault?.IsSelected == true; }
+                                    catch { return false; }
+                                }).ToArray();
+                            }
+
+                            if (selected.Length == 0)
+                                return ("(no selection)", null);
+
+                            var selectedRow = selected[0];
+                            var elName = string.IsNullOrWhiteSpace(selectedRow.Name) ? "(no name)" : selectedRow.Name;
+                            var elAutoId = selectedRow.AutomationId ?? "(no automationId)";
+                            
+                            // Store element in cache for later use by ClickElement, etc.
+                            var cacheKey = $"SelectedElement:{selectedRow.Name}";
+                            _elementCache[cacheKey] = selectedRow;
+                            
+                            // Return element identifier (name)
+                            return ($"(element: {elName}, automationId: {elAutoId})", cacheKey);
+                        }
+                        catch (Exception ex)
+                        {
+                            return ($"(error: {ex.Message})", null);
                         }
                     }
                 }
@@ -437,97 +877,137 @@ namespace Wysg.Musm.Radium.Services
 
         private static AutomationElement? ResolveElement(ProcArg arg)
         {
-            if (ParseArgKind(arg.Type) != ArgKind.Element) return null;
-            var tag = arg.Value ?? string.Empty;
-            if (!Enum.TryParse<UiBookmarks.KnownControl>(tag, out var key)) return null;
-
-            // Strategy: Try cache first, validate it, then resolve fresh with retry on staleness
-            for (int attempt = 0; attempt < ElementResolveMaxAttempts; attempt++)
+            var type = ParseArgKind(arg.Type);
+            
+            // Handle Element type (bookmark-based resolution)
+            if (type == ArgKind.Element)
             {
-                // Attempt 1: Check cache
-                var cached = GetCached(key);
-                if (cached != null)
+                var tag = arg.Value ?? string.Empty;
+                if (!Enum.TryParse<UiBookmarks.KnownControl>(tag, out var key)) return null;
+
+                // Strategy: Try cache first, validate it, then resolve fresh with retry on staleness
+                for (int attempt = 0; attempt < ElementResolveMaxAttempts; attempt++)
                 {
-                    if (IsElementAlive(cached))
+                    // Attempt 1: Check cache
+                    var cached = GetCached(key);
+                    if (cached != null)
                     {
-                        return cached; // Cache hit, element valid
+                        if (IsElementAlive(cached))
+                        {
+                            return cached; // Cache hit, element valid
+                        }
+                        else
+                        {
+                            // Stale element in cache, remove it
+                            _controlCache.Remove(key);
+                        }
+                    }
+
+                    // Attempt 2: Resolve fresh from bookmark
+                    try
+                    {
+                        var tuple = UiBookmarks.Resolve(key);
+                        if (tuple.element != null)
+                        {
+                            // Validate the newly resolved element before caching
+                            if (IsElementAlive(tuple.element))
+                            {
+                                StoreCache(key, tuple.element);
+                                return tuple.element;
+                            }
+
+                            // Element resolved but not alive - retry with delay
+                            Task.Delay(ElementResolveRetryDelayMs).Wait();
+                        }
+                    }
+                    catch { }
+                }
+                
+                // All attempts exhausted for Element type
+                return null;
+            }
+            
+            // Handle Var type (variable containing cached element reference)
+            if (type == ArgKind.Var)
+            {
+                var varValue = ResolveString(arg, new Dictionary<string, string?>()) ?? string.Empty;
+                
+                // Check if this variable contains a cached element reference
+                if (_elementCache.TryGetValue(varValue, out var cachedElement))
+                {
+                    // Validate element is still alive
+                    if (IsElementAlive(cachedElement))
+                    {
+                        return cachedElement;
                     }
                     else
                     {
-                        // Stale element in cache, remove it
-                        _controlCache.Remove(key);
+                        // Element is stale, remove from cache
+                        _elementCache.Remove(varValue);
+                        return null;
                     }
-                }
-
-                // Attempt 2: Resolve fresh from bookmark
-                try
-                {
-                    var tuple = UiBookmarks.Resolve(key);
-                    if (tuple.element != null)
-                    {
-                        // Validate the newly resolved element before caching
-                        if (IsElementAlive(tuple.element))
-                        {
-                            StoreCache(key, tuple.element);
-                            return tuple.element;
-                        }
-                        // Element resolved but immediately stale (rare UI timing issue)
-                    }
-                }
-                catch
-                {
-                    // Resolve failed, will retry
-                }
-
-                // If not last attempt, wait before retry (exponential backoff)
-                if (attempt < ElementResolveMaxAttempts - 1)
-                {
-                    System.Threading.Thread.Sleep(ElementResolveRetryDelayMs * (attempt + 1));
                 }
             }
-
-            // All attempts exhausted
+            
             return null;
         }
 
-        /// <summary>
-        /// Validates that an AutomationElement is still alive and accessible.
-        /// Inspired by legacy PacsService validation pattern: try to access a property and catch exceptions.
-        /// </summary>
-        private static bool IsElementAlive(AutomationElement element)
+        private static ArgKind ParseArgKind(string s)
         {
-            try
+            return s.Trim() switch
             {
-                // Attempt to access a lightweight property to validate element is still in UI tree
-                _ = element.Name;
-                return true;
-            }
-            catch
-            {
-                // Element is stale (UI element no longer exists or accessible)
-                return false;
-            }
-        }
-
-        private static string? ResolveString(ProcArg arg, Dictionary<string, string?> vars)
-        {
-            var type = ParseArgKind(arg.Type);
-            return type switch
-            {
-                ArgKind.Var => (arg.Value != null && vars.TryGetValue(arg.Value, out var v)) ? v : null,
-                ArgKind.String => arg.Value,
-                ArgKind.Number => arg.Value,
-                ArgKind.Element => null,
-                _ => null
+                "Element" => ArgKind.Element,
+                "String" => ArgKind.String,
+                "Number" => ArgKind.Number,
+                "Var" => ArgKind.Var,
+                _ => ArgKind.String,
             };
         }
 
-        private static ArgKind ParseArgKind(string? s)
+        private static bool IsElementAlive(AutomationElement el)
         {
-            if (Enum.TryParse<ArgKind>(s, true, out var k)) return k;
-            return s?.Equals("Var", StringComparison.OrdinalIgnoreCase) == true ? ArgKind.Var :
-                   s?.Equals("Element", StringComparison.OrdinalIgnoreCase) == true ? ArgKind.Element :
-                   s?.Equals("Number", StringComparison.OrdinalIgnoreCase) == true ? ArgKind.Number : ArgKind.String;
+            try
+            {
+                // Test if element is still accessible by checking Name property
+                _ = el.Name;
+                
+                // Additional validation: check if element has valid bounds
+                var rect = el.BoundingRectangle;
+                return true; // Element is accessible
+            }
+            catch
+            {
+                return false; // Element is stale or not accessible
+            }
+        }
+
+        private static string ResolveString(ProcArg arg, Dictionary<string, string?> vars)
+        {
+            var type = ParseArgKind(arg.Type);
+            
+            if (type == ArgKind.Element)
+            {
+                // For ArgKind.Element, resolve using the elements dictionary
+                var key = arg.Value ?? string.Empty;
+                return _elementCache.TryGetValue(key, out var el) && el != null ? el.Name : string.Empty;
+            }
+            
+            if (type == ArgKind.Var)
+            {
+                // For ArgKind.Var, look up value in vars dictionary
+                vars.TryGetValue(arg.Value ?? string.Empty, out var value);
+                return value ?? string.Empty;
+            }
+            
+            // For String and Number types, return the value directly
+            return arg.Value ?? string.Empty;
+        }
+
+        private static AutomationElement ResolveElement(string key)
+        {
+            // Attempt to resolve an element by its key (name or automationId)
+            if (_elementCache.TryGetValue(key, out var el) && el != null) return el;
+            return null;
         }
 
         private static class SpyHeaderHelpers
@@ -542,6 +1022,7 @@ namespace Wysg.Musm.Radium.Services
                 if (string.Equals(h, "BodyPart", StringComparison.OrdinalIgnoreCase)) return "Body Part";
                 return h;
             }
+            
             public static List<string> GetHeaderTexts(AutomationElement list)
             {
                 var headers = new List<string>();
@@ -566,6 +1047,7 @@ namespace Wysg.Musm.Radium.Services
                 catch { }
                 return headers;
             }
+            
             public static List<string> GetRowCellValues(AutomationElement row)
             {
                 var vals = new List<string>();
@@ -585,6 +1067,7 @@ namespace Wysg.Musm.Radium.Services
                 catch { }
                 return vals;
             }
+            
             private static string TryRead(AutomationElement el)
             {
                 try

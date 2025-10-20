@@ -5,7 +5,7 @@ namespace Wysg.Musm.Radium.Services
     internal static class NativeMouseHelper
     {
         [DllImport("user32.dll")]
-        private static extern bool SetCursorPos(int X, int Y);
+        public static extern bool SetCursorPos(int X, int Y);
         
         [DllImport("user32.dll")]
         private static extern bool GetCursorPos(out POINT lpPoint);

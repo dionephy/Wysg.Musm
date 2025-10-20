@@ -79,8 +79,34 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         // ------------- Handlers -------------
-        private void OnSendReportPreview() { /* TODO: implement preview send logic */ }
-        private void OnSendReport() { PatientLocked = false; }
+        private void OnSendReportPreview() 
+        { 
+            var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.SendReportPreviewSequence);
+            var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (modules.Length > 0)
+            {
+                _ = RunModulesSequentially(modules);
+            }
+            else
+            {
+                SetStatus("No Send Report Preview sequence configured", true);
+            }
+        }
+        
+        private void OnSendReport() 
+        { 
+            var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.SendReportSequence);
+            var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (modules.Length > 0)
+            {
+                _ = RunModulesSequentially(modules);
+            }
+            else
+            {
+                // Fallback: just unlock patient if no sequence configured
+                PatientLocked = false;
+            }
+        }
 
         private async Task RunNewStudyProcedureAsync() => await (_newStudyProc != null ? _newStudyProc.ExecuteAsync(this) : Task.Run(OnNewStudy));
 
@@ -89,13 +115,18 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             try
             {
+                Debug.WriteLine("[Automation][GetStudyRemark] Starting acquisition");
                 var s = await _pacs.GetCurrentStudyRemarkAsync();
+                Debug.WriteLine($"[Automation][GetStudyRemark] Raw result from PACS: '{s}'");
+                Debug.WriteLine($"[Automation][GetStudyRemark] Result length: {s?.Length ?? 0} characters");
                 StudyRemark = s ?? string.Empty; // property triggers JSON update
+                Debug.WriteLine($"[Automation][GetStudyRemark] Set StudyRemark property: '{StudyRemark}'");
                 SetStatus("Study remark captured");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("[Automation] GetStudyRemark error: " + ex.Message);
+                Debug.WriteLine($"[Automation][GetStudyRemark] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                Debug.WriteLine($"[Automation][GetStudyRemark] StackTrace: {ex.StackTrace}");
                 SetStatus("Study remark capture failed", true);
             }
         }
@@ -103,20 +134,28 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             try
             {
+                Debug.WriteLine("[Automation][GetPatientRemark] Starting acquisition");
                 var s = await _pacs.GetCurrentPatientRemarkAsync();
+                Debug.WriteLine($"[Automation][GetPatientRemark] Raw result from PACS: '{s}'");
+                Debug.WriteLine($"[Automation][GetPatientRemark] Result length: {s?.Length ?? 0} characters");
                 
                 // Remove duplicate lines based on text between < and >
                 if (!string.IsNullOrEmpty(s))
                 {
+                    Debug.WriteLine("[Automation][GetPatientRemark] Removing duplicate lines");
+                    var originalLength = s.Length;
                     s = RemoveDuplicateLinesInPatientRemark(s);
+                    Debug.WriteLine($"[Automation][GetPatientRemark] After deduplication: length {originalLength} -> {s.Length}");
                 }
                 
                 PatientRemark = s ?? string.Empty; // property triggers JSON update
+                Debug.WriteLine($"[Automation][GetPatientRemark] Set PatientRemark property: '{PatientRemark}'");
                 SetStatus("Patient remark captured");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("[Automation] GetPatientRemark error: " + ex.Message);
+                Debug.WriteLine($"[Automation][GetPatientRemark] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                Debug.WriteLine($"[Automation][GetPatientRemark] StackTrace: {ex.StackTrace}");
                 SetStatus("Patient remark capture failed", true);
             }
         }
@@ -190,12 +229,41 @@ namespace Wysg.Musm.Radium.ViewModels
                         }
                         SetStatus("Worklist visible - continuing");
                     }
+                    else if (string.Equals(m, "AbortIfPatientNumberNotMatch", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var matchResult = await _pacs.PatientNumberMatchAsync();
+                        if (string.Equals(matchResult, "false", StringComparison.OrdinalIgnoreCase))
+                        {
+                            SetStatus("Patient number mismatch - automation aborted", true);
+                            return; // Abort the rest of the sequence
+                        }
+                        SetStatus("Patient number match - continuing");
+                    }
+                    else if (string.Equals(m, "AbortIfStudyDateTimeNotMatch", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var matchResult = await _pacs.StudyDateTimeMatchAsync();
+                        if (string.Equals(matchResult, "false", StringComparison.OrdinalIgnoreCase))
+                        {
+                            SetStatus("Study date/time mismatch - automation aborted", true);
+                            return; // Abort the rest of the sequence
+                        }
+                        SetStatus("Study date/time match - continuing");
+                    }
                     else if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { await RunOpenStudyAsync(); }
                     else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { await _pacs.CustomMouseClick1Async(); }
                     else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { await _pacs.CustomMouseClick2Async(); }
                     else if (string.Equals(m, "TestInvoke", StringComparison.OrdinalIgnoreCase)) { await _pacs.InvokeTestAsync(); }
                     else if (string.Equals(m, "ShowTestMessage", StringComparison.OrdinalIgnoreCase)) { System.Windows.MessageBox.Show("Test", "Test", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information); }
                     else if (string.Equals(m, "SetCurrentInMainScreen", StringComparison.OrdinalIgnoreCase)) { await RunSetCurrentInMainScreenAsync(); }
+                    else if (string.Equals(m, "OpenWorklist", StringComparison.OrdinalIgnoreCase)) { await RunOpenWorklistAsync(); }
+                    else if (string.Equals(m, "ResultsListSetFocus", StringComparison.OrdinalIgnoreCase)) { await RunResultsListSetFocusAsync(); }
+                    else if (string.Equals(m, "SendReport", StringComparison.OrdinalIgnoreCase)) { await RunSendReportAsync(); }
+                    else if (string.Equals(m, "Reportify", StringComparison.OrdinalIgnoreCase)) 
+                    { 
+                        Reportified = true;
+                        SetStatus("Reportified toggled ON");
+                        Debug.WriteLine("[Automation] Reportify module executed - Reportified=true");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -235,6 +303,61 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
+        private async Task RunOpenWorklistAsync()
+        {
+            try
+            {
+                await _pacs.InvokeOpenWorklistAsync();
+                SetStatus("Worklist opened");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[Automation] OpenWorklist error: " + ex.Message);
+                SetStatus("Open worklist failed", true);
+            }
+        }
+
+        private async Task RunResultsListSetFocusAsync()
+        {
+            try
+            {
+                Debug.WriteLine("[Automation] ResultsListSetFocus starting");
+                
+                // Execute the PACS method (which contains GetSelectedElement + ClickElementAndStay)
+                await _pacs.SetFocusSearchResultsListAsync();
+                
+                // Add small delay to allow UI to respond to click (timing fix for automation vs manual execution)
+                await Task.Delay(150);
+                
+                Debug.WriteLine("[Automation] ResultsListSetFocus completed successfully");
+                SetStatus("Search results list focused");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Automation] ResultsListSetFocus error: {ex.Message}");
+                Debug.WriteLine($"[Automation] ResultsListSetFocus stack: {ex.StackTrace}");
+                SetStatus("Set focus results list failed", true);
+            }
+        }
+
+        private async Task RunSendReportAsync()
+        {
+            try
+            {
+                // Get findings and conclusion from current report
+                var findings = FindingsText ?? string.Empty;
+                var conclusion = ConclusionText ?? string.Empty;
+                
+                await _pacs.SendReportAsync(findings, conclusion);
+                SetStatus("Report sent");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[Automation] SendReport error: " + ex.Message);
+                SetStatus("Send report failed", true);
+            }
+        }
+
         private void OnRunAddStudyAutomation()
         {
             var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.AddStudySequence);
@@ -261,6 +384,30 @@ namespace Wysg.Musm.Radium.ViewModels
 
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
+            _ = RunModulesSequentially(modules);
+        }
+
+        // Executes configured modules for SendReport shortcut depending on Reportified state
+        public void RunSendReportShortcut()
+        {
+            string seqRaw;
+            if (Reportified)
+            {
+                seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutSendReportReportified);
+                Debug.WriteLine("[SendReportShortcut] Reportified=true, using ShortcutSendReportReportified sequence");
+            }
+            else
+            {
+                seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutSendReportPreview);
+                Debug.WriteLine("[SendReportShortcut] Reportified=false, using ShortcutSendReportPreview sequence");
+            }
+
+            var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (modules.Length == 0) 
+            {
+                SetStatus("No Send Report shortcut sequence configured", true);
+                return;
+            }
             _ = RunModulesSequentially(modules);
         }
 
@@ -443,6 +590,10 @@ namespace Wysg.Musm.Radium.ViewModels
             public string? ShortcutOpenNew { get; set; }
             public string? ShortcutOpenAdd { get; set; }
             public string? ShortcutOpenAfterOpen { get; set; }
+            public string? SendReportSequence { get; set; }
+            public string? SendReportPreviewSequence { get; set; }
+            public string? ShortcutSendReportPreview { get; set; }
+            public string? ShortcutSendReportReportified { get; set; }
         }
 
         // DelegateCommand implementation kept local for simplicity
