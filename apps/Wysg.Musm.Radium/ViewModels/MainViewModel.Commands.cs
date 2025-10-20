@@ -260,9 +260,18 @@ namespace Wysg.Musm.Radium.ViewModels
                     else if (string.Equals(m, "SendReport", StringComparison.OrdinalIgnoreCase)) { await RunSendReportAsync(); }
                     else if (string.Equals(m, "Reportify", StringComparison.OrdinalIgnoreCase)) 
                     { 
+                        Debug.WriteLine("[Automation] Reportify module - START");
+                        Debug.WriteLine($"[Automation] Reportify module - Current Reportified value BEFORE: {Reportified}");
                         Reportified = true;
+                        Debug.WriteLine($"[Automation] Reportify module - Current Reportified value AFTER: {Reportified}");
                         SetStatus("Reportified toggled ON");
-                        Debug.WriteLine("[Automation] Reportify module executed - Reportified=true");
+                        Debug.WriteLine("[Automation] Reportify module - COMPLETED");
+                    }
+                    else if (string.Equals(m, "Delay", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Debug.WriteLine("[Automation] Delay module - waiting 300ms");
+                        await Task.Delay(300);
+                        Debug.WriteLine("[Automation] Delay module - completed");
                     }
                 }
                 catch (Exception ex)

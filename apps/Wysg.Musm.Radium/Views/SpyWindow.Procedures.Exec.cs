@@ -199,7 +199,7 @@ namespace Wysg.Musm.Radium.Views
                     if (sepRaw.StartsWith("re:", StringComparison.OrdinalIgnoreCase) || sepRaw.StartsWith("regex:", StringComparison.OrdinalIgnoreCase))
                     {
                         var pattern = sepRaw.StartsWith("re:", StringComparison.OrdinalIgnoreCase) ? sepRaw.Substring(3) : sepRaw.Substring(6);
-                        if (string.IsNullOrEmpty(pattern)) { return "(empty pattern)", null; }
+                        if (string.IsNullOrEmpty(pattern)) { return ("(empty pattern)", null); }
                         try { parts = Regex.Split(input, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase); }
                         catch (Exception ex) { return ($"(regex error: {ex.Message})", null); }
                     }

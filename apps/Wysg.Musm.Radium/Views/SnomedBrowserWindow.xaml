@@ -26,6 +26,9 @@
         <!-- Domain converter for RadioButtons -->
         <converters:DomainEqualsConverter x:Key="DomainEqualsConverter"/>
         
+        <!-- Synonym structure/entire highlighter -->
+        <converters:SynonymStructureHighlightConverter x:Key="SynonymStructureHighlightConverter"/>
+        
         <Style TargetType="Button">
             <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
             <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}"/>
@@ -219,6 +222,12 @@
                                             <Border BorderBrush="{StaticResource BrushBorder}" 
                                                     BorderThickness="0,0,0,1" 
                                                     Padding="8,6">
+                                                <Border.Background>
+                                                    <MultiBinding Converter="{StaticResource SynonymStructureHighlightConverter}">
+                                                        <Binding Path="Term"/>
+                                                        <Binding Path="TermType"/>
+                                                    </MultiBinding>
+                                                </Border.Background>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="60"/>
