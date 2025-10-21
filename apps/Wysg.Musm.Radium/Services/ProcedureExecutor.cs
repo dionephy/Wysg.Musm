@@ -605,15 +605,38 @@ namespace Wysg.Musm.Radium.Services
                     {
                         var el = ResolveElement(row.Arg1, vars);
                         if (el == null) return ("(no element)", null);
-                        try 
-                        { 
-                            el.Focus(); 
-                            return ("(focused)", null); 
+                        
+                        // Retry logic for SetFocus - sometimes elements need time to be ready
+                        const int maxAttempts = 3;
+                        const int retryDelayMs = 150;
+                        Exception? lastException = null;
+                        bool success = false;
+                        
+                        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+                        {
+                            try
+                            {
+                                el.Focus();
+                                var preview = attempt > 1 ? $"(focused after {attempt} attempts)" : "(focused)";
+                                success = true;
+                                return (preview, null);
+                            }
+                            catch (Exception ex)
+                            {
+                                lastException = ex;
+                                if (attempt < maxAttempts)
+                                {
+                                    Task.Delay(retryDelayMs).Wait();
+                                }
+                            }
                         }
-                        catch (Exception ex) 
-                        { 
-                            return ($"(error: {ex.Message})", null); 
+                        
+                        if (!success)
+                        {
+                            return ($"(error after {maxAttempts} attempts: {lastException?.Message})", null);
                         }
+                        
+                        return ("(error)", null);
                     }
                     case "TakeLast":
                     {

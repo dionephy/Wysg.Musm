@@ -319,14 +319,36 @@ namespace Wysg.Musm.Radium.Views
                 {
                     var elFocus = ResolveElement(row.Arg1, vars);
                     if (elFocus == null) { preview = "(no element)"; break; }
-                    try
+                    
+                    // Retry logic for SetFocus - sometimes elements need time to be ready
+                    const int maxAttempts = 3;
+                    const int retryDelayMs = 150;
+                    Exception? lastException = null;
+                    bool success = false;
+                    preview = "(error)"; // Initialize to default value
+                    
+                    for (int attempt = 1; attempt <= maxAttempts; attempt++)
                     {
-                        elFocus.Focus();
-                        preview = "(focused)";
+                        try
+                        {
+                            elFocus.Focus();
+                            preview = attempt > 1 ? $"(focused after {attempt} attempts)" : "(focused)";
+                            success = true;
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            lastException = ex;
+                            if (attempt < maxAttempts)
+                            {
+                                System.Threading.Thread.Sleep(retryDelayMs);
+                            }
+                        }
                     }
-                    catch (Exception ex) 
-                    { 
-                        preview = $"(error: {ex.Message})"; 
+                    
+                    if (!success)
+                    {
+                        preview = $"(error after {maxAttempts} attempts: {lastException?.Message})";
                     }
                     break;
                 }
