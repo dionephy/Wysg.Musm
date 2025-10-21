@@ -71,39 +71,49 @@
 
 ### FR-1142: TrimString Operation for String Cleaning
 
-**Problem**: No operation existed to remove specific substrings from strings. Users needed to trim labels, prefixes, or unwanted text patterns from UI-extracted content.
+**Problem**: No operation existed to remove specific substrings from the start or end of strings. Users needed to trim labels, prefixes, or unwanted text patterns from UI-extracted content.
 
-**Requirement**: Add TrimString operation that removes all occurrences of a specified substring from a source string.
+**Requirement**: Add TrimString operation that removes all occurrences of a specified substring from the start and/or end of a source string.
 
 **Operation Signature**:
 - **Operation Name**: TrimString
 - **Arg1**: Source string (Type: String or Var)
-- **Arg2**: String to trim away (Type: String or Var)
+- **Arg2**: String to trim away from start/end (Type: String or Var)
 - **Arg3**: Disabled
-- **Output**: Cleaned string with all occurrences of Arg2 removed from Arg1
+- **Output**: Cleaned string with Arg2 removed from start and end of Arg1
 
 **Behavior**:
 
-1. **Normal Trim**
+1. **Trim from Start and End Only**
    - Arg1 (source): " I am me "
    - Arg2 (trim): "I"
-   - Result: " am me "
-   - Uses `string.Replace(trimString, string.Empty)` to remove all occurrences
+   - Result: " am me " (only removed "I" from start)
+   - Uses repeated `StartsWith()` and `EndsWith()` checks
 
-2. **Empty Trim String**
+2. **Remove from Both Ends**
+   - Arg1 (source): "aba"
+   - Arg2 (trim): "a"
+   - Result: "b" (removed "a" from both start and end)
+
+3. **Empty Trim String**
    - If Arg2 is null or empty, returns Arg1 unchanged
    - Preview: Shows source string as-is
 
-3. **Variable References**
+4. **Variable References**
    - Both Arg1 and Arg2 can reference variables from previous operations
    - Example: `GetText(label) ¡æ var1; TrimString(var1, "Label: ") ¡æ var2`
 
-4. **Multiple Occurrences**
-   - Removes ALL occurrences of trim string, not just first
-   - Example: "abcabc" trimmed by "a" becomes "bcbc"
+5. **Multiple Occurrences at Start/End**
+   - Removes ALL consecutive occurrences from start and end
+   - Example: "!!!text!!!" trimmed by "!" becomes "text"
+   - Example: "aatext" trimmed by "a" becomes "text"
 
-5. **Case Sensitivity**
-   - Trim operation is case-sensitive (uses `string.Replace`)
+6. **Middle Occurrences Preserved**
+   - Does NOT remove occurrences in the middle of the string
+   - Example: "a test a" trimmed by "a" becomes " test " (middle "a" in "test" preserved)
+
+7. **Case Sensitivity**
+   - Trim operation is case-sensitive (uses `StringComparison.Ordinal`)
    - "ABC" will not trim "abc"
 
 **Preview Format**:
@@ -113,7 +123,7 @@
 
 **Use Cases**:
 
-**Remove Prefix/Suffix**:
+**Remove Prefix**:
 ```
 GetValueFromSelection(ResultsList, "ID") ¡æ var1  // "ID: 12345"
 TrimString(var1, "ID: ") ¡æ var2  // "12345"
@@ -125,10 +135,10 @@ GetText(NameLabel) ¡æ var1  // "Patient Name: John Doe"
 TrimString(var1, "Patient Name: ") ¡æ var2  // "John Doe"
 ```
 
-**Remove Unwanted Characters**:
+**Remove Surrounding Characters**:
 ```
-GetText(PriceField) ¡æ var1  // "$99.99"
-TrimString(var1, "$") ¡æ var2  // "99.99"
+GetText(PriceField) ¡æ var1  // "***$99.99***"
+TrimString(var1, "*") ¡æ var2  // "$99.99"
 ```
 
 **Chain Multiple Trims**:
@@ -139,10 +149,15 @@ TrimString(var2, " [SUFFIX]") ¡æ var3  // "Content"
 ```
 
 **Limitations**:
-- Removes ALL occurrences (no option to remove only first/last)
+- Only trims from start and end (use Replace for middle occurrences)
 - Case-sensitive matching only
 - No regex pattern matching (use Replace operation for regex)
-- No character set trimming (e.g., cannot trim all whitespace characters)
+- No character set trimming (e.g., cannot trim all whitespace characters - use Trim operation for that)
+
+**Comparison with Similar Operations**:
+- **Trim**: Removes whitespace from start/end only
+- **TrimString**: Removes specific substring from start/end only (NEW)
+- **Replace**: Removes/replaces all occurrences throughout the entire string
 
 **Status**: ? **Implemented** (2025-01-20)
 

@@ -542,9 +542,25 @@ namespace Wysg.Musm.Radium.Services
                     }
                     else
                     {
-                        // Trim all occurrences of trimString from sourceString
-                        // Example: " I am me " with trim "I" -> " am me " (trims leading "I ")
-                        valueToStore = sourceString.Replace(trimString, string.Empty);
+                        // Trim string from start and end only (after standard whitespace trim)
+                        // Example: " I am me " with trim "I" -> First trim whitespace: "I am me"
+                        // Then remove "I" from start: " am me" -> Then trim whitespace again: "am me"
+                        
+                        var result = sourceString;
+                        
+                        // Trim from start
+                        while (result.StartsWith(trimString, StringComparison.Ordinal))
+                        {
+                            result = result.Substring(trimString.Length);
+                        }
+                        
+                        // Trim from end
+                        while (result.EndsWith(trimString, StringComparison.Ordinal))
+                        {
+                            result = result.Substring(0, result.Length - trimString.Length);
+                        }
+                        
+                        valueToStore = result;
                         preview = valueToStore;
                     }
                     return (preview, valueToStore);

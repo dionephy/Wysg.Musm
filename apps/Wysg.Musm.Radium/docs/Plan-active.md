@@ -57,8 +57,8 @@
 **TrimString Implementation**:
 - Added new `TrimString` operation to Custom Procedures
 - **Arg1**: Source string (String or Var type)
-- **Arg2**: String to trim away (String or Var type)
-- **Logic**: Uses `string.Replace()` to remove all occurrences of Arg2 from Arg1
+- **Arg2**: String to trim away from start/end only (String or Var type)
+- **Logic**: Uses repeated `StartsWith()`/`EndsWith()` checks to remove substring from start and end only
 - **Preview**: Shows trimmed result in OutputPreview column
 
 ### Files Modified (3 files)
@@ -82,9 +82,9 @@ case "SetClipboard":
 **SpyWindow.Procedures.Exec.cs - TrimString Handler**:
 ```csharp
 case "TrimString":
-    // NEW: TrimString trims Arg2 away from Arg1 (both accept String or Var)
+    // NEW: TrimString trims Arg2 from start/end of Arg1 (both accept String or Var)
     row.Arg1Enabled = true; // Source string (String or Var)
-    row.Arg2Enabled = true; // String to trim away (String or Var)
+    row.Arg2Enabled = true; // String to trim away from start/end (String or Var)
     row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
     break;
 ```
@@ -104,10 +104,25 @@ case "TrimString":
     }
     else
     {
-        // Trim all occurrences of trimString from sourceString
-        // Example: " I am me " with trim "I" -> " am me " (trims leading "I ")
-        // Using Replace to remove all occurrences
-        valueToStore = sourceString.Replace(trimString, string.Empty);
+        // Trim string from start and end only
+        // Example: " I am me " with trim "I" -> " am me " (only from start)
+        // Example: "aba" with trim "a" -> "b" (from both start and end)
+        
+        var result = sourceString;
+        
+        // Trim from start
+        while (result.StartsWith(trimString, StringComparison.Ordinal))
+        {
+            result = result.Substring(trimString.Length);
+        }
+        
+        // Trim from end
+        while (result.EndsWith(trimString, StringComparison.Ordinal))
+        {
+            result = result.Substring(0, result.Length - trimString.Length);
+        }
+        
+        valueToStore = result;
         preview = valueToStore;
     }
     break;
@@ -128,21 +143,25 @@ case "TrimString":
     }
     else
     {
-        valueToStore = sourceString.Replace(trimString, string.Empty);
+        var result = sourceString;
+        
+        // Trim from start
+        while (result.StartsWith(trimString, StringComparison.Ordinal))
+        {
+            result = result.Substring(trimString.Length);
+        }
+        
+        // Trim from end
+        while (result.EndsWith(trimString, StringComparison.Ordinal))
+        {
+            result = result.Substring(0, result.Length - trimString.Length);
+        }
+        
+        valueToStore = result;
         preview = valueToStore;
     }
     return (preview, valueToStore);
 }
-```
-
-**SpyWindow.OperationItems.xaml**:
-```xaml
-<x:Array x:key="OperationItems" Type="ComboBoxItem">
-    <!-- ...existing operations... -->
-    <ComboBoxItem Content="Trim"/>
-    <ComboBoxItem Content="TrimString"/>
-    <!-- ...more operations... -->
-</x:Array>
 ```
 
 ### Benefits
@@ -153,8 +172,8 @@ case "TrimString":
 3. **Type Flexibility**: Users choose appropriate type (String for literals, Var for dynamic values)
 
 **TrimString Operation**:
-1. **Clean Text Extraction**: Easily remove unwanted prefixes, suffixes, or labels from extracted text
-2. **Pattern Removal**: Remove repeated patterns or specific substrings
+1. **Clean Text Extraction**: Removes unwanted prefixes and/or suffixes from extracted text
+2. **Start/End Only**: Only trims from the beginning and end of the string, not middle occurrences
 3. **Flexible Arguments**: Works with both literal strings and variable references
 4. **Chainable**: Output can be stored in variables for use in subsequent operations
 
@@ -168,11 +187,15 @@ Step 2: SetClipboard(var1) ¡æ Copies patient name to clipboard
 
 **TrimString Usage**:
 ```
-# Example 1: Remove prefix
-Step 1: GetText(NameLabel) ¡æ var1  // Result: " I am me "
-Step 2: TrimString(var1, "I") ¡æ var2  // Result: " am me "
+# Example 1: Remove prefix from start only
+Step 1: GetText(NameLabel) ¡æ var1  // Result: "ID: 12345"
+Step 2: TrimString(var1, "ID: ") ¡æ var2  // Result: "12345"
 
-# Example 2: Chain with other operations
+# Example 2: Remove from both start and end
+Step 1: GetText(Label) ¡æ var1  // Result: "***value***"
+Step 2: TrimString(var1, "*") ¡æ var2  // Result: "value"
+
+# Example 3: Chain with other operations
 Step 1: GetValueFromSelection(ResultsList, "ID") ¡æ var1  // Result: "ID: 12345"
 Step 2: TrimString(var1, "ID: ") ¡æ var2  // Result: "12345"
 Step 3: SetClipboard(var2) ¡æ Copies "12345" to clipboard
