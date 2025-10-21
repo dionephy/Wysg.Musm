@@ -197,6 +197,77 @@ namespace Wysg.Musm.Radium.Views
             }
             catch (Exception ex) { txtStatus.Text = "Get Name error: " + ex.Message; }
         }
+        
+        private void OnSetFocus(object sender, RoutedEventArgs e)
+        {
+            if (_lastResolved == null)
+            {
+                if (!BuildBookmarkFromUi(out var copy)) return;
+                var (_, el, _) = UiBookmarks.TryResolveWithTrace(copy);
+                _lastResolved = el;
+                if (el == null) { txtStatus.Text = "SetFocus: not found"; return; }
+            }
+            
+            // Retry logic for SetFocus - sometimes elements need time to be ready
+            const int maxAttempts = 3;
+            const int retryDelayMs = 150;
+            Exception? lastException = null;
+            bool success = false;
+            
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    // Execute Focus on STA thread to match legacy PacsService behavior
+                    // UI Automation sometimes requires proper thread apartment state
+                    var focusSuccess = false;
+                    Exception? focusException = null;
+                    
+                    var thread = new System.Threading.Thread(() =>
+                    {
+                        try
+                        {
+                            _lastResolved.Focus();
+                            focusSuccess = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            focusException = ex;
+                        }
+                    });
+                    
+                    thread.SetApartmentState(System.Threading.ApartmentState.STA);
+                    thread.Start();
+                    thread.Join(1000); // Wait up to 1 second
+                    
+                    if (focusSuccess)
+                    {
+                        var statusMsg = attempt > 1 ? $"SetFocus: focused after {attempt} attempts" : "SetFocus: focused";
+                        txtStatus.Text = statusMsg;
+                        success = true;
+                        return;
+                    }
+                    else if (focusException != null)
+                    {
+                        throw focusException;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    if (attempt < maxAttempts)
+                    {
+                        System.Threading.Thread.Sleep(retryDelayMs);
+                    }
+                }
+            }
+            
+            if (!success)
+            {
+                txtStatus.Text = $"SetFocus: error after {maxAttempts} attempts: {lastException?.Message}";
+            }
+        }
+        
         private void OnGetSelectedRow(object sender, RoutedEventArgs e)
         {
             try
