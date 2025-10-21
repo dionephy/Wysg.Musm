@@ -9,6 +9,7 @@
         <ComboBoxItem Content="Split"/>
         <ComboBoxItem Content="TakeLast"/>
         <ComboBoxItem Content="Trim"/>
+        <ComboBoxItem Content="TrimString"/>
         <ComboBoxItem Content="Invoke"/>
         <ComboBoxItem Content="GetValueFromSelection"/>
         <ComboBoxItem Content="GetSelectedElement"/>
@@ -31,6 +32,7 @@
         <ComboBoxItem Content="GetCurrentFindings"/>
         <ComboBoxItem Content="GetCurrentConclusion"/>
         <ComboBoxItem Content="Merge"/>
+        <ComboBoxItem Content="Delay"/>
     </x:Array>
 
 </ResourceDictionary>

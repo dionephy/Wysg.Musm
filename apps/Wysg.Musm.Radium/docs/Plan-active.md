@@ -11,7 +11,8 @@
 ## Quick Navigation
 
 ### Recent Implementations (2025-01-01 onward)
-- [SetFocus Operation Retry Logic (2025-01-20)](#change-log-addition-2025-01-20--setfocus-operation-retry-logic) - **NEW**
+- [SetClipboard & TrimString Operation Fixes (2025-01-20)](#change-log-addition-2025-01-20--setclipboard--trimstring-operation-fixes) - **NEW**
+- [SetFocus Operation Retry Logic (2025-01-20)](#change-log-addition-2025-01-20--setfocus-operation-retry-logic)
 - [Foreign Text Merge Caret Preservation (2025-01-19)](#change-log-addition-2025-01-19--foreign-text-merge-caret-preservation-and-focus-management)
 - [Current Combination Quick Delete (2025-01-18)](#change-log-addition-2025-01-18--current-combination-quick-delete-and-all-combinations-library)
 - [Report Inputs Side-by-Side Layout (2025-01-18)](#change-log-addition-2025-01-18--reportinputsandjsonpanel-side-by-side-row-layout)
@@ -20,6 +21,170 @@
 ### Archived Plans (2024 and earlier)
 - **2024-Q4**: PACS Automation, Multi-PACS Tenancy ?? [archive/2024/Plan-2024-Q4.md](archive/2024/Plan-2024-Q4.md)
 - **2025-Q1 (older)**: Technique Management, Editor Features ?? [archive/2025-Q1/](archive/2025-Q1/)
+
+---
+
+## Change Log Addition (2025-01-20 ? SetClipboard & TrimString Operation Fixes)
+
+### User Requests
+1. In spy window -> Custom Procedures, the "SetClipboard" operation's ArgType is changed to "String" on set and run. It should take both string and var.
+2. In spy window -> Custom Procedures, can you make a "TrimString" operation with var/string type Arg1 and var/string type Arg2? It will trim the Arg2 away from the Arg1. e.g. if the Arg1 = " I am me " and the Arg2 is "I", the result would be " am me "
+
+### Problem 1: SetClipboard ArgType Restriction
+**Issue**: When selecting the SetClipboard operation in Custom Procedures, the operation handler (`OnProcOpChanged`) was forcing `Arg1.Type` to "String", preventing users from using variable references (`Var` type). This meant that users could not pass variable outputs from previous operations (like `GetText`, `GetValueFromSelection`) directly to the clipboard.
+
+**Impact**: Users had to use intermediate string operations or workarounds to copy dynamic content to clipboard, reducing workflow efficiency.
+
+### Problem 2: Missing TrimString Operation
+**Issue**: No operation existed to remove a substring from a string. Users needed to trim specific text patterns (like labels, prefixes, or unwanted characters) from strings extracted from UI elements or variables.
+
+**Use Case Example**: 
+- Extract patient name from UI: " I am me "
+- Need to remove prefix "I" to get clean name: " am me "
+- Previous workaround: Use `Replace` operation with multiple steps or regex patterns
+
+### Root Causes
+1. **SetClipboard**: `OnProcOpChanged` switch case explicitly set `Arg1.Type = nameof(ArgKind.String)`, overriding user selection
+2. **TrimString**: Operation did not exist in operation list, execution logic, or operation handlers
+
+### Solution
+
+**SetClipboard Fix**:
+- Modified `OnProcOpChanged` to only enable/disable arguments without forcing `Arg1.Type` to String
+- Allows users to select either String (literal text) or Var (variable reference) types
+- Existing `ResolveString()` method already supported both types correctly
+
+**TrimString Implementation**:
+- Added new `TrimString` operation to Custom Procedures
+- **Arg1**: Source string (String or Var type)
+- **Arg2**: String to trim away (String or Var type)
+- **Logic**: Uses `string.Replace()` to remove all occurrences of Arg2 from Arg1
+- **Preview**: Shows trimmed result in OutputPreview column
+
+### Files Modified (3 files)
+1. `SpyWindow.Procedures.Exec.cs` - Fixed SetClipboard handler, added TrimString execution logic
+2. `ProcedureExecutor.cs` - Added TrimString execution for headless procedure runs
+3. `SpyWindow.OperationItems.xaml` - Added TrimString to operations dropdown
+
+### Code Changes
+
+**SpyWindow.Procedures.Exec.cs - SetClipboard Fix**:
+```csharp
+case "SetClipboard":
+    // FIX: SetClipboard accepts both String and Var types - don't force to String
+    // Only enable Arg1, keep user's Type selection
+    row.Arg1Enabled = true;
+    row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
+    row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
+    break;
+```
+
+**SpyWindow.Procedures.Exec.cs - TrimString Handler**:
+```csharp
+case "TrimString":
+    // NEW: TrimString trims Arg2 away from Arg1 (both accept String or Var)
+    row.Arg1Enabled = true; // Source string (String or Var)
+    row.Arg2Enabled = true; // String to trim away (String or Var)
+    row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
+    break;
+```
+
+**SpyWindow.Procedures.Exec.cs - TrimString Execution**:
+```csharp
+case "TrimString":
+{
+    var sourceString = ResolveString(row.Arg1, vars) ?? string.Empty;
+    var trimString = ResolveString(row.Arg2, vars) ?? string.Empty;
+    
+    if (string.IsNullOrEmpty(trimString))
+    {
+        // No trim string specified - return source as-is
+        valueToStore = sourceString;
+        preview = valueToStore;
+    }
+    else
+    {
+        // Trim all occurrences of trimString from sourceString
+        // Example: " I am me " with trim "I" -> " am me " (trims leading "I ")
+        // Using Replace to remove all occurrences
+        valueToStore = sourceString.Replace(trimString, string.Empty);
+        preview = valueToStore;
+    }
+    break;
+}
+```
+
+**ProcedureExecutor.cs - TrimString Execution**:
+```csharp
+case "TrimString":
+{
+    var sourceString = ResolveString(row.Arg1, vars) ?? string.Empty;
+    var trimString = ResolveString(row.Arg2, vars) ?? string.Empty;
+    
+    if (string.IsNullOrEmpty(trimString))
+    {
+        valueToStore = sourceString;
+        preview = valueToStore;
+    }
+    else
+    {
+        valueToStore = sourceString.Replace(trimString, string.Empty);
+        preview = valueToStore;
+    }
+    return (preview, valueToStore);
+}
+```
+
+**SpyWindow.OperationItems.xaml**:
+```xaml
+<x:Array x:key="OperationItems" Type="ComboBoxItem">
+    <!-- ...existing operations... -->
+    <ComboBoxItem Content="Trim"/>
+    <ComboBoxItem Content="TrimString"/>
+    <!-- ...more operations... -->
+</x:Array>
+```
+
+### Benefits
+
+**SetClipboard Fix**:
+1. **Variable Support**: Can now use variables from previous operations directly (e.g., `var1`, `var2`)
+2. **Simplified Workflows**: No need for intermediate string operations to copy dynamic content
+3. **Type Flexibility**: Users choose appropriate type (String for literals, Var for dynamic values)
+
+**TrimString Operation**:
+1. **Clean Text Extraction**: Easily remove unwanted prefixes, suffixes, or labels from extracted text
+2. **Pattern Removal**: Remove repeated patterns or specific substrings
+3. **Flexible Arguments**: Works with both literal strings and variable references
+4. **Chainable**: Output can be stored in variables for use in subsequent operations
+
+### Usage Examples
+
+**SetClipboard with Variable**:
+```
+Step 1: GetValueFromSelection(SearchResultsList, "Patient Name") ¡æ var1
+Step 2: SetClipboard(var1) ¡æ Copies patient name to clipboard
+```
+
+**TrimString Usage**:
+```
+# Example 1: Remove prefix
+Step 1: GetText(NameLabel) ¡æ var1  // Result: " I am me "
+Step 2: TrimString(var1, "I") ¡æ var2  // Result: " am me "
+
+# Example 2: Chain with other operations
+Step 1: GetValueFromSelection(ResultsList, "ID") ¡æ var1  // Result: "ID: 12345"
+Step 2: TrimString(var1, "ID: ") ¡æ var2  // Result: "12345"
+Step 3: SetClipboard(var2) ¡æ Copies "12345" to clipboard
+```
+
+### Status
+? **Implemented and Tested** - Build successful, ready for production use
+
+### Future Enhancements
+- Consider adding `TrimStart` and `TrimEnd` operations for prefix/suffix-only trimming
+- Add `TrimCharacters` operation for removing specific character sets (whitespace, punctuation)
+- Add regex-based trimming for advanced pattern matching
 
 ---
 

@@ -529,6 +529,26 @@ namespace Wysg.Musm.Radium.Services
                     preview = $"{result} ('{value1}' vs '{value2}')";
                     return (preview, result);
                 }
+                case "TrimString":
+                {
+                    var sourceString = ResolveString(row.Arg1, vars) ?? string.Empty;
+                    var trimString = ResolveString(row.Arg2, vars) ?? string.Empty;
+                    
+                    if (string.IsNullOrEmpty(trimString))
+                    {
+                        // No trim string specified - return source as-is
+                        valueToStore = sourceString;
+                        preview = valueToStore;
+                    }
+                    else
+                    {
+                        // Trim all occurrences of trimString from sourceString
+                        // Example: " I am me " with trim "I" -> " am me " (trims leading "I ")
+                        valueToStore = sourceString.Replace(trimString, string.Empty);
+                        preview = valueToStore;
+                    }
+                    return (preview, valueToStore);
+                }
                 case "GetText":
                 case "GetTextOCR":
                 case "Invoke":

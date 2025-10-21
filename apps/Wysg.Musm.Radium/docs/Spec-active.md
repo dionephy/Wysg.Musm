@@ -11,7 +11,9 @@
 ## Quick Navigation
 
 ### Recent Features (2025-01-01 onward)
-- [FR-1140: SetFocus Operation Retry Logic](#setfocus-operation-retry-logic-2025-01-20) - **NEW**
+- [FR-1141: SetClipboard Variable Support](#fr-1141-setclipboard-variable-support-2025-01-20) - **NEW**
+- [FR-1142: TrimString Operation](#fr-1142-trimstring-operation-2025-01-20) - **NEW**
+- [FR-1140: SetFocus Operation Retry Logic](#setfocus-operation-retry-logic-2025-01-20)
 - [FR-1100..FR-1136: Foreign Text Sync & Caret Management](#foreign-text-sync--caret-management-2025-01-19)
 - [FR-1025..FR-1027: Current Combination Quick Delete](#current-combination-quick-delete-2025-01-18)
 - [FR-1081..FR-1093: Report Inputs Panel Layout](#report-inputs-panel-layout-2025-01-18)
@@ -20,6 +22,142 @@
 ### Archived Features (2024 and earlier)
 - **2024-Q4**: PACS Automation, Multi-PACS Tenancy, Study Techniques ?? [archive/2024/Spec-2024-Q4.md](archive/2024/Spec-2024-Q4.md)
 - **2025-Q1**: Phrase Highlighting, Editor Enhancements ?? [archive/2025-Q1/](archive/2025-Q1/)
+
+---
+
+## SetClipboard Variable Support (2025-01-20)
+
+### FR-1141: SetClipboard Operation Variable Support
+
+**Problem**: SetClipboard operation forced Arg1 type to "String" on operation selection, preventing users from passing variable references from previous operations to clipboard.
+
+**Requirement**: SetClipboard operation must support both String (literal text) and Var (variable reference) argument types.
+
+**Behavior**:
+
+1. **Arg1 Type Selection**
+   - User can select either String or Var type for Arg1
+   - Type selection persists when operation is selected
+   - `OnProcOpChanged` handler only enables/disables arguments, does not force type
+
+2. **String Type (Literal)**
+   - User enters literal text in Arg1 Value field
+   - Text is copied directly to Windows clipboard
+   - Preview shows: "(clipboard set, N chars)" where N is character count
+
+3. **Var Type (Variable Reference)**
+   - User selects variable name (e.g., var1, var2) from Arg1 Value dropdown
+   - Variable value from previous operation is resolved and copied to clipboard
+   - Preview shows: "(clipboard set, N chars)" based on resolved variable content
+
+4. **Error Handling**
+   - Null text: "(null)"
+   - Clipboard access error: "(error: {message})"
+
+**Use Cases**:
+- Copy text extracted from UI element: `GetText(element) ¡æ var1; SetClipboard(var1)`
+- Copy field value from selected row: `GetValueFromSelection(list, "ID") ¡æ var1; SetClipboard(var1)`
+- Copy static text: `SetClipboard("Fixed text to copy")`
+
+**Status**: ? **Implemented** (2025-01-20)
+
+**Cross-References**:
+- Implementation: [Plan-active.md - SetClipboard Fix](Plan-active.md#change-log-addition-2025-01-20--setclipboard--trimstring-operation-fixes)
+- Related Operations: SimulatePaste (uses clipboard content), GetText (common source for clipboard)
+
+---
+
+## TrimString Operation (2025-01-20)
+
+### FR-1142: TrimString Operation for String Cleaning
+
+**Problem**: No operation existed to remove specific substrings from strings. Users needed to trim labels, prefixes, or unwanted text patterns from UI-extracted content.
+
+**Requirement**: Add TrimString operation that removes all occurrences of a specified substring from a source string.
+
+**Operation Signature**:
+- **Operation Name**: TrimString
+- **Arg1**: Source string (Type: String or Var)
+- **Arg2**: String to trim away (Type: String or Var)
+- **Arg3**: Disabled
+- **Output**: Cleaned string with all occurrences of Arg2 removed from Arg1
+
+**Behavior**:
+
+1. **Normal Trim**
+   - Arg1 (source): " I am me "
+   - Arg2 (trim): "I"
+   - Result: " am me "
+   - Uses `string.Replace(trimString, string.Empty)` to remove all occurrences
+
+2. **Empty Trim String**
+   - If Arg2 is null or empty, returns Arg1 unchanged
+   - Preview: Shows source string as-is
+
+3. **Variable References**
+   - Both Arg1 and Arg2 can reference variables from previous operations
+   - Example: `GetText(label) ¡æ var1; TrimString(var1, "Label: ") ¡æ var2`
+
+4. **Multiple Occurrences**
+   - Removes ALL occurrences of trim string, not just first
+   - Example: "abcabc" trimmed by "a" becomes "bcbc"
+
+5. **Case Sensitivity**
+   - Trim operation is case-sensitive (uses `string.Replace`)
+   - "ABC" will not trim "abc"
+
+**Preview Format**:
+- Success: Shows cleaned string
+- Empty trim: Shows source string unchanged
+- Example: " am me " (after trimming "I" from " I am me ")
+
+**Use Cases**:
+
+**Remove Prefix/Suffix**:
+```
+GetValueFromSelection(ResultsList, "ID") ¡æ var1  // "ID: 12345"
+TrimString(var1, "ID: ") ¡æ var2  // "12345"
+```
+
+**Clean Label Text**:
+```
+GetText(NameLabel) ¡æ var1  // "Patient Name: John Doe"
+TrimString(var1, "Patient Name: ") ¡æ var2  // "John Doe"
+```
+
+**Remove Unwanted Characters**:
+```
+GetText(PriceField) ¡æ var1  // "$99.99"
+TrimString(var1, "$") ¡æ var2  // "99.99"
+```
+
+**Chain Multiple Trims**:
+```
+GetText(field) ¡æ var1  // "[PREFIX] Content [SUFFIX]"
+TrimString(var1, "[PREFIX] ") ¡æ var2  // "Content [SUFFIX]"
+TrimString(var2, " [SUFFIX]") ¡æ var3  // "Content"
+```
+
+**Limitations**:
+- Removes ALL occurrences (no option to remove only first/last)
+- Case-sensitive matching only
+- No regex pattern matching (use Replace operation for regex)
+- No character set trimming (e.g., cannot trim all whitespace characters)
+
+**Status**: ? **Implemented** (2025-01-20)
+
+**Cross-References**:
+- Implementation: [Plan-active.md - TrimString Implementation](Plan-active.md#change-log-addition-2025-01-20--setclipboard--trimstring-operation-fixes)
+- Related Operations: 
+  - `Trim` (trims whitespace from start/end)
+  - `Replace` (more flexible pattern replacement with regex support)
+  - `Split` (splits string into parts)
+
+**Future Enhancements**:
+- Add `TrimStart` / `TrimEnd` for prefix/suffix-only trimming
+- Add `TrimCharacters` for character set removal
+- Add case-insensitive trim option
+- Add regex pattern trimming
 
 ---
 

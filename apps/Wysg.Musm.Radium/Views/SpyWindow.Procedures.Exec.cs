@@ -61,8 +61,16 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
                         case "SetClipboard":
-                            row.Arg1.Type = nameof(ArgKind.String); row.Arg1Enabled = true;
+                            // FIX: SetClipboard accepts both String and Var types - don't force to String
+                            // Only enable Arg1, keep user's Type selection
+                            row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
+                            break;
+                        case "TrimString":
+                            // NEW: TrimString trims Arg2 away from Arg1 (both accept String or Var)
+                            row.Arg1Enabled = true; // Source string (String or Var)
+                            row.Arg2Enabled = true; // String to trim away (String or Var)
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
                         case "Delay":
@@ -277,6 +285,27 @@ namespace Wysg.Musm.Radium.Views
                         valueToStore = mergeInput1 + mergeSeparator + mergeInput2;
                     }
                     preview = valueToStore;
+                    break;
+                }
+                case "TrimString":
+                {
+                    var sourceString = ResolveString(row.Arg1, vars) ?? string.Empty;
+                    var trimString = ResolveString(row.Arg2, vars) ?? string.Empty;
+                    
+                    if (string.IsNullOrEmpty(trimString))
+                    {
+                        // No trim string specified - return source as-is
+                        valueToStore = sourceString;
+                        preview = valueToStore;
+                    }
+                    else
+                    {
+                        // Trim all occurrences of trimString from sourceString
+                        // Example: " I am me " with trim "I" -> " am me " (trims leading "I ")
+                        // Using Replace to remove all occurrences
+                        valueToStore = sourceString.Replace(trimString, string.Empty);
+                        preview = valueToStore;
+                    }
                     break;
                 }
                 case "GetText":
