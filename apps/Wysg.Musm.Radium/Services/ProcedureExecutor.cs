@@ -550,6 +550,10 @@ namespace Wysg.Musm.Radium.Services
                 case "Delay":
                 case "GetCurrentPatientNumber":
                 case "GetCurrentStudyDateTime":
+                case "GetCurrentHeader":
+                case "GetCurrentFindings":
+                case "GetCurrentConclusion":
+                case "Merge":
                     return ExecuteElemental(row, vars);
                 default:
                     return ("(unsupported)", null);
@@ -564,7 +568,7 @@ namespace Wysg.Musm.Radium.Services
                 {
                     case "GetText":
                     {
-                        var el = ResolveElement(row.Arg1);
+                        var el = ResolveElement(row.Arg1, vars);
                         if (el == null) return ("(no element)", null);
                         try
                         {
@@ -578,7 +582,7 @@ namespace Wysg.Musm.Radium.Services
                     }
                     case "GetTextOCR":
                     {
-                        var el = ResolveElement(row.Arg1);
+                        var el = ResolveElement(row.Arg1, vars);
                         if (el == null) return ("(no element)", null);
                         try
                         {
@@ -592,14 +596,14 @@ namespace Wysg.Musm.Radium.Services
                     }
                     case "Invoke":
                     {
-                        var el = ResolveElement(row.Arg1);
+                        var el = ResolveElement(row.Arg1, vars);
                         if (el == null) return ("(no element)", null);
                         try { var inv = el.Patterns.Invoke.PatternOrDefault; if (inv != null) inv.Invoke(); else el.Patterns.Toggle.PatternOrDefault?.Toggle(); return ("(invoked)", null); }
                         catch { return ("(error)", null); }
                     }
                     case "SetFocus":
                     {
-                        var el = ResolveElement(row.Arg1);
+                        var el = ResolveElement(row.Arg1, vars);
                         if (el == null) return ("(no element)", null);
                         try 
                         { 
@@ -632,7 +636,9 @@ namespace Wysg.Musm.Radium.Services
                     }
                     case "GetValueFromSelection":
                     {
-                        var el = ResolveElement(row.Arg1); var headerWanted = row.Arg2?.Value ?? "ID"; if (string.IsNullOrWhiteSpace(headerWanted)) headerWanted = "ID";
+                        var el = ResolveElement(row.Arg1, vars); 
+                        var headerWanted = row.Arg2?.Value ?? "ID"; 
+                        if (string.IsNullOrWhiteSpace(headerWanted)) headerWanted = "ID";
                         if (el == null) return ("(no element)", null);
                         try
                         {
@@ -674,8 +680,37 @@ namespace Wysg.Musm.Radium.Services
                             using var resp = _http.GetAsync(url).ConfigureAwait(false).GetAwaiter().GetResult();
                             resp.EnsureSuccessStatusCode();
                             var bytes = resp.Content.ReadAsByteArrayAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                            
+                            // Simple decoding: try UTF-8 first, then fallback to charset from header
                             var charset = resp.Content.Headers.ContentType?.CharSet;
-                            var html = DecodeHtml(bytes, charset);
+                            string html;
+                            try
+                            {
+                                // First try UTF-8
+                                html = Encoding.UTF8.GetString(bytes);
+                            }
+                            catch
+                            {
+                                // Fallback to charset from header if available
+                                if (!string.IsNullOrWhiteSpace(charset))
+                                {
+                                    try
+                                    {
+                                        var enc = Encoding.GetEncoding(charset);
+                                        html = enc.GetString(bytes);
+                                    }
+                                    catch
+                                    {
+                                        // Last resort: use default encoding
+                                        html = Encoding.Default.GetString(bytes);
+                                    }
+                                }
+                                else
+                                {
+                                    html = Encoding.Default.GetString(bytes);
+                                }
+                            }
+                            
                             return (html ?? string.Empty, html);
                         }
                         catch (Exception ex) { return ($"(error) {ex.Message}", null); }
@@ -689,7 +724,7 @@ namespace Wysg.Musm.Radium.Services
                     }
                     case "ClickElement":
                     {
-                        var el = ResolveElement(row.Arg1);
+                        var el = ResolveElement(row.Arg1, vars);
                         if (el == null) return ("(no element)", null);
                         try
                         {
@@ -706,7 +741,7 @@ namespace Wysg.Musm.Radium.Services
                     }
                     case "ClickElementAndStay":
                     {
-                        var el = ResolveElement(row.Arg1);
+                        var el = ResolveElement(row.Arg1, vars);
                         if (el == null) return ("(no element)", null);
                         try
                         {
@@ -723,7 +758,7 @@ namespace Wysg.Musm.Radium.Services
                     }
                     case "MouseMoveToElement":
                     {
-                        var el = ResolveElement(row.Arg1);
+                        var el = ResolveElement(row.Arg1, vars);
                         if (el == null) return ("(no element)", null);
                         try
                         {
@@ -740,7 +775,7 @@ namespace Wysg.Musm.Radium.Services
                     }
                     case "IsVisible":
                     {
-                        var el = ResolveElement(row.Arg1);
+                        var el = ResolveElement(row.Arg1, vars);
                         if (el == null) return ("false", "false");
                         try
                         {
@@ -808,7 +843,7 @@ namespace Wysg.Musm.Radium.Services
                     case "GetSelectedElement":
                     {
                         // Resolve parent element from Arg1
-                        var listEl = ResolveElement(row.Arg1);
+                        var listEl = ResolveElement(row.Arg1, vars);
                         if (listEl == null)
                             return ("(element not resolved)", null);
 
@@ -846,36 +881,107 @@ namespace Wysg.Musm.Radium.Services
                             return ($"(error: {ex.Message})", null);
                         }
                     }
+                    case "GetCurrentHeader":
+                    {
+                        // Get header text from MainViewModel (UI thread access required)
+                        try
+                        {
+                            Debug.WriteLine("[ProcedureExecutor][GetCurrentHeader] Starting operation");
+                            string result = string.Empty;
+                            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                            {
+                                var mainWindow = System.Windows.Application.Current?.MainWindow;
+                                if (mainWindow != null && mainWindow.DataContext is ViewModels.MainViewModel mainVM)
+                                {
+                                    result = mainVM.HeaderText ?? string.Empty;
+                                    Debug.WriteLine($"[ProcedureExecutor][GetCurrentHeader] SUCCESS: length={result.Length}");
+                                }
+                            });
+                            return (string.IsNullOrWhiteSpace(result) ? "(empty)" : result, result);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[ProcedureExecutor][GetCurrentHeader] EXCEPTION: {ex.Message}");
+                            return ($"(error: {ex.Message})", null);
+                        }
+                    }
+                    case "GetCurrentFindings":
+                    {
+                        // Get findings text from MainViewModel (UI thread access required)
+                        try
+                        {
+                            Debug.WriteLine("[ProcedureExecutor][GetCurrentFindings] Starting operation");
+                            string result = string.Empty;
+                            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                            {
+                                var mainWindow = System.Windows.Application.Current?.MainWindow;
+                                if (mainWindow != null && mainWindow.DataContext is ViewModels.MainViewModel mainVM)
+                                {
+                                    result = mainVM.FindingsText ?? string.Empty;
+                                    Debug.WriteLine($"[ProcedureExecutor][GetCurrentFindings] SUCCESS: length={result.Length}");
+                                }
+                            });
+                            return (string.IsNullOrWhiteSpace(result) ? "(empty)" : result, result);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[ProcedureExecutor][GetCurrentFindings] EXCEPTION: {ex.Message}");
+                            return ($"(error: {ex.Message})", null);
+                        }
+                    }
+                    case "GetCurrentConclusion":
+                    {
+                        // Get conclusion text from MainViewModel (UI thread access required)
+                        try
+                        {
+                            Debug.WriteLine("[ProcedureExecutor][GetCurrentConclusion] Starting operation");
+                            string result = string.Empty;
+                            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                            {
+                                var mainWindow = System.Windows.Application.Current?.MainWindow;
+                                if (mainWindow != null && mainWindow.DataContext is ViewModels.MainViewModel mainVM)
+                                {
+                                    result = mainVM.ConclusionText ?? string.Empty;
+                                    Debug.WriteLine($"[ProcedureExecutor][GetCurrentConclusion] SUCCESS: length={result.Length}");
+                                }
+                            });
+                            return (string.IsNullOrWhiteSpace(result) ? "(empty)" : result, result);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[ProcedureExecutor][GetCurrentConclusion] EXCEPTION: {ex.Message}");
+                            return ($"(error: {ex.Message})", null);
+                        }
+                    }
+                    case "Merge":
+                    {
+                        var input1 = ResolveString(row.Arg1, vars) ?? string.Empty;
+                        var input2 = ResolveString(row.Arg2, vars) ?? string.Empty;
+                        var separator = ResolveString(row.Arg3, vars) ?? string.Empty;
+                        
+                        // Merge the two strings with optional separator
+                        string merged;
+                        if (string.IsNullOrEmpty(separator))
+                        {
+                            merged = input1 + input2;
+                        }
+                        else
+                        {
+                            merged = input1 + separator + input2;
+                        }
+                        return (merged, merged);
+                    }
                 }
             }
             catch { }
             return ("(unsupported)", null);
         }
 
-        private static string DecodeHtml(byte[] bytes, string? headerCharset)
-        {
-            try
-            {
-                Encoding enc = Encoding.UTF8;
-                if (!string.IsNullOrWhiteSpace(headerCharset)) { try { enc = Encoding.GetEncoding(headerCharset!); } catch { enc = Encoding.UTF8; } }
-                var text = enc.GetString(bytes);
-                var sample = text.Length > 8192 ? text.Substring(0, 8192) : text;
-                var m = Regex.Match(sample, "charset=([^\"'>]+)", RegexOptions.IgnoreCase);
-                if (m.Success)
-                {
-                    var cs = m.Groups[1].Value.Trim().TrimEnd(';');
-                    try { var e2 = Encoding.GetEncoding(cs); text = e2.GetString(bytes); } catch { }
-                }
-                return text;
-            }
-            catch { return Encoding.UTF8.GetString(bytes); }
-        }
-
         // Element resolution with staleness detection and retry (inspired by legacy PacsService validation pattern)
         private const int ElementResolveMaxAttempts = 3;
         private const int ElementResolveRetryDelayMs = 150;
 
-        private static AutomationElement? ResolveElement(ProcArg arg)
+        private static AutomationElement? ResolveElement(ProcArg arg, Dictionary<string, string?> vars)
         {
             var type = ParseArgKind(arg.Type);
             
@@ -930,22 +1036,39 @@ namespace Wysg.Musm.Radium.Services
             // Handle Var type (variable containing cached element reference)
             if (type == ArgKind.Var)
             {
-                var varValue = ResolveString(arg, new Dictionary<string, string?>()) ?? string.Empty;
+                var varName = arg.Value ?? string.Empty;
+                Debug.WriteLine($"[ResolveElement][Var] Resolving variable '{varName}'");
+                
+                // First resolve the variable value from vars dictionary
+                if (!vars.TryGetValue(varName, out var varValue) || string.IsNullOrWhiteSpace(varValue))
+                {
+                    Debug.WriteLine($"[ResolveElement][Var] Variable '{varName}' not found in vars dictionary or is empty");
+                    return null;
+                }
+                
+                Debug.WriteLine($"[ResolveElement][Var] Variable '{varName}' resolved to: '{varValue}'");
                 
                 // Check if this variable contains a cached element reference
                 if (_elementCache.TryGetValue(varValue, out var cachedElement))
                 {
+                    Debug.WriteLine($"[ResolveElement][Var] Found cached element for key '{varValue}'");
                     // Validate element is still alive
                     if (IsElementAlive(cachedElement))
                     {
+                        Debug.WriteLine($"[ResolveElement][Var] Cached element is still alive");
                         return cachedElement;
                     }
                     else
                     {
                         // Element is stale, remove from cache
+                        Debug.WriteLine($"[ResolveElement][Var] Cached element is stale, removing from cache");
                         _elementCache.Remove(varValue);
                         return null;
                     }
+                }
+                else
+                {
+                    Debug.WriteLine($"[ResolveElement][Var] No cached element found for key '{varValue}'");
                 }
             }
             

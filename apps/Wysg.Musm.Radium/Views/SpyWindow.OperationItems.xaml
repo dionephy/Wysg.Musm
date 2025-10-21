@@ -27,6 +27,10 @@
         <ComboBoxItem Content="IsMatch"/>
         <ComboBoxItem Content="GetCurrentPatientNumber"/>
         <ComboBoxItem Content="GetCurrentStudyDateTime"/>
+        <ComboBoxItem Content="GetCurrentHeader"/>
+        <ComboBoxItem Content="GetCurrentFindings"/>
+        <ComboBoxItem Content="GetCurrentConclusion"/>
+        <ComboBoxItem Content="Merge"/>
     </x:Array>
 
 </ResourceDictionary>

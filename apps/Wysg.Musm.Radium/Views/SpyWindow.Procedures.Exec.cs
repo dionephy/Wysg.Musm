@@ -75,6 +75,9 @@ namespace Wysg.Musm.Radium.Views
                         case "SimulatePaste":
                         case "GetCurrentPatientNumber":
                         case "GetCurrentStudyDateTime":
+                        case "GetCurrentHeader":
+                        case "GetCurrentFindings":
+                        case "GetCurrentConclusion":
                             // These operations don't require any arguments
                             row.Arg1.Type = nameof(ArgKind.String); row.Arg1Enabled = false; row.Arg1.Value = string.Empty;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
@@ -91,6 +94,7 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
                         case "Replace":
+                        case "Merge":
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true;
                             row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = true;
@@ -244,16 +248,36 @@ namespace Wysg.Musm.Radium.Views
                     return (preview, result);
                 }
                 case "Replace":
-                    var input2 = ResolveString(row.Arg1, vars);
+                {
+                    var inputReplace = ResolveString(row.Arg1, vars);
                     var searchRaw = ResolveString(row.Arg2, vars) ?? string.Empty;
                     var replRaw = ResolveString(row.Arg3, vars) ?? string.Empty;
-                    if (input2 == null) { preview = "(null)"; break; }
+                    if (inputReplace == null) { preview = "(null)"; break; }
                     var search = UnescapeUserText(searchRaw);
                     var repl = UnescapeUserText(replRaw);
-                    if (string.IsNullOrEmpty(search)) { valueToStore = input2; preview = input2; break; }
-                    valueToStore = input2.Replace(search, repl);
+                    if (string.IsNullOrEmpty(search)) { valueToStore = inputReplace; preview = inputReplace; break; }
+                    valueToStore = inputReplace.Replace(search, repl);
                     preview = valueToStore;
                     break;
+                }
+                case "Merge":
+                {
+                    var mergeInput1 = ResolveString(row.Arg1, vars) ?? string.Empty;
+                    var mergeInput2 = ResolveString(row.Arg2, vars) ?? string.Empty;
+                    var mergeSeparator = ResolveString(row.Arg3, vars) ?? string.Empty;
+                    
+                    // Merge the two strings with optional separator
+                    if (string.IsNullOrEmpty(mergeSeparator))
+                    {
+                        valueToStore = mergeInput1 + mergeInput2;
+                    }
+                    else
+                    {
+                        valueToStore = mergeInput1 + mergeSeparator + mergeInput2;
+                    }
+                    preview = valueToStore;
+                    break;
+                }
                 case "GetText":
                     var el = ResolveElement(row.Arg1, vars);
                     if (el == null) { preview = "(no element)"; break; }
@@ -610,6 +634,111 @@ namespace Wysg.Musm.Radium.Views
                         }
                     }
                     break;
+                case "GetCurrentHeader":
+                    {
+                        // Get header text from MainViewModel
+                        try
+                        {
+                            Debug.WriteLine("[SpyWindow][GetCurrentHeader] Starting operation");
+                            var mainWindow = System.Windows.Application.Current?.MainWindow;
+                            if (mainWindow != null)
+                            {
+                                Debug.WriteLine("[SpyWindow][GetCurrentHeader] MainWindow found");
+                                if (mainWindow.DataContext is Wysg.Musm.Radium.ViewModels.MainViewModel mainVM)
+                                {
+                                    valueToStore = mainVM.HeaderText ?? string.Empty;
+                                    Debug.WriteLine($"[SpyWindow][GetCurrentHeader] SUCCESS: HeaderText length={valueToStore.Length}");
+                                    preview = string.IsNullOrWhiteSpace(valueToStore) ? "(empty)" : valueToStore;
+                                }
+                                else
+                                {
+                                    Debug.WriteLine($"[SpyWindow][GetCurrentHeader] FAIL: MainWindow.DataContext is {mainWindow.DataContext?.GetType().Name ?? "null"}");
+                                    preview = "(MainViewModel not found in DataContext)";
+                                }
+                            }
+                            else
+                            {
+                                Debug.WriteLine("[SpyWindow][GetCurrentHeader] FAIL: MainWindow is null");
+                                preview = "(MainWindow not found)";
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[SpyWindow][GetCurrentHeader] EXCEPTION: {ex.Message}");
+                            preview = $"(error: {ex.Message})";
+                        }
+                    }
+                    break;
+                case "GetCurrentFindings":
+                    {
+                        // Get findings text from MainViewModel
+                        try
+                        {
+                            Debug.WriteLine("[SpyWindow][GetCurrentFindings] Starting operation");
+                            var mainWindow = System.Windows.Application.Current?.MainWindow;
+                            if (mainWindow != null)
+                            {
+                                Debug.WriteLine("[SpyWindow][GetCurrentFindings] MainWindow found");
+                                if (mainWindow.DataContext is Wysg.Musm.Radium.ViewModels.MainViewModel mainVM)
+                                {
+                                    valueToStore = mainVM.FindingsText ?? string.Empty;
+                                    Debug.WriteLine($"[SpyWindow][GetCurrentFindings] SUCCESS: FindingsText length={valueToStore.Length}");
+                                    preview = string.IsNullOrWhiteSpace(valueToStore) ? "(empty)" : valueToStore;
+                                }
+                                else
+                                {
+                                    Debug.WriteLine($"[SpyWindow][GetCurrentFindings] FAIL: MainWindow.DataContext is {mainWindow.DataContext?.GetType().Name ?? "null"}");
+                                    preview = "(MainViewModel not found in DataContext)";
+                                }
+                            }
+                            else
+                            {
+                                Debug.WriteLine("[SpyWindow][GetCurrentFindings] FAIL: MainWindow is null");
+                                preview = "(MainWindow not found)";
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[SpyWindow][GetCurrentFindings] EXCEPTION: {ex.Message}");
+                            preview = $"(error: {ex.Message})";
+                        }
+                    }
+                    break;
+                case "GetCurrentConclusion":
+                    {
+                        // Get conclusion text from MainViewModel
+                        try
+                        {
+                            Debug.WriteLine("[SpyWindow][GetCurrentConclusion] Starting operation");
+                            var mainWindow = System.Windows.Application.Current?.MainWindow;
+                            if (mainWindow != null)
+                            {
+                                Debug.WriteLine("[SpyWindow][GetCurrentConclusion] MainWindow found");
+                                if (mainWindow.DataContext is Wysg.Musm.Radium.ViewModels.MainViewModel mainVM)
+                                {
+                                    valueToStore = mainVM.ConclusionText ?? string.Empty;
+                                    Debug.WriteLine($"[SpyWindow][GetCurrentConclusion] SUCCESS: ConclusionText length={valueToStore.Length}");
+                                    preview = string.IsNullOrWhiteSpace(valueToStore) ? "(empty)" : valueToStore;
+                                }
+                                else
+                                {
+                                    Debug.WriteLine($"[SpyWindow][GetCurrentConclusion] FAIL: MainWindow.DataContext is {mainWindow.DataContext?.GetType().Name ?? "null"}");
+                                    preview = "(MainViewModel not found in DataContext)";
+                                }
+                            }
+                            else
+                            {
+                                Debug.WriteLine("[SpyWindow][GetCurrentConclusion] FAIL: MainWindow is null");
+                                preview = "(MainWindow not found)";
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[SpyWindow][GetCurrentConclusion] EXCEPTION: {ex.Message}");
+                            preview = $"(error: {ex.Message})";
+                        }
+                    }
+                    break;
                 default: preview = "(unsupported)"; break;
             }
             return (preview, valueToStore);
@@ -788,23 +917,40 @@ namespace Wysg.Musm.Radium.Views
             // Handle Var type (variable containing cached element reference)
             if (type == ArgKind.Var)
             {
-                var varValue = ResolveString(arg, vars) ?? string.Empty;
+                var varName = arg.Value ?? string.Empty;
+                Debug.WriteLine($"[SpyWindow][ResolveElement][Var] Resolving variable '{varName}'");
+                
+                // First resolve the variable value from vars dictionary
+                if (!vars.TryGetValue(varName, out var varValue) || string.IsNullOrWhiteSpace(varValue))
+                {
+                    Debug.WriteLine($"[SpyWindow][ResolveElement][Var] Variable '{varName}' not found in vars dictionary or is empty");
+                    return null;
+                }
+                
+                Debug.WriteLine($"[SpyWindow][ResolveElement][Var] Variable '{varName}' resolved to: '{varValue}'");
                 
                 // Check if this variable contains a cached element reference
                 if (_elementCache.TryGetValue(varValue, out var cachedElement))
                 {
+                    Debug.WriteLine($"[SpyWindow][ResolveElement][Var] Found cached element for key '{varValue}'");
                     // Validate element is still alive
                     try
                     {
                         _ = cachedElement.Name; // Test if element is still accessible
+                        Debug.WriteLine($"[SpyWindow][ResolveElement][Var] Cached element is still alive");
                         return cachedElement;
                     }
                     catch
                     {
                         // Element is stale, remove from cache
+                        Debug.WriteLine($"[SpyWindow][ResolveElement][Var] Cached element is stale, removing from cache");
                         _elementCache.Remove(varValue);
                         return null;
                     }
+                }
+                else
+                {
+                    Debug.WriteLine($"[SpyWindow][ResolveElement][Var] No cached element found for key '{varValue}'");
                 }
             }
             
