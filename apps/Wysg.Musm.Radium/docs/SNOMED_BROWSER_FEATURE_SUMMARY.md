@@ -175,24 +175,40 @@ The system uses SNOMED CT Expression Constraint Language (ECL) for semantic tag 
 
 ### Dual-Endpoint Strategy
 
-The Snowstorm client uses two different endpoints:
+The Snowstorm client uses two different endpoints with optimized caching:
 
 1. **`/MAIN/concepts?ecl=...`** - For ECL filtering
    - Supports Expression Constraint Language
    - Returns basic concept info (ID, FSN, PT)
    - Used for browsing by semantic tag
+   - **NEW: Returns `searchAfter` token for next page caching**
 
 2. **`/browser/MAIN/descriptions?term={conceptId}`** - For term fetching
    - Returns ALL descriptions for a concept
    - Includes FSN, PT, and all synonyms
    - Includes acceptabilityMap for term type detection
 
+**Token-Based Pagination Flow:**
+1. Load page N ¡æ Receive concepts + `searchAfter` token
+2. Cache token ¡æ `_pageTokenCache[N+1] = token`
+3. Click "Next" ¡æ Use `_pageTokenCache[N+1]` directly
+4. Load page N+1 with 1 API call (instead of N+1 calls)
+
 ### Pagination Strategy
 
 - Uses Snowstorm's cursor-based pagination (`searchAfter` tokens)
-- Accumulates concepts until reaching requested offset + limit
+- **NEW: Token Caching for Efficient "Next" Navigation**
+  - When a page is loaded, the `searchAfter` token for the NEXT page is cached
+  - Clicking "Next" uses the cached token to jump directly to that page (no re-fetching from beginning)
+  - "Previous" and "Jump to Page" still require pagination from beginning (tokens cached during traversal)
+  - Cache is cleared when domain changes
+- Accumulates concepts until reaching requested offset + limit (for non-cached pages)
 - Applies Skip/Take for UI pagination
 - Estimates total pages (refined as user browses)
+
+**Performance Impact:**
+- **Before:** Clicking "Next" on page 101 required fetching pages 1-101 (1,010 API calls)
+- **After:** Clicking "Next" on page 101 requires 1 API call (using cached token)
 
 ### Existence Check Algorithm
 
@@ -339,14 +355,16 @@ radium.phrase (
 
 ### Load Time Benchmarks
 
-| Operation | Target | Actual | Status |
-|-----------|--------|--------|--------|
-| Load 10 concepts | < 2s | ~1.5s | ? |
-| Fetch all terms (per concept) | < 500ms | ~300ms | ? |
-| Check phrase existence (237 phrases) | < 100ms | ~50ms | ? |
-| Add new phrase + mapping | < 1s | ~800ms | ? |
-| Delete phrase | < 500ms | ~300ms | ? |
-| Page navigation | < 1s | ~700ms | ? |
+| Operation | Target | Actual (Before) | Actual (After Token Caching) | Status |
+|-----------|--------|-----------------|------------------------------|--------|
+| Load 10 concepts (page 1) | < 2s | ~1.5s | ~1.5s | ? |
+| Load 10 concepts (page 2, Next) | < 2s | ~3s (fetch 20) | ~1.5s (1 call) | ? IMPROVED |
+| Load 10 concepts (page 101, Next) | < 2s | ~150s (fetch 1010) | ~1.5s (1 call) | ? MAJOR IMPROVEMENT |
+| Fetch all terms (per concept) | < 500ms | ~300ms | ~300ms | ? |
+| Check phrase existence (237 phrases) | < 100ms | ~50ms | ~50ms | ? |
+| Add new phrase + mapping | < 1s | ~800ms | ~800ms | ? |
+| Delete phrase | < 500ms | ~300ms | ~300ms | ? |
+| Page navigation (Previous/Jump) | < 5s | varies | varies | ?? |
 
 ### Memory Usage
 

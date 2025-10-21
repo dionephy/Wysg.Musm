@@ -14,7 +14,12 @@ namespace Wysg.Musm.Radium.Services
         /// <param name="semanticTag">Semantic tag filter (e.g., "body structure", "finding", "disorder")</param>
         /// <param name="offset">Number of results to skip (for pagination)</param>
         /// <param name="limit">Maximum number of results to return</param>
-        /// <returns>List of SNOMED concepts with all terms matching the semantic tag</returns>
-        Task<IReadOnlyList<SnomedConceptWithTerms>> BrowseBySemanticTagAsync(string semanticTag, int offset = 0, int limit = 10);
+        /// <param name="searchAfterToken">Optional searchAfter token from previous page for efficient pagination</param>
+        /// <returns>Tuple containing list of SNOMED concepts with all terms, and the next searchAfter token</returns>
+        Task<(IReadOnlyList<SnomedConceptWithTerms> concepts, string? nextSearchAfter)> BrowseBySemanticTagAsync(
+            string semanticTag, 
+            int offset = 0, 
+            int limit = 10, 
+            string? searchAfterToken = null);
     }
 }

@@ -12,6 +12,7 @@ namespace Wysg.Musm.Radium.ViewModels
     /// <summary>
     /// ViewModel for the SNOMED CT Browser Window.
     /// Allows browsing all SNOMED concepts by domain (semantic tag) with pagination.
+    /// Uses token caching for efficient "Next" navigation.
     /// </summary>
     public sealed class SnomedBrowserViewModel : INotifyPropertyChanged
     {
@@ -26,6 +27,11 @@ namespace Wysg.Musm.Radium.ViewModels
         private bool _isBusy;
         private string _statusMessage = string.Empty;
         private const int ConceptsPerPage = 10;
+
+        // Token cache: Maps page number to searchAfter token for that page
+        // Key: page number, Value: searchAfter token to use when loading that page
+        private readonly Dictionary<int, string> _pageTokenCache = new();
+        private string? _lastSearchAfterToken = null; // Token for the NEXT page after current
 
         public ObservableCollection<SnomedConceptViewModel> Concepts { get; } = new();
 
@@ -50,6 +56,8 @@ namespace Wysg.Musm.Radium.ViewModels
                     _selectedDomain = value;
                     OnPropertyChanged();
                     CurrentPage = 1; // Reset to page 1 on domain change
+                    _pageTokenCache.Clear(); // Clear token cache when domain changes
+                    _lastSearchAfterToken = null;
                     _ = LoadConceptsAsync();
                 }
             }
@@ -230,13 +238,45 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 IsBusy = true;
                 var offset = (CurrentPage - 1) * ConceptsPerPage;
-                StatusMessage = $"Loading {SelectedDomain} concepts (page {CurrentPage}, offset {offset}, limit {ConceptsPerPage})...";
+                
+                // Check if we have a cached token for this page
+                string? searchAfterToken = null;
+                if (_pageTokenCache.TryGetValue(CurrentPage, out var cachedToken))
+                {
+                    searchAfterToken = cachedToken;
+                    StatusMessage = $"Loading {SelectedDomain} concepts (page {CurrentPage}, using cached token)...";
+                    System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] Using cached token for page {CurrentPage}: {searchAfterToken}");
+                }
+                else
+                {
+                    StatusMessage = $"Loading {SelectedDomain} concepts (page {CurrentPage}, offset {offset}, limit {ConceptsPerPage})...";
+                    System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] No cached token for page {CurrentPage}, will paginate from beginning");
+                }
 
                 Concepts.Clear();
 
-                var concepts = await _snowstormClient.BrowseBySemanticTagAsync(SelectedDomain, offset, ConceptsPerPage);
+                var (concepts, nextSearchAfter) = await _snowstormClient.BrowseBySemanticTagAsync(
+                    SelectedDomain, 
+                    offset, 
+                    ConceptsPerPage, 
+                    searchAfterToken);
 
                 System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] Received {concepts.Count} concepts from Snowstorm");
+                System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] Next searchAfter token: {nextSearchAfter ?? "(null)"}");
+
+                // Cache the token for the NEXT page if available
+                if (!string.IsNullOrEmpty(nextSearchAfter))
+                {
+                    var nextPage = CurrentPage + 1;
+                    _pageTokenCache[nextPage] = nextSearchAfter;
+                    _lastSearchAfterToken = nextSearchAfter;
+                    System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] Cached token for page {nextPage}");
+                }
+                else
+                {
+                    _lastSearchAfterToken = null;
+                    System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] No token to cache (end of results or error)");
+                }
 
                 if (concepts.Count == 0 && CurrentPage > 1)
                 {
@@ -263,8 +303,8 @@ namespace Wysg.Musm.Radium.ViewModels
 
                 System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] Created {Concepts.Count} concept VMs with {totalTerms} total terms");
 
-                // If we got a full page, there might be more
-                if (concepts.Count == ConceptsPerPage && CurrentPage >= TotalPages)
+                // If we got a full page and have a next token, there might be more
+                if (concepts.Count == ConceptsPerPage && !string.IsNullOrEmpty(nextSearchAfter) && CurrentPage >= TotalPages)
                 {
                     TotalPages = CurrentPage + 1;
                 }
