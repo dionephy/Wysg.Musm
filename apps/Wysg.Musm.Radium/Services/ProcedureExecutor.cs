@@ -606,92 +606,72 @@ namespace Wysg.Musm.Radium.Services
                         var el = ResolveElement(row.Arg1, vars);
                         if (el == null) return ("(no element)", null);
                         
-                        // NEW: Activate containing window before setting focus (required for complex controls like RichEdit)
-                        // IMPORTANT: Must run on UI thread to have permission to change foreground window
-                        try
-                        {
-                            var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
-                            if (hwnd != IntPtr.Zero)
-                            {
-                                // Activate window on UI thread (background threads can't change foreground)
-                                bool activationSuccess = false;
-                                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
-                                {
-                                    try
-                                    {
-                                        activationSuccess = NativeMouseHelper.SetForegroundWindow(hwnd);
-                                        System.Threading.Thread.Sleep(100); // Brief delay for window activation
-                                    }
-                                    catch { }
-                                });
-                                
-                                Debug.WriteLine($"[SetFocus] Window activation result: {activationSuccess}");
-                            }
-                        }
-                        catch (Exception ex) 
-                        { 
-                            Debug.WriteLine($"[SetFocus] Window activation failed: {ex.Message}");
-                        }
-                        
-                        // Retry logic for SetFocus - sometimes elements need time to be ready
-                        const int maxAttempts = 3;
-                        const int retryDelayMs = 150;
-                        Exception? lastException = null;
+                        // CRITICAL FIX: Both window activation AND focus must run on UI thread
+                        // Background threads don't have permission to change foreground window or set focus
+                        string resultPreview = "(error)";
                         bool success = false;
                         
-                        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+                        try
                         {
-                            try
+                            // Execute entire SetFocus logic on UI thread with retry
+                            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
                             {
-                                // Execute Focus on STA thread to match legacy PacsService behavior
-                                // UI Automation sometimes requires proper thread apartment state
-                                var focusSuccess = false;
-                                Exception? focusException = null;
-                                
-                                var thread = new System.Threading.Thread(() =>
+                                try
                                 {
-                                    try
+                                    // 1. Activate containing window first
+                                    var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
+                                    if (hwnd != IntPtr.Zero)
                                     {
-                                        el.Focus();
-                                        focusSuccess = true;
+                                        var activated = NativeMouseHelper.SetForegroundWindow(hwnd);
+                                        Debug.WriteLine($"[SetFocus] Window activation: {activated}");
+                                        System.Threading.Thread.Sleep(100); // Brief delay for activation
                                     }
-                                    catch (Exception ex)
+                                    
+                                    // 2. Retry focus with delays
+                                    const int maxAttempts = 3;
+                                    const int retryDelayMs = 150;
+                                    Exception? lastException = null;
+                                    
+                                    for (int attempt = 1; attempt <= maxAttempts; attempt++)
                                     {
-                                        focusException = ex;
+                                        try
+                                        {
+                                            el.Focus();
+                                            resultPreview = attempt > 1 ? $"(focused after {attempt} attempts)" : "(focused)";
+                                            success = true;
+                                            return; // Success - exit retry loop
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            lastException = ex;
+                                            Debug.WriteLine($"[SetFocus] Attempt {attempt} failed: {ex.Message}");
+                                            if (attempt < maxAttempts)
+                                            {
+                                                System.Threading.Thread.Sleep(retryDelayMs);
+                                            }
+                                        }
                                     }
-                                });
-                                
-                                thread.SetApartmentState(System.Threading.ApartmentState.STA);
-                                thread.Start();
-                                thread.Join(1000); // Wait up to 1 second
-                                
-                                if (focusSuccess)
-                                {
-                                    var preview = attempt > 1 ? $"(focused after {attempt} attempts)" : "(focused)";
-                                    success = true;
-                                    return (preview, null);
+                                    
+                                    // All attempts failed
+                                    if (!success && lastException != null)
+                                    {
+                                        resultPreview = $"(error after {maxAttempts} attempts: {lastException.Message})";
+                                    }
                                 }
-                                else if (focusException != null)
+                                catch (Exception ex)
                                 {
-                                    throw focusException;
+                                    Debug.WriteLine($"[SetFocus] Dispatcher execution failed: {ex.Message}");
+                                    resultPreview = $"(error: {ex.Message})";
                                 }
-                            }
-                            catch (Exception ex)
-                            {
-                                lastException = ex;
-                                if (attempt < maxAttempts)
-                                {
-                                    Task.Delay(retryDelayMs).Wait();
-                                }
-                            }
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[SetFocus] Dispatcher.Invoke failed: {ex.Message}");
+                            resultPreview = $"(dispatcher error: {ex.Message})";
                         }
                         
-                        if (!success)
-                        {
-                            return ($"(error after {maxAttempts} attempts: {lastException?.Message})", null);
-                        }
-                        
-                        return ("(error)", null);
+                        return (resultPreview, null);
                     }
                     case "TakeLast":
                     {
