@@ -183,7 +183,8 @@ namespace Wysg.Musm.Radium.Views
 
         private (string preview, string? value) ExecuteSingle(ProcOpRow row, Dictionary<string, string?> vars)
         {
-            string? valueToStore = null; string preview;
+            string? valueToStore = null; 
+            string preview = "(unsupported)"; // Initialize to default value
             switch (row.Op)
             {
                 case "Split":
@@ -318,37 +319,79 @@ namespace Wysg.Musm.Radium.Views
                 case "SetFocus":
                 {
                     var elFocus = ResolveElement(row.Arg1, vars);
-                    if (elFocus == null) { preview = "(no element)"; break; }
-                    
-                    // Retry logic for SetFocus - sometimes elements need time to be ready
-                    const int maxAttempts = 3;
-                    const int retryDelayMs = 150;
-                    Exception? lastException = null;
-                    bool success = false;
-                    preview = "(error)"; // Initialize to default value
-                    
-                    for (int attempt = 1; attempt <= maxAttempts; attempt++)
-                    {
-                        try
-                        {
-                            elFocus.Focus();
-                            preview = attempt > 1 ? $"(focused after {attempt} attempts)" : "(focused)";
-                            success = true;
-                            break;
-                        }
-                        catch (Exception ex)
-                        {
-                            lastException = ex;
-                            if (attempt < maxAttempts)
-                            {
-                                System.Threading.Thread.Sleep(retryDelayMs);
-                            }
-                        }
+                    if (elFocus == null) 
+                    { 
+                        Debug.WriteLine("[SpyWindow][SetFocus] FAIL: Element resolution returned null");
+                        preview = "(no element)"; 
+                        break; 
                     }
                     
-                    if (!success)
+                    Debug.WriteLine($"[SpyWindow][SetFocus] Element resolved: Name='{elFocus.Name}', AutomationId='{elFocus.AutomationId}'");
+                    
+                    // Since SpyWindow.ExecuteSingle runs ON the UI thread already, we can call window activation directly
+                    // No need for Dispatcher.BeginInvoke - we're already on the correct thread
+                    try
                     {
-                        preview = $"(error after {maxAttempts} attempts: {lastException?.Message})";
+                        // 1. Get window handle and activate (UI thread has permission)
+                        Debug.WriteLine("[SpyWindow][SetFocus] Attempting to get window handle...");
+                        var hwnd = new IntPtr(elFocus.Properties.NativeWindowHandle.Value);
+                        Debug.WriteLine($"[SpyWindow][SetFocus] Window handle: 0x{hwnd.ToInt64():X}");
+                        
+                        // 2. Activate containing window first
+                        if (hwnd != IntPtr.Zero)
+                        {
+                            Debug.WriteLine("[SpyWindow][SetFocus] Calling SetForegroundWindow...");
+                            var activated = NativeMouseHelper.SetForegroundWindow(hwnd);
+                            Debug.WriteLine($"[SpyWindow][SetFocus] SetForegroundWindow result: {activated}");
+                            
+                            Debug.WriteLine("[SpyWindow][SetFocus] Sleeping 100ms for window activation...");
+                            System.Threading.Thread.Sleep(100);
+                            Debug.WriteLine("[SpyWindow][SetFocus] Sleep completed");
+                        }
+                        
+                        // 3. Retry focus with delays
+                        const int maxAttempts = 3;
+                        const int retryDelayMs = 150;
+                        Exception? lastException = null;
+                        bool success = false;
+                        
+                        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+                        {
+                            Debug.WriteLine($"[SpyWindow][SetFocus] Focus attempt {attempt}/{maxAttempts}...");
+                            try
+                            {
+                                Debug.WriteLine($"[SpyWindow][SetFocus] Calling elFocus.Focus() on element '{elFocus.Name}'...");
+                                elFocus.Focus();
+                                Debug.WriteLine($"[SpyWindow][SetFocus] SUCCESS: Focus() completed on attempt {attempt}");
+                                preview = attempt > 1 ? $"(focused after {attempt} attempts)" : "(focused)";
+                                success = true;
+                                break; // Success - exit retry loop
+                            }
+                            catch (Exception ex)
+                            {
+                                lastException = ex;
+                                Debug.WriteLine($"[SpyWindow][SetFocus] Attempt {attempt} FAILED: {ex.GetType().Name}");
+                                Debug.WriteLine($"[SpyWindow][SetFocus] Exception message: {ex.Message}");
+                                
+                                if (attempt < maxAttempts)
+                                {
+                                    Debug.WriteLine($"[SpyWindow][SetFocus] Sleeping {retryDelayMs}ms before retry...");
+                                    System.Threading.Thread.Sleep(retryDelayMs);
+                                }
+                            }
+                        }
+                        
+                        if (!success)
+                        {
+                            preview = $"(error after {maxAttempts} attempts: {lastException?.Message})";
+                            Debug.WriteLine($"[SpyWindow][SetFocus] All attempts exhausted: {preview}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[SpyWindow][SetFocus] EXCEPTION: {ex.GetType().Name}");
+                        Debug.WriteLine($"[SpyWindow][SetFocus] Exception message: {ex.Message}");
+                        preview = $"(error: {ex.Message})";
                     }
                     break;
                 }
