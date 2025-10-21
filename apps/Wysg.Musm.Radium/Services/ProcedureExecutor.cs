@@ -532,6 +532,7 @@ namespace Wysg.Musm.Radium.Services
                 case "GetText":
                 case "GetTextOCR":
                 case "Invoke":
+                case "SetFocus":
                 case "ClickElement":
                 case "ClickElementAndStay":
                 case "MouseMoveToElement":
