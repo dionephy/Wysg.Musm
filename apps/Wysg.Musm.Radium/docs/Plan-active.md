@@ -11,7 +11,8 @@
 ## Quick Navigation
 
 ### Recent Implementations (2025-01-01 onward)
-- [SetClipboard & TrimString Operation Fixes (2025-01-20)](#change-log-addition-2025-01-20--setclipboard--trimstring-operation-fixes) - **NEW**
+- [AddPreviousStudy Comparison Append (2025-01-20)](#change-log-addition-2025-01-20--addpreviousstudy-comparison-append) - **NEW**
+- [SetClipboard & TrimString Operation Fixes (2025-01-20)](#change-log-addition-2025-01-20--setclipboard--trimstring-operation-fixes)
 - [SetFocus Operation Retry Logic (2025-01-20)](#change-log-addition-2025-01-20--setfocus-operation-retry-logic)
 - [Foreign Text Merge Caret Preservation (2025-01-19)](#change-log-addition-2025-01-19--foreign-text-merge-caret-preservation-and-focus-management)
 - [Current Combination Quick Delete (2025-01-18)](#change-log-addition-2025-01-18--current-combination-quick-delete-and-all-combinations-library)
@@ -21,6 +22,179 @@
 ### Archived Plans (2024 and earlier)
 - **2024-Q4**: PACS Automation, Multi-PACS Tenancy ?? [archive/2024/Plan-2024-Q4.md](archive/2024/Plan-2024-Q4.md)
 - **2025-Q1 (older)**: Technique Management, Editor Features ?? [archive/2025-Q1/](archive/2025-Q1/)
+
+---
+
+## Change Log Addition (2025-01-20 ? AddPreviousStudy Comparison Append)
+
+### User Request
+In settings window ¡æ automation tab, there is "AddPreviousStudy" module. On this module run, at the end of currently existing logics, I want the simplified string of added previous study (e.g. "CT 2020-10-10") to be added to current JSON, Report.comparison.
+
+### Problem
+When the AddPreviousStudy automation module successfully adds a previous study to the current patient, there was no automatic record of which previous study was added in the current report's Comparison field. Users had to manually type comparison information like "CT 2024-01-15" after adding a previous study.
+
+### Root Cause
+The `RunAddPreviousStudyModuleAsync()` method in `MainViewModel.Commands.cs` successfully persisted the previous study and loaded it into the Previous Studies list, but did not update the current report's `Comparison` field to reflect the addition.
+
+### Solution
+Extended the `RunAddPreviousStudyModuleAsync()` method to automatically append a simplified study string to the current report's `Comparison` field after successfully adding a previous study.
+
+**Simplified String Format**:
+- Pattern: `{MODALITY} {YYYY-MM-DD}`
+- MODALITY extracted using existing `ExtractModality()` helper method
+- Date formatted as ISO date string (YYYY-MM-DD)
+
+**Append Logic**:
+- If `Comparison` is empty or whitespace: Set to simplified string
+- If `Comparison` has existing content: Append with ", " separator
+- Examples:
+  - Empty ¡æ "CT 2024-01-15"
+  - "Prior CT" ¡æ "Prior CT, CT 2024-01-15"
+  - "CT 2024-01-10" ¡æ "CT 2024-01-10, MR 2024-01-15"
+
+**Error Handling**:
+- Wrapped in try-catch block to prevent comparison append errors from failing the entire AddPreviousStudy operation
+- Errors logged to Debug output with `[AddPreviousStudyModule] Comparison append error: {message}`
+- Silent failure with no user-visible error message
+
+### Files Modified (1 file)
+1. `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Commands.cs` - Added comparison append logic to `RunAddPreviousStudyModuleAsync()`
+
+### Code Changes
+
+**MainViewModel.Commands.cs - Comparison Append Logic**:
+```csharp
+// After successful previous study persistence and reload (before "Previous study added" status)
+
+PreviousReportified = true;
+
+// Append simplified study string to current report's Comparison field
+try
+{
+    Debug.WriteLine("[AddPreviousStudyModule] Appending to Comparison field");
+    var modality = ExtractModality(studyName);
+    var dateStr = studyDt.ToString("yyyy-MM-dd");
+    var simplifiedStudy = $"{modality} {dateStr}";
+    Debug.WriteLine($"[AddPreviousStudyModule] Simplified string: '{simplifiedStudy}'");
+    
+    // Append to existing Comparison with proper separator
+    var currentComparison = Comparison ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(currentComparison))
+    {
+        Comparison = simplifiedStudy;
+        Debug.WriteLine($"[AddPreviousStudyModule] Set Comparison to: '{simplifiedStudy}'");
+    }
+    else
+    {
+        // Append with comma separator
+        Comparison = currentComparison.TrimEnd() + ", " + simplifiedStudy;
+        Debug.WriteLine($"[AddPreviousStudyModule] Appended to Comparison: '{Comparison}'");
+    }
+}
+catch (Exception ex)
+{
+    Debug.WriteLine($"[AddPreviousStudyModule] Comparison append error: {ex.Message}");
+    // Don't fail the entire operation if comparison append fails
+}
+
+SetStatus("Previous study added");
+```
+
+### ExtractModality() Helper
+Uses existing method from `MainViewModel.ReportifyHelpers.cs`:
+- Recognizes: CT, MRI/MR, XR, CR, DX, US, PET-CT/PETCT/PET, MAMMO/MMG, DXA, NM
+- Returns "UNK" if no recognized modality found
+- Examples:
+  - "CT Chest without contrast" ¡æ "CT"
+  - "MRI Brain with Gd" ¡æ "MR"
+  - "CTA Neck" ¡æ "CT"
+  - "Unknown study" ¡æ "UNK"
+
+### Benefits
+1. **Automatic Record**: Previous study comparison information is automatically recorded
+2. **Consistent Format**: All comparison entries use same format (MODALITY YYYY-MM-DD)
+3. **Multiple Studies**: Supports adding multiple previous studies with comma-separated list
+4. **JSON Synchronization**: Updates both `Comparison` property and `Report.comparison` field in CurrentReportJson
+5. **Header Integration**: Comparison appears in formatted header (part of report template)
+6. **Error Resilient**: Comparison append errors don't fail the entire AddPreviousStudy operation
+
+### Usage Examples
+
+**Single Previous Study**:
+```
+Initial State: Comparison = ""
+Run: AddPreviousStudy (studyname="CT Chest", datetime=2024-01-15)
+Result: Comparison = "CT 2024-01-15"
+```
+
+**Multiple Previous Studies**:
+```
+Initial: Comparison = ""
+Add: CT Chest (2024-01-15) ¡æ Comparison = "CT 2024-01-15"
+Add: MRI Brain (2023-12-20) ¡æ Comparison = "CT 2024-01-15, MR 2023-12-20"
+Add: XR Chest (2024-01-18) ¡æ Comparison = "CT 2024-01-15, MR 2023-12-20, XR 2024-01-18"
+```
+
+**With Existing Comparison Text**:
+```
+Initial: Comparison = "Prior study for comparison"
+Add: CT Abdomen (2024-01-12) ¡æ Comparison = "Prior study for comparison, CT 2024-01-12"
+```
+
+### JSON Synchronization
+Setting the `Comparison` property triggers:
+1. Property change notification
+2. `UpdateCurrentReportJson()` call
+3. JSON field `Report.comparison` update
+4. `UpdateFormattedHeader()` call (Comparison is part of header)
+
+Example JSON after two previous studies added:
+```json
+{
+  "findings": "...",
+  "conclusion": "...",
+  "comparison": "CT 2024-01-15, MR 2023-12-20",
+  "chief_complaint": "...",
+  "patient_history": "...",
+  "study_techniques": "..."
+}
+```
+
+### Limitations
+- No duplicate detection (adding same study twice creates duplicate entries)
+- No automatic sorting by date (entries appear in addition order)
+- Manual comparison text preserved but not parsed
+- Unknown modalities show as "UNK"
+- No automatic removal or replacement of entries
+
+### Test Cases
+1. **Empty Comparison**: Verify first previous study sets comparison
+2. **Multiple Additions**: Verify comma-separated list builds correctly
+3. **Existing Text**: Verify append preserves existing manual comparison text
+4. **Modality Extraction**: Verify common modalities (CT, MRI, XR, US) recognized
+5. **Unknown Modality**: Verify "UNK" used when modality cannot be determined
+6. **Date Format**: Verify ISO date format (YYYY-MM-DD)
+7. **JSON Update**: Verify `Report.comparison` field updates in CurrentReportJson
+8. **Header Update**: Verify "Comparison: ..." line updates in formatted header
+9. **Error Resilience**: Verify comparison append error doesn't fail AddPreviousStudy
+10. **Abort Cases**: Verify no append when AddPreviousStudy aborts early (patient mismatch, invalid data)
+
+### Status
+? **Implemented and Tested** - Build successful, ready for production use
+
+### Cross-References
+- Specification: FR-1144 (AddPreviousStudy Comparison Append)
+- Related Feature: FR-511 (Add Previous Study Automation Module)
+- Helper Method: `MainViewModel.ReportifyHelpers.ExtractModality()`
+- Property: `MainViewModel.Comparison` (triggers JSON update and header refresh)
+
+### Future Enhancements
+- Make format template configurable (currently hardcoded to "MODALITY YYYY-MM-DD")
+- Add duplicate detection before append
+- Add automatic sorting by date
+- Add option to prepend instead of append
+- Parse and preserve custom comparison notes
+- Make separator configurable (currently hardcoded to ", ")
 
 ---
 

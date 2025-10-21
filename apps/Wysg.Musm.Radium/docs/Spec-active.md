@@ -11,7 +11,8 @@
 ## Quick Navigation
 
 ### Recent Features (2025-01-01 onward)
-- [FR-1143: Global Phrase Word Limit in Completion](#fr-1143-global-phrase-word-limit-in-completion-2025-01-20) - **NEW**
+- [FR-1144: AddPreviousStudy Comparison Append](#fr-1144-addpreviousstudy-comparison-append-2025-01-20) - **NEW**
+- [FR-1143: Global Phrase Word Limit in Completion](#fr-1143-global-phrase-word-limit-in-completion-2025-01-20)
 - [FR-1141: SetClipboard Variable Support](#fr-1141-setclipboard-variable-support-2025-01-20)
 - [FR-1142: TrimString Operation](#fr-1142-trimstring-operation-2025-01-20)
 - [FR-1140: SetFocus Operation Retry Logic](#setfocus-operation-retry-logic-2025-01-20)
@@ -23,6 +24,149 @@
 ### Archived Features (2024 and earlier)
 - **2024-Q4**: PACS Automation, Multi-PACS Tenancy, Study Techniques ¡æ [archive/2024/Spec-2024-Q4.md](archive/2024/Spec-2024-Q4.md)
 - **2025-Q1**: Phrase Highlighting, Editor Enhancements ¡æ [archive/2025-Q1/](archive/2025-Q1/)
+
+---
+
+## AddPreviousStudy Comparison Append (2025-01-20)
+
+### FR-1144: Append Simplified Study String to Comparison Field
+
+**Problem**: When AddPreviousStudy automation module successfully adds a previous study, there is no automatic record of which previous study was added in the current report's Comparison field. Users had to manually type comparison information.
+
+**Requirement**: After AddPreviousStudy module successfully adds a previous study, automatically append a simplified study string (format: "MODALITY YYYY-MM-DD") to the current report's `Report.comparison` JSON field.
+
+**Behavior**:
+
+1. **Trigger Condition**
+   - Only executes after successful AddPreviousStudy completion
+   - Runs before status message "Previous study added"
+   - Does NOT execute if:
+     - Patient mismatch occurs
+     - Study data is invalid (missing studyname/datetime)
+     - Study matches current study
+     - Any error during add operation
+
+2. **Simplified String Format**
+   - Format: `{MODALITY} {YYYY-MM-DD}`
+   - MODALITY: Extracted from studyname using `ExtractModality()` helper
+   - Date: Study datetime formatted as ISO date (YYYY-MM-DD)
+   - Examples:
+     - "CT 2024-01-15"
+     - "MR 2023-12-20"
+     - "XR 2024-01-18"
+     - "UNK 2024-01-10" (if modality cannot be determined)
+
+3. **Modality Extraction**
+   - Uses existing `ExtractModality()` method from `MainViewModel.ReportifyHelpers.cs`
+   - Recognizes common modalities: CT, MRI/MR, XR, CR, DX, US, PET-CT/PETCT/PET, MAMMO/MMG, DXA, NM
+   - Returns "UNK" if no modality found in studyname
+
+4. **Append Logic**
+   - If Comparison field is empty or whitespace: Set to simplified string
+   - If Comparison field has content: Append with ", " separator
+   - Examples:
+     - Empty ¡æ "CT 2024-01-15"
+     - "Prior CT" ¡æ "Prior CT, CT 2024-01-15"
+     - "CT 2024-01-10" ¡æ "CT 2024-01-10, MR 2024-01-15"
+
+5. **Comparison Property Update**
+   - Sets `Comparison` property directly (triggers JSON sync)
+   - Updates `Report.comparison` field in CurrentReportJson
+   - Triggers header re-formatting (Comparison is part of formatted header)
+   - Preserved across reportify/dereportify cycles
+
+6. **Error Handling**
+   - Wrapped in try-catch block
+   - Errors logged to Debug output with "[AddPreviousStudyModule] Comparison append error: {message}"
+   - Does NOT fail the entire AddPreviousStudy operation
+   - Silent failure (no user-visible error message)
+
+7. **Multiple Additions**
+   - Running AddPreviousStudy multiple times appends multiple entries
+   - Example after 3 previous studies added: "CT 2024-01-10, MR 2024-01-05, XR 2023-12-20"
+   - Order reflects addition sequence (newest additions at end)
+
+**Use Cases**:
+
+**Single Previous Study**:
+```
+Before: Comparison = ""
+Run: AddPreviousStudy (CT Chest, 2024-01-15)
+After: Comparison = "CT 2024-01-15"
+```
+
+**Multiple Previous Studies**:
+```
+Before: Comparison = ""
+Run: AddPreviousStudy (CT Chest, 2024-01-15)
+After: Comparison = "CT 2024-01-15"
+
+Run: AddPreviousStudy (MRI Brain, 2023-12-20)
+After: Comparison = "CT 2024-01-15, MR 2023-12-20"
+```
+
+**Existing Comparison Text**:
+```
+Before: Comparison = "Prior study"
+Run: AddPreviousStudy (XR Chest, 2024-01-18)
+After: Comparison = "Prior study, XR 2024-01-18"
+```
+
+**Modality Extraction Examples**:
+```
+Studyname: "CT Chest without contrast" ¡æ "CT"
+Studyname: "MRI Brain with Gd" ¡æ "MR"
+Studyname: "CTA Neck" ¡æ "CT"
+Studyname: "PET-CT Whole Body" ¡æ "PETCT"
+Studyname: "Mammography bilateral" ¡æ "MAMMO"
+Studyname: "Unknown study" ¡æ "UNK"
+```
+
+**JSON Synchronization**:
+```json
+{
+  "findings": "...",
+  "conclusion": "...",
+  "comparison": "CT 2024-01-15, MR 2023-12-20",
+  ...
+}
+```
+
+**Limitations**:
+- Modality extraction limited to recognized abbreviations (CT, MRI, XR, etc.)
+- Unknown modalities show as "UNK"
+- No duplicate detection (adding same study twice creates duplicate entries)
+- No automatic sorting by date
+- Manual comparison text preserved but not parsed
+- Appending only (no automatic removal or replacement)
+
+**Future Enhancements**:
+- Configurable format template (e.g., "MODALITY on DATE")
+- Duplicate detection before append
+- Sort comparison entries by date
+- Option to prepend instead of append
+- Parse and preserve custom comparison notes
+- Configurable separator (currently hardcoded to ", ")
+
+**Status**: ? **Implemented** (2025-01-20)
+
+**Cross-References**:
+- Implementation: `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Commands.cs` (`RunAddPreviousStudyModuleAsync`)
+- Related Feature: FR-511 (Add Previous Study Automation Module)
+- Helper Method: `MainViewModel.ReportifyHelpers.ExtractModality()`
+- Property: `MainViewModel.Comparison` (triggers JSON update and header refresh)
+
+**Testing**:
+- Verify comparison field empty ¡æ single entry added
+- Verify comparison field with content ¡æ comma-separated append
+- Verify modality extraction for common types (CT, MRI, XR, US, etc.)
+- Verify unknown modality shows "UNK"
+- Verify date formatting as YYYY-MM-DD
+- Verify JSON `Report.comparison` updates
+- Verify header displays updated comparison line
+- Verify multiple AddPreviousStudy runs append correctly
+- Verify error during comparison append does not fail AddPreviousStudy
+- Verify no append when AddPreviousStudy aborts early (patient mismatch, invalid data)
 
 ---
 

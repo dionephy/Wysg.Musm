@@ -532,6 +532,36 @@ namespace Wysg.Musm.Radium.ViewModels
                 ReloadAndSelectAsync();
 
                 PreviousReportified = true;
+                
+                // Append simplified study string to current report's Comparison field
+                try
+                {
+                    Debug.WriteLine("[AddPreviousStudyModule] Appending to Comparison field");
+                    var modality = ExtractModality(studyName);
+                    var dateStr = studyDt.ToString("yyyy-MM-dd");
+                    var simplifiedStudy = $"{modality} {dateStr}";
+                    Debug.WriteLine($"[AddPreviousStudyModule] Simplified string: '{simplifiedStudy}'");
+                    
+                    // Append to existing Comparison with proper separator
+                    var currentComparison = Comparison ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(currentComparison))
+                    {
+                        Comparison = simplifiedStudy;
+                        Debug.WriteLine($"[AddPreviousStudyModule] Set Comparison to: '{simplifiedStudy}'");
+                    }
+                    else
+                    {
+                        // Append with comma separator
+                        Comparison = currentComparison.TrimEnd() + ", " + simplifiedStudy;
+                        Debug.WriteLine($"[AddPreviousStudyModule] Appended to Comparison: '{Comparison}'");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[AddPreviousStudyModule] Comparison append error: {ex.Message}");
+                    // Don't fail the entire operation if comparison append fails
+                }
+                
                 SetStatus("Previous study added");
             }
             catch (Exception ex)
