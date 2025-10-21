@@ -11,8 +11,9 @@
 ## Quick Navigation
 
 ### Recent Features (2025-01-01 onward)
-- [FR-1141: SetClipboard Variable Support](#fr-1141-setclipboard-variable-support-2025-01-20) - **NEW**
-- [FR-1142: TrimString Operation](#fr-1142-trimstring-operation-2025-01-20) - **NEW**
+- [FR-1143: Global Phrase Word Limit in Completion](#fr-1143-global-phrase-word-limit-in-completion-2025-01-20) - **NEW**
+- [FR-1141: SetClipboard Variable Support](#fr-1141-setclipboard-variable-support-2025-01-20)
+- [FR-1142: TrimString Operation](#fr-1142-trimstring-operation-2025-01-20)
 - [FR-1140: SetFocus Operation Retry Logic](#setfocus-operation-retry-logic-2025-01-20)
 - [FR-1100..FR-1136: Foreign Text Sync & Caret Management](#foreign-text-sync--caret-management-2025-01-19)
 - [FR-1025..FR-1027: Current Combination Quick Delete](#current-combination-quick-delete-2025-01-18)
@@ -20,8 +21,99 @@
 - [FR-950..FR-965: Phrase-SNOMED Mapping Window](#phrase-snomed-mapping-window-2025-01-15)
 
 ### Archived Features (2024 and earlier)
-- **2024-Q4**: PACS Automation, Multi-PACS Tenancy, Study Techniques ?? [archive/2024/Spec-2024-Q4.md](archive/2024/Spec-2024-Q4.md)
-- **2025-Q1**: Phrase Highlighting, Editor Enhancements ?? [archive/2025-Q1/](archive/2025-Q1/)
+- **2024-Q4**: PACS Automation, Multi-PACS Tenancy, Study Techniques ¡æ [archive/2024/Spec-2024-Q4.md](archive/2024/Spec-2024-Q4.md)
+- **2025-Q1**: Phrase Highlighting, Editor Enhancements ¡æ [archive/2025-Q1/](archive/2025-Q1/)
+
+---
+
+## Global Phrase Word Limit in Completion (2025-01-20)
+
+### FR-1143: Limit Global Phrases in Completion Window to 3 Words or Less
+
+**Problem**: The completion window for editorFindings shows all global phrases, including very long multi-word medical terms. This clutters the completion list and makes it harder to find relevant short phrases.
+
+**Requirement**: Filter global phrases (account_id IS NULL) shown in the completion window to only those with 3 words or less. This filter should NOT apply to:
+- Account-specific (local) phrases
+- Hotkeys
+- Snippets
+
+**Rationale**:
+- Global phrases are shared across all accounts and often contain long medical terminology
+- Most commonly used phrases for quick completion are short (1-3 words)
+- Longer phrases are better accessed through other mechanisms (search, browser)
+- Keeps completion window focused on frequently-used short terms
+
+**Implementation**:
+
+1. **Word Counting Logic**
+   - Words counted by splitting on whitespace (space, tab, newline, carriage return)
+   - Empty strings count as 0 words
+   - Implemented as `CountWords()` helper method in `PhraseService`
+
+2. **Filtering Location**
+   - Applied in `GetGlobalPhrasesByPrefixAsync()` method
+   - Filter: `CountWords(r.Text) <= 3`
+   - Combined with existing prefix match and active status filters
+
+3. **Combined List Behavior**
+   - `GetCombinedPhrasesByPrefixAsync()` uses filtered global phrases
+   - Account-specific phrases retrieved via `GetPhrasesByPrefixAccountAsync()` (no word limit)
+   - Final list contains: filtered globals + unfiltered local phrases
+
+4. **Scope of Filtering**
+   - ? Applies to: Global phrases in completion window
+   - ? Does NOT apply to: Account phrases, hotkeys, snippets
+   - ? Does NOT apply to: Global phrase management UI, SNOMED browser
+
+**Examples**:
+
+**Filtered Out (> 3 words)**:
+- "chronic obstructive pulmonary disease" (4 words)
+- "diffuse large B-cell lymphoma" (4 words)
+- "acute myocardial infarction with ST elevation" (6 words)
+
+**Kept (<= 3 words)**:
+- "normal" (1 word)
+- "no acute abnormality" (3 words)
+- "liver parenchyma" (2 words)
+
+**Use Cases**:
+
+**Quick Completion**:
+```
+User types "no" ?? completion shows:
+- "no" (global, 1 word)
+- "no acute abnormality" (global, 3 words)
+- "no focal lesion" (global, 3 words)
+- "no significant change from previous study" (account, 6 words - allowed because it's local)
+```
+
+**Long Phrases Still Accessible**:
+```
+User can still access "chronic obstructive pulmonary disease" via:
+- SNOMED browser
+- Global phrases management window
+- Typing the full phrase manually
+- Copy from previous report
+```
+
+**Status**: ? **Implemented** (2025-01-20)
+
+**Cross-References**:
+- Implementation: `apps\Wysg.Musm.Radium\Services\PhraseService.cs`
+- Related Features: [SNOMED Browser](SNOMED_BROWSER_FEATURE_SUMMARY.md), Global Phrases Management
+
+**Testing**:
+- Verify completion window shows only short global phrases
+- Verify local (account-specific) phrases show regardless of length
+- Verify hotkeys and snippets unaffected
+- Verify global phrase management windows show all phrases (no filter)
+
+**Future Enhancements**:
+- Make word limit configurable (currently hardcoded to 3)
+- Add user preference for word limit
+- Add character limit as alternative filter option
+- Consider frequency-based filtering instead of word count
 
 ---
 

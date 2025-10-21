@@ -25,18 +25,18 @@ public sealed class MusmCompletionData : ICompletionData
 
     private readonly string _content; // what shows in the popup list
     public object Content => _content;
-    public double Priority => 0.0;
+    public double Priority { get; }
 
     // ----- Factories -----
     public static MusmCompletionData Token(string token, string? description = null) =>
         new(token, isHotkey: false, isSnippet: false,
             replacement: token, preview: token, desc: null, snippet: null,
-            content: token);
+            content: token, priority: 0.0); // Lowest priority - phrases go last
 
     public static MusmCompletionData Hotkey(string display, string expanded, string? description = null) =>
         new(display, isHotkey: true, isSnippet: false,
             replacement: expanded, preview: expanded, desc: null, snippet: null,
-            content: display);
+            content: display, priority: 2.0); // Higher priority - hotkeys go second
 
     public static MusmCompletionData Snippet(CodeSnippet snippet)
     {
@@ -46,7 +46,7 @@ public sealed class MusmCompletionData : ICompletionData
             isHotkey: false, isSnippet: true,
             replacement: string.Empty, preview: snippet.PreviewText(),
             desc: null, snippet: snippet,
-            content: content);
+            content: content, priority: 3.0); // Highest priority - snippets go first
     }
 
     // ----- impl -----
@@ -60,7 +60,8 @@ public sealed class MusmCompletionData : ICompletionData
         string preview,
         object? desc,
         CodeSnippet? snippet,
-        string content)
+        string content,
+        double priority = 0.0)
     {
         Text = text;
         IsHotkey = isHotkey;
@@ -70,6 +71,7 @@ public sealed class MusmCompletionData : ICompletionData
         Description = desc!; // may be null → completion window shows no tooltip
         _snippet = snippet;
         _content = content;
+        Priority = priority;
     }
 
     public override string ToString() => _content; // ensure ToString shows "{trigger} → {description}"

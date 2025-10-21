@@ -33,6 +33,9 @@ namespace Wysg.Musm.Radium.Services
         // Combined phrases (global + account-specific)
         Task<IReadOnlyList<string>> GetCombinedPhrasesAsync(long accountId);
         Task<IReadOnlyList<string>> GetCombinedPhrasesByPrefixAsync(long accountId, string prefix, int limit = 50);
+        
+        // Unfiltered combined phrases for syntax highlighting (includes long phrases)
+        Task<IReadOnlyList<string>> GetAllPhrasesForHighlightingAsync(long accountId);
 
         // Backward compatibility wrappers (deprecated)
         [Obsolete("Use GetPhrasesForAccountAsync")] Task<IReadOnlyList<string>> GetPhrasesForTenantAsync(long tenantId);

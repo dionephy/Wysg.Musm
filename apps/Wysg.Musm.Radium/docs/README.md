@@ -1,4 +1,4 @@
-# Radium Documentation
+﻿# Radium Documentation
 
 **Last Updated**: 2025-01-20
 
@@ -105,7 +105,39 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ## Recent Updates (2025-01-20)
 
-### SNOMED CT Browser - Complete Implementation ?
+### Global Phrase Word Limit in Completion Window + Priority Ordering
+
+**What's New:**
+- **Filtered Completion** - Global phrases (account_id IS NULL) now filtered to 3 words or less in completion window
+- **Priority Ordering** - Completion items now display in this order:
+  1. **Snippets** (Priority 3.0) - Templates with placeholders
+  2. **Hotkeys** (Priority 2.0) - Quick text expansions
+  3. **Phrases** (Priority 0.0) - Filtered global + unfiltered local phrases
+- **Selective Filtering** - Word limit does NOT apply to:
+  - Account-specific (local) phrases
+  - Hotkeys
+  - Snippets
+
+**Rationale:**
+- Global phrases are shared across all accounts and can contain long multi-word medical terms
+- The completion window becomes cluttered with these longer phrases
+- 3-word limit keeps common short phrases available while reducing noise
+- Priority ordering ensures most useful items (snippets, hotkeys) appear first
+- Users can still access longer phrases via other mechanisms
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\Services\PhraseService.cs` - Added word counting and filtering logic
+- `src\Wysg.Musm.Editor\Snippets\MusmCompletionData.cs` - Added priority property to control ordering
+
+**Technical Details:**
+- Words are counted by splitting on whitespace (space, tab, newline)
+- Filter applied in both `GetGlobalPhrasesAsync()` and `GetGlobalPhrasesByPrefixAsync()` methods
+- Combined list (`GetCombinedPhrasesByPrefixAsync()`) includes filtered global + unfiltered local phrases
+- AvalonEdit's CompletionList automatically sorts by Priority (descending), then alphabetically
+
+---
+
+### SNOMED CT Browser - Complete Implementation ✓
 
 **What's New:**
 1. **Full SNOMED Browser UI** - Browse 7 semantic tag domains with pagination

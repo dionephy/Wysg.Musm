@@ -412,7 +412,25 @@ namespace Wysg.Musm.Radium.Services
                 try { await LoadGlobalPhrasesAsync(state).ConfigureAwait(false); } 
                 catch { return Array.Empty<string>(); }
             }
-            return state.ById.Values.Where(r => r.Active).Select(r => r.Text).OrderBy(t => t).Take(500).ToList();
+            // Filter global phrases to 3 words or less for completion (FR-completion-filter-2025-01-20)
+            var allActive = state.ById.Values.Where(r => r.Active).ToList();
+            Debug.WriteLine($"[PhraseService][GetGlobalPhrasesAsync] Total active global phrases: {allActive.Count}");
+            
+            var filtered = allActive.Where(r => CountWords(r.Text) <= 3).ToList();
+            Debug.WriteLine($"[PhraseService][GetGlobalPhrasesAsync] After 3-word filter: {filtered.Count}");
+            
+            if (allActive.Count > 0 && allActive.Count - filtered.Count > 0)
+            {
+                Debug.WriteLine($"[PhraseService][GetGlobalPhrasesAsync] Filtered out {allActive.Count - filtered.Count} long phrases");
+                // Show first 3 examples of filtered phrases
+                var examples = allActive.Where(r => CountWords(r.Text) > 3).Take(3).ToList();
+                foreach (var ex in examples)
+                {
+                    Debug.WriteLine($"  FILTERED: \"{ex.Text}\" ({CountWords(ex.Text)} words)");
+                }
+            }
+            
+            return filtered.Select(r => r.Text).OrderBy(t => t).Take(500).ToList();
         }
 
         public async Task<IReadOnlyList<string>> GetGlobalPhrasesByPrefixAsync(string prefix, int limit = 50)
@@ -427,8 +445,27 @@ namespace Wysg.Musm.Radium.Services
                 try { await LoadGlobalPhrasesAsync(state).ConfigureAwait(false); } 
                 catch { return Array.Empty<string>(); }
             }
-            return state.ById.Values.Where(r => r.Active && r.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(r => r.Text.Length).ThenBy(r => r.Text)
+            
+            Debug.WriteLine($"[PhraseService][GetGlobalPhrasesByPrefixAsync] prefix='{prefix}', limit={limit}");
+            
+            var matching = state.ById.Values.Where(r => r.Active && r.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
+            Debug.WriteLine($"[PhraseService][GetGlobalPhrasesByPrefixAsync] Found {matching.Count} matches for prefix '{prefix}'");
+            
+            // Filter global phrases to 3 words or less for completion window (FR-completion-filter-2025-01-20)
+            var filtered = matching.Where(r => CountWords(r.Text) <= 3).ToList();
+            Debug.WriteLine($"[PhraseService][GetGlobalPhrasesByPrefixAsync] After 3-word filter: {filtered.Count}");
+            
+            if (matching.Count > filtered.Count)
+            {
+                Debug.WriteLine($"[PhraseService][GetGlobalPhrasesByPrefixAsync] Filtered out {matching.Count - filtered.Count} long phrases");
+                var examples = matching.Where(r => CountWords(r.Text) > 3).Take(3).ToList();
+                foreach (var ex in examples)
+                {
+                    Debug.WriteLine($"  FILTERED: \"{ex.Text}\" ({CountWords(ex.Text)} words)");
+                }
+            }
+            
+            return filtered.OrderBy(r => r.Text.Length).ThenBy(r => r.Text)
                 .Take(limit).Select(r => r.Text).ToList();
         }
 
@@ -438,10 +475,14 @@ namespace Wysg.Musm.Radium.Services
             var globalPhrases = await GetGlobalPhrasesAsync().ConfigureAwait(false);
             var accountPhrases = await GetPhrasesForAccountAsync(accountId).ConfigureAwait(false);
             
+            Debug.WriteLine($"[PhraseService][GetCombinedPhrasesAsync] accountId={accountId}, global={globalPhrases.Count}, account={accountPhrases.Count}");
+            
             var combined = new HashSet<string>(accountPhrases, StringComparer.OrdinalIgnoreCase);
             foreach (var global in globalPhrases)
                 combined.Add(global);
-                
+            
+            Debug.WriteLine($"[PhraseService][GetCombinedPhrasesAsync] Combined total: {combined.Count}");
+            
             return combined.OrderBy(t => t).ToList();
         }
 
@@ -449,14 +490,57 @@ namespace Wysg.Musm.Radium.Services
         {
             if (string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
             
+            Debug.WriteLine($"[PhraseService][GetCombinedPhrasesByPrefixAsync] accountId={accountId}, prefix='{prefix}', limit={limit}");
+            
+            // Global phrases are already filtered to 3 words or less in GetGlobalPhrasesByPrefixAsync
             var globalPhrases = await GetGlobalPhrasesByPrefixAsync(prefix, limit).ConfigureAwait(false);
+            // Account-specific phrases are NOT filtered (no word limit)
             var accountPhrases = await GetPhrasesByPrefixAccountAsync(accountId, prefix, limit).ConfigureAwait(false);
+            
+            Debug.WriteLine($"[PhraseService][GetCombinedPhrasesByPrefixAsync] global={globalPhrases.Count}, account={accountPhrases.Count}");
             
             var combined = new HashSet<string>(accountPhrases, StringComparer.OrdinalIgnoreCase);
             foreach (var global in globalPhrases)
                 combined.Add(global);
-                
+            
+            Debug.WriteLine($"[PhraseService][GetCombinedPhrasesByPrefixAsync] Combined total: {combined.Count}");
+            
             return combined.OrderBy(t => t.Length).ThenBy(t => t).Take(limit).ToList();
+        }
+
+        // Unfiltered combined phrases for syntax highlighting (includes ALL phrases regardless of word count)
+        public async Task<IReadOnlyList<string>> GetAllPhrasesForHighlightingAsync(long accountId)
+        {
+            await EnsureBackendAsync().ConfigureAwait(false);
+            if (!_radiumAvailable) return Array.Empty<string>();
+            
+            // Get ALL global phrases from _states (unfiltered)
+            var globalState = _states.GetOrAdd(GLOBAL_KEY, _ => new AccountPhraseState(null));
+            if (globalState.ById.Count == 0 && !globalState.Loading)
+            {
+                try { await LoadGlobalPhrasesAsync(globalState).ConfigureAwait(false); } 
+                catch { return Array.Empty<string>(); }
+            }
+            
+            // Get ALL account phrases
+            var accountState = _states.GetOrAdd(accountId, id => new AccountPhraseState(id));
+            if (accountState.ById.Count == 0 && !accountState.Loading)
+            {
+                try { await LoadSmallSetAsync(accountState).ConfigureAwait(false); } 
+                catch { return Array.Empty<string>(); }
+            }
+            
+            // Combine WITHOUT filtering - syntax highlighting needs all phrases
+            var globalPhrases = globalState.ById.Values.Where(r => r.Active).Select(r => r.Text);
+            var accountPhrases = accountState.ById.Values.Where(r => r.Active).Select(r => r.Text);
+            
+            var combined = new HashSet<string>(accountPhrases, StringComparer.OrdinalIgnoreCase);
+            foreach (var global in globalPhrases)
+                combined.Add(global);
+            
+            Debug.WriteLine($"[PhraseService][GetAllPhrasesForHighlightingAsync] accountId={accountId}, total={combined.Count} (unfiltered for highlighting)");
+            
+            return combined.OrderBy(t => t).ToList();
         }
 
         private async Task LoadGlobalPhrasesAsync(AccountPhraseState state)
@@ -1086,6 +1170,24 @@ namespace Wysg.Musm.Radium.Services
                 if (npgEx.Message.IndexOf("Timeout", StringComparison.OrdinalIgnoreCase) >= 0) return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Count words in a phrase by splitting on whitespace.
+        /// Used to filter global phrases to 3 words or less for completion window (FR-completion-filter-2025-01-20).
+        /// </summary>
+        private static int CountWords(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return 0;
+            var count = text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+            
+            // Debug logging for long phrases only (to avoid spam)
+            if (count > 3 && text.Contains("ligament", StringComparison.OrdinalIgnoreCase))
+            {
+                Debug.WriteLine($"[PhraseService][CountWords] \"{text}\" = {count} words");
+            }
+            
+            return count;
         }
     }
 }

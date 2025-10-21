@@ -65,29 +65,149 @@ namespace Wysg.Musm.Radium.Services
                 .OrderBy(r => r.Text.Length).ThenBy(r => r.Text).Take(limit).Select(r => r.Text).ToList();
         }
 
-        // NEW: Global phrases support
+        // ============================================================================
+        // Global Phrases Support (FR-273..FR-278)
+        // ============================================================================
+        
+        /// <summary>
+        /// Get all active global phrases (account_id IS NULL) with 3-word filtering for completion.
+        /// 
+        /// FR-completion-filter-2025-01-20: Global phrases are filtered to ¡Â3 words to reduce
+        /// clutter in completion popup. Account-specific phrases are NOT filtered.
+        /// 
+        /// Filtering rationale:
+        /// - Global phrases contain long medical terms (e.g., "ligament of distal interphalangeal joint...")
+        /// - These long phrases crowd the completion window
+        /// - Short phrases (¡Â3 words) remain useful for quick completion
+        /// - Users can still access long phrases via syntax highlighting, phrase manager, etc.
+        /// </summary>
         public async Task<IReadOnlyList<string>> GetGlobalPhrasesAsync()
         {
             var state = _states.GetOrAdd(GLOBAL_KEY, _ => new AccountPhraseState(null));
-            if (state.ById.Count == 0) await LoadGlobalSnapshotAsync(state).ConfigureAwait(false);
-            return state.ById.Values.Where(r => r.Active).Select(r => r.Text).OrderBy(t => t).Take(500).ToList();
+            if (state.ById.Count == 0) 
+                await LoadGlobalSnapshotAsync(state).ConfigureAwait(false);
+            
+            // Apply 3-word filter for completion window (FR-completion-filter-2025-01-20)
+            var allActive = state.ById.Values.Where(r => r.Active).ToList();
+            Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesAsync] Total active global phrases: {allActive.Count}");
+            
+            var filtered = allActive.Where(r => CountWords(r.Text) <= 3).ToList();
+            Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesAsync] After 3-word filter: {filtered.Count}");
+            
+            // Log filtering statistics and examples for debugging
+            if (allActive.Count > 0 && allActive.Count - filtered.Count > 0)
+            {
+                Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesAsync] Filtered out {allActive.Count - filtered.Count} long phrases");
+                
+                // Show first 3 examples of filtered phrases for debugging
+                var examples = allActive.Where(r => CountWords(r.Text) > 3).Take(3).ToList();
+                foreach (var ex in examples)
+                {
+                    Debug.WriteLine($"  FILTERED: \"{ex.Text}\" ({CountWords(ex.Text)} words)");
+                }
+            }
+            
+            return filtered.Select(r => r.Text).OrderBy(t => t).Take(500).ToList();
         }
 
+        /// <summary>
+        /// Get global phrases matching a prefix with 3-word filtering for completion.
+        /// 
+        /// This is the primary method used by completion popup when typing.
+        /// Filtering logic is identical to GetGlobalPhrasesAsync().
+        /// </summary>
+        /// <param name="prefix">Case-insensitive prefix to match (e.g., "li" matches "ligament", "liver")</param>
+        /// <param name="limit">Maximum number of results to return (default 50)</param>
         public async Task<IReadOnlyList<string>> GetGlobalPhrasesByPrefixAsync(string prefix, int limit = 50)
         {
             if (string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
+            
             var state = _states.GetOrAdd(GLOBAL_KEY, _ => new AccountPhraseState(null));
-            if (state.ById.Count == 0) await LoadGlobalSnapshotAsync(state).ConfigureAwait(false);
-            return state.ById.Values.Where(r => r.Active && r.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(r => r.Text.Length).ThenBy(r => r.Text).Take(limit).Select(r => r.Text).ToList();
+            if (state.ById.Count == 0) 
+                await LoadGlobalSnapshotAsync(state).ConfigureAwait(false);
+            
+            Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesByPrefixAsync] prefix='{prefix}', limit={limit}");
+            
+            // Find all phrases starting with prefix (case-insensitive)
+            var matching = state.ById.Values
+                .Where(r => r.Active && r.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesByPrefixAsync] Found {matching.Count} matches for prefix '{prefix}'");
+            
+            // Apply 3-word filter for completion window (FR-completion-filter-2025-01-20)
+            var filtered = matching.Where(r => CountWords(r.Text) <= 3).ToList();
+            Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesByPrefixAsync] After 3-word filter: {filtered.Count}");
+            
+            // Log filtering statistics for debugging
+            if (matching.Count > filtered.Count)
+            {
+                Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesByPrefixAsync] Filtered out {matching.Count - filtered.Count} long phrases");
+                
+                var examples = matching.Where(r => CountWords(r.Text) > 3).Take(3).ToList();
+                foreach (var ex in examples)
+                {
+                    Debug.WriteLine($"  FILTERED: \"{ex.Text}\" ({CountWords(ex.Text)} words)");
+                }
+            }
+            
+            // Sort by length first (shorter = more likely to be what user wants), then alphabetically
+            return filtered
+                .OrderBy(r => r.Text.Length)
+                .ThenBy(r => r.Text)
+                .Take(limit)
+                .Select(r => r.Text)
+                .ToList();
+        }
+        
+        /// <summary>
+        /// Count words in a phrase by splitting on whitespace.
+        /// 
+        /// FR-completion-filter-2025-01-20: Used to filter global phrases to ¡Â3 words for completion window.
+        /// 
+        /// Word counting rules:
+        /// - Split on space, tab, CR, LF
+        /// - Remove empty entries (multiple spaces count as one separator)
+        /// - "no evidence" = 2 words
+        /// - "ligament of distal interphalangeal joint" = 5 words (filtered out)
+        /// </summary>
+        /// <param name="text">Phrase text to count words in</param>
+        /// <returns>Number of words (0 if null/whitespace)</returns>
+        private static int CountWords(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return 0;
+            
+            var count = text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+            
+            // Debug logging for long phrases containing "ligament" (sample debugging - can be removed in production)
+            if (count > 3 && text.Contains("ligament", StringComparison.OrdinalIgnoreCase))
+            {
+                Debug.WriteLine($"[AzureSqlPhraseService][CountWords] \"{text}\" = {count} words");
+            }
+            
+            return count;
         }
 
-        // NEW: Combined phrases (global + account)
+        // ============================================================================
+        // Combined Phrases (Global + Account-Specific) - FR-274, T385
+        // ============================================================================
+        
+        /// <summary>
+        /// Get combined phrases for completion: filtered global phrases + all account-specific phrases.
+        /// 
+        /// Filtering policy (FR-completion-filter-2025-01-20):
+        /// - Global phrases: Filtered to ¡Â3 words (reduces clutter)
+        /// - Account-specific phrases: NOT filtered (user's custom phrases, always show all)
+        /// 
+        /// This method is used by PhraseCompletionProvider to populate the completion cache.
+        /// </summary>
         public async Task<IReadOnlyList<string>> GetCombinedPhrasesAsync(long accountId)
         {
+            // Global phrases are pre-filtered to ¡Â3 words
             var globalPhrases = await GetGlobalPhrasesAsync().ConfigureAwait(false);
+            // Account phrases are NOT filtered
             var accountPhrases = await GetPhrasesForAccountAsync(accountId).ConfigureAwait(false);
             
+            // Combine using HashSet to eliminate duplicates (case-insensitive)
             var combined = new HashSet<string>(accountPhrases, StringComparer.OrdinalIgnoreCase);
             foreach (var global in globalPhrases)
                 combined.Add(global);
@@ -95,11 +215,17 @@ namespace Wysg.Musm.Radium.Services
             return combined.OrderBy(t => t).ToList();
         }
 
+        /// <summary>
+        /// Get combined phrases matching a prefix: filtered global + all account-specific.
+        /// Used by completion popup for prefix-based filtering.
+        /// </summary>
         public async Task<IReadOnlyList<string>> GetCombinedPhrasesByPrefixAsync(long accountId, string prefix, int limit = 50)
         {
             if (string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
             
+            // Global phrases are pre-filtered to ¡Â3 words in GetGlobalPhrasesByPrefixAsync
             var globalPhrases = await GetGlobalPhrasesByPrefixAsync(prefix, limit).ConfigureAwait(false);
+            // Account-specific phrases are NOT filtered (no word limit)
             var accountPhrases = await GetPhrasesByPrefixAccountAsync(accountId, prefix, limit).ConfigureAwait(false);
             
             var combined = new HashSet<string>(accountPhrases, StringComparer.OrdinalIgnoreCase);
@@ -107,6 +233,46 @@ namespace Wysg.Musm.Radium.Services
                 combined.Add(global);
                 
             return combined.OrderBy(t => t.Length).ThenBy(t => t).Take(limit).ToList();
+        }
+
+        // ============================================================================
+        // Unfiltered Phrases for Syntax Highlighting
+        // ============================================================================
+        
+        /// <summary>
+        /// Get ALL phrases (global + account) WITHOUT filtering for syntax highlighting.
+        /// 
+        /// IMPORTANT: This method does NOT apply the 3-word filter!
+        /// Syntax highlighting needs ALL phrases including long ones (e.g., 
+        /// "ligament of distal interphalangeal joint...") to properly highlight medical terminology.
+        /// 
+        /// Dual storage strategy:
+        /// - _states: Stores ALL phrases (used by this method)
+        /// - Completion cache: Stores filtered phrases (populated by GetCombinedPhrasesAsync)
+        /// </summary>
+        public async Task<IReadOnlyList<string>> GetAllPhrasesForHighlightingAsync(long accountId)
+        {
+            // Get ALL global phrases from state (unfiltered)
+            var globalState = _states.GetOrAdd(GLOBAL_KEY, _ => new AccountPhraseState(null));
+            if (globalState.ById.Count == 0) 
+                await LoadGlobalSnapshotAsync(globalState).ConfigureAwait(false);
+            
+            // Get ALL account phrases
+            var accountState = _states.GetOrAdd(accountId, id => new AccountPhraseState(id));
+            if (accountState.ById.Count == 0) 
+                await LoadSnapshotAsync(accountState).ConfigureAwait(false);
+            
+            // Combine WITHOUT filtering - syntax highlighting needs all phrases
+            var globalPhrases = globalState.ById.Values.Where(r => r.Active).Select(r => r.Text);
+            var accountPhrases = accountState.ById.Values.Where(r => r.Active).Select(r => r.Text);
+            
+            var combined = new HashSet<string>(accountPhrases, StringComparer.OrdinalIgnoreCase);
+            foreach (var global in globalPhrases)
+                combined.Add(global);
+            
+            Debug.WriteLine($"[AzureSqlPhraseService][GetAllPhrasesForHighlightingAsync] accountId={accountId}, total={combined.Count} (unfiltered for highlighting)");
+            
+            return combined.OrderBy(t => t).ToList();
         }
 
         [Obsolete] public Task<IReadOnlyList<string>> GetPhrasesForTenantAsync(long tenantId) => GetPhrasesForAccountAsync(tenantId);

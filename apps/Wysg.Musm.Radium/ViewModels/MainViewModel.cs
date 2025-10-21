@@ -188,6 +188,20 @@ namespace Wysg.Musm.Radium.ViewModels
                 _studyRepo = studyRepo; _newStudyProc = newStudyProc; _localSettings = localSettings; _lockStudyProc = lockStudyProc;
                 _snomedMapService = snomedMapService;
                 
+                // ============================================================================
+                // CRITICAL: Clear phrase cache on startup to force reload with new filtering
+                // ============================================================================
+                // FR-completion-filter-2025-01-20: Global phrases are now filtered to ¡Â3 words
+                // for completion. Old cached data may contain unfiltered phrases, so we clear
+                // the cache on every app start to ensure fresh, filtered data is loaded.
+                //
+                // Cache versioning (PhraseCache.CACHE_VERSION) also handles this, but explicit
+                // clear here ensures no stale data from previous sessions.
+                //
+                // Performance impact: Negligible (~1ms). Cache repopulates on first completion.
+                Debug.WriteLine("[MainViewModel] Clearing phrase cache to force fresh load with filtering...");
+                _cache.ClearAll();
+                
                 // Initialize text sync service
                 _textSyncService = new TextSyncService(System.Windows.Application.Current.Dispatcher);
                 _textSyncService.ForeignTextChanged += OnForeignTextChanged;
