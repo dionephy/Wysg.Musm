@@ -600,7 +600,13 @@ namespace Wysg.Musm.Radium.Services
                     case "SetFocus":
                     {
                         var el = ResolveElement(row.Arg1);
-                        if (el == null) return ("(no element)", null);
+                        if (el == null)
+                        {
+                            Debug.WriteLine("[SetFocus] FAIL: Element resolution returned null");
+                            return ("(no element)", null);
+                        }
+                        
+                        Debug.WriteLine($"[SetFocus] Element resolved: Name='{el.Name}', AutomationId='{el.AutomationId}'");
                         
                         // CRITICAL FIX: Use BeginInvoke (async) to avoid blocking issues with FlaUI
                         // Dispatcher.Invoke blocks and causes FlaUI Focus() to fail with PropertyNotSupportedException
@@ -610,19 +616,35 @@ namespace Wysg.Musm.Radium.Services
                         
                         try
                         {
+                            Debug.WriteLine("[SetFocus] Attempting to get window handle...");
+                            var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
+                            Debug.WriteLine($"[SetFocus] Window handle: 0x{hwnd.ToInt64():X}");
+                            
+                            if (hwnd == IntPtr.Zero)
+                            {
+                                Debug.WriteLine("[SetFocus] FAIL: Window handle is zero");
+                                return ("(no hwnd)", null);
+                            }
+                            
+                            Debug.WriteLine("[SetFocus] Queuing BeginInvoke on Dispatcher...");
+                            
                             // Execute SetFocus logic on UI thread asynchronously
                             System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
                             {
+                                Debug.WriteLine("[SetFocus] BeginInvoke callback START - executing on UI thread");
+                                Debug.WriteLine($"[SetFocus] Current thread ID: {System.Threading.Thread.CurrentThread.ManagedThreadId}");
+                                Debug.WriteLine($"[SetFocus] Is UI thread: {System.Windows.Application.Current?.Dispatcher.CheckAccess()}");
+                                
                                 try
                                 {
                                     // 1. Activate containing window first
-                                    var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
-                                    if (hwnd != IntPtr.Zero)
-                                    {
-                                        var activated = NativeMouseHelper.SetForegroundWindow(hwnd);
-                                        Debug.WriteLine($"[SetFocus] Window activation: {activated}");
-                                        System.Threading.Thread.Sleep(100); // Brief delay for activation
-                                    }
+                                    Debug.WriteLine("[SetFocus] Calling SetForegroundWindow...");
+                                    var activated = NativeMouseHelper.SetForegroundWindow(hwnd);
+                                    Debug.WriteLine($"[SetFocus] SetForegroundWindow result: {activated}");
+                                    
+                                    Debug.WriteLine("[SetFocus] Sleeping 100ms for window activation...");
+                                    System.Threading.Thread.Sleep(100);
+                                    Debug.WriteLine("[SetFocus] Sleep completed");
                                     
                                     // 2. Retry focus with delays
                                     const int maxAttempts = 3;
@@ -631,20 +653,28 @@ namespace Wysg.Musm.Radium.Services
                                     
                                     for (int attempt = 1; attempt <= maxAttempts; attempt++)
                                     {
+                                        Debug.WriteLine($"[SetFocus] Focus attempt {attempt}/{maxAttempts}...");
                                         try
                                         {
+                                            Debug.WriteLine($"[SetFocus] Calling el.Focus() on element '{el.Name}'...");
                                             el.Focus();
+                                            Debug.WriteLine($"[SetFocus] SUCCESS: Focus() completed on attempt {attempt}");
                                             resultPreview = attempt > 1 ? $"(focused after {attempt} attempts)" : "(focused)";
                                             success = true;
                                             completionSource.SetResult((resultPreview, success));
+                                            Debug.WriteLine("[SetFocus] TaskCompletionSource.SetResult called with success");
                                             return; // Success - exit retry loop
                                         }
                                         catch (Exception ex)
                                         {
                                             lastException = ex;
-                                            Debug.WriteLine($"[SetFocus] Attempt {attempt} failed: {ex.Message}");
+                                            Debug.WriteLine($"[SetFocus] Attempt {attempt} FAILED: {ex.GetType().Name}");
+                                            Debug.WriteLine($"[SetFocus] Exception message: {ex.Message}");
+                                            Debug.WriteLine($"[SetFocus] Exception stack: {ex.StackTrace}");
+                                            
                                             if (attempt < maxAttempts)
                                             {
+                                                Debug.WriteLine($"[SetFocus] Sleeping {retryDelayMs}ms before retry...");
                                                 System.Threading.Thread.Sleep(retryDelayMs);
                                             }
                                         }
@@ -654,32 +684,46 @@ namespace Wysg.Musm.Radium.Services
                                     if (!success && lastException != null)
                                     {
                                         resultPreview = $"(error after {maxAttempts} attempts: {lastException.Message})";
+                                        Debug.WriteLine($"[SetFocus] All attempts exhausted: {resultPreview}");
                                     }
                                     completionSource.SetResult((resultPreview, success));
+                                    Debug.WriteLine("[SetFocus] TaskCompletionSource.SetResult called with failure");
                                 }
                                 catch (Exception ex)
                                 {
-                                    Debug.WriteLine($"[SetFocus] Dispatcher execution failed: {ex.Message}");
+                                    Debug.WriteLine($"[SetFocus] Dispatcher execution EXCEPTION: {ex.GetType().Name}");
+                                    Debug.WriteLine($"[SetFocus] Exception message: {ex.Message}");
+                                    Debug.WriteLine($"[SetFocus] Exception stack: {ex.StackTrace}");
                                     resultPreview = $"(error: {ex.Message})";
                                     completionSource.SetResult((resultPreview, false));
                                 }
+                                
+                                Debug.WriteLine("[SetFocus] BeginInvoke callback END");
                             }));
+                            
+                            Debug.WriteLine("[SetFocus] BeginInvoke queued, waiting for completion...");
                             
                             // Wait for completion with timeout
                             var task = completionSource.Task;
+                            Debug.WriteLine("[SetFocus] Calling Task.Wait with 5 second timeout...");
+                            
                             if (task.Wait(TimeSpan.FromSeconds(5)))
                             {
                                 var result = task.Result;
+                                Debug.WriteLine($"[SetFocus] Task completed: preview='{result.preview}', success={result.success}");
                                 return (result.preview, null);
                             }
                             else
                             {
+                                Debug.WriteLine("[SetFocus] TIMEOUT: Task did not complete within 5 seconds");
                                 return ("(timeout waiting for UI thread)", null);
                             }
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"[SetFocus] BeginInvoke failed: {ex.Message}");
+                            Debug.WriteLine($"[SetFocus] Outer try/catch EXCEPTION: {ex.GetType().Name}");
+                            Debug.WriteLine($"[SetFocus] Exception message: {ex.Message}");
+                            Debug.WriteLine($"[SetFocus] Exception stack: {ex.StackTrace}");
                             return ($"(dispatcher error: {ex.Message})", null);
                         }
                     }
