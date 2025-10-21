@@ -80,6 +80,7 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 ### Architecture & Design
 - `spec_editor.md` - Editor component specification
 - `snomed-semantic-tag-debugging.md` - SNOMED integration debugging
+- `PROCEDUREEXECUTOR_REFACTORING.md` - ProcedureExecutor refactoring (2025-01-16)
 
 ### SNOMED CT Integration
 - `SNOMED_INTEGRATION_COMPLETE.md` - Complete implementation status
@@ -104,6 +105,32 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 ---
 
 ## Recent Updates (2025-01-20)
+
+### ProcedureExecutor Refactoring (2025-01-16)
+
+**What Changed:**
+- Refactored single ~1600 line file into 5 focused partial class files
+- Improved maintainability, testability, and code navigation
+- Zero breaking changes - 100% API compatibility maintained
+
+**New File Structure:**
+- `ProcedureExecutor.cs` (~400 lines) - Main coordinator and execution flow
+- `ProcedureExecutor.Models.cs` (~30 lines) - Data models (ProcStore, ProcOpRow, ProcArg)
+- `ProcedureExecutor.Storage.cs` (~40 lines) - JSON persistence layer
+- `ProcedureExecutor.Elements.cs` (~200 lines) - Element resolution and caching
+- `ProcedureExecutor.Operations.cs` (~900 lines) - 30+ operation implementations
+
+**Benefits:**
+- **Maintainability** - Each file has single, clear responsibility
+- **Testability** - Isolated concerns enable focused unit testing
+- **Extensibility** - Add new operations without affecting other parts
+- **Team Collaboration** - Reduced merge conflicts, parallel development
+
+**Documentation:**
+- See `PROCEDUREEXECUTOR_REFACTORING.md` for complete details
+- Includes architecture diagrams, design patterns, and future improvements
+
+---
 
 ### Global Phrase Word Limit in Completion Window + Priority Ordering
 
