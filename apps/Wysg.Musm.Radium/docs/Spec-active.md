@@ -2,23 +2,82 @@
 
 **Purpose**: This document contains active feature specifications from the last 90 days.  
 **Archive Location**: [docs/archive/](archive/) contains historical specifications organized by quarter and feature domain.  
-**Last Updated**: 2025-01-19
+**Last Updated**: 2025-01-20
 
-[¡æ View Archive Index](archive/README.md) | [¡æ View All Archives](archive/)
+[?? View Archive Index](archive/README.md) | [??? View All Archives](archive/)
 
 ---
 
 ## Quick Navigation
 
 ### Recent Features (2025-01-01 onward)
-- [FR-1100..FR-1136: Foreign Text Sync & Caret Management](#foreign-text-sync--caret-management-2025-01-19) - **NEW**
+- [FR-1140: SetFocus Operation Retry Logic](#setfocus-operation-retry-logic-2025-01-20) - **NEW**
+- [FR-1100..FR-1136: Foreign Text Sync & Caret Management](#foreign-text-sync--caret-management-2025-01-19)
 - [FR-1025..FR-1027: Current Combination Quick Delete](#current-combination-quick-delete-2025-01-18)
 - [FR-1081..FR-1093: Report Inputs Panel Layout](#report-inputs-panel-layout-2025-01-18)
 - [FR-950..FR-965: Phrase-SNOMED Mapping Window](#phrase-snomed-mapping-window-2025-01-15)
 
 ### Archived Features (2024 and earlier)
-- **2024-Q4**: PACS Automation, Multi-PACS Tenancy, Study Techniques ¡æ [archive/2024/Spec-2024-Q4.md](archive/2024/Spec-2024-Q4.md)
-- **2025-Q1**: Phrase Highlighting, Editor Enhancements ¡æ [archive/2025-Q1/](archive/2025-Q1/)
+- **2024-Q4**: PACS Automation, Multi-PACS Tenancy, Study Techniques ?? [archive/2024/Spec-2024-Q4.md](archive/2024/Spec-2024-Q4.md)
+- **2025-Q1**: Phrase Highlighting, Editor Enhancements ?? [archive/2025-Q1/](archive/2025-Q1/)
+
+---
+
+## SetFocus Operation Retry Logic (2025-01-20)
+
+### FR-1140: Add Retry Logic to SetFocus Operation in Custom Procedures
+
+**Problem**: SetFocus operation in Custom Procedures works during test run (manual step-by-step execution) but fails during automated procedure module execution.
+
+**Root Cause**: UI automation elements may not be immediately ready for focus operations, especially during automated procedure execution where operations happen in rapid succession.
+
+**Solution**: Implement retry logic with configurable attempts and delays for SetFocus operation.
+
+**Requirements**:
+
+1. **Retry Configuration**
+   - Maximum 3 attempts per SetFocus operation
+   - 150ms delay between retry attempts
+   - Applies to both test mode and procedure module execution
+
+2. **Success Feedback**
+   - First attempt success: Display "(focused)"
+   - Retry success: Display "(focused after N attempts)" where N is attempt count
+   - Helps users identify elements that need more time
+
+3. **Error Feedback**
+   - After all attempts fail: Display "(error after 3 attempts: [error message])"
+   - Includes exception message for troubleshooting
+   - Clear indication that retries were exhausted
+
+4. **Consistent Implementation**
+   - Apply same retry logic in SpyWindow (test mode)
+   - Apply same retry logic in ProcedureExecutor (procedure module)
+   - Ensure consistent behavior across both execution contexts
+
+5. **Performance Considerations**
+   - Maximum 300ms total delay on complete failure (2 retries ¡¿ 150ms)
+   - No delay on first attempt success
+   - Minimal impact on procedure execution time
+
+**Behavior Examples**:
+
+```
+Scenario 1: First attempt succeeds
+SetFocus on SearchResultsList ¡æ "(focused)"
+
+Scenario 2: Second attempt succeeds
+SetFocus on SearchResultsList ¡æ wait 150ms ¡æ "(focused after 2 attempts)"
+
+Scenario 3: All attempts fail
+SetFocus on SearchResultsList ¡æ wait 150ms ¡æ wait 150ms ¡æ "(error after 3 attempts: Element not found)"
+```
+
+**Status**: ? **Implemented** (2025-01-20)
+
+**Cross-References**:
+- Implementation: [Plan-active.md - SetFocus Retry Logic](Plan-active.md#change-log-addition-2025-01-20--setfocus-operation-retry-logic)
+- Related Operations: Other timing-sensitive operations may benefit from similar retry logic (future enhancement)
 
 ---
 
@@ -193,5 +252,5 @@ Features are moved to archives when:
 
 ---
 
-*Document last trimmed: 2025-01-19*  
-*Next review: 2025-04-19 (90 days)*
+*Document last trimmed: 2025-01-20*  
+*Next review: 2025-04-20 (90 days)*
