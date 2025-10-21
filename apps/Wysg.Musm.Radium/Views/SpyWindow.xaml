@@ -103,6 +103,7 @@
                             <ComboBoxItem Tag="AutomationIdOnly">AutomationIdOnly</ComboBoxItem>
                         </ComboBox>
                         <Button Content="Validate" Click="OnValidateChain" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="SetFocus" Margin="6,0,0,0" Click="OnSetFocus" Style="{StaticResource SpyWindowButtonStyle}"/>
                         <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke" Style="{StaticResource SpyWindowButtonStyle}"/>
                         <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText" Style="{StaticResource SpyWindowButtonStyle}"/>
                         <Button Content="Get Name" Margin="6,0,0,0" Click="OnGetName" Style="{StaticResource SpyWindowButtonStyle}"/>
