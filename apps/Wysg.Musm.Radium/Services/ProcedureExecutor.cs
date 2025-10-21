@@ -606,15 +606,16 @@ namespace Wysg.Musm.Radium.Services
                         var el = ResolveElement(row.Arg1, vars);
                         if (el == null) return ("(no element)", null);
                         
-                        // CRITICAL FIX: Both window activation AND focus must run on UI thread
-                        // Background threads don't have permission to change foreground window or set focus
+                        // CRITICAL FIX: Use BeginInvoke (async) to avoid blocking issues with FlaUI
+                        // Dispatcher.Invoke blocks and causes FlaUI Focus() to fail with PropertyNotSupportedException
                         string resultPreview = "(error)";
                         bool success = false;
+                        var completionSource = new TaskCompletionSource<(string preview, bool success)>();
                         
                         try
                         {
-                            // Execute entire SetFocus logic on UI thread with retry
-                            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                            // Execute SetFocus logic on UI thread asynchronously
+                            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
                             {
                                 try
                                 {
@@ -639,6 +640,7 @@ namespace Wysg.Musm.Radium.Services
                                             el.Focus();
                                             resultPreview = attempt > 1 ? $"(focused after {attempt} attempts)" : "(focused)";
                                             success = true;
+                                            completionSource.SetResult((resultPreview, success));
                                             return; // Success - exit retry loop
                                         }
                                         catch (Exception ex)
@@ -657,21 +659,33 @@ namespace Wysg.Musm.Radium.Services
                                     {
                                         resultPreview = $"(error after {maxAttempts} attempts: {lastException.Message})";
                                     }
+                                    completionSource.SetResult((resultPreview, success));
                                 }
                                 catch (Exception ex)
                                 {
                                     Debug.WriteLine($"[SetFocus] Dispatcher execution failed: {ex.Message}");
                                     resultPreview = $"(error: {ex.Message})";
+                                    completionSource.SetResult((resultPreview, false));
                                 }
-                            });
+                            }));
+                            
+                            // Wait for completion with timeout
+                            var task = completionSource.Task;
+                            if (task.Wait(TimeSpan.FromSeconds(5)))
+                            {
+                                var result = task.Result;
+                                return (result.preview, null);
+                            }
+                            else
+                            {
+                                return ("(timeout waiting for UI thread)", null);
+                            }
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"[SetFocus] Dispatcher.Invoke failed: {ex.Message}");
-                            resultPreview = $"(dispatcher error: {ex.Message})";
+                            Debug.WriteLine($"[SetFocus] BeginInvoke failed: {ex.Message}");
+                            return ($"(dispatcher error: {ex.Message})", null);
                         }
-                        
-                        return (resultPreview, null);
                     }
                     case "TakeLast":
                     {
