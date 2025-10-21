@@ -603,17 +603,31 @@ namespace Wysg.Musm.Radium.Services
                         if (el == null) return ("(no element)", null);
                         
                         // NEW: Activate containing window before setting focus (required for complex controls like RichEdit)
+                        // IMPORTANT: Must run on UI thread to have permission to change foreground window
                         try
                         {
                             var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
                             if (hwnd != IntPtr.Zero)
                             {
-                                // Bring window to foreground using Win32 API
-                                NativeMouseHelper.SetForegroundWindow(hwnd);
-                                System.Threading.Thread.Sleep(100); // Brief delay for window activation
+                                // Activate window on UI thread (background threads can't change foreground)
+                                bool activationSuccess = false;
+                                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                                {
+                                    try
+                                    {
+                                        activationSuccess = NativeMouseHelper.SetForegroundWindow(hwnd);
+                                        System.Threading.Thread.Sleep(100); // Brief delay for window activation
+                                    }
+                                    catch { }
+                                });
+                                
+                                Debug.WriteLine($"[SetFocus] Window activation result: {activationSuccess}");
                             }
                         }
-                        catch { } // Activation failure shouldn't block focus attempt
+                        catch (Exception ex) 
+                        { 
+                            Debug.WriteLine($"[SetFocus] Window activation failed: {ex.Message}");
+                        }
                         
                         // Retry logic for SetFocus - sometimes elements need time to be ready
                         const int maxAttempts = 3;
