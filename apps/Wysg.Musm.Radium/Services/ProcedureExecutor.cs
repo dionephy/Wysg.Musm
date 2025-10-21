@@ -603,7 +603,7 @@ namespace Wysg.Musm.Radium.Services
                     }
                     case "SetFocus":
                     {
-                        var el = ResolveElement(row.Arg1);
+                        var el = ResolveElement(row.Arg1, vars);
                         if (el == null)
                         {
                             Debug.WriteLine("[SetFocus] FAIL: Element resolution returned null");
@@ -612,27 +612,18 @@ namespace Wysg.Musm.Radium.Services
                         
                         Debug.WriteLine($"[SetFocus] Element resolved: Name='{el.Name}', AutomationId='{el.AutomationId}'");
                         
-                        // CRITICAL FIX: Use BeginInvoke (async) to avoid blocking issues with FlaUI
-                        // Dispatcher.Invoke blocks and causes FlaUI Focus() to fail with PropertyNotSupportedException
+                        // CRITICAL FIX: Move ALL FlaUI operations including window handle access into Dispatcher
+                        // Accessing el.Properties from background thread can cause PropertyNotSupportedException
                         string resultPreview = "(error)";
                         bool success = false;
                         var completionSource = new TaskCompletionSource<(string preview, bool success)>();
                         
                         try
                         {
-                            Debug.WriteLine("[SetFocus] Attempting to get window handle...");
-                            var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
-                            Debug.WriteLine($"[SetFocus] Window handle: 0x{hwnd.ToInt64():X}");
-                            
-                            if (hwnd == IntPtr.Zero)
-                            {
-                                Debug.WriteLine("[SetFocus] FAIL: Window handle is zero");
-                                return ("(no hwnd)", null);
-                            }
-                            
                             Debug.WriteLine("[SetFocus] Queuing BeginInvoke on Dispatcher...");
                             
                             // Execute SetFocus logic on UI thread asynchronously
+                            // IMPORTANT: Move window handle retrieval into Dispatcher to avoid cross-thread issues
                             System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
                             {
                                 Debug.WriteLine("[SetFocus] BeginInvoke callback START - executing on UI thread");
@@ -641,16 +632,24 @@ namespace Wysg.Musm.Radium.Services
                                 
                                 try
                                 {
-                                    // 1. Activate containing window first
-                                    Debug.WriteLine("[SetFocus] Calling SetForegroundWindow...");
-                                    var activated = NativeMouseHelper.SetForegroundWindow(hwnd);
-                                    Debug.WriteLine($"[SetFocus] SetForegroundWindow result: {activated}");
+                                    // 1. Get window handle (MUST be done on UI thread to avoid PropertyNotSupportedException)
+                                    Debug.WriteLine("[SetFocus] Attempting to get window handle...");
+                                    var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
+                                    Debug.WriteLine($"[SetFocus] Window handle: 0x{hwnd.ToInt64():X}");
                                     
-                                    Debug.WriteLine("[SetFocus] Sleeping 100ms for window activation...");
-                                    System.Threading.Thread.Sleep(100);
-                                    Debug.WriteLine("[SetFocus] Sleep completed");
+                                    // 2. Activate containing window first
+                                    if (hwnd != IntPtr.Zero)
+                                    {
+                                        Debug.WriteLine("[SetFocus] Calling SetForegroundWindow...");
+                                        var activated = NativeMouseHelper.SetForegroundWindow(hwnd);
+                                        Debug.WriteLine($"[SetFocus] SetForegroundWindow result: {activated}");
+                                        
+                                        Debug.WriteLine("[SetFocus] Sleeping 100ms for window activation...");
+                                        System.Threading.Thread.Sleep(100);
+                                        Debug.WriteLine("[SetFocus] Sleep completed");
+                                    }
                                     
-                                    // 2. Retry focus with delays
+                                    // 3. Retry focus with delays
                                     const int maxAttempts = 3;
                                     const int retryDelayMs = 150;
                                     Exception? lastException = null;
