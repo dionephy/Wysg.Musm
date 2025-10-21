@@ -208,6 +208,19 @@ namespace Wysg.Musm.Radium.Views
                 if (el == null) { txtStatus.Text = "SetFocus: not found"; return; }
             }
             
+            // NEW: Activate containing window before setting focus (required for complex controls like RichEdit)
+            try
+            {
+                var hwnd = new IntPtr(_lastResolved.Properties.NativeWindowHandle.Value);
+                if (hwnd != IntPtr.Zero)
+                {
+                    // Bring window to foreground using Win32 API
+                    NativeMouseHelper.SetForegroundWindow(hwnd);
+                    System.Threading.Thread.Sleep(100); // Brief delay for window activation
+                }
+            }
+            catch { } // Activation failure shouldn't block focus attempt
+            
             // Retry logic for SetFocus - sometimes elements need time to be ready
             const int maxAttempts = 3;
             const int retryDelayMs = 150;
