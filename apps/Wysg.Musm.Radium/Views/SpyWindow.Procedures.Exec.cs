@@ -103,9 +103,11 @@ namespace Wysg.Musm.Radium.Views
                             break;
                         case "Replace":
                         case "Merge":
-                            row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true;
-                            row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = true;
+                            // Replace/Merge: Arg1=input (Var), Arg2=search/input2 (String or Var), Arg3=replacement/separator (String or Var)
+                            // Don't force types - let user choose between String and Var
+                            row.Arg1Enabled = true;
+                            row.Arg2Enabled = true;
+                            row.Arg3Enabled = true;
                             break;
                         case "GetHTML":
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
