@@ -106,6 +106,26 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ## Recent Updates (2025-01-20)
 
+### Reportified Toggle Button Automation Fix (2025-01-21)
+
+**What Changed:**
+- Fixed Reportified toggle button not updating when automation modules set `Reportified=true`
+- PropertyChanged event now always raised to ensure UI synchronization
+- Text transformations still only run when value actually changes (no performance impact)
+
+**Why This Matters:**
+- Automation sequences can now reliably control the Reportified toggle
+- Settings Window > Automation tab can include "Reportify" module in sequences
+- Example: `Reportify, Delay, SendReport` now works correctly
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Editor.cs` - Always raise PropertyChanged
+
+**Documentation:**
+- See `REPORTIFIED_TOGGLE_AUTOMATION_FIX_2025_01_21.md` for complete details
+
+---
+
 ### ProcedureExecutor Refactoring (2025-01-16)
 
 **What Changed:**

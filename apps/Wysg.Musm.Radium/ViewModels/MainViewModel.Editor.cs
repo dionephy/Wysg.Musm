@@ -17,7 +17,36 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _rawHeader = string.Empty;
         private string _rawFindings = string.Empty;
         private string _rawConclusion = string.Empty;
-        private bool _reportified; public bool Reportified { get => _reportified; set { Debug.WriteLine($"[Editor.Reportified] Setter called: old={_reportified}, new={value}"); ToggleReportified(value); } }
+        private bool _reportified; 
+        public bool Reportified 
+        { 
+            get => _reportified; 
+            set 
+            { 
+                Debug.WriteLine($"[Editor.Reportified] Setter called: old={_reportified}, new={value}"); 
+                
+                // CRITICAL FIX: Always raise PropertyChanged event first to ensure UI synchronization
+                // This is essential for automation modules that set Reportified=true
+                bool actualChanged = (_reportified != value);
+                
+                // Update backing field
+                _reportified = value;
+                
+                // Always notify, even if value didn't change (ensures UI syncs after automation)
+                OnPropertyChanged(nameof(Reportified));
+                Debug.WriteLine($"[Editor.Reportified] PropertyChanged raised, _reportified is now={_reportified}");
+                
+                // Only apply transformations if value actually changed
+                if (actualChanged)
+                {
+                    ToggleReportified(value);
+                }
+                else
+                {
+                    Debug.WriteLine($"[Editor.Reportified] Value didn't change, skipping transformation");
+                }
+            } 
+        }
 
         // New: PACS remarks captured via automation modules
         private string _studyRemark = string.Empty; public string StudyRemark { get => _studyRemark; set { if (SetProperty(ref _studyRemark, value ?? string.Empty)) UpdateCurrentReportJson(); } }
@@ -101,22 +130,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private void ToggleReportified(bool value)
         {
-            Debug.WriteLine($"[Editor.ToggleReportified] START: value={value}, _reportified={_reportified}");
-            
-            // CRITICAL FIX: Always raise PropertyChanged to ensure UI synchronization
-            // This ensures the UI toggle button updates when automation modules set Reportified=true
-            bool changed = SetProperty(ref _reportified, value);
-            
-            Debug.WriteLine($"[Editor.ToggleReportified] SetProperty returned changed={changed}, _reportified is now={_reportified}");
-            
-            // Skip transformation logic if value didn't actually change
-            if (!changed) 
-            {
-                Debug.WriteLine($"[Editor.ToggleReportified] Value didn't change, skipping transformation");
-                return;
-            }
-            
-            Debug.WriteLine($"[Editor.ToggleReportified] Applying transformations: reportified={value}");
+            Debug.WriteLine($"[Editor.ToggleReportified] START: applying transformations for reportified={value}");
             
             if (value)
             {
@@ -135,6 +149,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 ConclusionText = _rawConclusion;
                 _suppressAutoToggle = false;
             }
+            
+            Debug.WriteLine($"[Editor.ToggleReportified] END: transformations applied");
         }
         private void CaptureRawIfNeeded()
         {
