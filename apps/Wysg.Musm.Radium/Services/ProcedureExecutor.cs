@@ -616,10 +616,38 @@ namespace Wysg.Musm.Radium.Services
                         {
                             try
                             {
-                                el.Focus();
-                                var preview = attempt > 1 ? $"(focused after {attempt} attempts)" : "(focused)";
-                                success = true;
-                                return (preview, null);
+                                // Execute Focus on STA thread to match legacy PacsService behavior
+                                // UI Automation sometimes requires proper thread apartment state
+                                var focusSuccess = false;
+                                Exception? focusException = null;
+                                
+                                var thread = new System.Threading.Thread(() =>
+                                {
+                                    try
+                                    {
+                                        el.Focus();
+                                        focusSuccess = true;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        focusException = ex;
+                                    }
+                                });
+                                
+                                thread.SetApartmentState(System.Threading.ApartmentState.STA);
+                                thread.Start();
+                                thread.Join(1000); // Wait up to 1 second
+                                
+                                if (focusSuccess)
+                                {
+                                    var preview = attempt > 1 ? $"(focused after {attempt} attempts)" : "(focused)";
+                                    success = true;
+                                    return (preview, null);
+                                }
+                                else if (focusException != null)
+                                {
+                                    throw focusException;
+                                }
                             }
                             catch (Exception ex)
                             {
