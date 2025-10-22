@@ -81,6 +81,8 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 - `spec_editor.md` - Editor component specification
 - `snomed-semantic-tag-debugging.md` - SNOMED integration debugging
 - `PROCEDUREEXECUTOR_REFACTORING.md` - ProcedureExecutor refactoring (2025-01-16)
+- `OPERATION_EXECUTOR_CONSOLIDATION.md` - Operation execution consolidation Phase 1 (2025-01-16)
+- `OPERATION_EXECUTOR_PARTIAL_CLASS_SPLIT.md` - Operation execution split Phase 2 (2025-01-16)
 
 ### SNOMED CT Integration
 - `SNOMED_INTEGRATION_COMPLETE.md` - Complete implementation status
@@ -105,6 +107,36 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 ---
 
 ## Recent Updates (2025-01-20)
+
+### Operation Executor Consolidation (2025-01-16)
+
+**What Changed:**
+- **Phase 1 (Consolidation)**: Consolidated duplicate operation execution logic from SpyWindow and ProcedureExecutor
+- **Phase 2 (Partial Class Split)**: Split 1500-line OperationExecutor.cs into 8 focused files
+- Created shared `OperationExecutor` service with 30+ operations
+- Moved sophisticated HTTP/encoding logic from SpyWindow to shared service
+- Eliminated ~1500 lines of duplicate code
+
+**Why This Matters:**
+- **Fixed GetHTML bug** - Korean encoding now works in both SpyWindow and ProcedureExecutor
+- **Consistent behavior** - All operations execute identically in UI testing and automation
+- **Single source of truth** - Bug fixes only needed once
+- **Easier maintenance** - New operations added in one place
+- **Better navigation** - 8 files averaging 190 lines vs 1 file with 1500 lines
+
+**Key Benefits:**
+- ✅ GetHTML with Korean/UTF-8/CP949 encoding works everywhere
+- ✅ Reduced code duplication: 2200 lines → 1680 lines
+- ✅ Simplified operation addition (implement once vs twice)
+- ✅ Testable in isolation with mock resolution functions
+- ✅ Largest file reduced from 1500 → 350 lines (-77%)
+
+**Documentation:**
+- See `OPERATION_EXECUTOR_CONSOLIDATION.md` for Phase 1 (consolidation) details
+- See `OPERATION_EXECUTOR_PARTIAL_CLASS_SPLIT.md` for Phase 2 (split) details
+- Includes encoding detection pipeline and migration guide
+
+---
 
 ### Reportified Toggle Button Automation Fix (2025-01-21)
 
