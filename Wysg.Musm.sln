@@ -47,8 +47,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "db", "db", "{FBDA37CE-3C65-
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "schema", "schema", "{B9D2745B-BAF8-4A14-9033-06A38F14458A}"
 	ProjectSection(SolutionItems) = preProject
-		local_db(wysg_dev)_20251014_after.sql = local_db(wysg_dev)_20251014_after.sql
 		db\schema\central_db(azure)_20251015.sql = db\schema\central_db(azure)_20251015.sql
+		local_db(wysg_dev)_20251014_after.sql = local_db(wysg_dev)_20251014_after.sql
 		db\schema\local_db(wysg_dev)_20251014_before.sql = db\schema\local_db(wysg_dev)_20251014_before.sql
 		local_db_migrate_20251014.sql = local_db_migrate_20251014.sql
 		db\schema\wysg_dev_schema_20250915_home.sql = db\schema\wysg_dev_schema_20250915_home.sql
@@ -65,6 +65,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wynolab.Musm.A.Native", "legacy\Wynolab.Musm.A.Native\Wynolab.Musm.A.Native.csproj", "{E357152B-CACD-B393-3195-297E2EF727C1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wynolab.Musm.A.Editor", "legacy\Wynolab.Musm.A.Editor\Wynolab.Musm.A.Editor.csproj", "{79657B98-0A95-1FD6-F7F6-90EFE4FFD2F4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wysg.Musm.LlmDataBuilder", "Wysg.Musm.LlmDataBuilder\Wysg.Musm.LlmDataBuilder.csproj", "{0C9A7926-8EF9-4956-83CF-530390549644}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -268,6 +270,18 @@ Global
 		{79657B98-0A95-1FD6-F7F6-90EFE4FFD2F4}.Release|x64.Build.0 = Release|Any CPU
 		{79657B98-0A95-1FD6-F7F6-90EFE4FFD2F4}.Release|x86.ActiveCfg = Release|Any CPU
 		{79657B98-0A95-1FD6-F7F6-90EFE4FFD2F4}.Release|x86.Build.0 = Release|Any CPU
+		{0C9A7926-8EF9-4956-83CF-530390549644}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0C9A7926-8EF9-4956-83CF-530390549644}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0C9A7926-8EF9-4956-83CF-530390549644}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0C9A7926-8EF9-4956-83CF-530390549644}.Debug|x64.Build.0 = Debug|Any CPU
+		{0C9A7926-8EF9-4956-83CF-530390549644}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0C9A7926-8EF9-4956-83CF-530390549644}.Debug|x86.Build.0 = Debug|Any CPU
+		{0C9A7926-8EF9-4956-83CF-530390549644}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0C9A7926-8EF9-4956-83CF-530390549644}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0C9A7926-8EF9-4956-83CF-530390549644}.Release|x64.ActiveCfg = Release|Any CPU
+		{0C9A7926-8EF9-4956-83CF-530390549644}.Release|x64.Build.0 = Release|Any CPU
+		{0C9A7926-8EF9-4956-83CF-530390549644}.Release|x86.ActiveCfg = Release|Any CPU
+		{0C9A7926-8EF9-4956-83CF-530390549644}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -291,6 +305,7 @@ Global
 		{6498A7F1-40D7-413D-BF88-5F58728BF988} = {C8D5274F-AC00-46C7-1F8D-E88E81087A52}
 		{E357152B-CACD-B393-3195-297E2EF727C1} = {96E71CB2-B793-4AAD-95A2-93A165238CA3}
 		{79657B98-0A95-1FD6-F7F6-90EFE4FFD2F4} = {96E71CB2-B793-4AAD-95A2-93A165238CA3}
+		{0C9A7926-8EF9-4956-83CF-530390549644} = {063E8BFE-FDE3-4C44-8E81-A56FB5C5AF14}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F5BEFC99-F9A9-477F-ACE1-CE87C95C43EB}
