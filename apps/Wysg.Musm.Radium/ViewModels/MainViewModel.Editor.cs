@@ -49,8 +49,46 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         // New: PACS remarks captured via automation modules
-        private string _studyRemark = string.Empty; public string StudyRemark { get => _studyRemark; set { if (SetProperty(ref _studyRemark, value ?? string.Empty)) UpdateCurrentReportJson(); } }
-        private string _patientRemark = string.Empty; public string PatientRemark { get => _patientRemark; set { if (SetProperty(ref _patientRemark, value ?? string.Empty)) UpdateCurrentReportJson(); } }
+        private string _studyRemark = string.Empty; 
+        public string StudyRemark 
+        { 
+            get => _studyRemark; 
+            set 
+            { 
+                Debug.WriteLine($"[Editor] StudyRemark setter called: old length={_studyRemark?.Length ?? 0}, new length={value?.Length ?? 0}");
+                if (SetProperty(ref _studyRemark, value ?? string.Empty)) 
+                {
+                    Debug.WriteLine($"[Editor] StudyRemark property changed, value='{_studyRemark}'");
+                    UpdateCurrentReportJson(); 
+                }
+            } 
+        }
+        
+        private string _patientRemark = string.Empty; 
+        public string PatientRemark 
+        { 
+            get => _patientRemark; 
+            set 
+            { 
+                Debug.WriteLine($"[Editor] PatientRemark setter called: old length={_patientRemark?.Length ?? 0}, new length={value?.Length ?? 0}");
+                Debug.WriteLine($"[Editor] PatientRemark new value first 100 chars: '{(value?.Length > 100 ? value.Substring(0, 100) : value ?? "(null)")}'");
+                
+                if (SetProperty(ref _patientRemark, value ?? string.Empty)) 
+                {
+                    Debug.WriteLine($"[Editor] PatientRemark property changed successfully!");
+                    Debug.WriteLine($"[Editor] PatientRemark backing field now has length={_patientRemark.Length}");
+                    Debug.WriteLine($"[Editor] PatientRemark first line: '{(_patientRemark.Contains('\n') ? _patientRemark.Substring(0, _patientRemark.IndexOf('\n')) : _patientRemark)}'");
+                    UpdateCurrentReportJson(); 
+                }
+                else
+                {
+                    Debug.WriteLine($"[Editor] PatientRemark SetProperty returned false (value unchanged)");
+                }
+            } 
+        }
+        
+        // NEW: Radiologist name captured via GetReportedReport module
+        private string _reportRadiologist = string.Empty; public string ReportRadiologist { get => _reportRadiologist; set { if (SetProperty(ref _reportRadiologist, value ?? string.Empty)) UpdateCurrentReportJson(); } }
 
         // Header fields for real-time formatting
         private string _chiefComplaint = string.Empty; 
@@ -297,6 +335,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     conclusion = _rawConclusion == string.Empty ? ConclusionText : _rawConclusion,
                     study_remark = _studyRemark,
                     patient_remark = _patientRemark,
+                    report_radiologist = _reportRadiologist,
                     chief_complaint = _chiefComplaint,
                     patient_history = _patientHistory,
                     study_techniques = _studyTechniques,
@@ -330,6 +369,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 string newStudyTechniques = root.TryGetProperty("study_techniques", out var stEl) ? (stEl.GetString() ?? string.Empty) : string.Empty;
                 string newComparison = root.TryGetProperty("comparison", out var compEl) ? (compEl.GetString() ?? string.Empty) : string.Empty;
                 string newPatientRemark = root.TryGetProperty("patient_remark", out var pEl) ? (pEl.GetString() ?? string.Empty) : string.Empty;
+                string newReportRadiologist = root.TryGetProperty("report_radiologist", out var rrEl) ? (rrEl.GetString() ?? string.Empty) : string.Empty;
                 string newChiefComplaintPf = root.TryGetProperty("chief_complaint_proofread", out var ccpEl) ? (ccpEl.GetString() ?? string.Empty) : string.Empty;
                 string newPatientHistoryPf = root.TryGetProperty("patient_history_proofread", out var phpEl) ? (phpEl.GetString() ?? string.Empty) : string.Empty;
                 string newStudyTechniquesPf = root.TryGetProperty("study_techniques_proofread", out var stpEl) ? (stpEl.GetString() ?? string.Empty) : string.Empty;
@@ -340,6 +380,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 _rawFindings = newFindings; _rawConclusion = newConclusion; // keep raw updated
                 StudyRemark = newStudyRemark; // round-trippable
                 PatientRemark = newPatientRemark; // now round-trippable as well
+                ReportRadiologist = newReportRadiologist; // round-trippable
                 // Update header component fields
                 _chiefComplaint = newChiefComplaint; OnPropertyChanged(nameof(ChiefComplaint));
                 _patientHistory = newPatientHistory; OnPropertyChanged(nameof(PatientHistory));

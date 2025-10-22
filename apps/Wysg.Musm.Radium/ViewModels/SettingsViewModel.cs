@@ -40,7 +40,7 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         [ObservableProperty]
-        private ObservableCollection<string> availableModules = new(new[] { "NewStudy", "LockStudy", "UnlockStudy", "GetStudyRemark", "GetPatientRemark", "AddPreviousStudy", "OpenStudy", "MouseClick1", "MouseClick2", "TestInvoke", "ShowTestMessage", "SetCurrentInMainScreen", "AbortIfWorklistClosed", "AbortIfPatientNumberNotMatch", "AbortIfStudyDateTimeNotMatch", "OpenWorklist", "ResultsListSetFocus", "SendReport", "Reportify", "Delay" });
+        private ObservableCollection<string> availableModules = new(new[] { "NewStudy", "LockStudy", "UnlockStudy", "GetStudyRemark", "GetPatientRemark", "AddPreviousStudy", "GetUntilReportDateTime", "GetReportedReport", "OpenStudy", "MouseClick1", "MouseClick2", "TestInvoke", "ShowTestMessage", "SetCurrentInMainScreen", "AbortIfWorklistClosed", "AbortIfPatientNumberNotMatch", "AbortIfStudyDateTimeNotMatch", "OpenWorklist", "ResultsListSetFocus", "SendReport", "Reportify", "Delay", "SaveCurrentStudyToDB", "SavePreviousStudyToDB" });
         [ObservableProperty]
         private ObservableCollection<string> newStudyModules = new();
         [ObservableProperty]
@@ -59,6 +59,9 @@ namespace Wysg.Musm.Radium.ViewModels
         private ObservableCollection<string> shortcutSendReportPreviewModules = new();
         [ObservableProperty]
         private ObservableCollection<string> shortcutSendReportReportifiedModules = new();
+
+        [ObservableProperty]
+        private ObservableCollection<string> testModules = new();
 
         // ===== Reportify Settings (manual properties) =====
         private bool _removeExcessiveBlanks = true; public bool RemoveExcessiveBlanks { get => _removeExcessiveBlanks; set { if (SetProperty(ref _removeExcessiveBlanks, value)) UpdateReportifyJson(); } }

@@ -24,6 +24,14 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _studyName = string.Empty; public string StudyName { get => _studyName; set { if (SetProperty(ref _studyName, value)) UpdateCurrentStudyLabel(); } }
         private string _studyDateTime = string.Empty; public string StudyDateTime { get => _studyDateTime; set { if (SetProperty(ref _studyDateTime, value)) UpdateCurrentStudyLabel(); } }
 
+        // Report DateTime: when the current study's report was created (distinct from StudyDateTime which is when the study was performed)
+        private DateTime? _currentReportDateTime; 
+        public DateTime? CurrentReportDateTime 
+        { 
+            get => _currentReportDateTime; 
+            set => SetProperty(ref _currentReportDateTime, value); 
+        }
+
         private string _currentStudyLabel = "Current\nStudy"; public string CurrentStudyLabel { get => _currentStudyLabel; private set => SetProperty(ref _currentStudyLabel, value); }
 
         private void UpdateCurrentStudyLabel()

@@ -50,6 +50,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             
             <!-- New Study / Add Study -->
@@ -68,7 +69,7 @@
             </Border>
             
             <!-- Available Modules (right pane spans rows) -->
-            <Border Grid.Row="0" Grid.Column="2" Grid.RowSpan="5" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}">
+            <Border Grid.Row="0" Grid.Column="2" Grid.RowSpan="6" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Available Modules" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
                     <ListBox x:Name="lstLibrary" PreviewMouseMove="OnProcDrag" DragLeave="OnListDragLeave" Tag="Library" ItemTemplate="{StaticResource LibraryModuleTemplate}"/>
@@ -126,6 +127,14 @@
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Shortcut: Send Report (reportified)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
                     <ListBox x:Name="lstShortcutSendReportReportified" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutSendReportReportified" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                </DockPanel>
+            </Border>
+            
+            <!-- NEW: Test pane -->
+            <Border Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}" Margin="0,0,8,8">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Test" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
+                    <ListBox x:Name="lstTest" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="Test" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
                 </DockPanel>
             </Border>
         </Grid>

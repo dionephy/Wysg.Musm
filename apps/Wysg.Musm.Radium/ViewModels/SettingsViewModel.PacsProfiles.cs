@@ -135,6 +135,7 @@ namespace Wysg.Musm.Radium.ViewModels
             SendReportPreviewModules.Clear();
             ShortcutSendReportPreviewModules.Clear();
             ShortcutSendReportReportifiedModules.Clear();
+            TestModules.Clear();
 
             try
             {
@@ -155,6 +156,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         LoadModuleSequence(settings.SendReportPreviewSequence, SendReportPreviewModules);
                         LoadModuleSequence(settings.ShortcutSendReportPreview, ShortcutSendReportPreviewModules);
                         LoadModuleSequence(settings.ShortcutSendReportReportified, ShortcutSendReportReportifiedModules);
+                        LoadModuleSequence(settings.TestSequence, TestModules);
 
                         Debug.WriteLine($"[SettingsVM] Loaded automation settings from {automationFile}");
                     }
@@ -200,7 +202,8 @@ namespace Wysg.Musm.Radium.ViewModels
                     SendReportSequence = string.Join(",", SendReportModules),
                     SendReportPreviewSequence = string.Join(",", SendReportPreviewModules),
                     ShortcutSendReportPreview = string.Join(",", ShortcutSendReportPreviewModules),
-                    ShortcutSendReportReportified = string.Join(",", ShortcutSendReportReportifiedModules)
+                    ShortcutSendReportReportified = string.Join(",", ShortcutSendReportReportifiedModules),
+                    TestSequence = string.Join(",", TestModules)
                 };
 
                 var automationFile = GetAutomationFilePath(SelectedPacsForAutomation);
@@ -250,6 +253,7 @@ namespace Wysg.Musm.Radium.ViewModels
             public string? SendReportPreviewSequence { get; set; }
             public string? ShortcutSendReportPreview { get; set; }
             public string? ShortcutSendReportReportified { get; set; }
+            public string? TestSequence { get; set; }
         }
 
         private static string? Prompt(string title, string message, string defaultText)

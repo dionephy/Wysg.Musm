@@ -37,6 +37,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     foreach (var row in g.OrderByDescending(r => r.ReportDateTime))
                     {
                         string findings = string.Empty; string conclusion = string.Empty; string headerFind = string.Empty;
+                        string createdBy = string.Empty; // Read from JSON instead of database column
                         try
                         {
                             using var doc = JsonDocument.Parse(row.ReportJson);
@@ -60,12 +61,15 @@ namespace Wysg.Musm.Radium.ViewModels
                                 if (pr.TryGetProperty("final_conclusion", out var pfc)) conclusion = pfc.GetString() ?? string.Empty;
                                 else if (pr.TryGetProperty("conclusion", out var pcc)) conclusion = pcc.GetString() ?? string.Empty;
                             }
+                            
+                            // Read radiologist from JSON
+                            if (root.TryGetProperty("report_radiologist", out var rr)) createdBy = rr.GetString() ?? string.Empty;
                         }
                         catch (Exception ex) { Debug.WriteLine("[PrevLoad] JSON parse error: " + ex.Message); }
                         var choice = new PreviousReportChoice
                         {
                             ReportDateTime = row.ReportDateTime,
-                            CreatedBy = row.CreatedBy ?? string.Empty,
+                            CreatedBy = createdBy, // Now from JSON instead of database column
                             Studyname = row.Studyname,
                             Findings = string.IsNullOrWhiteSpace(findings) ? headerFind : findings,
                             Conclusion = conclusion,

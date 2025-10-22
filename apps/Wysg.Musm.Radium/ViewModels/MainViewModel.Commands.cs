@@ -68,7 +68,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private void InitializeCommands()
         {
             NewStudyCommand = new DelegateCommand(_ => OnNewStudy());
-            TestNewStudyProcedureCommand = new DelegateCommand(async _ => await RunNewStudyProcedureAsync());
+            TestNewStudyProcedureCommand = new DelegateCommand(_ => OnRunTestAutomation());
             AddStudyCommand = new DelegateCommand(_ => OnRunAddStudyAutomation(), _ => PatientLocked);
             SendReportPreviewCommand = new DelegateCommand(_ => OnSendReportPreview(), _ => PatientLocked);
             SendReportCommand = new DelegateCommand(_ => OnSendReport(), _ => PatientLocked);
@@ -113,50 +113,144 @@ namespace Wysg.Musm.Radium.ViewModels
         // New automation helpers (return Task for proper sequencing)
         private async Task AcquireStudyRemarkAsync()
         {
-            try
+            const int maxRetries = 3;
+            const int delayMs = 200;
+            
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                Debug.WriteLine("[Automation][GetStudyRemark] Starting acquisition");
-                var s = await _pacs.GetCurrentStudyRemarkAsync();
-                Debug.WriteLine($"[Automation][GetStudyRemark] Raw result from PACS: '{s}'");
-                Debug.WriteLine($"[Automation][GetStudyRemark] Result length: {s?.Length ?? 0} characters");
-                StudyRemark = s ?? string.Empty; // property triggers JSON update
-                Debug.WriteLine($"[Automation][GetStudyRemark] Set StudyRemark property: '{StudyRemark}'");
-                SetStatus("Study remark captured");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Automation][GetStudyRemark] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
-                Debug.WriteLine($"[Automation][GetStudyRemark] StackTrace: {ex.StackTrace}");
-                SetStatus("Study remark capture failed", true);
+                try
+                {
+                    Debug.WriteLine($"[Automation][GetStudyRemark] Attempt {attempt}/{maxRetries} - Starting acquisition");
+                    
+                    // Small delay before attempt to allow PACS UI to stabilize
+                    if (attempt > 1)
+                    {
+                        Debug.WriteLine($"[Automation][GetStudyRemark] Waiting {delayMs * attempt}ms before retry...");
+                        await Task.Delay(delayMs * attempt);
+                    }
+                    
+                    var s = await _pacs.GetCurrentStudyRemarkAsync();
+                    Debug.WriteLine($"[Automation][GetStudyRemark] Raw result from PACS: '{s}'");
+                    Debug.WriteLine($"[Automation][GetStudyRemark] Result length: {s?.Length ?? 0} characters");
+                    
+                    // Success check: if we got non-empty content, accept it
+                    if (!string.IsNullOrEmpty(s))
+                    {
+                        Debug.WriteLine($"[Automation][GetStudyRemark] SUCCESS on attempt {attempt}");
+                        StudyRemark = s;
+                        Debug.WriteLine($"[Automation][GetStudyRemark] Set StudyRemark property: '{StudyRemark}'");
+                        SetStatus($"Study remark captured ({s.Length} chars)");
+                        return; // Success - exit retry loop
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[Automation][GetStudyRemark] Attempt {attempt} returned empty/null");
+                        if (attempt < maxRetries)
+                        {
+                            Debug.WriteLine($"[Automation][GetStudyRemark] Will retry...");
+                            continue; // Try again
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"[Automation][GetStudyRemark] Max retries reached - accepting empty result");
+                            StudyRemark = string.Empty;
+                            SetStatus("Study remark empty after retries");
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Automation][GetStudyRemark] Attempt {attempt} EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                    Debug.WriteLine($"[Automation][GetStudyRemark] StackTrace: {ex.StackTrace}");
+                    
+                    if (attempt < maxRetries)
+                    {
+                        Debug.WriteLine($"[Automation][GetStudyRemark] Will retry after exception...");
+                        continue; // Try again
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[Automation][GetStudyRemark] Max retries reached after exception");
+                        SetStatus("Study remark capture failed after retries", true);
+                        StudyRemark = string.Empty; // Set empty to prevent stale data
+                        return;
+                    }
+                }
             }
         }
         private async Task AcquirePatientRemarkAsync()
         {
-            try
+            const int maxRetries = 3;
+            const int delayMs = 200;
+            
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                Debug.WriteLine("[Automation][GetPatientRemark] Starting acquisition");
-                var s = await _pacs.GetCurrentPatientRemarkAsync();
-                Debug.WriteLine($"[Automation][GetPatientRemark] Raw result from PACS: '{s}'");
-                Debug.WriteLine($"[Automation][GetPatientRemark] Result length: {s?.Length ?? 0} characters");
-                
-                // Remove duplicate lines based on text between < and >
-                if (!string.IsNullOrEmpty(s))
+                try
                 {
-                    Debug.WriteLine("[Automation][GetPatientRemark] Removing duplicate lines");
-                    var originalLength = s.Length;
-                    s = RemoveDuplicateLinesInPatientRemark(s);
-                    Debug.WriteLine($"[Automation][GetPatientRemark] After deduplication: length {originalLength} -> {s.Length}");
+                    Debug.WriteLine($"[Automation][GetPatientRemark] Attempt {attempt}/{maxRetries} - Starting acquisition");
+                    
+                    // Small delay before attempt to allow PACS UI to stabilize
+                    if (attempt > 1)
+                    {
+                        Debug.WriteLine($"[Automation][GetPatientRemark] Waiting {delayMs * attempt}ms before retry...");
+                        await Task.Delay(delayMs * attempt);
+                    }
+                    
+                    var s = await _pacs.GetCurrentPatientRemarkAsync();
+                    Debug.WriteLine($"[Automation][GetPatientRemark] Raw result from PACS: '{s}'");
+                    Debug.WriteLine($"[Automation][GetPatientRemark] Result length: {s?.Length ?? 0} characters");
+                    
+                    // Success check: if we got non-empty content, accept it
+                    if (!string.IsNullOrEmpty(s))
+                    {
+                        Debug.WriteLine($"[Automation][GetPatientRemark] SUCCESS on attempt {attempt}");
+                        
+                        // Remove duplicate lines based on text between < and >
+                        var originalLength = s.Length;
+                        s = RemoveDuplicateLinesInPatientRemark(s);
+                        Debug.WriteLine($"[Automation][GetPatientRemark] After deduplication: length {originalLength} -> {s.Length}");
+                        
+                        PatientRemark = s;
+                        Debug.WriteLine($"[Automation][GetPatientRemark] Set PatientRemark property: '{PatientRemark}'");
+                        SetStatus($"Patient remark captured ({s.Length} chars)");
+                        return; // Success - exit retry loop
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[Automation][GetPatientRemark] Attempt {attempt} returned empty/null");
+                        if (attempt < maxRetries)
+                        {
+                            Debug.WriteLine($"[Automation][GetPatientRemark] Will retry...");
+                            continue; // Try again
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"[Automation][GetPatientRemark] Max retries reached - accepting empty result");
+                            PatientRemark = string.Empty;
+                            SetStatus("Patient remark empty after retries");
+                            return;
+                        }
+                    }
                 }
-                
-                PatientRemark = s ?? string.Empty; // property triggers JSON update
-                Debug.WriteLine($"[Automation][GetPatientRemark] Set PatientRemark property: '{PatientRemark}'");
-                SetStatus("Patient remark captured");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Automation][GetPatientRemark] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
-                Debug.WriteLine($"[Automation][GetPatientRemark] StackTrace: {ex.StackTrace}");
-                SetStatus("Patient remark capture failed", true);
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Automation][GetPatientRemark] Attempt {attempt} EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                    Debug.WriteLine($"[Automation][GetPatientRemark] StackTrace: {ex.StackTrace}");
+                    
+                    if (attempt < maxRetries)
+                    {
+                        Debug.WriteLine($"[Automation][GetPatientRemark] Will retry after exception...");
+                        continue; // Try again
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[Automation][GetPatientRemark] Max retries reached after exception");
+                        SetStatus("Patient remark capture failed after retries", true);
+                        PatientRemark = string.Empty; // Set empty to prevent stale data
+                        return;
+                    }
+                }
             }
         }
 
@@ -250,6 +344,14 @@ namespace Wysg.Musm.Radium.ViewModels
                         }
                         SetStatus("Study date/time match - continuing");
                     }
+                    else if (string.Equals(m, "GetUntilReportDateTime", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await RunGetUntilReportDateTimeAsync();
+                    }
+                    else if (string.Equals(m, "GetReportedReport", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await RunGetReportedReportAsync();
+                    }
                     else if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { await RunOpenStudyAsync(); }
                     else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { await _pacs.CustomMouseClick1Async(); }
                     else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { await _pacs.CustomMouseClick2Async(); }
@@ -274,11 +376,24 @@ namespace Wysg.Musm.Radium.ViewModels
                         await Task.Delay(300);
                         Debug.WriteLine("[Automation] Delay module - completed");
                     }
+                    else if (string.Equals(m, "SaveCurrentStudyToDB", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Debug.WriteLine("[Automation] SaveCurrentStudyToDB module - START");
+                        await RunSaveCurrentStudyToDBAsync();
+                        Debug.WriteLine("[Automation] SaveCurrentStudyToDB module - COMPLETED");
+                    }
+                    else if (string.Equals(m, "SavePreviousStudyToDB", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Debug.WriteLine("[Automation] SavePreviousStudyToDB module - START");
+                        await RunSavePreviousStudyToDBAsync();
+                        Debug.WriteLine("[Automation] SavePreviousStudyToDB module - COMPLETED");
+                    }
                 }
                 catch (Exception ex)
                 {
                     Debug.WriteLine("[Automation] Module '" + m + "' error: " + ex.Message);
-                    SetStatus($"Module '{m}' failed", true);
+                    SetStatus($"Module '{m}' failed - procedure aborted", true);
+                    return; // ABORT entire sequence on any exception (including GetUntilReportDateTime failure)
                 }
             }
         }
@@ -295,6 +410,101 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 System.Diagnostics.Debug.WriteLine("[Automation] OpenStudy error: " + ex.Message);
                 SetStatus("Open study failed", true);
+            }
+        }
+
+        private async Task RunGetUntilReportDateTimeAsync()
+        {
+            const int maxRetries = 30;
+            const int delayMs = 200;
+
+            try
+            {
+                Debug.WriteLine("[Automation][GetUntilReportDateTime] Starting - max retries: 30");
+                
+                for (int attempt = 1; attempt <= maxRetries; attempt++)
+                {
+                    var result = await _pacs.GetSelectedReportDateTimeFromSearchResultsAsync();
+                    Debug.WriteLine($"[Automation][GetUntilReportDateTime] Attempt {attempt}/{maxRetries}: '{result}'");
+                    
+                    // Check if result is in DateTime format
+                    if (!string.IsNullOrWhiteSpace(result) && DateTime.TryParse(result, out var reportDateTime))
+                    {
+                        Debug.WriteLine($"[Automation][GetUntilReportDateTime] SUCCESS on attempt {attempt} - valid DateTime: '{result}'");
+                        
+                        // Save the report datetime to the property
+                        CurrentReportDateTime = reportDateTime;
+                        Debug.WriteLine($"[Automation][GetUntilReportDateTime] Saved to CurrentReportDateTime: {reportDateTime:yyyy-MM-dd HH:mm:ss}");
+                        
+                        SetStatus($"Report DateTime acquired: {result}");
+                        return; // Success - valid DateTime format detected and saved
+                    }
+                    
+                    // Not yet valid DateTime - wait and retry
+                    if (attempt < maxRetries)
+                    {
+                        Debug.WriteLine($"[Automation][GetUntilReportDateTime] Invalid format, waiting {delayMs}ms before retry");
+                        await Task.Delay(delayMs);
+                    }
+                }
+                
+                // Failed after all retries
+                Debug.WriteLine("[Automation][GetUntilReportDateTime] FAILED - max retries reached without valid DateTime");
+                SetStatus("Report DateTime acquisition failed - aborting procedure", true);
+                throw new InvalidOperationException("GetUntilReportDateTime failed to acquire valid DateTime after 30 retries");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Automation][GetUntilReportDateTime] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                SetStatus("Report DateTime acquisition error - aborting", true);
+                throw; // Re-throw to abort the procedure sequence
+            }
+        }
+
+        private async Task RunGetReportedReportAsync()
+        {
+            try
+            {
+                Debug.WriteLine("[Automation][GetReportedReport] Starting acquisition");
+                
+                // Execute GetCurrentFindings and GetCurrentConclusion from PACS
+                var findingsTask = _pacs.GetCurrentFindingsAsync();
+                var conclusionTask = _pacs.GetCurrentConclusionAsync();
+                
+                await Task.WhenAll(findingsTask, conclusionTask);
+                
+                var findings = findingsTask.Result ?? string.Empty;
+                var conclusion = conclusionTask.Result ?? string.Empty;
+                
+                Debug.WriteLine($"[Automation][GetReportedReport] Findings length: {findings.Length} characters");
+                Debug.WriteLine($"[Automation][GetReportedReport] Conclusion length: {conclusion.Length} characters");
+                
+                // NEW: Execute GetSelectedRadiologistFromSearchResultsList
+                Debug.WriteLine("[Automation][GetReportedReport] Fetching radiologist from search results list...");
+                var radiologist = await _pacs.GetSelectedRadiologistFromSearchResultsAsync();
+                
+                Debug.WriteLine($"[Automation][GetReportedReport] Radiologist: '{radiologist ?? "(null)"}'");
+                Debug.WriteLine($"[Automation][GetReportedReport] Radiologist length: {radiologist?.Length ?? 0} characters");
+                
+                // Update the current report JSON by setting FindingsText and ConclusionText
+                // These properties will trigger UpdateCurrentReportJson() which saves to JSON
+                FindingsText = findings;
+                ConclusionText = conclusion;
+                
+                // NEW: Save radiologist to property (triggers JSON update)
+                ReportRadiologist = radiologist ?? string.Empty;
+                
+                Debug.WriteLine("[Automation][GetReportedReport] Updated FindingsText, ConclusionText, and ReportRadiologist properties");
+                Debug.WriteLine("[Automation][GetReportedReport] CurrentReportJson should now contain header_and_findings, final_conclusion, and report_radiologist fields");
+                
+                SetStatus($"Reported report acquired: {findings.Length + conclusion.Length} total characters, radiologist: {(string.IsNullOrWhiteSpace(radiologist) ? "(none)" : radiologist)}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Automation][GetReportedReport] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                Debug.WriteLine($"[Automation][GetReportedReport] StackTrace: {ex.StackTrace}");
+                SetStatus("Get reported report acquisition error", true);
+                // Do not throw - allow sequence to continue
             }
         }
 
@@ -368,11 +578,193 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
+        private async Task RunSaveCurrentStudyToDBAsync()
+        {
+            try
+            {
+                Debug.WriteLine("[Automation][SaveCurrentStudyToDB] Starting save to database");
+                
+                // Ensure study repository is available
+                if (_studyRepo == null)
+                {
+                    Debug.WriteLine("[Automation][SaveCurrentStudyToDB] FAILED - study repository is null");
+                    SetStatus("Save to DB failed - repository unavailable", true);
+                    return;
+                }
+                
+                // Get current study ID from patient/study metadata
+                if (string.IsNullOrWhiteSpace(PatientNumber) || string.IsNullOrWhiteSpace(StudyName) || string.IsNullOrWhiteSpace(StudyDateTime))
+                {
+                    Debug.WriteLine("[Automation][SaveCurrentStudyToDB] FAILED - missing patient/study metadata");
+                    Debug.WriteLine($"[Automation][SaveCurrentStudyToDB] PatientNumber='{PatientNumber}', StudyName='{StudyName}', StudyDateTime='{StudyDateTime}'");
+                    SetStatus("Save to DB failed - missing study context", true);
+                    return;
+                }
+                
+                // Ensure CurrentReportDateTime was set by GetUntilReportDateTime module
+                if (!CurrentReportDateTime.HasValue)
+                {
+                    Debug.WriteLine("[Automation][SaveCurrentStudyToDB] FAILED - CurrentReportDateTime is null");
+                    SetStatus("Save to DB failed - report datetime not set (run GetUntilReportDateTime first)", true);
+                    return;
+                }
+                
+                // Parse study datetime
+                if (!DateTime.TryParse(StudyDateTime, out var studyDt))
+                {
+                    Debug.WriteLine($"[Automation][SaveCurrentStudyToDB] FAILED - invalid StudyDateTime format: '{StudyDateTime}'");
+                    SetStatus("Save to DB failed - invalid study datetime", true);
+                    return;
+                }
+                
+                // Ensure study record exists in database
+                Debug.WriteLine("[Automation][SaveCurrentStudyToDB] Ensuring study exists in database");
+                var studyId = await _studyRepo.EnsureStudyAsync(PatientNumber, PatientName, PatientSex, null, StudyName, studyDt);
+                
+                if (!studyId.HasValue)
+                {
+                    Debug.WriteLine("[Automation][SaveCurrentStudyToDB] FAILED - could not create/retrieve study record");
+                    SetStatus("Save to DB failed - study record error", true);
+                    return;
+                }
+                
+                Debug.WriteLine($"[Automation][SaveCurrentStudyToDB] Study ID: {studyId.Value}");
+                
+                // Get current report JSON (which includes all fields)
+                var reportJson = CurrentReportJson ?? "{}";
+                Debug.WriteLine($"[Automation][SaveCurrentStudyToDB] Report JSON length: {reportJson.Length} characters");
+                
+                // Save report with is_mine=true and the captured CurrentReportDateTime
+                var reportId = await _studyRepo.UpsertPartialReportAsync(
+                    studyId: studyId.Value, 
+                    reportDateTime: CurrentReportDateTime.Value, 
+                    reportJson: reportJson, 
+                    isMine: true
+                );
+                
+                if (reportId.HasValue)
+                {
+                    Debug.WriteLine($"[Automation][SaveCurrentStudyToDB] SUCCESS - Report ID: {reportId.Value}");
+                    SetStatus($"Current study saved to DB (report ID: {reportId.Value})");
+                }
+                else
+                {
+                    Debug.WriteLine("[Automation][SaveCurrentStudyToDB] FAILED - upsert returned null");
+                    SetStatus("Save to DB failed - upsert error", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Automation][SaveCurrentStudyToDB] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                Debug.WriteLine($"[Automation][SaveCurrentStudyToDB] StackTrace: {ex.StackTrace}");
+                SetStatus("Save to DB error", true);
+            }
+        }
+
+        private async Task RunSavePreviousStudyToDBAsync()
+        {
+            try
+            {
+                Debug.WriteLine("[Automation][SavePreviousStudyToDB] Starting save to database");
+                
+                // Ensure study repository is available
+                if (_studyRepo == null)
+                {
+                    Debug.WriteLine("[Automation][SavePreviousStudyToDB] FAILED - study repository is null");
+                    SetStatus("Save previous to DB failed - repository unavailable", true);
+                    return;
+                }
+                
+                // Get selected previous study tab
+                var prevTab = SelectedPreviousStudy;
+                if (prevTab == null)
+                {
+                    Debug.WriteLine("[Automation][SavePreviousStudyToDB] FAILED - no previous study selected");
+                    SetStatus("Save previous to DB failed - no previous study selected", true);
+                    return;
+                }
+                
+                // Get the visible JSON from the selected previous study
+                var reportJson = PreviousReportJson ?? "{}";
+                Debug.WriteLine($"[Automation][SavePreviousStudyToDB] Previous report JSON length: {reportJson.Length} characters");
+                
+                // We need to identify the database record being updated
+                // The SelectedReport contains the report datetime which is the key
+                var selectedReport = prevTab.SelectedReport;
+                if (selectedReport == null)
+                {
+                    Debug.WriteLine("[Automation][SavePreviousStudyToDB] FAILED - no report selected in previous study tab");
+                    SetStatus("Save previous to DB failed - no report selected", true);
+                    return;
+                }
+                
+                // Get study datetime and studyname from the tab
+                var studyDt = prevTab.StudyDateTime;
+                var studyName = selectedReport.Studyname;
+                
+                Debug.WriteLine($"[Automation][SavePreviousStudyToDB] Study: '{studyName}', DateTime: {studyDt:yyyy-MM-dd HH:mm:ss}");
+                
+                // Ensure study record exists in database (should already exist since it was loaded from DB)
+                Debug.WriteLine("[Automation][SavePreviousStudyToDB] Ensuring study exists in database");
+                var studyId = await _studyRepo.EnsureStudyAsync(PatientNumber, PatientName, PatientSex, null, studyName, studyDt);
+                
+                if (!studyId.HasValue)
+                {
+                    Debug.WriteLine("[Automation][SavePreviousStudyToDB] FAILED - could not retrieve study record");
+                    SetStatus("Save previous to DB failed - study record error", true);
+                    return;
+                }
+                
+                Debug.WriteLine($"[Automation][SavePreviousStudyToDB] Study ID: {studyId.Value}");
+                
+                // Update report with the edited JSON
+                // Use the report datetime from the selected report (maintains the existing report datetime key)
+                var reportDateTime = selectedReport.ReportDateTime;
+                Debug.WriteLine($"[Automation][SavePreviousStudyToDB] Report DateTime: {reportDateTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "(null)"}");
+                
+                var reportId = await _studyRepo.UpsertPartialReportAsync(
+                    studyId: studyId.Value, 
+                    reportDateTime: reportDateTime, 
+                    reportJson: reportJson, 
+                    isMine: false  // Keep is_mine as false for previous studies
+                );
+                
+                if (reportId.HasValue)
+                {
+                    Debug.WriteLine($"[Automation][SavePreviousStudyToDB] SUCCESS - Report ID: {reportId.Value}");
+                    SetStatus($"Previous study saved to DB (report ID: {reportId.Value})");
+                }
+                else
+                {
+                    Debug.WriteLine("[Automation][SavePreviousStudyToDB] FAILED - upsert returned null");
+                    SetStatus("Save previous to DB failed - upsert error", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Automation][SavePreviousStudyToDB] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                Debug.WriteLine($"[Automation][SavePreviousStudyToDB] StackTrace: {ex.StackTrace}");
+                SetStatus("Save previous to DB error", true);
+            }
+        }
+
         private void OnRunAddStudyAutomation()
         {
             var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.AddStudySequence);
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
+            _ = RunModulesSequentially(modules);
+        }
+
+        private void OnRunTestAutomation()
+        {
+            var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.TestSequence);
+            var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (modules.Length == 0) 
+            {
+                SetStatus("No Test sequence configured", true);
+                return;
+            }
             _ = RunModulesSequentially(modules);
         }
 
@@ -516,7 +908,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
                 var reportObj = new { header_and_findings = findings, final_conclusion = conclusion };
                 string json = JsonSerializer.Serialize(reportObj);
-                await _studyRepo.UpsertPartialReportAsync(studyId.Value, radiologist, reportDt, json, isMine: false, isCreated: false);
+                await _studyRepo.UpsertPartialReportAsync(studyId.Value, reportDt, json, isMine: false);
 
                 // Fire-and-forget reload to avoid blocking the sequence (OpenStudy can run immediately)
                 async void ReloadAndSelectAsync()
@@ -634,6 +1026,7 @@ namespace Wysg.Musm.Radium.ViewModels
             public string? SendReportPreviewSequence { get; set; }
             public string? ShortcutSendReportPreview { get; set; }
             public string? ShortcutSendReportReportified { get; set; }
+            public string? TestSequence { get; set; }
         }
 
         // DelegateCommand implementation kept local for simplicity

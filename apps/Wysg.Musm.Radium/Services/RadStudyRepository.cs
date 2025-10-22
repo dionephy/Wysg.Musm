@@ -10,11 +10,11 @@ namespace Wysg.Musm.Radium.Services
     {
         Task EnsurePatientStudyAsync(string patientNumber, string? patientName, string? sex, string? birthDateRaw, string? studyName, DateTime? studyDateTime);
         Task<long?> EnsureStudyAsync(string patientNumber, string? patientName, string? sex, string? birthDateRaw, string? studyName, DateTime? studyDateTime);
-        Task<long?> UpsertPartialReportAsync(long studyId, string? createdBy, DateTime? reportDateTime, string reportJson, bool isMine, bool isCreated);
+        Task<long?> UpsertPartialReportAsync(long studyId, DateTime? reportDateTime, string reportJson, bool isMine);
         Task<List<PatientReportRow>> GetReportsForPatientAsync(string patientNumber);
     }
 
-    public sealed record PatientReportRow(long StudyId, DateTime StudyDateTime, string Studyname, DateTime? ReportDateTime, string? CreatedBy, string ReportJson);
+    public sealed record PatientReportRow(long StudyId, DateTime StudyDateTime, string Studyname, DateTime? ReportDateTime, string ReportJson);
 
     public sealed class RadStudyRepository : IRadStudyRepository
     {
@@ -82,24 +82,20 @@ RETURNING id;", cn, (NpgsqlTransaction)tx);
             catch (Exception ex) { try { await tx.RollbackAsync(); } catch { } Debug.WriteLine("[RadStudyRepo] EnsureStudy error: " + ex.Message); return null; }
         }
 
-        public async Task<long?> UpsertPartialReportAsync(long studyId, string? createdBy, DateTime? reportDateTime, string reportJson, bool isMine, bool isCreated)
+        public async Task<long?> UpsertPartialReportAsync(long studyId, DateTime? reportDateTime, string reportJson, bool isMine)
         {
             await using var cn = Open();
             await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
             try
             {
-                await using var cmd = new NpgsqlCommand(@"INSERT INTO med.rad_report(study_id, is_created, is_mine, created_by, report_datetime, report)
-VALUES (@sid, @isCreated, @isMine, @createdBy, @dt, @json)
+                await using var cmd = new NpgsqlCommand(@"INSERT INTO med.rad_report(study_id, is_mine, report_datetime, report)
+VALUES (@sid, @isMine, @dt, @json)
 ON CONFLICT (study_id, report_datetime) DO UPDATE SET
-  is_created = EXCLUDED.is_created,
   is_mine = EXCLUDED.is_mine,
-  created_by = EXCLUDED.created_by,
   report = EXCLUDED.report
 RETURNING id;", cn);
                 cmd.Parameters.AddWithValue("@sid", studyId);
-                cmd.Parameters.AddWithValue("@isCreated", isCreated);
                 cmd.Parameters.AddWithValue("@isMine", isMine);
-                cmd.Parameters.AddWithValue("@createdBy", (object?)createdBy ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@dt", reportDateTime.HasValue ? reportDateTime.Value : (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@json", NpgsqlTypes.NpgsqlDbType.Jsonb, reportJson);
                 var o = await cmd.ExecuteScalarAsync();
@@ -114,7 +110,7 @@ RETURNING id;", cn);
             await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
             try
             {
-                await using var cmd = new NpgsqlCommand(@"SELECT rs.id, rs.study_datetime, sn.studyname, rr.report_datetime, rr.created_by, rr.report
+                await using var cmd = new NpgsqlCommand(@"SELECT rs.id, rs.study_datetime, sn.studyname, rr.report_datetime, rr.report
 FROM med.rad_study rs
 JOIN med.patient p ON p.id = rs.patient_id AND p.tenant_id=@tid AND p.patient_number = @num
 JOIN med.rad_studyname sn ON sn.id = rs.studyname_id
@@ -132,9 +128,8 @@ ORDER BY rs.study_datetime DESC, rr.report_datetime DESC NULLS LAST;", cn);
                     DateTime studyDt = reader.GetDateTime(1);
                     string studyname = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
                     DateTime? reportDt = reader.IsDBNull(3) ? null : reader.GetDateTime(3);
-                    string? createdBy = reader.IsDBNull(4) ? null : reader.GetString(4);
-                    string json = reader.IsDBNull(5) ? "{}" : reader.GetString(5);
-                    list.Add(new PatientReportRow(sid, studyDt, studyname, reportDt, createdBy, json));
+                    string json = reader.IsDBNull(4) ? "{}" : reader.GetString(4);
+                    list.Add(new PatientReportRow(sid, studyDt, studyname, reportDt, json));
                 }
             }
             catch (Exception ex) { Debug.WriteLine("[RadStudyRepo] GetReportsForPatient error: " + ex.Message); }
