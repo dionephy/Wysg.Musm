@@ -8,6 +8,10 @@ The LLM Data Builder is a desktop application designed to help create and manage
 
 ### Current Features
 
+- **Dark Theme UI**: Modern dark theme for comfortable extended use
+
+- **Always on Top**: Optional checkbox to keep the window above other applications
+
 - **Data Entry Interface**: Four dedicated fields for capturing training data:
   - **Input**: The prompt or question for the LLM
   - **Output**: The expected response or answer
@@ -64,6 +68,11 @@ Contains the master prompt template used for LLM interactions. This is a plain t
 2. The application will automatically:
    - Create or load `prompt.txt` if it exists
    - Display the current record count from `data.json`
+   - Load with dark theme enabled by default
+
+### Window Settings
+
+- **Always on Top**: Check the "Always on Top" checkbox in the status bar to keep the window above all other windows. This is useful when referencing other applications while entering data.
 
 ### Creating a New Record
 
@@ -96,6 +105,17 @@ The application enforces the following validation rules:
 - **UI Framework**: WPF (Windows Presentation Foundation)
 - **Language**: C# 13.0
 - **JSON Serialization**: System.Text.Json
+
+### Dark Theme
+
+The application features a dark theme with the following color scheme:
+- **Background**: `#1E1E1E` (Dark gray)
+- **Surface**: `#252526` (Slightly lighter gray for controls)
+- **Text**: `#CCCCCC` (Light gray)
+- **Accent**: `#007ACC` (Blue)
+- **Success**: `#73C991` (Green)
+- **Warning**: `#CCA700` (Yellow)
+- **Error**: `#F48771` (Red)
 
 ### Data Model
 
@@ -143,9 +163,9 @@ The application includes comprehensive error handling:
    - Batch operations
    - Template management for prompts
    - Configuration for custom LLM endpoints
+   - Theme toggle (light/dark mode)
 
 3. **UI Improvements**
-   - Dark mode support
    - Keyboard shortcuts
    - Drag-and-drop file import
    - Preview pane for JSON data

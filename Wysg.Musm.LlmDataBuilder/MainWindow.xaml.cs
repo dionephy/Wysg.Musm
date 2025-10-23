@@ -72,8 +72,20 @@ namespace Wysg.Musm.LlmDataBuilder
         {
             txtStatus.Text = message;
             txtStatus.Foreground = isError ? 
-                new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red) : 
-                new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Black);
+                new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(244, 135, 113)) : 
+                new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(204, 204, 204));
+        }
+
+        private void ChkAlwaysOnTop_Checked(object sender, RoutedEventArgs e)
+        {
+            this.Topmost = true;
+            UpdateStatus("Window is now always on top");
+        }
+
+        private void ChkAlwaysOnTop_Unchecked(object sender, RoutedEventArgs e)
+        {
+            this.Topmost = false;
+            UpdateStatus("Window is no longer always on top");
         }
 
         private void BtnGetProtoResult_Click(object sender, RoutedEventArgs e)

@@ -6,23 +6,78 @@
         xmlns:local="clr-namespace:Wysg.Musm.LlmDataBuilder"
         mc:Ignorable="d"
         Title="LLM Data Builder" Height="700" Width="1000"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Background="#1E1E1E">
     <Window.Resources>
+        <!-- Dark Theme Colors -->
+        <SolidColorBrush x:Key="BackgroundBrush" Color="#1E1E1E"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#252526"/>
+        <SolidColorBrush x:Key="SurfaceHighlightBrush" Color="#2D2D30"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#3E3E42"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#CCCCCC"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#9E9E9E"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#007ACC"/>
+        <SolidColorBrush x:Key="ErrorBrush" Color="#F48771"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#73C991"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#CCA700"/>
+        
         <Style TargetType="TextBox">
             <Setter Property="Margin" Value="0,5"/>
             <Setter Property="Padding" Value="5"/>
             <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
             <Setter Property="AcceptsReturn" Value="True"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CaretBrush" Value="{StaticResource TextBrush}"/>
         </Style>
+        
         <Style TargetType="Label">
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Margin" Value="0,10,0,0"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         </Style>
+        
         <Style TargetType="Button">
             <Setter Property="Padding" Value="15,8"/>
             <Setter Property="Margin" Value="5"/>
             <Setter Property="MinWidth" Value="120"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceHighlightBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#3E3E42"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#007ACC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         </Style>
     </Window.Resources>
     
@@ -56,7 +111,7 @@
                     <Label Content="Applied Prompt Numbers:"/>
                     <TextBox x:Name="txtAppliedPromptNumbers" Height="40"/>
                     
-                    <TextBlock Margin="0,5" FontSize="10" Foreground="Gray" TextWrapping="Wrap">
+                    <TextBlock Margin="0,5" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap">
                         Enter comma-separated numbers (e.g., 1,2,3)
                     </TextBlock>
                 </StackPanel>
@@ -69,7 +124,7 @@
                              FontFamily="Consolas"
                              FontSize="12"/>
                     
-                    <TextBlock Margin="0,5" FontSize="10" Foreground="Gray">
+                    <TextBlock Margin="0,5" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}">
                         This content will be saved to prompt.txt
                     </TextBlock>
                 </StackPanel>
@@ -81,37 +136,50 @@
             <Button x:Name="btnGetProtoResult" 
                     Content="Get Proto Result" 
                     Click="BtnGetProtoResult_Click"
-                    Background="#FFF3E5"
-                    BorderBrush="#FFB74D"/>
+                    BorderBrush="{StaticResource WarningBrush}"/>
             <Button x:Name="btnSave" 
                     Content="Save" 
                     Click="BtnSave_Click"
-                    Background="#E8F5E9"
-                    BorderBrush="#66BB6A"/>
+                    BorderBrush="{StaticResource SuccessBrush}"/>
             <Button x:Name="btnClear" 
                     Content="Clear Data Fields" 
                     Click="BtnClear_Click"
-                    Background="#FFEBEE"
-                    BorderBrush="#EF5350"/>
+                    BorderBrush="{StaticResource ErrorBrush}"/>
         </StackPanel>
 
         <!-- Status Bar -->
         <Border Grid.Row="0" 
-                Background="#F5F5F5" 
-                BorderBrush="#DDDDDD" 
+                Background="{StaticResource SurfaceBrush}" 
+                BorderBrush="{StaticResource BorderBrush}" 
                 BorderThickness="0,0,0,1" 
                 Padding="10" 
                 Margin="-15,-15,-15,10">
-            <StackPanel>
-                <TextBlock x:Name="txtStatus" 
-                           Text="Ready" 
-                           FontWeight="SemiBold"/>
-                <TextBlock x:Name="txtRecordCount" 
-                           Text="Records: 0" 
-                           FontSize="11" 
-                           Foreground="Gray" 
-                           Margin="0,3,0,0"/>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="0">
+                    <TextBlock x:Name="txtStatus" 
+                               Text="Ready" 
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextBrush}"/>
+                    <TextBlock x:Name="txtRecordCount" 
+                               Text="Records: 0" 
+                               FontSize="11" 
+                               Foreground="{StaticResource TextSecondaryBrush}" 
+                               Margin="0,3,0,0"/>
+                </StackPanel>
+                
+                <CheckBox Grid.Column="1" 
+                          x:Name="chkAlwaysOnTop"
+                          Content="Always on Top"
+                          VerticalAlignment="Center"
+                          Checked="ChkAlwaysOnTop_Checked"
+                          Unchecked="ChkAlwaysOnTop_Unchecked"
+                          Foreground="{StaticResource TextBrush}"/>
+            </Grid>
         </Border>
     </Grid>
 </Window>

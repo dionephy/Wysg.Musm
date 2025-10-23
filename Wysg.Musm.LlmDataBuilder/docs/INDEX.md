@@ -6,11 +6,11 @@ Welcome to the LLM Data Builder documentation! This index will help you find the
 
 This project includes comprehensive documentation covering all aspects of the application, from quick start guides to detailed technical specifications.
 
-## ??? Document Categories
+## ?? Document Categories
 
 ### For End Users
 
-1. **[QUICKSTART.md](QUICKSTART.md)** - Start here! ?
+1. **[QUICKSTART.md](QUICKSTART.md)** - Start here! ??
    - 5-minute quick start guide
    - Essential features overview
    - Basic workflow
@@ -54,6 +54,12 @@ This project includes comprehensive documentation covering all aspects of the ap
    - Testing results
    - Next steps
 
+8. **[CHANGELOG.md](CHANGELOG.md)** - Version history
+   - Feature additions
+   - UI improvements
+   - Bug fixes
+   - Breaking changes
+
 ## ?? Getting Started Path
 
 ### New Users
@@ -86,6 +92,7 @@ Start ¡æ DATA_SCHEMA.md ¡æ Integration examples
 - **Add LLM integration**: [API_INTEGRATION.md](API_INTEGRATION.md)
 - **See what's implemented**: [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)
 - **Follow coding standards**: [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) ¡æ Development Guidelines
+- **Review version history**: [CHANGELOG.md](CHANGELOG.md)
 
 #### Work with Data
 - **Understand JSON format**: [DATA_SCHEMA.md](DATA_SCHEMA.md)
@@ -104,6 +111,7 @@ Start ¡æ DATA_SCHEMA.md ¡æ Integration examples
 | DATA_SCHEMA.md | Long | Developers/Data Engineers | Medium | ?? Medium |
 | API_INTEGRATION.md | Long | Developers | High | ? Low (Future) |
 | IMPLEMENTATION_SUMMARY.md | Medium | All | Low-Medium | ?? Medium |
+| CHANGELOG.md | Short | All | Low | ?? Medium |
 | INDEX.md | Short | All | Low | ??? High |
 
 ## ?? Quick Reference
@@ -122,6 +130,7 @@ Start ¡æ DATA_SCHEMA.md ¡æ Integration examples
 - **Class structure**: [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) ¡æ Architecture
 - **Dependencies**: [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) ¡æ Technology Stack
 - **Build instructions**: [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) ¡æ Building and Running
+- **Version history**: [CHANGELOG.md](CHANGELOG.md)
 
 ## ?? Document Summaries
 
@@ -130,7 +139,7 @@ Start ¡æ DATA_SCHEMA.md ¡æ Integration examples
 **Content**:
 - What is LLM Data Builder
 - 5-minute quick start
-- Key features
+- Key features (including dark theme and always on top)
 - File output examples
 - Button guide
 - Tips and next steps
@@ -138,7 +147,7 @@ Start ¡æ DATA_SCHEMA.md ¡æ Integration examples
 ### README.md (15+ pages)
 **Purpose**: Comprehensive user documentation  
 **Content**:
-- Overview and features
+- Overview and features (dark theme, always on top)
 - Complete usage guide
 - File structure details
 - Technical specifications
@@ -146,12 +155,13 @@ Start ¡æ DATA_SCHEMA.md ¡æ Integration examples
 - Troubleshooting
 - Future enhancements
 
-### UI_REFERENCE.md (8 pages)
+### UI_REFERENCE.md (8+ pages)
 **Purpose**: Visual guide to the interface  
 **Content**:
 - Window layout diagrams
-- Color scheme reference
+- Dark theme color scheme reference
 - Component specifications
+- Always on top feature
 - Interaction patterns
 - Dialog examples
 - Accessibility features
@@ -196,7 +206,16 @@ Start ¡æ DATA_SCHEMA.md ¡æ Integration examples
 - Known limitations
 - Next steps
 
-## ?? Recommended Reading Order
+### CHANGELOG.md (New)
+**Purpose**: Track version changes and improvements  
+**Content**:
+- Version 1.1.0 updates (dark theme, always on top)
+- Feature additions by version
+- UI improvements
+- Technical changes
+- Breaking changes (if any)
+
+## ??? Recommended Reading Order
 
 ### For First-Time Users
 1. **QUICKSTART.md** - Get started immediately
@@ -205,11 +224,12 @@ Start ¡æ DATA_SCHEMA.md ¡æ Integration examples
 4. **README.md** (deep dive) - When you need specific info
 
 ### For Developers Joining Project
-1. **IMPLEMENTATION_SUMMARY.md** - Current status
-2. **PROJECT_OVERVIEW.md** - Architecture and design
-3. **DATA_SCHEMA.md** - Understand data model
-4. **API_INTEGRATION.md** - Future development path
-5. **Review code** - MainWindow.xaml.cs
+1. **CHANGELOG.md** - See recent changes
+2. **IMPLEMENTATION_SUMMARY.md** - Current status
+3. **PROJECT_OVERVIEW.md** - Architecture and design
+4. **DATA_SCHEMA.md** - Understand data model
+5. **API_INTEGRATION.md** - Future development path
+6. **Review code** - MainWindow.xaml.cs
 
 ### For Data Scientists/Engineers
 1. **DATA_SCHEMA.md** - Understand format
@@ -250,16 +270,16 @@ All documentation is:
 
 ## ?? Version Information
 
-**Documentation Version**: 1.0  
-**Application Version**: 1.0  
+**Documentation Version**: 1.1  
+**Application Version**: 1.1.0  
 **Last Updated**: January 2025  
 **Status**: Production Ready
 
 ## ?? Documentation Statistics
 
-- **Total Documents**: 8 files
-- **Total Pages**: ~60+ pages equivalent
-- **Total Words**: ~20,000+ words
+- **Total Documents**: 9 files
+- **Total Pages**: ~65+ pages equivalent
+- **Total Words**: ~22,000+ words
 - **Code Examples**: 50+ snippets
 - **Diagrams**: Multiple ASCII art layouts
 
@@ -277,13 +297,14 @@ QUICKSTART.md (15 min)
 ```
 PROJECT_OVERVIEW.md (30 min)
 ¡æ DATA_SCHEMA.md (30 min)
+¡æ CHANGELOG.md (10 min)
 ¡æ Review code (60 min)
 ¡æ Make modifications
 ```
 
 ### Advanced Path
 ```
-All documentation (4 hours)
+All documentation (4+ hours)
 ¡æ API_INTEGRATION.md deep dive (2 hours)
 ¡æ Architecture analysis
 ¡æ Feature implementation
@@ -296,6 +317,7 @@ All documentation (4 hours)
 3. **DATA_SCHEMA.md is essential** for any data integration
 4. **API_INTEGRATION.md is future-focused** - not yet implemented
 5. **All examples are real and tested** - safe to copy
+6. **Check CHANGELOG.md** for recent updates and new features
 
 ## ?? You're All Set!
 
@@ -305,6 +327,7 @@ This documentation provides everything you need to:
 - ? Integrate with your workflow
 - ? Extend functionality
 - ? Troubleshoot issues
+- ? Track version changes
 
 **Choose your starting point above and dive in!**
 
