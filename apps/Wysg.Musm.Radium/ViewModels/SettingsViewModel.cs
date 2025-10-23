@@ -76,6 +76,10 @@ namespace Wysg.Musm.Radium.ViewModels
         private bool _collapseWhitespace = true; public bool CollapseWhitespace { get => _collapseWhitespace; set { if (SetProperty(ref _collapseWhitespace, value)) UpdateReportifyJson(); } }
         private bool _numberConclusionParagraphs = true; public bool NumberConclusionParagraphs { get => _numberConclusionParagraphs; set { if (SetProperty(ref _numberConclusionParagraphs, value)) UpdateReportifyJson(); } }
         private bool _indentContinuationLines = true; public bool IndentContinuationLines { get => _indentContinuationLines; set { if (SetProperty(ref _indentContinuationLines, value)) UpdateReportifyJson(); } }
+        // NEW: Number each line on one paragraph instead of numbering paragraphs
+        private bool _numberConclusionLinesOnOneParagraph = false; public bool NumberConclusionLinesOnOneParagraph { get => _numberConclusionLinesOnOneParagraph; set { if (SetProperty(ref _numberConclusionLinesOnOneParagraph, value)) UpdateReportifyJson(); } }
+        // NEW: Capitalize first letter after bullet or conclusion number
+        private bool _capitalizeAfterBulletOrNumber = false; public bool CapitalizeAfterBulletOrNumber { get => _capitalizeAfterBulletOrNumber; set { if (SetProperty(ref _capitalizeAfterBulletOrNumber, value)) UpdateReportifyJson(); } }
         // Removed: PreserveKnownTokens (deprecated)
 
         private string _defaultArrow = "-->"; public string DefaultArrow { get => _defaultArrow; set { if (SetProperty(ref _defaultArrow, value)) UpdateReportifyJson(); } }
@@ -184,6 +188,9 @@ namespace Wysg.Musm.Radium.ViewModels
                 CollapseWhitespace = GetBool("collapse_whitespace", CollapseWhitespace);
                 NumberConclusionParagraphs = GetBool("number_conclusion_paragraphs", NumberConclusionParagraphs);
                 IndentContinuationLines = GetBool("indent_continuation_lines", IndentContinuationLines);
+                // NEW: Load the new settings
+                NumberConclusionLinesOnOneParagraph = GetBool("number_conclusion_lines_on_one_paragraph", NumberConclusionLinesOnOneParagraph);
+                CapitalizeAfterBulletOrNumber = GetBool("capitalize_after_bullet_or_number", CapitalizeAfterBulletOrNumber);
                 // Deprecated: ignore preserve_known_tokens from stored JSON
                 DefaultArrow = GetDef("arrow", DefaultArrow);
                 DefaultConclusionNumbering = GetDef("conclusion_numbering", DefaultConclusionNumbering);
@@ -317,6 +324,9 @@ namespace Wysg.Musm.Radium.ViewModels
                 collapse_whitespace = CollapseWhitespace,
                 number_conclusion_paragraphs = NumberConclusionParagraphs,
                 indent_continuation_lines = IndentContinuationLines,
+                // NEW: Include the new settings
+                number_conclusion_lines_on_one_paragraph = NumberConclusionLinesOnOneParagraph,
+                capitalize_after_bullet_or_number = CapitalizeAfterBulletOrNumber,
                 // preserve_known_tokens removed (deprecated)
                 defaults = new
                 {
@@ -358,6 +368,8 @@ namespace Wysg.Musm.Radium.ViewModels
             ["collapse_whitespace"] = ("Kidney   cortex   smooth", "Kidney cortex smooth"),
             ["number_conclusion_paragraphs"] = ("Para A\n\nPara B", "1. Para A\n\n2. Para B"),
             ["indent_continuation_lines"] = ("1. First line\nSecond line", "1. First line\n   Second line"),
+            ["number_conclusion_lines_on_one_paragraph"] = ("apple\nbanana\n\nmelon", "1. Apple.\n   Banana.\n\n2. Melon."),
+            ["capitalize_after_bullet_or_number"] = ("1. apple\n2. banana", "1. Apple\n2. Banana"),
             // preserve_known_tokens sample removed
         };
     }

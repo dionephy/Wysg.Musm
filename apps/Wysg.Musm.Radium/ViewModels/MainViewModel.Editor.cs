@@ -331,8 +331,14 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 var obj = new
                 {
-                    findings = _rawFindings == string.Empty ? ReportFindings : _rawFindings,
-                    conclusion = _rawConclusion == string.Empty ? ConclusionText : _rawConclusion,
+                    // CRITICAL FIX: Always save RAW (unreportified) values to JSON
+                    // When reportified=true, _rawFindings/_rawConclusion contain the original text
+                    // When reportified=false, FindingsText/ConclusionText are already raw
+                    header_and_findings = _reportified ? _rawFindings : (FindingsText ?? string.Empty),
+                    final_conclusion = _reportified ? _rawConclusion : (ConclusionText ?? string.Empty),
+                    // Legacy keys for backward compatibility (also use raw values)
+                    findings = _reportified ? _rawFindings : (FindingsText ?? string.Empty),
+                    conclusion = _reportified ? _rawConclusion : (ConclusionText ?? string.Empty),
                     study_remark = _studyRemark,
                     patient_remark = _patientRemark,
                     report_radiologist = _reportRadiologist,
@@ -361,8 +367,33 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (string.IsNullOrWhiteSpace(json) || json.Length < 2) return;
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
-                string newFindings = root.TryGetProperty("findings", out var fEl) ? (fEl.GetString() ?? string.Empty) : string.Empty;
-                string newConclusion = root.TryGetProperty("conclusion", out var cEl) ? (cEl.GetString() ?? string.Empty) : string.Empty;
+                
+                // Read from header_and_findings/final_conclusion keys first (preferred), then fall back to legacy findings/conclusion
+                string newFindings = string.Empty;
+                string newConclusion = string.Empty;
+                
+                // Try header_and_findings first
+                if (root.TryGetProperty("header_and_findings", out var hfEl) && hfEl.ValueKind == JsonValueKind.String)
+                {
+                    newFindings = hfEl.GetString() ?? string.Empty;
+                }
+                else if (root.TryGetProperty("findings", out var fEl) && fEl.ValueKind == JsonValueKind.String)
+                {
+                    // Fall back to legacy "findings" key
+                    newFindings = fEl.GetString() ?? string.Empty;
+                }
+                
+                // Try final_conclusion first
+                if (root.TryGetProperty("final_conclusion", out var fcEl) && fcEl.ValueKind == JsonValueKind.String)
+                {
+                    newConclusion = fcEl.GetString() ?? string.Empty;
+                }
+                else if (root.TryGetProperty("conclusion", out var cEl) && cEl.ValueKind == JsonValueKind.String)
+                {
+                    // Fall back to legacy "conclusion" key
+                    newConclusion = cEl.GetString() ?? string.Empty;
+                }
+                
                 string newStudyRemark = root.TryGetProperty("study_remark", out var sEl) ? (sEl.GetString() ?? string.Empty) : string.Empty;
                 string newChiefComplaint = root.TryGetProperty("chief_complaint", out var ccEl) ? (ccEl.GetString() ?? string.Empty) : string.Empty;
                 string newPatientHistory = root.TryGetProperty("patient_history", out var phEl) ? (phEl.GetString() ?? string.Empty) : string.Empty;
@@ -416,12 +447,16 @@ namespace Wysg.Musm.Radium.ViewModels
         // Utility access for exporting raw or transformed sections
         public (string header, string findings, string conclusion) GetDereportifiedSections()
         {
-            string h = Reportified ? HeaderText : HeaderText;
-            string f = Reportified ? FindingsText : FindingsText;
-            string c = Reportified ? ConclusionText : ConclusionText;
+            string h = Reportified ? _rawHeader : HeaderText;
+            string f = Reportified ? _rawFindings : FindingsText;
+            string c = Reportified ? _rawConclusion : ConclusionText;
             return (h, f, c);
         }
-
+        
+        // NEW: Public accessors for raw (unreportified) values - use these for database saves and PACS sends
+        public string RawFindingsText => _reportified ? _rawFindings : (_findingsText ?? string.Empty);
+        public string RawConclusionText => _reportified ? _rawConclusion : (_conclusionText ?? string.Empty);
+        
         // Safe wrappers that check initialization state
         private void SafeUpdateJson()
         {

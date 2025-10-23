@@ -39,6 +39,10 @@
                             <CheckBox Content="Capitalize first letter" IsChecked="{Binding CapitalizeSentence}"/>
                             <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="capitalize_sentence"/>
                         </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
+                            <CheckBox Content="Also capitalize after bullet or number" IsChecked="{Binding CapitalizeAfterBulletOrNumber}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="capitalize_after_bullet_or_number"/>
+                        </StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <CheckBox Content="Ensure trailing period" IsChecked="{Binding EnsureTrailingPeriod}"/>
                             <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="ensure_trailing_period"/>
@@ -80,6 +84,10 @@
                         <StackPanel Orientation="Horizontal">
                             <CheckBox Content="Number conclusion paragraphs" IsChecked="{Binding NumberConclusionParagraphs}"/>
                             <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="number_conclusion_paragraphs"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
+                            <CheckBox Content="On one paragraph, number each line" IsChecked="{Binding NumberConclusionLinesOnOneParagraph}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="number_conclusion_lines_on_one_paragraph"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <CheckBox Content="Indent continuation lines" IsChecked="{Binding IndentContinuationLines}"/>

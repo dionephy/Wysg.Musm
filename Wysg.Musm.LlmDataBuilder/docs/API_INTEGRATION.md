@@ -1,507 +1,580 @@
-# API Integration Guide - LLM Server Connection
+# API Integration Guide
 
 ## Overview
 
-This document outlines the planned implementation for the "Get Proto Result" feature, which will connect to LLM servers to generate prototype outputs automatically.
+The LLM Data Builder now includes **complete API integration** for automatically generating proto results from a proofreading service. This guide covers the implementation, configuration, and usage of the API features.
 
-## Current Status
+## ? Implementation Status
 
-?? **Not Implemented** - The "Get Proto Result" button currently shows a placeholder message.
+**Status**: FULLY IMPLEMENTED (v1.2.0)
 
-## Planned Architecture
+The "Get Proto Result" feature is now functional and calls an external proofreading API to generate results automatically.
 
-### Flow Diagram
+## API Endpoint
 
+### Default Configuration
+- **URL**: `http://192.168.111.79:8081`
+- **Endpoint**: `/v1/evaluations`
+- **Method**: POST
+- **Authentication**: Bearer token
+- **Default Token**: `local-dev-token`
+
+### Request Format
+```json
+POST /v1/evaluations
+Authorization: Bearer local-dev-token
+Content-Type: application/json
+
+{
+  "prompt": "Proofread",
+  "candidate_text": "The launch were sucessful"
+}
 ```
-[User Input] ¡æ [Click "Get Proto Result"] ¡æ [HTTP Request to LLM API] 
-    ¡æ [Receive Response] ¡æ [Populate Proto Output Field]
-```
 
-### Components to Implement
-
-1. **Configuration Management**
-   - Store API endpoint URL
-   - Store API keys securely
-   - Support multiple LLM providers (OpenAI, Azure OpenAI, custom)
-
-2. **HTTP Client Service**
-   - Async HTTP communication
-   - Error handling and retries
-   - Timeout management
-
-3. **Response Parser**
-   - Parse LLM API responses
-   - Extract generated text
-   - Handle different response formats
-
-## Supported LLM Providers (Planned)
-
-### 1. OpenAI API
-
-**Endpoint**: `https://api.openai.com/v1/chat/completions`
-
-**Request Format**:
+### Response Format
 ```json
 {
-  "model": "gpt-4",
-  "messages": [
+  "id": "0b68e2c1-6c08-414a-94f5-1375f122bbbf",
+  "status": "completed",
+  "proofread_text": "The launch was successful",
+  "issues": [
     {
-      "role": "system",
-      "content": "[Content from prompt.txt]"
-    },
-    {
-      "role": "user",
-      "content": "[Content from Input field]"
+      "category": "auto-correction",
+      "span_start": 0,
+      "span_end": 25,
+      "suggestion": "The launch was successful",
+      "severity": "medium",
+      "confidence": 0.75
     }
   ],
-  "temperature": 0.7,
-  "max_tokens": 1000
+  "model_name": "nemotron-4-340b-instruct",
+  "model_version": "2025.09.1",
+  "latency_ms": 1200,
+  "summary_metrics": {
+    "tokens": 4,
+    "timestamp": "2025-10-23T03:09:55.599824+00:00"
+  },
+  "failure_reason": null,
+  "submitted_at": "2025-10-23T03:09:55.589433Z",
+  "completed_at": "2025-10-23T03:09:55.600751Z"
 }
 ```
 
-**Headers**:
-```
-Authorization: Bearer YOUR_API_KEY
-Content-Type: application/json
-```
+## Configuration
 
-### 2. Azure OpenAI
+### Configuration File: api_config.json
 
-**Endpoint**: `https://{resource-name}.openai.azure.com/openai/deployments/{deployment-id}/chat/completions?api-version=2024-02-15-preview`
+Create `api_config.json` in the application directory:
 
-**Request Format**: Same as OpenAI API
-
-**Headers**:
-```
-api-key: YOUR_AZURE_API_KEY
-Content-Type: application/json
+```json
+{
+  "apiUrl": "http://192.168.111.79:8081",
+  "authToken": "local-dev-token",
+  "defaultPrompt": "Proofread"
+}
 ```
 
-### 3. Custom LLM Endpoints
+### Configuration Properties
 
-Support for custom endpoints with configurable:
-- Base URL
-- Authentication method
-- Request/response format
+| Property | Type | Description | Default |
+|----------|------|-------------|---------|
+| `apiUrl` | string | Base URL of the API | `http://192.168.111.79:8081` |
+| `authToken` | string | Bearer token for authentication | `local-dev-token` |
+| `defaultPrompt` | string | Default prompt text | `Proofread` |
 
-## Implementation Plan
+### Setup Steps
 
-### Phase 1: Configuration UI
+1. **Copy sample file**:
+   ```
+   Copy api_config.json.sample to api_config.json
+   ```
 
-Create a settings window with:
+2. **Edit configuration**:
+   - Update `apiUrl` if your API is at a different address
+   - Update `authToken` with your authentication token
+   - Optionally change `defaultPrompt`
+
+3. **Restart application** to load the new configuration
+
+### Configuration Without File
+
+If `api_config.json` doesn't exist, the application uses default values:
+- API URL: `http://192.168.111.79:8081`
+- Auth Token: `local-dev-token`
+- Default Prompt: `Proofread`
+
+## Usage
+
+### Basic Workflow
+
+1. **Enter Input Text**
+   - Type or paste text in the "Input" field
+   - Example: "The launch were sucessful"
+
+2. **Set Prompt**
+   - Ensure the "Prompt" field contains your instruction
+   - Default: "Proofread"
+   - Can be changed to other prompts like "Fix grammar", "Improve clarity", etc.
+
+3. **Click "Get Proto Result"**
+   - Button validates input and prompt are not empty
+   - Makes async API call to the configured endpoint
+   - Shows "Calling API..." in status bar
+
+4. **Review Results**
+   - Proto Output field is populated with `proofread_text`
+   - Status bar shows model name, latency, and issue count
+   - If issues are found, a dialog displays details
+
+5. **Use or Edit Result**
+   - Copy Proto Output to Output field
+   - Or manually edit Output based on Proto Output
+   - Save the record
+
+### Advanced Usage
+
+#### Custom Prompts
+
+The prompt field accepts any instruction text:
+
+```
+Examples:
+- "Proofread"
+- "Fix grammar and spelling"
+- "Improve clarity and conciseness"
+- "Make more professional"
+- "Simplify for general audience"
+```
+
+The prompt is sent directly to the API as the `prompt` parameter.
+
+#### Batch Processing
+
+For multiple similar corrections:
+1. Set the prompt once
+2. Enter different inputs
+3. Click "Get Proto Result" for each
+4. Save each record
+
+## Technical Implementation
+
+### Architecture
+
+```
+MainWindow.xaml.cs
+    ¡é uses
+ProofreadApiService
+    ¡é calls
+HTTP API (/v1/evaluations)
+    ¡é returns
+ProofreadResponse
+    ¡é populates
+Proto Output Field
+```
+
+### Key Classes
+
+#### 1. ProofreadApiService
+**Location**: `Services/ProofreadApiService.cs`
+
+Main service class for API communication:
 
 ```csharp
-public class LlmSettings
-{
-    public string Provider { get; set; } // "OpenAI", "AzureOpenAI", "Custom"
-    public string ApiEndpoint { get; set; }
-    public string ApiKey { get; set; }
-    public string Model { get; set; } // "gpt-4", "gpt-3.5-turbo", etc.
-    public double Temperature { get; set; } = 0.7;
-    public int MaxTokens { get; set; } = 1000;
-}
-```
-
-### Phase 2: HTTP Service
-
-```csharp
-public interface ILlmService
-{
-    Task<string> GetCompletionAsync(string prompt, string input, CancellationToken cancellationToken = default);
-}
-
-public class OpenAiService : ILlmService
+public class ProofreadApiService
 {
     private readonly HttpClient _httpClient;
-    private readonly LlmSettings _settings;
+    private readonly string _apiUrl;
+    private readonly string _authToken;
 
-    public async Task<string> GetCompletionAsync(string prompt, string input, CancellationToken cancellationToken = default)
+    public async Task<ProofreadResponse?> GetProofreadResultAsync(
+        string prompt, 
+        string candidateText)
     {
-        // Build request
-        var request = new
-        {
-            model = _settings.Model,
-            messages = new[]
-            {
-                new { role = "system", content = prompt },
-                new { role = "user", content = input }
-            },
-            temperature = _settings.Temperature,
-            max_tokens = _settings.MaxTokens
-        };
-
-        // Send request
-        var response = await _httpClient.PostAsJsonAsync(_settings.ApiEndpoint, request, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        // Parse response
-        var result = await response.Content.ReadFromJsonAsync<OpenAiResponse>(cancellationToken);
-        return result?.Choices?[0]?.Message?.Content ?? string.Empty;
+        // Makes HTTP POST request
+        // Handles serialization/deserialization
+        // Manages authentication
     }
-}
-
-public class OpenAiResponse
-{
-    public Choice[] Choices { get; set; }
-}
-
-public class Choice
-{
-    public Message Message { get; set; }
-}
-
-public class Message
-{
-    public string Content { get; set; }
 }
 ```
 
-### Phase 3: UI Integration
+#### 2. ApiConfiguration
+**Location**: `Services/ApiConfiguration.cs`
 
-Update the button click handler:
+Configuration management:
+
+```csharp
+public class ApiConfiguration
+{
+    public string ApiUrl { get; set; }
+    public string AuthToken { get; set; }
+    public string DefaultPrompt { get; set; }
+
+    public static ApiConfiguration Load(string workingDirectory);
+    public void Save(string workingDirectory);
+}
+```
+
+#### 3. Request/Response Models
+
+**ProofreadRequest**:
+```csharp
+public class ProofreadRequest
+{
+    public string Prompt { get; set; }
+    public string CandidateText { get; set; }
+}
+```
+
+**ProofreadResponse**:
+```csharp
+public class ProofreadResponse
+{
+    public string Id { get; set; }
+    public string Status { get; set; }
+    public string ProofreadText { get; set; }
+    public List<ProofreadIssue> Issues { get; set; }
+    public string ModelName { get; set; }
+    public int LatencyMs { get; set; }
+    // ... other properties
+}
+```
+
+**ProofreadIssue**:
+```csharp
+public class ProofreadIssue
+{
+    public string Category { get; set; }
+    public int SpanStart { get; set; }
+    public int SpanEnd { get; set; }
+    public string Suggestion { get; set; }
+    public string Severity { get; set; }
+    public double Confidence { get; set; }
+}
+```
+
+### Event Handler
+
+The button click handler in `MainWindow.xaml.cs`:
 
 ```csharp
 private async void BtnGetProtoResult_Click(object sender, RoutedEventArgs e)
 {
-    try
-    {
-        // Validate input
-        if (string.IsNullOrWhiteSpace(txtInput.Text))
-        {
-            UpdateStatus("Error: Input is required", isError: true);
-            return;
-        }
+    // 1. Validate input and prompt
+    if (string.IsNullOrWhiteSpace(txtInput.Text)) { ... }
+    if (string.IsNullOrWhiteSpace(txtPrompt.Text)) { ... }
 
-        // Disable button during request
-        btnGetProtoResult.IsEnabled = false;
-        UpdateStatus("Requesting proto result from LLM...");
+    // 2. Disable button during call
+    btnGetProtoResult.IsEnabled = false;
+    
+    // 3. Call API
+    var response = await _apiService.GetProofreadResultAsync(
+        txtPrompt.Text,
+        txtInput.Text
+    );
 
-        // Get LLM service
-        var llmService = GetLlmService(); // Factory method based on settings
-
-        // Make request
-        var protoResult = await llmService.GetCompletionAsync(
-            txtPrompt.Text,
-            txtInput.Text,
-            CancellationToken.None
-        );
-
-        // Update UI
-        txtProtoOutput.Text = protoResult;
-        UpdateStatus("Proto result received successfully");
-    }
-    catch (HttpRequestException ex)
+    // 4. Handle response
+    if (response?.Status == "completed")
     {
-        UpdateStatus($"Network error: {ex.Message}", isError: true);
-        MessageBox.Show($"Failed to connect to LLM server:\n\n{ex.Message}", 
-            "Connection Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        txtProtoOutput.Text = response.ProofreadText;
+        // Show issues if any
     }
-    catch (Exception ex)
-    {
-        UpdateStatus($"Error: {ex.Message}", isError: true);
-        MessageBox.Show($"An error occurred:\n\n{ex.Message}", 
-            "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-    }
-    finally
-    {
-        btnGetProtoResult.IsEnabled = true;
-    }
+    
+    // 5. Re-enable button
+    btnGetProtoResult.IsEnabled = true;
 }
-```
-
-## Configuration Storage
-
-### Option 1: App.config / appsettings.json
-
-```json
-{
-  "LlmSettings": {
-    "Provider": "OpenAI",
-    "ApiEndpoint": "https://api.openai.com/v1/chat/completions",
-    "Model": "gpt-4",
-    "Temperature": 0.7,
-    "MaxTokens": 1000
-  }
-}
-```
-
-**Note**: API keys should NOT be stored in plain text config files.
-
-### Option 2: Windows Credential Manager
-
-Use `CredentialManager` to securely store API keys:
-
-```csharp
-using System.Security.Cryptography;
-using Windows.Security.Credentials;
-
-public class SecureSettingsService
-{
-    private const string ResourceName = "LlmDataBuilder.ApiKey";
-
-    public void SaveApiKey(string apiKey)
-    {
-        var credential = new PasswordCredential(ResourceName, "user", apiKey);
-        var vault = new PasswordVault();
-        vault.Add(credential);
-    }
-
-    public string GetApiKey()
-    {
-        var vault = new PasswordVault();
-        try
-        {
-            var credential = vault.Retrieve(ResourceName, "user");
-            credential.RetrievePassword();
-            return credential.Password;
-        }
-        catch
-        {
-            return string.Empty;
-        }
-    }
-}
-```
-
-### Option 3: User Settings File
-
-Create `settings.json` in user's AppData folder:
-
-```csharp
-string settingsPath = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-    "LlmDataBuilder",
-    "settings.json"
-);
-```
-
-## Required NuGet Packages
-
-```xml
-<PackageReference Include="System.Net.Http.Json" Version="9.0.0" />
-```
-
-For Azure SDK integration (optional):
-```xml
-<PackageReference Include="Azure.AI.OpenAI" Version="2.0.0" />
 ```
 
 ## Error Handling
 
-### Common Scenarios
+### Validation Errors
 
-1. **Network Timeout**
-   - Show clear error message
-   - Suggest checking internet connection
-   - Allow retry
-
-2. **Invalid API Key**
-   - Detect 401/403 responses
-   - Prompt user to check settings
-   - Guide to settings configuration
-
-3. **Rate Limiting**
-   - Detect 429 responses
-   - Show friendly message about API limits
-   - Implement exponential backoff for retries
-
-4. **Empty Response**
-   - Handle cases where LLM returns no content
-   - Show warning to user
-   - Allow manual entry
-
-### Example Error Handling
-
-```csharp
-catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
-{
-    UpdateStatus("Invalid API key", isError: true);
-    MessageBox.Show("Your API key appears to be invalid. Please check your settings.", 
-        "Authentication Error", MessageBoxButton.OK, MessageBoxImage.Error);
-}
-catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
-{
-    UpdateStatus("Rate limit exceeded", isError: true);
-    MessageBox.Show("You've exceeded the API rate limit. Please wait and try again.", 
-        "Rate Limit", MessageBoxButton.OK, MessageBoxImage.Warning);
-}
+**Empty Input**:
+```
+Error: Input cannot be empty
+¡æ MessageBox: "Please enter an input value before getting proto result."
 ```
 
-## Testing Strategy
-
-### Unit Tests
-
-```csharp
-[TestClass]
-public class LlmServiceTests
-{
-    [TestMethod]
-    public async Task GetCompletionAsync_ValidInput_ReturnsResult()
-    {
-        // Arrange
-        var mockHttpClient = CreateMockHttpClient();
-        var service = new OpenAiService(mockHttpClient, CreateTestSettings());
-
-        // Act
-        var result = await service.GetCompletionAsync("prompt", "input");
-
-        // Assert
-        Assert.IsNotNull(result);
-        Assert.IsTrue(result.Length > 0);
-    }
-}
+**Empty Prompt**:
+```
+Error: Prompt cannot be empty
+¡æ MessageBox: "Please enter a prompt (e.g., 'Proofread')."
 ```
 
-### Integration Tests
+### Network Errors
 
-- Test against actual APIs (with test keys)
-- Verify response parsing
-- Test error scenarios
-- Measure response times
+**Connection Refused**:
+```
+Error: API call failed: No connection could be made...
+¡æ MessageBox with troubleshooting steps:
+  1. API server is running at http://...
+  2. Network connectivity
+  3. API configuration in api_config.json
+```
+
+**Authentication Failed** (401):
+```
+Error: API call failed: Unauthorized
+¡æ Check authToken in api_config.json
+```
+
+**Timeout**:
+```
+Error: API call failed: The operation has timed out
+¡æ Check network connectivity and API response time
+```
+
+### API Status Errors
+
+**Non-Completed Status**:
+```
+Status: "failed" or "pending"
+¡æ Status bar: "API returned status: failed"
+¡æ Proto Output: "[API Error: {failure_reason}]"
+```
+
+## Testing
+
+### Manual Testing
+
+#### Test 1: Basic Functionality
+```
+1. Input: "The launch were sucessful"
+2. Prompt: "Proofread"
+3. Click "Get Proto Result"
+4. Expected: Proto Output shows "The launch was successful"
+5. Expected: Status shows "API Success! Model: nemotron-4-340b-instruct, Latency: ~1200ms"
+```
+
+#### Test 2: Error Handling
+```
+1. Stop API server
+2. Input: "Test text"
+3. Click "Get Proto Result"
+4. Expected: Error dialog with troubleshooting tips
+```
+
+#### Test 3: Custom Prompt
+```
+1. Input: "hello world"
+2. Prompt: "Capitalize"
+3. Click "Get Proto Result"
+4. Expected: Proto Output shows capitalized version
+```
+
+### PowerShell Testing
+
+Test the API directly:
+
+```powershell
+$headers = @{
+    "Authorization" = "Bearer local-dev-token"
+    "Content-Type"  = "application/json"
+}
+
+$body = @{
+    prompt = "Proofread"
+    candidate_text = "The launch were sucessful"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+    -Uri "http://192.168.111.79:8081/v1/evaluations" `
+    -Method POST `
+    -Headers $headers `
+    -Body $body
+```
+
+Expected output:
+```
+id              : 0b68e2c1-6c08-414a-94f5-1375f122bbbf
+status          : completed
+proofread_text  : The launch was successful
+issues          : {@{category=auto-correction; ...}}
+model_name      : nemotron-4-340b-instruct
+latency_ms      : 1200
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Connection Refused
+**Symptom**: "No connection could be made because the target machine actively refused it"
+
+**Solutions**:
+- ? Verify API server is running
+- ? Check API URL in `api_config.json`
+- ? Test with PowerShell/curl
+- ? Check firewall settings
+
+#### 2. 401 Unauthorized
+**Symptom**: "Unauthorized" or 401 status code
+
+**Solutions**:
+- ? Verify `authToken` in `api_config.json`
+- ? Check token hasn't expired
+- ? Test with PowerShell using same token
+
+#### 3. Timeout
+**Symptom**: "The operation has timed out"
+
+**Solutions**:
+- ? Check network connectivity
+- ? Verify API is responsive (not overloaded)
+- ? Consider increasing timeout (future enhancement)
+
+#### 4. Invalid Response
+**Symptom**: JSON parsing errors or unexpected format
+
+**Solutions**:
+- ? Verify API version compatibility
+- ? Check API endpoint URL (should be `/v1/evaluations`)
+- ? Test API with PowerShell to verify response format
+
+#### 5. Button Stays Disabled
+**Symptom**: Button doesn't re-enable after error
+
+**Solutions**:
+- ?? Known limitation - restart application
+- ?? Will be fixed in future version with better error recovery
+
+## Performance Considerations
+
+### Latency
+- Typical API call: 1000-1500ms
+- UI remains responsive during call (async)
+- Button disabled to prevent duplicate requests
+
+### Network
+- Single HTTP POST per request
+- Request size: ~100-500 bytes
+- Response size: ~500-2000 bytes
+
+### Rate Limiting
+- Currently no rate limiting in client
+- Respect API server's rate limits
+- Consider adding delays between batch requests
 
 ## Security Considerations
 
-### API Key Security
+### Authentication Token
+- Stored in plain text in `api_config.json`
+- ?? Do not commit `api_config.json` to version control
+- ?? Use `.gitignore` to exclude config file
+- ? Sample file provided for reference
 
-1. **Never commit API keys to source control**
-2. **Use environment variables or secure storage**
-3. **Implement key rotation support**
-4. **Log API usage (but not keys)**
+### Network Security
+- HTTP by default (not HTTPS)
+- ?? Token sent in clear text over network
+- ?? Consider using HTTPS in production
+- ?? Consider VPN for sensitive data
 
-### Example: Environment Variable
-
-```csharp
-public class LlmSettings
-{
-    public string ApiKey => Environment.GetEnvironmentVariable("LLM_API_KEY") 
-        ?? GetSecurelyStoredKey();
-}
-```
-
-## Performance Optimization
-
-### Caching
-
-Consider caching LLM responses for identical inputs:
-
-```csharp
-private readonly Dictionary<string, string> _responseCache = new();
-
-public async Task<string> GetCompletionAsync(string prompt, string input)
-{
-    string cacheKey = $"{prompt}:{input}".GetHashCode().ToString();
-    
-    if (_responseCache.TryGetValue(cacheKey, out string cached))
-    {
-        return cached;
-    }
-
-    string result = await CallLlmApiAsync(prompt, input);
-    _responseCache[cacheKey] = result;
-    return result;
-}
-```
-
-### Async/Await Best Practices
-
-- Use `ConfigureAwait(false)` for library code
-- Implement proper cancellation token support
-- Show progress indicators for long operations
-
-## UI Enhancements
-
-### Loading Indicator
-
-```xaml
-<ProgressBar x:Name="progressBar" 
-             IsIndeterminate="True" 
-             Visibility="Collapsed"
-             Height="4"
-             Margin="0,5"/>
-```
-
-```csharp
-private async Task GetProtoResultWithProgressAsync()
-{
-    progressBar.Visibility = Visibility.Visible;
-    try
-    {
-        // API call
-    }
-    finally
-    {
-        progressBar.Visibility = Visibility.Collapsed;
-    }
-}
-```
-
-### Cancellation Support
-
-```xaml
-<Button x:Name="btnCancelRequest" 
-        Content="Cancel" 
-        Click="BtnCancelRequest_Click"
-        Visibility="Collapsed"/>
-```
-
-```csharp
-private CancellationTokenSource _cts;
-
-private async void BtnGetProtoResult_Click(object sender, RoutedEventArgs e)
-{
-    _cts = new CancellationTokenSource();
-    btnCancelRequest.Visibility = Visibility.Visible;
-    
-    try
-    {
-        await GetProtoResultAsync(_cts.Token);
-    }
-    catch (OperationCanceledException)
-    {
-        UpdateStatus("Request cancelled");
-    }
-    finally
-    {
-        btnCancelRequest.Visibility = Visibility.Collapsed;
-    }
-}
-
-private void BtnCancelRequest_Click(object sender, RoutedEventArgs e)
-{
-    _cts?.Cancel();
-}
-```
+### Data Privacy
+- Input text sent to external API
+- ?? Do not send sensitive/confidential information
+- ?? Review API provider's privacy policy
+- ? All data stored locally in JSON files
 
 ## Future Enhancements
 
-1. **Batch Processing**: Generate proto outputs for multiple records
-2. **Comparison View**: Side-by-side comparison of output vs protoOutput
-3. **Model Selection**: Choose different models for different types of inputs
-4. **Cost Tracking**: Monitor API usage and costs
-5. **Local LLM Support**: Integration with local models (Ollama, llama.cpp)
+### Planned Features
+- [ ] Retry logic with exponential backoff
+- [ ] Configurable timeout values
+- [ ] API response caching
+- [ ] Multiple API provider support (OpenAI, Azure, etc.)
+- [ ] Batch processing of multiple inputs
+- [ ] API health check on startup
+- [ ] HTTPS support
+- [ ] Token encryption in config file
+- [ ] Rate limiting in client
+- [ ] Response time metrics and logging
 
-## References
+### Provider Support (Future)
 
-- [OpenAI API Documentation](https://platform.openai.com/docs/api-reference)
-- [Azure OpenAI Service Documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/)
-- [System.Net.Http Best Practices](https://learn.microsoft.com/en-us/dotnet/fundamentals/networking/http/httpclient-guidelines)
+#### OpenAI API
+```json
+{
+  "provider": "openai",
+  "apiKey": "sk-...",
+  "model": "gpt-4",
+  "endpoint": "https://api.openai.com/v1/chat/completions"
+}
+```
 
-## Implementation Checklist
+#### Azure OpenAI
+```json
+{
+  "provider": "azure",
+  "apiKey": "...",
+  "endpoint": "https://{resource}.openai.azure.com/",
+  "deployment": "gpt-4"
+}
+```
 
-- [ ] Create LlmSettings class
-- [ ] Implement configuration UI
-- [ ] Create ILlmService interface
-- [ ] Implement OpenAiService
-- [ ] Implement AzureOpenAiService
-- [ ] Add secure credential storage
-- [ ] Update button click handler
-- [ ] Add loading indicators
-- [ ] Implement error handling
-- [ ] Add cancellation support
-- [ ] Write unit tests
-- [ ] Perform integration testing
-- [ ] Update user documentation
+## Code Examples
+
+### Calling API from Code
+
+```csharp
+// Initialize service
+var apiService = new ProofreadApiService(
+    "http://192.168.111.79:8081",
+    "local-dev-token"
+);
+
+// Make request
+var response = await apiService.GetProofreadResultAsync(
+    prompt: "Proofread",
+    candidateText: "The launch were sucessful"
+);
+
+// Handle response
+if (response?.Status == "completed")
+{
+    Console.WriteLine($"Result: {response.ProofreadText}");
+    Console.WriteLine($"Issues: {response.Issues.Count}");
+}
+```
+
+### Custom Error Handling
+
+```csharp
+try
+{
+    var response = await apiService.GetProofreadResultAsync(prompt, text);
+    // ... handle response
+}
+catch (HttpRequestException ex)
+{
+    // Network error
+    Console.WriteLine($"Network error: {ex.Message}");
+}
+catch (JsonException ex)
+{
+    // JSON parsing error
+    Console.WriteLine($"Invalid response format: {ex.Message}");
+}
+catch (Exception ex)
+{
+    // Other errors
+    Console.WriteLine($"Unexpected error: {ex.Message}");
+}
+```
+
+## Support
+
+For issues with API integration:
+1. Check this guide's troubleshooting section
+2. Test API with PowerShell/curl
+3. Review application logs (status bar messages)
+4. Check `api_config.json` configuration
+5. Refer to main project repository for updates
+
+## Version History
+
+- **v1.2.0**: Initial API integration implementation
+- **v1.1.0**: Dark theme and always on top
+- **v1.0.0**: Initial release
 
 ---
 
-**Note**: This feature is planned for a future release. The current version provides the UI placeholder to prepare for this functionality.
+**Note**: This API integration is fully functional as of version 1.2.0. The implementation uses the nemotron-4-340b-instruct model via the configured endpoint.

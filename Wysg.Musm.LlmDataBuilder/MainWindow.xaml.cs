@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Windows;
+using Wysg.Musm.LlmDataBuilder.Services;
 
 namespace Wysg.Musm.LlmDataBuilder
 {
@@ -14,6 +15,8 @@ namespace Wysg.Musm.LlmDataBuilder
         private const string PromptFileName = "prompt.txt";
         
         private string _workingDirectory;
+        private ProofreadApiService _apiService;
+        private ApiConfiguration _apiConfig;
 
         public MainWindow()
         {
@@ -21,6 +24,10 @@ namespace Wysg.Musm.LlmDataBuilder
             
             // Set working directory to the application's directory
             _workingDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            
+            // Load API configuration
+            _apiConfig = ApiConfiguration.Load(_workingDirectory);
+            _apiService = new ProofreadApiService(_apiConfig.ApiUrl, _apiConfig.AuthToken);
             
             // Load existing data
             LoadPromptFile();
@@ -37,6 +44,11 @@ namespace Wysg.Musm.LlmDataBuilder
                 {
                     txtPrompt.Text = File.ReadAllText(promptPath);
                     UpdateStatus($"Loaded prompt from {PromptFileName}");
+                }
+                else
+                {
+                    // Set default prompt if file doesn't exist
+                    txtPrompt.Text = _apiConfig.DefaultPrompt;
                 }
             }
             catch (Exception ex)
@@ -88,11 +100,91 @@ namespace Wysg.Musm.LlmDataBuilder
             UpdateStatus("Window is no longer always on top");
         }
 
-        private void BtnGetProtoResult_Click(object sender, RoutedEventArgs e)
+        private async void BtnGetProtoResult_Click(object sender, RoutedEventArgs e)
         {
-            // Placeholder for future LLM server integration
-            UpdateStatus("Get Proto Result - Not implemented yet", isError: false);
-            txtProtoOutput.Text = "[This feature will connect to LLM server in the future]";
+            try
+            {
+                // Validate input
+                if (string.IsNullOrWhiteSpace(txtInput.Text))
+                {
+                    UpdateStatus("Error: Input cannot be empty", isError: true);
+                    MessageBox.Show("Please enter an input value before getting proto result.", 
+                        "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(txtPrompt.Text))
+                {
+                    UpdateStatus("Error: Prompt cannot be empty", isError: true);
+                    MessageBox.Show("Please enter a prompt (e.g., 'Proofread').", 
+                        "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Disable button during API call
+                btnGetProtoResult.IsEnabled = false;
+                UpdateStatus("Calling API...");
+
+                // Call the API
+                var response = await _apiService.GetProofreadResultAsync(
+                    txtPrompt.Text,
+                    txtInput.Text
+                );
+
+                if (response != null && response.Status == "completed")
+                {
+                    // Update Proto Output with the proofread text
+                    txtProtoOutput.Text = response.ProofreadText;
+
+                    // Build a detailed status message
+                    string statusMessage = $"API Success! Model: {response.ModelName}, Latency: {response.LatencyMs}ms";
+                    if (response.Issues.Count > 0)
+                    {
+                        statusMessage += $", Issues found: {response.Issues.Count}";
+                    }
+
+                    UpdateStatus(statusMessage);
+
+                    // Show issues if any
+                    if (response.Issues.Count > 0)
+                    {
+                        var issuesSummary = new StringBuilder();
+                        issuesSummary.AppendLine($"Found {response.Issues.Count} issue(s):\n");
+                        foreach (var issue in response.Issues)
+                        {
+                            issuesSummary.AppendLine($"- {issue.Category} ({issue.Severity})");
+                            issuesSummary.AppendLine($"  Suggestion: {issue.Suggestion}");
+                            issuesSummary.AppendLine($"  Confidence: {issue.Confidence:P0}\n");
+                        }
+
+                        MessageBox.Show(issuesSummary.ToString(), 
+                            "Proofreading Issues Found", 
+                            MessageBoxButton.OK, 
+                            MessageBoxImage.Information);
+                    }
+                }
+                else
+                {
+                    UpdateStatus($"API returned status: {response?.Status ?? "unknown"}", isError: true);
+                    txtProtoOutput.Text = $"[API Error: {response?.FailureReason ?? "Unknown error"}]";
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error: {ex.Message}", isError: true);
+                MessageBox.Show($"Failed to get proto result:\n\n{ex.Message}\n\nPlease check:\n" +
+                    $"1. API server is running at {_apiConfig.ApiUrl}\n" +
+                    $"2. Network connectivity\n" +
+                    $"3. API configuration in api_config.json", 
+                    "API Error", 
+                    MessageBoxButton.OK, 
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                // Re-enable button
+                btnGetProtoResult.IsEnabled = true;
+            }
         }
 
         private void BtnSave_Click(object sender, RoutedEventArgs e)

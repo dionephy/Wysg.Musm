@@ -16,6 +16,35 @@ namespace Wysg.Musm.Radium.Views
         {
             InitializeComponent();
             DataContext = vm;
+            
+            // Subscribe to Closed event to refresh study_techniques in MainViewModel
+            Closed += OnWindowClosed;
+        }
+
+        private async void OnWindowClosed(object? sender, EventArgs e)
+        {
+            try
+            {
+                Debug.WriteLine("[StudynameLoincWindow] Window closed - refreshing study_techniques in MainViewModel");
+                
+                // FIX: Get the ACTUAL MainViewModel from MainWindow's DataContext
+                // instead of creating a new one via DI (which would be empty)
+                var mainWindow = Application.Current?.MainWindow;
+                if (mainWindow?.DataContext is MainViewModel mainVm)
+                {
+                    // Refresh study_techniques from the default technique combination
+                    await mainVm.RefreshStudyTechniqueFromDefaultAsync();
+                    Debug.WriteLine("[StudynameLoincWindow] Study_techniques refresh completed");
+                }
+                else
+                {
+                    Debug.WriteLine("[StudynameLoincWindow] WARN: Could not find MainViewModel - MainWindow.DataContext is not MainViewModel");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[StudynameLoincWindow] Error refreshing study_techniques on window close: {ex.Message}");
+            }
         }
 
         private void OnPartItemDoubleClick(object sender, MouseButtonEventArgs e)

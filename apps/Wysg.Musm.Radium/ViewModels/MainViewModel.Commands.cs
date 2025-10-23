@@ -310,7 +310,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase)) { await RunNewStudyProcedureAsync(); }
                     else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _lockStudyProc != null) { await _lockStudyProc.ExecuteAsync(this); }
-                    else if (string.Equals(m, "UnlockStudy", StringComparison.OrdinalIgnoreCase)) { PatientLocked = false; SetStatus("Study unlocked"); }
+                    else if (string.Equals(m, "UnlockStudy", StringComparison.OrdinalIgnoreCase)) 
+                    { 
+                        PatientLocked = false; 
+                        StudyOpened = false; 
+                        Reportified = false;
+                        SetStatus("Study unlocked (all toggles off)"); 
+                    }
                     else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { await AcquireStudyRemarkAsync(); }
                     else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { await AcquirePatientRemarkAsync(); }
                     else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { await RunAddPreviousStudyModuleAsync(); }
@@ -329,7 +335,11 @@ namespace Wysg.Musm.Radium.ViewModels
                         var matchResult = await _pacs.PatientNumberMatchAsync();
                         if (string.Equals(matchResult, "false", StringComparison.OrdinalIgnoreCase))
                         {
-                            SetStatus("Patient number mismatch - automation aborted", true);
+                            // Get the actual patient numbers for logging
+                            var pacsPatientNumber = await _pacs.GetCurrentPatientNumberAsync();
+                            var mainPatientNumber = PatientNumber;
+                            SetStatus($"Patient number mismatch - automation aborted (PACS: '{pacsPatientNumber}', Main: '{mainPatientNumber}')", true);
+                            Debug.WriteLine($"[Automation][AbortIfPatientNumberNotMatch] MISMATCH - PACS: '{pacsPatientNumber}' Main: '{mainPatientNumber}'");
                             return; // Abort the rest of the sequence
                         }
                         SetStatus("Patient number match - continuing");
@@ -339,7 +349,11 @@ namespace Wysg.Musm.Radium.ViewModels
                         var matchResult = await _pacs.StudyDateTimeMatchAsync();
                         if (string.Equals(matchResult, "false", StringComparison.OrdinalIgnoreCase))
                         {
-                            SetStatus("Study date/time mismatch - automation aborted", true);
+                            // Get the actual study datetimes for logging
+                            var pacsStudyDateTime = await _pacs.GetCurrentStudyDateTimeAsync();
+                            var mainStudyDateTime = StudyDateTime;
+                            SetStatus($"Study date/time mismatch - automation aborted (PACS: '{pacsStudyDateTime}', Main: '{mainStudyDateTime}')", true);
+                            Debug.WriteLine($"[Automation][AbortIfStudyDateTimeNotMatch] MISMATCH - PACS: '{pacsStudyDateTime}' Main: '{mainStudyDateTime}'");
                             return; // Abort the rest of the sequence
                         }
                         SetStatus("Study date/time match - continuing");
@@ -564,9 +578,13 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             try
             {
-                // Get findings and conclusion from current report
-                var findings = FindingsText ?? string.Empty;
-                var conclusion = ConclusionText ?? string.Empty;
+                // CRITICAL FIX: Use RAW (unreportified) values for sending to PACS
+                // We want to send the original text, not the formatted/reportified version
+                var findings = RawFindingsText;
+                var conclusion = RawConclusionText;
+                
+                Debug.WriteLine($"[Automation][SendReport] Sending FINDINGS (raw, length={findings.Length})");
+                Debug.WriteLine($"[Automation][SendReport] Sending CONCLUSION (raw, length={conclusion.Length})");
                 
                 await _pacs.SendReportAsync(findings, conclusion);
                 SetStatus("Report sent");

@@ -122,15 +122,9 @@ namespace Wysg.Musm.Radium.Services
             Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] All steps completed. Last result: '{lastOperationResult}'");
 
             // Special handling for comparison operations
-            if (string.Equals(methodTag, "PatientNumberMatch", StringComparison.OrdinalIgnoreCase))
-            {
-                return ComparePatientNumber(lastOperationResult);
-            }
-            
-            if (string.Equals(methodTag, "StudyDateTimeMatch", StringComparison.OrdinalIgnoreCase))
-            {
-                return CompareStudyDateTime(lastOperationResult);
-            }
+            // NOTE: The PatientNumberMatch and StudyDateTimeMatch procedures already perform the comparison
+            // and return "true" or "false" directly. We no longer need to call Compare* methods.
+            // The procedures should be structured to return "true"/"false" as their final result.
             
             return lastOperationResult ?? string.Empty;
         }
@@ -234,26 +228,79 @@ namespace Wysg.Musm.Radium.Services
             try
             {
                 Debug.WriteLine("[ProcedureExecutor][PatientNumberMatch] Starting comparison");
-                var mainWindow = System.Windows.Application.Current?.MainWindow;
-                if (mainWindow != null && mainWindow.DataContext is ViewModels.MainViewModel mainVM)
+                
+                string? mainPatientNumberRaw = null;
+                
+                // Access MainViewModel on UI thread
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
                 {
-                    string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : 
-                        System.Text.RegularExpressions.Regex.Replace(s, "[^A-Za-z0-9]", "").ToUpperInvariant();
-                    
-                    var pacsPatientNumber = Normalize(pacsValue);
-                    var mainPatientNumber = Normalize(mainVM.PatientNumber);
-                    Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] PACS='{pacsPatientNumber}' Main='{mainPatientNumber}'");
-                    
-                    bool matches = string.Equals(pacsPatientNumber, mainPatientNumber, StringComparison.Ordinal);
-                    Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] Result: {matches}");
-                    return matches ? "true" : "false";
+                    var mainWindow = System.Windows.Application.Current?.MainWindow;
+                    if (mainWindow != null && mainWindow.DataContext is ViewModels.MainViewModel mainVM)
+                    {
+                        mainPatientNumberRaw = mainVM.PatientNumber;
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[ProcedureExecutor][PatientNumberMatch] FAIL: MainWindow or MainViewModel not found");
+                    }
+                });
+                
+                if (mainPatientNumberRaw == null)
+                {
+                    Debug.WriteLine("[ProcedureExecutor][PatientNumberMatch] FAIL: Could not retrieve patient number from MainViewModel");
+                    return "false";
                 }
+                
+                string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : 
+                    System.Text.RegularExpressions.Regex.Replace(s, "[^A-Za-z0-9]", "").ToUpperInvariant();
+                
+                var pacsPatientNumber = Normalize(pacsValue);
+                var mainPatientNumber = Normalize(mainPatientNumberRaw);
+                
+                Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] PACS Patient Number (raw): '{pacsValue ?? "(null)"}'");
+                Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] PACS Patient Number (raw length): {pacsValue?.Length ?? 0}");
+                Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] PACS Patient Number (raw char codes): {GetCharCodes(pacsValue)}");
+                Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] PACS Patient Number (normalized): '{pacsPatientNumber}'");
+                Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] PACS Patient Number (normalized length): {pacsPatientNumber.Length}");
+                Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] Main Patient Number (raw): '{mainPatientNumberRaw ?? "(null)"}'");
+                Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] Main Patient Number (raw length): {mainPatientNumberRaw?.Length ?? 0}");
+                Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] Main Patient Number (raw char codes): {GetCharCodes(mainPatientNumberRaw)}");
+                Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] Main Patient Number (normalized): '{mainPatientNumber}'");
+                Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] Main Patient Number (normalized length): {mainPatientNumber.Length}");
+                
+                bool matches = string.Equals(pacsPatientNumber, mainPatientNumber, StringComparison.Ordinal);
+                Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] Ordinal comparison result: {matches}");
+                
+                if (!matches && pacsPatientNumber.Length == mainPatientNumber.Length)
+                {
+                    Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] Lengths match but strings differ - checking character by character:");
+                    for (int i = 0; i < pacsPatientNumber.Length; i++)
+                    {
+                        if (pacsPatientNumber[i] != mainPatientNumber[i])
+                        {
+                            Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch]   Position {i}: PACS='{pacsPatientNumber[i]}' (code {(int)pacsPatientNumber[i]}) vs Main='{mainPatientNumber[i]}' (code {(int)mainPatientNumber[i]})");
+                        }
+                    }
+                }
+                
+                return matches ? "true" : "false";
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                Debug.WriteLine($"[ProcedureExecutor][PatientNumberMatch] StackTrace: {ex.StackTrace}");
             }
             return "false";
+        }
+
+        /// <summary>
+        /// Helper method to get character codes for debugging invisible characters.
+        /// </summary>
+        private static string GetCharCodes(string? s)
+        {
+            if (string.IsNullOrEmpty(s)) return "(empty)";
+            if (s.Length > 50) return $"(too long: {s.Length} chars)";
+            return string.Join(",", s.Select(c => $"'{c}':{(int)c}"));
         }
 
         /// <summary>
@@ -264,27 +311,54 @@ namespace Wysg.Musm.Radium.Services
             try
             {
                 Debug.WriteLine("[ProcedureExecutor][StudyDateTimeMatch] Starting comparison");
-                var mainWindow = System.Windows.Application.Current?.MainWindow;
-                if (mainWindow != null && mainWindow.DataContext is ViewModels.MainViewModel mainVM)
+                
+                string? mainStudyDateTimeRaw = null;
+                
+                // Access MainViewModel on UI thread
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
                 {
-                    Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] PACS='{pacsValue}' Main='{mainVM.StudyDateTime}'");
-                    
-                    if (DateTime.TryParse(pacsValue, out var pacsDateTime) &&
-                        DateTime.TryParse(mainVM.StudyDateTime, out var mainDateTime))
+                    var mainWindow = System.Windows.Application.Current?.MainWindow;
+                    if (mainWindow != null && mainWindow.DataContext is ViewModels.MainViewModel mainVM)
                     {
-                        bool matches = pacsDateTime.Date == mainDateTime.Date;
-                        Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] Result: {matches}");
-                        return matches ? "true" : "false";
+                        mainStudyDateTimeRaw = mainVM.StudyDateTime;
                     }
                     else
                     {
-                        Debug.WriteLine("[ProcedureExecutor][StudyDateTimeMatch] Failed to parse datetimes");
+                        Debug.WriteLine("[ProcedureExecutor][StudyDateTimeMatch] FAIL: MainWindow or MainViewModel not found");
                     }
+                });
+                
+                if (mainStudyDateTimeRaw == null)
+                {
+                    Debug.WriteLine("[ProcedureExecutor][StudyDateTimeMatch] FAIL: Could not retrieve study datetime from MainViewModel");
+                    return "false";
+                }
+                
+                Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] PACS Study DateTime (raw): '{pacsValue ?? "(null)"}'");
+                Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] Main Study DateTime (raw): '{mainStudyDateTimeRaw ?? "(null)"}'");
+                
+                if (DateTime.TryParse(pacsValue, out var pacsDateTime) &&
+                    DateTime.TryParse(mainStudyDateTimeRaw, out var mainDateTime))
+                {
+                    Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] PACS Study DateTime (parsed): {pacsDateTime:yyyy-MM-dd HH:mm:ss}");
+                    Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] Main Study DateTime (parsed): {mainDateTime:yyyy-MM-dd HH:mm:ss}");
+                    
+                    bool matches = pacsDateTime.Date == mainDateTime.Date;
+                    Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] Date comparison: PACS={pacsDateTime.Date:yyyy-MM-dd} Main={mainDateTime.Date:yyyy-MM-dd}");
+                    Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] Result: {matches}");
+                    return matches ? "true" : "false";
+                }
+                else
+                {
+                    Debug.WriteLine("[ProcedureExecutor][StudyDateTimeMatch] Failed to parse datetimes");
+                    Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] PACS parse success: {DateTime.TryParse(pacsValue, out _)}");
+                    Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] Main parse success: {DateTime.TryParse(mainStudyDateTimeRaw, out _)}");
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] EXCEPTION: {ex.GetType().Name} - {ex.Message}");
+                Debug.WriteLine($"[ProcedureExecutor][StudyDateTimeMatch] StackTrace: {ex.StackTrace}");
             }
             return "false";
         }

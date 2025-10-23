@@ -12,16 +12,23 @@ The LLM Data Builder is a desktop application designed to help create and manage
 
 - **Always on Top**: Optional checkbox to keep the window above other applications
 
+- **LLM API Integration**: Connect to proofreading API to generate prototype outputs
+  - Calls external API with your input text and prompt
+  - Automatically populates Proto Output field
+  - Shows issues and suggestions found during proofreading
+  - Configurable API endpoint and authentication
+
 - **Data Entry Interface**: Four dedicated fields for capturing training data:
-  - **Input**: The prompt or question for the LLM
+  - **Input**: The prompt or question for the LLM (used as candidate_text in API)
   - **Output**: The expected response or answer
-  - **Proto Output**: Placeholder for LLM-generated responses (read-only)
+  - **Proto Output**: LLM-generated responses from API (proofread_text)
   - **Applied Prompt Numbers**: Comma-separated list of prompt template IDs used
 
 - **Prompt Management**: 
-  - View and edit the master prompt template
+  - View and edit the master prompt template (used as prompt in API)
   - Automatically saved to `prompt.txt` on each save operation
   - Persistent across application sessions
+  - Used as the "prompt" parameter when calling the API
 
 - **Data Persistence**:
   - Records saved to `data.json` in the application directory
@@ -34,31 +41,38 @@ The LLM Data Builder is a desktop application designed to help create and manage
   - Input validation before saving
   - Clear functionality for data fields (prompt is preserved)
   - Confirmation dialogs for important actions
-
-### Planned Features
-
-- **Get Proto Result**: Integration with LLM server to generate prototype outputs
-  - Currently shows placeholder message
-  - Will be implemented in future versions
+  - Detailed API response information
 
 ## File Structure
 
-The application works with two main files in its working directory:
+The application works with three main files in its working directory:
 
 ### data.json
 ```json
 [
   {
-    "input": "Example question or prompt",
-    "output": "Expected answer or response",
-    "protoOutput": "LLM-generated response (if available)",
-    "appliedPromptNumbers": [1, 2, 3]
+    "input": "The launch were sucessful",
+    "output": "The launch was successful",
+    "protoOutput": "The launch was successful",
+    "appliedPromptNumbers": [1, 2]
   }
 ]
 ```
 
 ### prompt.txt
-Contains the master prompt template used for LLM interactions. This is a plain text file that can be edited directly in the application.
+Contains the master prompt template used for API calls. This is sent as the "prompt" parameter to the proofreading API. Default value is "Proofread".
+
+### api_config.json
+Optional configuration file for API settings:
+```json
+{
+  "apiUrl": "http://192.168.111.79:8081",
+  "authToken": "local-dev-token",
+  "defaultPrompt": "Proofread"
+}
+```
+
+If this file doesn't exist, the application will use default values. Copy `api_config.json.sample` to `api_config.json` and customize as needed.
 
 ## Usage Guide
 
@@ -66,22 +80,64 @@ Contains the master prompt template used for LLM interactions. This is a plain t
 
 1. Launch the LLM Data Builder application
 2. The application will automatically:
-   - Create or load `prompt.txt` if it exists
+   - Create or load `prompt.txt` if it exists (default: "Proofread")
+   - Load API configuration from `api_config.json` or use defaults
    - Display the current record count from `data.json`
    - Load with dark theme enabled by default
+
+### Configuring the API
+
+1. **Copy sample config**: Copy `api_config.json.sample` to `api_config.json`
+2. **Edit settings**:
+   - `apiUrl`: Your API endpoint (default: http://192.168.111.79:8081)
+   - `authToken`: Your authentication token (default: local-dev-token)
+   - `defaultPrompt`: Default prompt text (default: Proofread)
+3. **Restart application** to apply changes
 
 ### Window Settings
 
 - **Always on Top**: Check the "Always on Top" checkbox in the status bar to keep the window above all other windows. This is useful when referencing other applications while entering data.
 
+### Using Get Proto Result
+
+The "Get Proto Result" button calls an external API to proofread your input text:
+
+1. **Enter Input**: Type your text in the "Input" field (this becomes `candidate_text` in the API)
+2. **Set Prompt**: Ensure your prompt is set (e.g., "Proofread") - this becomes the `prompt` parameter
+3. **Click "Get Proto Result"**: The button will:
+   - Validate that Input and Prompt are not empty
+   - Call the API at the configured endpoint
+   - Display the proofread text in the "Proto Output" field
+   - Show any issues or suggestions found
+   - Display API response details in the status bar
+
+**API Call Example:**
+```json
+POST http://192.168.111.79:8081/v1/evaluations
+Headers: Authorization: Bearer local-dev-token
+Body: {
+  "prompt": "Proofread",
+  "candidate_text": "The launch were sucessful"
+}
+
+Response: {
+  "proofread_text": "The launch was successful",
+  "status": "completed",
+  "issues": [...],
+  "model_name": "nemotron-4-340b-instruct",
+  "latency_ms": 1200
+}
+```
+
 ### Creating a New Record
 
 1. **Enter Input**: Type the question, prompt, or input text in the "Input" field
-2. **Enter Output**: Type the expected response or answer in the "Output" field
-3. **Optional - Proto Output**: This field is read-only and will be populated when the "Get Proto Result" feature is implemented
-4. **Optional - Applied Prompt Numbers**: Enter comma-separated numbers (e.g., `1,2,3`) to track which prompt templates were used
-5. **Update Prompt** (if needed): Modify the prompt text in the right panel
-6. **Click Save**: The data will be appended to `data.json` and `prompt.txt` will be updated
+2. **(Optional) Get Proto Result**: Click "Get Proto Result" to auto-populate Proto Output
+3. **Enter Output**: Type the expected response or answer in the "Output" field
+4. **Review Proto Output**: Check the API-generated result (if you used Get Proto Result)
+5. **Optional - Applied Prompt Numbers**: Enter comma-separated numbers (e.g., `1,2,3`) to track which prompt templates were used
+6. **Update Prompt** (if needed): Modify the prompt text in the right panel
+7. **Click Save**: The data will be appended to `data.json` and `prompt.txt` will be updated
 
 ### Managing Data
 
@@ -93,9 +149,10 @@ Contains the master prompt template used for LLM interactions. This is a plain t
 
 The application enforces the following validation rules:
 
-1. **Input cannot be empty** - You must provide an input value
-2. **Output cannot be empty** - You must provide an output value
-3. **Applied Prompt Numbers must be valid integers** - If provided, they must be comma-separated numbers
+1. **Input cannot be empty** - You must provide an input value (for both API calls and saving)
+2. **Output cannot be empty** - You must provide an output value (for saving)
+3. **Prompt cannot be empty** - Required when calling the API
+4. **Applied Prompt Numbers must be valid integers** - If provided, they must be comma-separated numbers
 
 ## Technical Details
 
@@ -105,6 +162,32 @@ The application enforces the following validation rules:
 - **UI Framework**: WPF (Windows Presentation Foundation)
 - **Language**: C# 13.0
 - **JSON Serialization**: System.Text.Json
+- **HTTP Client**: System.Net.Http (for API calls)
+
+### API Integration
+
+The application includes a complete API integration system:
+
+- **ProofreadApiService**: Handles HTTP communication with the proofreading API
+- **ApiConfiguration**: Manages API settings (URL, auth token, default prompt)
+- **Request/Response Models**: Strongly-typed models for API communication
+- **Async/Await**: Non-blocking API calls for smooth UI experience
+- **Error Handling**: Comprehensive error messages for API failures
+
+### API Response Model
+
+```csharp
+public class ProofreadResponse
+{
+    public string Id { get; set; }
+    public string Status { get; set; }
+    public string ProofreadText { get; set; }
+    public List<ProofreadIssue> Issues { get; set; }
+    public string ModelName { get; set; }
+    public int LatencyMs { get; set; }
+    // ... other properties
+}
+```
 
 ### Dark Theme
 
@@ -145,30 +228,18 @@ The application includes comprehensive error handling:
 - **File I/O errors**: Displayed in the status bar with error styling
 - **Validation errors**: Shown via message boxes with clear instructions
 - **JSON parsing errors**: Gracefully handled with fallback to empty dataset
+- **API errors**: Detailed error messages with troubleshooting tips
+- **Network errors**: Clear indication of connection issues
 - **User feedback**: All operations provide status updates
 
-## Future Enhancements
+### Common API Issues
 
-### Planned for Next Version
-
-1. **LLM Server Integration**
-   - Implement the "Get Proto Result" functionality
-   - Connect to OpenAI, Azure OpenAI, or custom LLM endpoints
-   - Automatically populate `protoOutput` field
-
-2. **Advanced Features**
-   - Export data to different formats (CSV, JSONL)
-   - Search and filter existing records
-   - Edit/delete individual records
-   - Batch operations
-   - Template management for prompts
-   - Configuration for custom LLM endpoints
-   - Theme toggle (light/dark mode)
-
-3. **UI Improvements**
-   - Keyboard shortcuts
-   - Drag-and-drop file import
-   - Preview pane for JSON data
+| Issue | Possible Cause | Solution |
+|-------|---------------|----------|
+| Connection refused | API server not running | Start the API server |
+| 401 Unauthorized | Invalid auth token | Check `authToken` in `api_config.json` |
+| Timeout | Network issues | Check network connectivity and API URL |
+| Invalid response | API version mismatch | Verify API endpoint and version |
 
 ## Troubleshooting
 
@@ -182,7 +253,20 @@ The application includes comprehensive error handling:
 
 ### Problem: Prompt not loading
 
-**Solution**: Verify `prompt.txt` exists and is readable. The application will create a new empty file if it doesn't exist.
+**Solution**: Verify `prompt.txt` exists and is readable. The application will create a new file with default value if it doesn't exist.
+
+### Problem: API not responding
+
+**Solution**: 
+1. Verify the API server is running at the configured URL
+2. Check `api_config.json` for correct settings
+3. Test the API with curl or PowerShell
+4. Check firewall and network settings
+5. Verify the auth token is correct
+
+### Problem: Get Proto Result button disabled
+
+**Solution**: The button is disabled during API calls. If it stays disabled, restart the application.
 
 ## Support
 
