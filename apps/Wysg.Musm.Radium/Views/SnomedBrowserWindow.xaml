@@ -29,6 +29,10 @@
         <!-- Synonym structure/entire highlighter -->
         <converters:SynonymStructureHighlightConverter x:Key="SynonymStructureHighlightConverter"/>
         
+        <!-- Expander converters -->
+        <converters:ExpanderArrowConverter x:Key="ExpanderArrowConverter"/>
+        <converters:ExpandedToVisibilityConverter x:Key="ExpandedToVisibilityConverter"/>
+        
         <Style TargetType="Button">
             <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}"/>
             <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}"/>
@@ -180,30 +184,42 @@
                                 </Style>
                             </Border.Style>
                             <StackPanel>
-                                <!-- Concept Header -->
+                                <!-- Concept Header with Expand/Collapse Button -->
                                 <Border Background="{StaticResource BrushSurface}" 
                                         Padding="8">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <TextBlock Grid.Column="0"
+                                        <!-- Expand/Collapse Toggle Button -->
+                                        <Button Grid.Column="0"
+                                                Content="{Binding IsExpanded, Converter={StaticResource ExpanderArrowConverter}}"
+                                                Command="{Binding DataContext.ToggleExpandCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                MinWidth="25"
+                                                Padding="4,2"
+                                                Margin="0,0,8,0"
+                                                FontSize="12"
+                                                ToolTip="Click to expand/collapse terms"/>
+
+                                        <TextBlock Grid.Column="1"
                                                    Text="{Binding ConceptIdDisplay}" 
                                                    FontWeight="Bold"
                                                    Foreground="{StaticResource BrushAccent}"
                                                    FontFamily="Consolas"
                                                    Margin="0,0,10,0"/>
 
-                                        <TextBlock Grid.Column="1"
+                                        <TextBlock Grid.Column="2"
                                                    Text="{Binding Concept.Fsn}" 
                                                    FontWeight="Bold"
                                                    Foreground="{StaticResource BrushTextPrimary}"
                                                    TextWrapping="Wrap"/>
 
-                                        <Border Grid.Column="2"
+                                        <Border Grid.Column="3"
                                                 Background="#40FFFFFF"
                                                 Padding="6,2"
                                                 CornerRadius="2">
@@ -214,9 +230,10 @@
                                     </Grid>
                                 </Border>
 
-                                <!-- Terms List -->
+                                <!-- Terms List (collapsed when IsExpanded=false) -->
                                 <ItemsControl ItemsSource="{Binding Terms}" 
-                                              Margin="8">
+                                              Margin="8"
+                                              Visibility="{Binding IsExpanded, Converter={StaticResource ExpandedToVisibilityConverter}}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border BorderBrush="{StaticResource BrushBorder}" 

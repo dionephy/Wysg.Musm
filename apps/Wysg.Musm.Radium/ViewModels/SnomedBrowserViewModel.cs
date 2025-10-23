@@ -22,7 +22,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private string _selectedDomain = "body structure";
         private int _currentPage = 1;
-        private int _totalPages = 1;
+        private int _totalPages = 10000; // Increased limit to allow jumping to higher pages
         private int _jumpToPage = 1;
         private bool _isBusy;
         private string _statusMessage = string.Empty;
@@ -149,6 +149,7 @@ namespace Wysg.Musm.Radium.ViewModels
         public IRelayCommand PreviousPageCommand { get; }
         public IRelayCommand NextPageCommand { get; }
         public IRelayCommand JumpToPageCommand { get; }
+        public IRelayCommand ToggleExpandCommand { get; }
 
         public SnomedBrowserViewModel(
             ISnowstormClient snowstormClient,
@@ -163,12 +164,29 @@ namespace Wysg.Musm.Radium.ViewModels
             PreviousPageCommand = new RelayCommand(GoToPreviousPage, () => CanGoToPreviousPage);
             NextPageCommand = new RelayCommand(GoToNextPage, () => CanGoToNextPage);
             JumpToPageCommand = new RelayCommand(
-                () => { CurrentPage = Math.Max(1, Math.Min(JumpToPage, TotalPages)); _ = LoadConceptsAsync(); },
+                () => { 
+                    // Clamp to valid range (1 to TotalPages)
+                    var targetPage = Math.Max(1, Math.Min(JumpToPage, TotalPages));
+                    if (targetPage != CurrentPage)
+                    {
+                        CurrentPage = targetPage;
+                        _ = LoadConceptsAsync();
+                    }
+                },
                 () => !IsBusy && JumpToPage >= 1 && JumpToPage <= TotalPages
             );
+            ToggleExpandCommand = new RelayCommand<SnomedConceptViewModel>(
+                conceptVm => 
+                {
+                    if (conceptVm != null)
+                    {
+                        conceptVm.IsExpanded = !conceptVm.IsExpanded;
+                    }
+                }
+            );
 
-            // Estimate total pages (we'll refine this as we browse)
-            TotalPages = 100; // Initial estimate
+            // Set initial estimate - allows jumping to much higher pages
+            TotalPages = 10000;
 
             // Load first page
             _ = LoadConceptsAsync();
@@ -241,16 +259,18 @@ namespace Wysg.Musm.Radium.ViewModels
                 
                 // Check if we have a cached token for this page
                 string? searchAfterToken = null;
+                bool usingCachedToken = false;
                 if (_pageTokenCache.TryGetValue(CurrentPage, out var cachedToken))
                 {
                     searchAfterToken = cachedToken;
+                    usingCachedToken = true;
                     StatusMessage = $"Loading {SelectedDomain} concepts (page {CurrentPage}, using cached token)...";
                     System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] Using cached token for page {CurrentPage}: {searchAfterToken}");
                 }
                 else
                 {
                     StatusMessage = $"Loading {SelectedDomain} concepts (page {CurrentPage}, offset {offset}, limit {ConceptsPerPage})...";
-                    System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] No cached token for page {CurrentPage}, will paginate from beginning");
+                    System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] No cached token for page {CurrentPage}, using offset-based pagination");
                 }
 
                 Concepts.Clear();
@@ -278,12 +298,24 @@ namespace Wysg.Musm.Radium.ViewModels
                     System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] No token to cache (end of results or error)");
                 }
 
-                if (concepts.Count == 0 && CurrentPage > 1)
+                if (concepts.Count == 0)
                 {
-                    // We've reached the end
-                    TotalPages = CurrentPage - 1;
-                    CurrentPage = TotalPages;
-                    StatusMessage = "Reached end of results - no concepts on this page";
+                    if (CurrentPage > 1)
+                    {
+                        // We've reached the actual end of results
+                        var actualEndPage = CurrentPage - 1;
+                        if (TotalPages != actualEndPage)
+                        {
+                            TotalPages = actualEndPage;
+                            System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] Reached actual end of results. TotalPages updated to {TotalPages}");
+                        }
+                        CurrentPage = TotalPages;
+                        StatusMessage = $"Reached end of results - no concepts on page {CurrentPage}. Total available pages: {TotalPages}";
+                    }
+                    else
+                    {
+                        StatusMessage = "No concepts found for the selected domain.";
+                    }
                     return;
                 }
 
@@ -303,13 +335,9 @@ namespace Wysg.Musm.Radium.ViewModels
 
                 System.Diagnostics.Debug.WriteLine($"[SnomedBrowserVM] Created {Concepts.Count} concept VMs with {totalTerms} total terms");
 
-                // If we got a full page and have a next token, there might be more
-                if (concepts.Count == ConceptsPerPage && !string.IsNullOrEmpty(nextSearchAfter) && CurrentPage >= TotalPages)
-                {
-                    TotalPages = CurrentPage + 1;
-                }
-
-                StatusMessage = $"Loaded {Concepts.Count} concepts ({totalTerms} terms) on page {CurrentPage}";
+                // Update status message
+                var navigationMethod = usingCachedToken ? "cached navigation" : "offset-based pagination";
+                StatusMessage = $"Loaded {Concepts.Count} concepts ({totalTerms} terms) on page {CurrentPage} using {navigationMethod}";
             }
             catch (Exception ex)
             {
@@ -407,6 +435,7 @@ namespace Wysg.Musm.Radium.ViewModels
     {
         private readonly SnomedBrowserViewModel _parent;
         private bool _hasExistingPhrases;
+        private bool _isExpanded = true;
 
         public SnomedConcept Concept { get; }
         public ObservableCollection<SnomedTermViewModel> Terms { get; } = new();
@@ -431,6 +460,23 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
+        /// <summary>
+        /// Indicates whether the concept terms are expanded (visible) or collapsed (hidden).
+        /// Concepts with all structural terms (yellow background) or existing phrases (red background) are collapsed by default.
+        /// </summary>
+        public bool IsExpanded
+        {
+            get => _isExpanded;
+            set
+            {
+                if (_isExpanded != value)
+                {
+                    _isExpanded = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public SnomedConceptViewModel(SnomedConceptWithTerms concept, SnomedBrowserViewModel parent)
         {
             // Convert to base SnomedConcept for phrase mapping
@@ -449,6 +495,38 @@ namespace Wysg.Musm.Radium.ViewModels
                 termVm.PropertyChanged += OnTermPropertyChanged;
                 Terms.Add(termVm);
             }
+            
+            // Determine initial expansion state AFTER all terms are added
+            DetermineInitialExpansionState();
+        }
+
+        private void DetermineInitialExpansionState()
+        {
+            // Collapse if all synonyms contain structural terms (yellow background)
+            var synonyms = Terms.Where(t => string.Equals(t.TermType, "Synonym", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (synonyms.Count > 0)
+            {
+                bool allSynonymsAreStructural = synonyms.All(s => IsStructuralTerm(s.Term));
+                if (allSynonymsAreStructural)
+                {
+                    IsExpanded = false;
+                    System.Diagnostics.Debug.WriteLine($"[SnomedConceptVM] Collapsed concept {Concept.ConceptIdStr} - all synonyms are structural");
+                    return;
+                }
+            }
+
+            // Note: We'll check for existing phrases after the async load completes
+            // The HasExistingPhrases check will trigger collapse in UpdateHasExistingPhrases
+        }
+
+        private static bool IsStructuralTerm(string term)
+        {
+            if (string.IsNullOrWhiteSpace(term)) return false;
+            
+            // Check if term contains "structure", "entire" (case-insensitive), or "("
+            return term.IndexOf("structure", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   term.IndexOf("entire", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   term.Contains('(');
         }
 
         private void OnTermPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -463,7 +541,18 @@ namespace Wysg.Musm.Radium.ViewModels
         private void UpdateHasExistingPhrases()
         {
             // Concept has existing phrases if ANY term is marked as added
-            HasExistingPhrases = Terms.Any(t => t.IsAdded);
+            var hasExisting = Terms.Any(t => t.IsAdded);
+            if (HasExistingPhrases != hasExisting)
+            {
+                HasExistingPhrases = hasExisting;
+                
+                // Collapse if concept has existing phrases (red background)
+                if (hasExisting && IsExpanded)
+                {
+                    IsExpanded = false;
+                    System.Diagnostics.Debug.WriteLine($"[SnomedConceptVM] Collapsed concept {Concept.ConceptIdStr} - has existing phrases");
+                }
+            }
         }
 
         public async Task RefreshTermStatesAsync()

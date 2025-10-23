@@ -283,7 +283,8 @@ namespace Wysg.Musm.Radium.Services
             if (accountId <= 0) return Array.Empty<PhraseInfo>();
             var state = _states.GetOrAdd(accountId, id => new AccountPhraseState(id));
             if (state.ById.Count == 0) await LoadSnapshotAsync(state).ConfigureAwait(false);
-            return state.ById.Values.OrderByDescending(r => r.UpdatedAt).Take(1000)
+            // Return ALL account phrases (removed Take(1000) limit for comprehensive access)
+            return state.ById.Values.OrderByDescending(r => r.UpdatedAt)
                 .Select(r => new PhraseInfo(r.Id, r.AccountId, r.Text, r.Active, r.UpdatedAt, r.Rev)).ToList();
         }
 
@@ -292,7 +293,8 @@ namespace Wysg.Musm.Radium.Services
         {
             var state = _states.GetOrAdd(GLOBAL_KEY, _ => new AccountPhraseState(null));
             if (state.ById.Count == 0) await LoadGlobalSnapshotAsync(state).ConfigureAwait(false);
-            return state.ById.Values.OrderByDescending(r => r.UpdatedAt).Take(1000)
+            // Return ALL global phrases (removed Take(1000) limit for accurate SNOMED browser existence checks and semantic tag loading)
+            return state.ById.Values.OrderByDescending(r => r.UpdatedAt)
                 .Select(r => new PhraseInfo(r.Id, r.AccountId, r.Text, r.Active, r.UpdatedAt, r.Rev)).ToList();
         }
 

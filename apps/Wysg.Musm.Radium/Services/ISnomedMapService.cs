@@ -63,6 +63,13 @@ namespace Wysg.Musm.Radium.Services
     {
         Task<IReadOnlyList<SnomedConcept>> SearchCachedConceptsAsync(string query, int limit = 50);
         Task<PhraseSnomedMapping?> GetMappingAsync(long phraseId);
+        
+        /// <summary>
+        /// Bulk retrieval method to avoid N+1 query problem.
+        /// Gets mappings for multiple phrases in a single database query.
+        /// </summary>
+        Task<IReadOnlyDictionary<long, PhraseSnomedMapping>> GetMappingsBatchAsync(IEnumerable<long> phraseIds);
+        
         Task<bool> MapPhraseAsync(long phraseId, long? accountId, long conceptId, string mappingType = "exact", decimal? confidence = null, string? notes = null, long? mappedBy = null);
         Task CacheConceptAsync(SnomedConcept concept);
     }

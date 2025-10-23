@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Wysg.Musm.Radium.ViewModels
@@ -61,35 +62,34 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     try
                     {
-                        // Get all global phrase metadata
+                        // Get all global phrase metadata (no limit - load ALL)
                         var globalPhrases = await _phrases.GetAllGlobalPhraseMetaAsync().ConfigureAwait(false);
+                        System.Diagnostics.Debug.WriteLine($"[SemanticTag] Loading mappings for {globalPhrases.Count} global phrases...");
                         
-                        // Load mappings for each global phrase
+                        // Use batch loading to avoid N+1 query problem (single query instead of thousands)
+                        var phraseIds = globalPhrases.Select(p => p.Id).ToList();
+                        var mappings = await _snomedMapService.GetMappingsBatchAsync(phraseIds).ConfigureAwait(false);
+                        
+                        System.Diagnostics.Debug.WriteLine($"[SemanticTag] Batch loaded {mappings.Count} mappings");
+                        
+                        // Extract semantic tags from mappings
                         foreach (var phrase in globalPhrases)
                         {
-                            try
+                            if (mappings.TryGetValue(phrase.Id, out var mapping))
                             {
-                                var mapping = await _snomedMapService.GetMappingAsync(phrase.Id).ConfigureAwait(false);
-                                if (mapping != null)
+                                var semanticTag = mapping.GetSemanticTag();
+                                if (!string.IsNullOrWhiteSpace(semanticTag))
                                 {
-                                    var semanticTag = mapping.GetSemanticTag();
-                                    if (!string.IsNullOrWhiteSpace(semanticTag))
-                                    {
-                                        semanticTags[phrase.Text] = semanticTag;
-                                        System.Diagnostics.Debug.WriteLine($"[SemanticTag] Loaded: '{phrase.Text}' ¡æ '{semanticTag}'");
-                                    }
+                                    semanticTags[phrase.Text] = semanticTag;
                                 }
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"[SemanticTag] Error loading mapping for '{phrase.Text}': {ex.Message}");
                             }
                         }
                         
-                        System.Diagnostics.Debug.WriteLine($"[SemanticTag] Total semantic tags loaded: {semanticTags.Count}");
+                        System.Diagnostics.Debug.WriteLine($"[SemanticTag] Total semantic tags loaded: {semanticTags.Count} from {globalPhrases.Count} global phrases");
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        System.Diagnostics.Debug.WriteLine($"[SemanticTag] Error loading semantic tags: {ex.Message}");
                         // If SNOMED service fails, just use empty semantic tags
                     }
                 }
@@ -117,3 +117,4 @@ namespace Wysg.Musm.Radium.ViewModels
         }
     }
 }
+
