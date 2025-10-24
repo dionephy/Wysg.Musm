@@ -165,8 +165,9 @@
         </StackPanel>
 
         <!-- Row 8: Findings Textboxes (side-by-side, same row = perfect Y alignment) -->
+        <!-- CHANGED: Bind to RawFindingsTextEditable instead of FindingsText (not affected by Reportify toggle) -->
         <TextBox x:Name="txtFindings" Grid.Row="8" Grid.Column="0"
-                 Text="{Binding FindingsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Text="{Binding RawFindingsTextEditable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                  Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
         
         <TextBox x:Name="txtFindingsProofread" Grid.Row="8" Grid.Column="2"
@@ -193,8 +194,9 @@
         </StackPanel>
 
         <!-- Row 10: Conclusion Textboxes (side-by-side, same row = perfect Y alignment) -->
+        <!-- CHANGED: Bind to RawConclusionTextEditable instead of ConclusionText (not affected by Reportify toggle) -->
         <TextBox x:Name="txtConclusion" Grid.Row="10" Grid.Column="0"
-                 Text="{Binding ConclusionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Text="{Binding RawConclusionTextEditable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                  Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
         
         <TextBox x:Name="txtConclusionProofread" Grid.Row="10" Grid.Column="2"
@@ -205,10 +207,11 @@
             <GridSplitter Grid.Row="0" Grid.RowSpan="11" Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
             <GridSplitter Grid.Row="0" Grid.RowSpan="11" Grid.Column="3" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
 
-            <!-- Column 4: JSON (spans all rows) -->
+            <!-- Column 4: JSON (spans all rows) - ALREADY binds to CurrentReportJson which contains raw values -->
             <TextBox x:Name="txtCurrentJson" Grid.Row="0" Grid.RowSpan="11" Grid.Column="4" 
                      Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
         </Grid>
     </ScrollViewer>
 </UserControl>
+

@@ -373,6 +373,10 @@ namespace Wysg.Musm.Radium.ViewModels
                 _suppressAutoToggle = false;
             }
             
+            // CRITICAL FIX: Notify the raw editable properties so top grid textboxes update
+            OnPropertyChanged(nameof(RawFindingsTextEditable));
+            OnPropertyChanged(nameof(RawConclusionTextEditable));
+            
             Debug.WriteLine($"[Editor.ToggleReportified] END: transformations applied");
         }
         private void CaptureRawIfNeeded()
@@ -439,12 +443,18 @@ namespace Wysg.Musm.Radium.ViewModels
                         AutoUnreportifyOnEdit();
                         return; // Cancel the text change
                     }
-                    if (!_reportified) _rawFindings = value; 
+                    
+                    // CRITICAL FIX: Always update _rawFindings when not reportified
+                    // This ensures RawFindingsTextEditable always returns current value
+                    if (!_reportified) _rawFindings = value;
+                    
                     if (SetProperty(ref _findingsText, value)) 
                     {
                         UpdateCurrentReportJson();
                         // Notify display property since it depends on this value
                         OnPropertyChanged(nameof(FindingsDisplay));
+                        // CRITICAL FIX: Also notify the raw editable property
+                        OnPropertyChanged(nameof(RawFindingsTextEditable));
                     }
                 } 
             } 
@@ -464,12 +474,18 @@ namespace Wysg.Musm.Radium.ViewModels
                         AutoUnreportifyOnEdit();
                         return; // Cancel the text change
                     }
-                    if (!_reportified) _rawConclusion = value; 
+                    
+                    // CRITICAL FIX: Always update _rawConclusion when not reportified
+                    // This ensures RawConclusionTextEditable always returns current value
+                    if (!_reportified) _rawConclusion = value;
+                    
                     if (SetProperty(ref _conclusionText, value))
                     {
                         UpdateCurrentReportJson();
                         // Notify display property since it depends on this value
                         OnPropertyChanged(nameof(ConclusionDisplay));
+                        // CRITICAL FIX: Also notify the raw editable property
+                        OnPropertyChanged(nameof(RawConclusionTextEditable));
                     }
                 } 
             } 
@@ -618,12 +634,16 @@ namespace Wysg.Musm.Radium.ViewModels
                     if (ConclusionText != newConclusion) _conclusionText = newConclusion;
                     OnPropertyChanged(nameof(FindingsText));
                     OnPropertyChanged(nameof(ConclusionText));
+                    // CRITICAL FIX: Also notify raw editable properties for top grid textboxes
+                    OnPropertyChanged(nameof(RawFindingsTextEditable));
+                    OnPropertyChanged(nameof(RawConclusionTextEditable));
                 }
                 else
                 {
                     // If reportified, apply transformation to the loaded values
                     FindingsText = ApplyReportifyBlock(newFindings, false);
                     ConclusionText = ApplyReportifyConclusion(newConclusion);
+                    // Raw editable properties are already notified via FindingsText/ConclusionText setters
                 }
             }
             catch { }
@@ -642,6 +662,82 @@ namespace Wysg.Musm.Radium.ViewModels
         // NEW: Public accessors for raw (unreportified) values - use these for database saves and PACS sends
         public string RawFindingsText => _reportified ? _rawFindings : (_findingsText ?? string.Empty);
         public string RawConclusionText => _reportified ? _rawConclusion : (_conclusionText ?? string.Empty);
+        
+        // NEW: Writable properties for top grid textboxes (not affected by Reportify toggle)
+        // These always read/write the raw values, regardless of Reportified state
+        public string RawFindingsTextEditable
+        {
+            get => _reportified ? _rawFindings : (_findingsText ?? string.Empty);
+            set
+            {
+                if (_reportified)
+                {
+                    // When reportified, update the raw backing value
+                    if (_rawFindings != value)
+                    {
+                        _rawFindings = value;
+                        OnPropertyChanged(nameof(RawFindingsTextEditable));
+                        
+                        // CRITICAL FIX: Also update the center editor with the reportified version
+                        _suppressAutoToggle = true;
+                        try
+                        {
+                            _findingsText = ApplyReportifyBlock(value, false);
+                            OnPropertyChanged(nameof(FindingsText));
+                            OnPropertyChanged(nameof(FindingsDisplay));
+                        }
+                        finally
+                        {
+                            _suppressAutoToggle = false;
+                        }
+                        
+                        UpdateCurrentReportJson();
+                    }
+                }
+                else
+                {
+                    // When not reportified, update FindingsText normally
+                    FindingsText = value;
+                }
+            }
+        }
+
+        public string RawConclusionTextEditable
+        {
+            get => _reportified ? _rawConclusion : (_conclusionText ?? string.Empty);
+            set
+            {
+                if (_reportified)
+                {
+                    // When reportified, update the raw backing value
+                    if (_rawConclusion != value)
+                    {
+                        _rawConclusion = value;
+                        OnPropertyChanged(nameof(RawConclusionTextEditable));
+                        
+                        // CRITICAL FIX: Also update the center editor with the reportified version
+                        _suppressAutoToggle = true;
+                        try
+                        {
+                            _conclusionText = ApplyReportifyConclusion(value);
+                            OnPropertyChanged(nameof(ConclusionText));
+                            OnPropertyChanged(nameof(ConclusionDisplay));
+                        }
+                        finally
+                        {
+                            _suppressAutoToggle = false;
+                        }
+                        
+                        UpdateCurrentReportJson();
+                    }
+                }
+                else
+                {
+                    // When not reportified, update ConclusionText normally
+                    ConclusionText = value;
+                }
+            }
+        }
         
         // Safe wrappers that check initialization state
         private void SafeUpdateJson()
