@@ -127,6 +127,80 @@ namespace Wysg.Musm.Radium.ViewModels
         private bool _autoSplitConclusion; public bool AutoSplitConclusion { get => _autoSplitConclusion; set => SetProperty(ref _autoSplitConclusion, value); }
         private bool _autoSplit; public bool AutoSplit { get => _autoSplit; set => SetProperty(ref _autoSplit, value); }
         
+        // NEW: Computed properties for previous report that switch between raw and proofread versions based on PreviousProofreadMode
+        // These properties will be bound to the previous report editor DocumentText
+        public string PreviousChiefComplaintDisplay 
+        {
+            get
+            {
+                var tab = SelectedPreviousStudy;
+                if (tab == null) return string.Empty;
+                return PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.ChiefComplaintProofread) 
+                    ? tab.ChiefComplaintProofread 
+                    : tab.ChiefComplaint;
+            }
+        }
+
+        public string PreviousPatientHistoryDisplay 
+        {
+            get
+            {
+                var tab = SelectedPreviousStudy;
+                if (tab == null) return string.Empty;
+                return PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.PatientHistoryProofread) 
+                    ? tab.PatientHistoryProofread 
+                    : tab.PatientHistory;
+            }
+        }
+
+        public string PreviousStudyTechniquesDisplay 
+        {
+            get
+            {
+                var tab = SelectedPreviousStudy;
+                if (tab == null) return string.Empty;
+                return PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.StudyTechniquesProofread) 
+                    ? tab.StudyTechniquesProofread 
+                    : tab.StudyTechniques;
+            }
+        }
+
+        public string PreviousComparisonDisplay 
+        {
+            get
+            {
+                var tab = SelectedPreviousStudy;
+                if (tab == null) return string.Empty;
+                return PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.ComparisonProofread) 
+                    ? tab.ComparisonProofread 
+                    : tab.Comparison;
+            }
+        }
+
+        public string PreviousFindingsDisplay 
+        {
+            get
+            {
+                var tab = SelectedPreviousStudy;
+                if (tab == null) return string.Empty;
+                return PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.FindingsProofread) 
+                    ? tab.FindingsProofread 
+                    : tab.FindingsOut;
+            }
+        }
+
+        public string PreviousConclusionDisplay 
+        {
+            get
+            {
+                var tab = SelectedPreviousStudy;
+                if (tab == null) return string.Empty;
+                return PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.ConclusionProofread) 
+                    ? tab.ConclusionProofread 
+                    : tab.ConclusionOut;
+            }
+        }
+        
         // Placeholder commands for split functionality
         public ICommand? SplitHeaderCommand { get; set; }
         public ICommand? SplitConclusionCommand { get; set; }

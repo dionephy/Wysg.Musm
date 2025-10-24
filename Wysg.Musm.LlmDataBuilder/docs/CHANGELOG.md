@@ -1,4 +1,282 @@
-# Changelog
+﻿# Changelog
+
+## Version 1.3.5 - Critical Save/Load Fix (2025-01-24)
+
+### Critical Bug Fix
+
+#### Records Emptying On Append
+
+**Problem**: When saving new records, **all previously saved records became empty** except the last one. Only Input, Output, ProtoOutput, and AppliedPromptNumbers were affected.
+
+**Root Cause**: **Deserialization mismatch in BtnSave_Click** when loading existing records:
+```csharp
+// BEFORE (incorrect) - Missing JsonSerializerOptions
+var records = JsonSerializer.Deserialize<List<LlmDataRecord>>(existingJson);
+// Result: Deserializes to empty objects because JSON is camelCase but C# expects PascalCase
+```
+
+**What Happened**:
+1. User saves Record 1 → Saved correctly as camelCase JSON
+2. User saves Record 2 → Loads existing file WITHOUT options → Record 1 deserializes as empty!
+3. Appends Record 2 → Saves [EmptyRecord1, Record2]
+4. User saves Record 3 → Loads file → Record 1,2 deserialize as empty!
+5. Result: Only the last record has data
+
+**Solution**: Use proper JsonSerializerOptions when loading:
+```csharp
+// AFTER (correct) - With JsonSerializerOptions
+var deserializeOptions = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    PropertyNameCaseInsensitive = true
+};
+var records = JsonSerializer.Deserialize<List<LlmDataRecord>>(existingJson, deserializeOptions);
+```
+
+**Impact**: **CRITICAL** - Prevented data loss on every save operation after the first
+
+### Technical Details
+
+#### Files Modified
+1. `MainWindow.xaml.cs` - Fixed 3 methods:
+   - `BtnSave_Click()` - Load existing records with proper options
+   - `UpdateRecordCount()` - Count records with proper options
+   - `CleanupBlankRecords()` - Clean with proper options
+
+#### Code Changes
+
+**BtnSave_Click (Load section)**:
+```csharp
+// Added deserialization options
+var deserializeOptions = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    PropertyNameCaseInsensitive = true
+};
+records = JsonSerializer.Deserialize<List<LlmDataRecord>>(existingJson, deserializeOptions) 
+    ?? new List<LlmDataRecord>();
+```
+
+**UpdateRecordCount**:
+```csharp
+// Added deserialization options
+var options = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    PropertyNameCaseInsensitive = true
+};
+var records = JsonSerializer.Deserialize<List<LlmDataRecord>>(json, options);
+```
+
+**CleanupBlankRecords**:
+```csharp
+// Added deserialization options for loading
+var deserializeOptions = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    PropertyNameCaseInsensitive = true
+};
+var records = JsonSerializer.Deserialize<List<LlmDataRecord>>(existingJson, deserializeOptions);
+```
+
+### Why This Happened
+
+This bug was introduced in **v1.3.3** when we fixed the Data Browser display issue by adding JsonSerializerOptions to `DataBrowserWindow.LoadData()`, but we **missed updating the same logic in MainWindow.xaml.cs**.
+
+**Timeline**:
+- v1.3.3: Fixed DataBrowserWindow.LoadData() ✅
+- v1.3.3: Missed MainWindow.BtnSave_Click() ❌ ← This caused the bug
+- v1.3.5: Fixed MainWindow methods ✅
+
+### User Impact
+
+**Before Fix (v1.3.4 and earlier)**:
+- ❌ Each save empties previous records
+- ❌ Only last record retains data
+- ❌ Record count shows incorrect count
+- ❌ Cleanup can't read records properly
+- ❌ Massive data loss risk
+
+**After Fix (v1.3.5)**:
+- ✅ All records persist correctly
+- ✅ Appending works properly
+- ✅ Record count accurate
+- ✅ Cleanup works correctly
+- ✅ No data loss
+
+### Testing Checklist
+
+**Critical Tests**:
+- [x] Save Record 1 → Check data.json has content
+- [x] Save Record 2 → Check Record 1 still has content
+- [x] Save Record 3 → Check Records 1,2 still have content
+- [x] Record count displays correctly
+- [x] Data Browser shows all records
+- [x] Cleanup removes only blank records
+
+**Scenario Test**:
+1. Delete data.json
+2. Save record: Input="test1", Output="test1"
+3. Save record: Input="test2", Output="test2"
+4. Save record: Input="test3", Output="test3"
+5. Open data.json → Should see 3 complete records ✅
+
+### Migration Notes
+
+**For Users Affected by v1.3.4**:
+1. ⚠️ Your existing data.json likely has empty records
+2. Use **"Cleanup Blank Records"** button to remove empties
+3. Re-enter any lost data
+4. Future saves will work correctly
+
+**For New Users**:
+- No action needed
+- All saves work correctly from the start
+
+### Related Issues
+
+- v1.3.1: Added validation to prevent blank saves
+- v1.3.3: Fixed Data Browser display (partial fix)
+- v1.3.5: Fixed save/load completely (complete fix)
+
+---
+
+## Version 1.3.4 - Decimal Prompt Numbers Support (2025-01-24)
+
+### Feature Enhancement
+
+#### Applied Prompt Numbers Now Supports Decimal Values
+
+**Previous Behavior**: Only accepted integer values (1, 2, 3)
+
+**New Behavior**: Accepts both integers and decimal values (1, 2.1, 2.2, 3)
+
+**Use Case**: Allows for hierarchical or sub-numbered prompt organization:
+- Main prompts: 1, 2, 3
+- Sub-prompts: 1.1, 1.2, 1.3
+- Nested: 2.1, 2.2, 2.3
+
+### Technical Implementation
+
+#### Data Model Change
+- **Changed**: `AppliedPromptNumbers` from `List<int>` to `List<string>`
+- **Validation**: Each value must be a valid decimal number (validated with `decimal.TryParse`)
+- **Storage**: Stored as strings in JSON to preserve decimal format
+
+#### Files Modified
+1. **MainWindow.xaml.cs**
+   - Updated `BtnSave_Click` parsing logic
+   - Changed validation to accept decimal format
+   - Updated error message examples
+
+2. **MainWindow.xaml**
+   - Updated hint text with decimal examples
+
+3. **DataBrowserWindow.xaml.cs**
+   - Updated `LlmDataRecordViewModel` to use `List<string>`
+
+### Examples
+
+#### Valid Inputs
+
+**Integers only** (backward compatible):
+```
+1,2,3
+```
+
+**Decimals only**:
+```
+1.1,1.2,1.3
+```
+
+**Mixed**:
+```
+1,1.1,1.2,2,2.1,2.2,3
+```
+
+**With spaces** (auto-trimmed):
+```
+1.1, 1.2, 1.3
+```
+
+### JSON Format
+
+**Before (integers)**:
+```json
+{
+  "appliedPromptNumbers": [1, 2, 3]
+}
+```
+
+**After (strings)**:
+```json
+{
+  "appliedPromptNumbers": ["1", "1.1", "1.2", "2"]
+}
+```
+
+### Validation
+
+The system validates that each entry is a valid number:
+- ✅ `1` - Valid integer
+- ✅ `1.1` - Valid decimal
+- ✅ `1.0` - Valid decimal
+- ✅ `2.12` - Valid decimal
+- ❌ `1.a` - Invalid (contains letter)
+- ❌ `abc` - Invalid (not a number)
+- ❌ `1..2` - Invalid (double decimal)
+
+### Backward Compatibility
+
+**Existing data.json files**:
+- Old integer format will be automatically converted to strings during load
+- No data migration required
+- Example: `[1, 2, 3]` → `["1", "2", "3"]`
+
+**User Experience**:
+- Previous integer-only input still works
+- Users can now add decimal numbers
+- Display in Data Browser shows numbers as entered
+
+### Use Cases
+
+#### Hierarchical Prompts
+
+```
+Main Category 1:
+  1.1 - Sub-category A
+  1.2 - Sub-category B
+  1.3 - Sub-category C
+
+Main Category 2:
+  2.1 - Sub-category A
+  2.2 - Sub-category B
+```
+
+#### Prompt Versioning
+
+```
+1.0 - Initial prompt
+1.1 - First revision
+1.2 - Second revision
+2.0 - Major update
+```
+
+#### Template Numbering
+
+```
+Template Set 1: 1, 1.1, 1.2
+Template Set 2: 2, 2.1, 2.2
+Template Set 3: 3, 3.1, 3.2
+```
+
+### Breaking Changes
+None - Fully backward compatible with existing integer-only data.
+
+### Migration Notes
+No action required. Existing integer data will work as-is.
+
+---
 
 ## Version 1.3.3 - Data Browser Display Fix (2025-01-24)
 
@@ -50,12 +328,12 @@ var records = JsonSerializer.Deserialize<List<LlmDataRecord>>(json, options);
 
 ### Testing Checklist
 
-- [x] Open Data Browser �� Shows record count
-- [x] View DataGrid �� Displays all text content
-- [x] Select record �� Detail panel populates
-- [x] Export record �� Creates valid JSON file
-- [x] Delete record �� Removes correctly
-- [x] Refresh �� Reloads data successfully
+- [x] Open Data Browser → Shows record count
+- [x] View DataGrid → Displays all text content
+- [x] Select record → Detail panel populates
+- [x] Export record → Creates valid JSON file
+- [x] Delete record → Removes correctly
+- [x] Refresh → Reloads data successfully
 
 ### Migration Notes
 
@@ -316,10 +594,10 @@ Records are kept if:
 ### Use Cases
 
 #### Preventing Future Blank Records
-- User enters only spaces in Input �� Rejected
-- User enters only spaces in Output �� Rejected
-- User enters valid text with spaces �� Trimmed automatically
-- User copies text with extra whitespace �� Trimmed automatically
+- User enters only spaces in Input → Rejected
+- User enters only spaces in Output → Rejected
+- User enters valid text with spaces → Trimmed automatically
+- User copies text with extra whitespace → Trimmed automatically
 
 #### Cleaning Up Existing Data
 - User has 100 records, 50 are blank

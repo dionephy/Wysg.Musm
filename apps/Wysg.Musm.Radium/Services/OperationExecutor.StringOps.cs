@@ -72,6 +72,74 @@ namespace Wysg.Musm.Radium.Services
             return ($"{result} ('{value1}' vs '{value2}')", result);
         }
 
+        private static (string preview, string? value) ExecuteIsAlmostMatch(string? value1, string? value2)
+        {
+            value1 ??= string.Empty;
+            value2 ??= string.Empty;
+
+            // Exact match check
+            if (string.Equals(value1, value2, StringComparison.Ordinal))
+            {
+                return ("true (exact match)", "true");
+            }
+
+            // Normalize both strings for similarity comparison
+            string norm1 = NormalizeForComparison(value1);
+            string norm2 = NormalizeForComparison(value2);
+
+            // Check normalized match
+            if (string.Equals(norm1, norm2, StringComparison.Ordinal))
+            {
+                return ("true (normalized match)", "true");
+            }
+
+            // Check datetime pattern similarity (e.g., "2025-10-24 0456126" vs "2025-10-24 04:56:26")
+            if (IsDateTimeSimilar(value1, value2))
+            {
+                return ("true (datetime similar)", "true");
+            }
+
+            return ("false", "false");
+        }
+
+        /// <summary>
+        /// Normalizes a string for comparison by removing whitespace, punctuation, and converting to uppercase.
+        /// </summary>
+        private static string NormalizeForComparison(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return string.Empty;
+            
+            // Remove all non-alphanumeric characters and convert to uppercase
+            return System.Text.RegularExpressions.Regex.Replace(input, @"[^A-Za-z0-9]", "").ToUpperInvariant();
+        }
+
+        /// <summary>
+        /// Checks if two strings represent similar datetimes (handles OCR errors like colons read as digits).
+        /// </summary>
+        private static bool IsDateTimeSimilar(string value1, string value2)
+        {
+            // Pattern: YYYY-MM-DD followed by 6-7 digits (time with possible separators as digits)
+            // Example: "2025-10-24 0456126" should match "2025-10-24 04:56:26"
+            
+            var dateTimePattern = new System.Text.RegularExpressions.Regex(
+                @"(\d{4}-\d{2}-\d{2})\s*(\d{1,2})[\D:lI1]?(\d{2})[\D:lI1]?(\d{2})",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            var match1 = dateTimePattern.Match(value1);
+            var match2 = dateTimePattern.Match(value2);
+
+            if (!match1.Success || !match2.Success) return false;
+
+            // Compare date part (YYYY-MM-DD)
+            if (match1.Groups[1].Value != match2.Groups[1].Value) return false;
+
+            // Compare time components (HH, MM, SS) - normalize to 2 digits
+            string time1 = $"{match1.Groups[2].Value.PadLeft(2, '0')}{match1.Groups[3].Value}{match1.Groups[4].Value}";
+            string time2 = $"{match2.Groups[2].Value.PadLeft(2, '0')}{match2.Groups[3].Value}{match2.Groups[4].Value}";
+
+            return time1 == time2;
+        }
+
         private static (string preview, string? value) ExecuteTrimString(string? sourceString, string? trimString)
         {
             sourceString ??= string.Empty;

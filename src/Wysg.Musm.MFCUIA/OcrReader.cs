@@ -80,6 +80,7 @@ public static class OcrReader
 #if WINDOWS_OCR
     private static Bitmap PreprocessForOcr(Bitmap src)
     {
+        // Use original proven scale factor - 1.5x is the sweet spot
         float scale = 1.5f;
         int w = Math.Max(1, (int)(src.Width * scale));
         int h = Math.Max(1, (int)(src.Height * scale));
@@ -95,7 +96,7 @@ public static class OcrReader
         var gray = new Bitmap(w, h, PixelFormat.Format24bppRgb);
         using (var g = Graphics.FromImage(gray))
         {
-            var cm = new ColorMatrix(new float[] []
+            var cm = new ColorMatrix(new float[][] 
             {
                 new float[] {0.299f, 0.299f, 0.299f, 0f, 0f},
                 new float[] {0.587f, 0.587f, 0.587f, 0f, 0f},
@@ -118,6 +119,7 @@ public static class OcrReader
             byte* dstPtr = (byte*)outData.Scan0;
             int stride = data.Stride;
             int oStride = outData.Stride;
+            // Use original proven threshold of 170
             byte T = 170;
             for (int y = 0; y < h; y++)
             {
@@ -143,21 +145,34 @@ public static class OcrReader
     private static string NormalizeArtifacts(string s)
     {
         if (string.IsNullOrEmpty(s)) return s;
-        // Quotes and punctuation
-        s = s.Replace('¡Ç', ':').Replace('£§', '\'')
-             .Replace('¡°', '"').Replace('¡±', '"')
-             .Replace('¡®', '\'')
-             .Replace('£ü', ':').Replace('|', ':');
-        // Context-specific: ¡º between letters -> r; otherwise map to parentheses to retain study names
-        s = Regex.Replace(s, "([A-Za-z°¡-ÆR])¡º([A-Za-z°¡-ÆR])", "$1r$2");
-        s = s.Replace('¡º', '(').Replace('¡»', ')').Replace('¡²', '(').Replace('¡³', ')');
-        // Korean 'ÀÌ' between digits -> 2 (time misread)
-        s = Regex.Replace(s, @"(?<=\d)ÀÌ(?=\d)", "2");
-        // Collapse spaces
+        
+        // Replace various quote and punctuation artifacts
+        s = s.Replace('\u003F', ':'); // ? to :
+        s = s.Replace('\u2032', '\''); // prime to apostrophe  
+        s = s.Replace('\u201C', '"'); // left double quote
+        s = s.Replace('\u201D', '"'); // right double quote
+        s = s.Replace('\u2018', '\''); // left single quote
+        s = s.Replace('\uFF1A', ':'); // fullwidth colon
+        s = s.Replace('|', ':'); // pipe to colon
+        
+        // Context-specific: Korean character between letters becomes r
+        s = Regex.Replace(s, "([A-Za-z\u3131-\u3163\uAC00-\uD7A3])\u3139([A-Za-z\u3131-\u3163\uAC00-\uD7A3])", "$1r$2");
+        
+        // Map Korean character and full-width parentheses to ASCII parentheses  
+        s = s.Replace('\u3139', '('); // Korean ¤© to (
+        s = s.Replace('\uFF08', '('); // fullwidth (
+        s = s.Replace('\uFF09', ')'); // fullwidth )
+        
+        // Korean character between digits becomes 2 (time misread)
+        s = Regex.Replace(s, @"(?<=\d)\u3147(?=\d)", "2");
+        
+        // Collapse multiple spaces
         s = Regex.Replace(s, "\\s+", " ");
-        // Normalize datetime separators
-        s = Regex.Replace(s, @"(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2})\D(\d{2})\D(\d{2})", m =>
-            $"{m.Groups[1].Value}-{m.Groups[2].Value}-{m.Groups[3].Value} {m.Groups[4].Value.PadLeft(2,'0')}:{m.Groups[5].Value}:{m.Groups[6].Value}");
+        
+        // Normalize datetime separators (existing logic for other formats)
+        s = Regex.Replace(s, @"(\d{4})-(\d{2}-\d{2})\s+(\d{1,2})\D(\d{2})\D(\d{2})", m =>
+            $"{m.Groups[1].Value}-{m.Groups[2].Value} {m.Groups[3].Value.PadLeft(2,'0')}:{m.Groups[4].Value}:{m.Groups[5].Value}");
+        
         return s.Trim();
     }
 

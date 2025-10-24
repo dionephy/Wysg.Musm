@@ -36,6 +36,10 @@ namespace Wysg.Musm.Radium.ViewModels
                 OnPropertyChanged(nameof(Reportified));
                 Debug.WriteLine($"[Editor.Reportified] PropertyChanged raised, _reportified is now={_reportified}");
                 
+                // Notify display properties since reportified state affects them
+                OnPropertyChanged(nameof(FindingsDisplay));
+                OnPropertyChanged(nameof(ConclusionDisplay));
+                
                 // Only apply transformations if value actually changed
                 if (actualChanged)
                 {
@@ -87,6 +91,33 @@ namespace Wysg.Musm.Radium.ViewModels
             } 
         }
         
+        // NEW: Reported report fields (populated only by GetReportedReport module)
+        private string _reportedHeaderAndFindings = string.Empty; 
+        public string ReportedHeaderAndFindings 
+        { 
+            get => _reportedHeaderAndFindings; 
+            set 
+            { 
+                if (SetProperty(ref _reportedHeaderAndFindings, value ?? string.Empty)) 
+                {
+                    UpdateCurrentReportJson(); 
+                }
+            } 
+        }
+        
+        private string _reportedFinalConclusion = string.Empty; 
+        public string ReportedFinalConclusion 
+        { 
+            get => _reportedFinalConclusion; 
+            set 
+            { 
+                if (SetProperty(ref _reportedFinalConclusion, value ?? string.Empty)) 
+                {
+                    UpdateCurrentReportJson(); 
+                }
+            } 
+        }
+
         // NEW: Radiologist name captured via GetReportedReport module
         private string _reportRadiologist = string.Empty; public string ReportRadiologist { get => _reportRadiologist; set { if (SetProperty(ref _reportRadiologist, value ?? string.Empty)) UpdateCurrentReportJson(); } }
 
@@ -108,12 +139,87 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         // Proofread fields for current report (root JSON)
-        private string _chiefComplaintProofread = string.Empty; public string ChiefComplaintProofread { get => _chiefComplaintProofread; set { if (SetProperty(ref _chiefComplaintProofread, value ?? string.Empty)) UpdateCurrentReportJson(); } }
-        private string _patientHistoryProofread = string.Empty; public string PatientHistoryProofread { get => _patientHistoryProofread; set { if (SetProperty(ref _patientHistoryProofread, value ?? string.Empty)) UpdateCurrentReportJson(); } }
-        private string _studyTechniquesProofread = string.Empty; public string StudyTechniquesProofread { get => _studyTechniquesProofread; set { if (SetProperty(ref _studyTechniquesProofread, value ?? string.Empty)) UpdateCurrentReportJson(); } }
-        private string _comparisonProofread = string.Empty; public string ComparisonProofread { get => _comparisonProofread; set { if (SetProperty(ref _comparisonProofread, value ?? string.Empty)) UpdateCurrentReportJson(); } }
-        private string _findingsProofread = string.Empty; public string FindingsProofread { get => _findingsProofread; set { if (SetProperty(ref _findingsProofread, value ?? string.Empty)) UpdateCurrentReportJson(); } }
-        private string _conclusionProofread = string.Empty; public string ConclusionProofread { get => _conclusionProofread; set { if (SetProperty(ref _conclusionProofread, value ?? string.Empty)) UpdateCurrentReportJson(); } }
+        private string _chiefComplaintProofread = string.Empty; 
+        public string ChiefComplaintProofread 
+        { 
+            get => _chiefComplaintProofread; 
+            set 
+            { 
+                if (SetProperty(ref _chiefComplaintProofread, value ?? string.Empty)) 
+                {
+                    UpdateCurrentReportJson(); 
+                }
+            } 
+        }
+        
+        private string _patientHistoryProofread = string.Empty; 
+        public string PatientHistoryProofread 
+        { 
+            get => _patientHistoryProofread; 
+            set 
+            { 
+                if (SetProperty(ref _patientHistoryProofread, value ?? string.Empty)) 
+                {
+                    UpdateCurrentReportJson(); 
+                }
+            } 
+        }
+        
+        private string _studyTechniquesProofread = string.Empty; 
+        public string StudyTechniquesProofread 
+        { 
+            get => _studyTechniquesProofread; 
+            set 
+            { 
+                if (SetProperty(ref _studyTechniquesProofread, value ?? string.Empty)) 
+                {
+                    UpdateCurrentReportJson(); 
+                }
+            } 
+        }
+        
+        private string _comparisonProofread = string.Empty; 
+        public string ComparisonProofread 
+        { 
+            get => _comparisonProofread; 
+            set 
+            { 
+                if (SetProperty(ref _comparisonProofread, value ?? string.Empty)) 
+                {
+                    UpdateCurrentReportJson(); 
+                }
+            } 
+        }
+        
+        private string _findingsProofread = string.Empty; 
+        public string FindingsProofread 
+        { 
+            get => _findingsProofread; 
+            set 
+            { 
+                if (SetProperty(ref _findingsProofread, value ?? string.Empty)) 
+                {
+                    UpdateCurrentReportJson(); 
+                    // Notify computed properties
+                    OnPropertyChanged(nameof(FindingsDisplay));
+                }
+            } 
+        }
+        
+        private string _conclusionProofread = string.Empty; 
+        public string ConclusionProofread 
+        { 
+            get => _conclusionProofread; 
+            set 
+            { 
+                if (SetProperty(ref _conclusionProofread, value ?? string.Empty)) 
+                {
+                    UpdateCurrentReportJson(); 
+                    // Notify computed properties
+                    OnPropertyChanged(nameof(ConclusionDisplay));
+                }
+            } 
+        }
         
         private string _patientHistory = string.Empty; 
         public string PatientHistory 
@@ -163,6 +269,85 @@ namespace Wysg.Musm.Radium.ViewModels
             } 
         }
 
+        // NEW: Computed properties that consider BOTH Reportified and ProofreadMode
+        // Priority: When BOTH are ON, show reportified version of proofread text
+        // This allows showing reportified text regardless of proofread state
+        public string FindingsDisplay
+        {
+            get
+            {
+                string result;
+                
+                // PRIORITY 1: Both Reportified AND ProofreadMode are ON
+                // Show reportified version of PROOFREAD text
+                if (_reportified && ProofreadMode && !string.IsNullOrWhiteSpace(_findingsProofread))
+                {
+                    result = ApplyReportifyBlock(_findingsProofread, false);
+                    Debug.WriteLine($"[FindingsDisplay] BOTH ON, returning reportified(proofread) length={result?.Length ?? 0}");
+                }
+                // PRIORITY 2: Only Reportified is ON
+                // Show reportified version of RAW text
+                else if (_reportified)
+                {
+                    result = _findingsText; // This already contains the reportified version of raw text
+                    Debug.WriteLine($"[FindingsDisplay] Reportified=true only, returning _findingsText length={result?.Length ?? 0}");
+                }
+                // PRIORITY 3: Only ProofreadMode is ON
+                // Show proofread text as-is (not reportified)
+                else if (ProofreadMode && !string.IsNullOrWhiteSpace(_findingsProofread))
+                {
+                    result = _findingsProofread;
+                    Debug.WriteLine($"[FindingsDisplay] ProofreadMode=true only, returning _findingsProofread length={result?.Length ?? 0}");
+                }
+                // PRIORITY 4: Both OFF
+                // Show raw text
+                else
+                {
+                    result = _findingsText;
+                    Debug.WriteLine($"[FindingsDisplay] Both OFF, returning _findingsText length={result?.Length ?? 0}");
+                }
+                return result;
+            }
+        }
+
+        public string ConclusionDisplay
+        {
+            get
+            {
+                string result;
+                
+                // PRIORITY 1: Both Reportified AND ProofreadMode are ON
+                // Show reportified version of PROOFREAD text
+                if (_reportified && ProofreadMode && !string.IsNullOrWhiteSpace(_conclusionProofread))
+                {
+                    result = ApplyReportifyConclusion(_conclusionProofread);
+                    Debug.WriteLine($"[ConclusionDisplay] BOTH ON, returning reportified(proofread) length={result?.Length ?? 0}");
+                }
+                // PRIORITY 2: Only Reportified is ON
+                // Show reportified version of RAW text
+                else if (_reportified)
+                {
+                    result = _conclusionText; // This already contains the reportified version of raw text
+                    Debug.WriteLine($"[ConclusionDisplay] Reportified=true only, returning _conclusionText length={result?.Length ?? 0}");
+                }
+                // PRIORITY 3: Only ProofreadMode is ON
+                // Show proofread text as-is (not reportified)
+                else if (ProofreadMode && !string.IsNullOrWhiteSpace(_conclusionProofread))
+                {
+                    result = _conclusionProofread;
+                    Debug.WriteLine($"[ConclusionDisplay] ProofreadMode=true only, returning _conclusionProofread length={result?.Length ?? 0}");
+                }
+                // PRIORITY 4: Both OFF
+                // Show raw text
+                else
+                {
+                    result = _conclusionText;
+                    Debug.WriteLine($"[ConclusionDisplay] Both OFF, returning _conclusionText length={result?.Length ?? 0}");
+                }
+                return result;
+            }
+        }
+        
         private bool _suppressAutoToggle; // prevents recursive toggling while programmatically changing text
         private bool _isInitialized; // prevents updates during initialization
 
@@ -258,6 +443,8 @@ namespace Wysg.Musm.Radium.ViewModels
                     if (SetProperty(ref _findingsText, value)) 
                     {
                         UpdateCurrentReportJson();
+                        // Notify display property since it depends on this value
+                        OnPropertyChanged(nameof(FindingsDisplay));
                     }
                 } 
             } 
@@ -278,7 +465,12 @@ namespace Wysg.Musm.Radium.ViewModels
                         return; // Cancel the text change
                     }
                     if (!_reportified) _rawConclusion = value; 
-                    if (SetProperty(ref _conclusionText, value)) UpdateCurrentReportJson(); 
+                    if (SetProperty(ref _conclusionText, value))
+                    {
+                        UpdateCurrentReportJson();
+                        // Notify display property since it depends on this value
+                        OnPropertyChanged(nameof(ConclusionDisplay));
+                    }
                 } 
             } 
         }
@@ -331,14 +523,16 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 var obj = new
                 {
-                    // CRITICAL FIX: Always save RAW (unreportified) values to JSON
-                    // When reportified=true, _rawFindings/_rawConclusion contain the original text
-                    // When reportified=false, FindingsText/ConclusionText are already raw
-                    header_and_findings = _reportified ? _rawFindings : (FindingsText ?? string.Empty),
-                    final_conclusion = _reportified ? _rawConclusion : (ConclusionText ?? string.Empty),
-                    // Legacy keys for backward compatibility (also use raw values)
+                    // REPORTED REPORT: Populated ONLY by GetReportedReport module (read-only)
+                    header_and_findings = _reportedHeaderAndFindings,
+                    final_conclusion = _reportedFinalConclusion,
+                    
+                    // CURRENT EDITABLE REPORT: Bound to Findings/Conclusion editors (two-way)
+                    // CRITICAL FIX: Always save RAW (unreportified) values
                     findings = _reportified ? _rawFindings : (FindingsText ?? string.Empty),
                     conclusion = _reportified ? _rawConclusion : (ConclusionText ?? string.Empty),
+                    
+                    // Metadata and other fields
                     study_remark = _studyRemark,
                     patient_remark = _patientRemark,
                     report_radiologist = _reportRadiologist,
@@ -368,31 +562,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
                 
-                // Read from header_and_findings/final_conclusion keys first (preferred), then fall back to legacy findings/conclusion
-                string newFindings = string.Empty;
-                string newConclusion = string.Empty;
+                // Read reported report fields (only from JSON, not bound to editors)
+                string newHeaderAndFindings = root.TryGetProperty("header_and_findings", out var hfEl) && hfEl.ValueKind == JsonValueKind.String ? hfEl.GetString() ?? string.Empty : string.Empty;
+                string newFinalConclusion = root.TryGetProperty("final_conclusion", out var fcEl) && fcEl.ValueKind == JsonValueKind.String ? fcEl.GetString() ?? string.Empty : string.Empty;
                 
-                // Try header_and_findings first
-                if (root.TryGetProperty("header_and_findings", out var hfEl) && hfEl.ValueKind == JsonValueKind.String)
-                {
-                    newFindings = hfEl.GetString() ?? string.Empty;
-                }
-                else if (root.TryGetProperty("findings", out var fEl) && fEl.ValueKind == JsonValueKind.String)
-                {
-                    // Fall back to legacy "findings" key
-                    newFindings = fEl.GetString() ?? string.Empty;
-                }
-                
-                // Try final_conclusion first
-                if (root.TryGetProperty("final_conclusion", out var fcEl) && fcEl.ValueKind == JsonValueKind.String)
-                {
-                    newConclusion = fcEl.GetString() ?? string.Empty;
-                }
-                else if (root.TryGetProperty("conclusion", out var cEl) && cEl.ValueKind == JsonValueKind.String)
-                {
-                    // Fall back to legacy "conclusion" key
-                    newConclusion = cEl.GetString() ?? string.Empty;
-                }
+                // Read current editable report fields (bound to Findings/Conclusion editors)
+                string newFindings = root.TryGetProperty("findings", out var fEl) && fEl.ValueKind == JsonValueKind.String ? fEl.GetString() ?? string.Empty : string.Empty;
+                string newConclusion = root.TryGetProperty("conclusion", out var cEl) && cEl.ValueKind == JsonValueKind.String ? cEl.GetString() ?? string.Empty : string.Empty;
                 
                 string newStudyRemark = root.TryGetProperty("study_remark", out var sEl) ? (sEl.GetString() ?? string.Empty) : string.Empty;
                 string newChiefComplaint = root.TryGetProperty("chief_complaint", out var ccEl) ? (ccEl.GetString() ?? string.Empty) : string.Empty;
@@ -408,7 +584,15 @@ namespace Wysg.Musm.Radium.ViewModels
                 string newFindingsPf = root.TryGetProperty("findings_proofread", out var fpEl) ? (fpEl.GetString() ?? string.Empty) : string.Empty;
                 string newConclusionPf = root.TryGetProperty("conclusion_proofread", out var clpEl) ? (clpEl.GetString() ?? string.Empty) : string.Empty;
                 _updatingFromJson = true;
-                _rawFindings = newFindings; _rawConclusion = newConclusion; // keep raw updated
+                
+                // Update reported report fields (not bound to editors)
+                _reportedHeaderAndFindings = newHeaderAndFindings; OnPropertyChanged(nameof(ReportedHeaderAndFindings));
+                _reportedFinalConclusion = newFinalConclusion; OnPropertyChanged(nameof(ReportedFinalConclusion));
+                
+                // Update current editable report fields (keep raw updated for reportify toggling)
+                _rawFindings = newFindings; 
+                _rawConclusion = newConclusion;
+                
                 StudyRemark = newStudyRemark; // round-trippable
                 PatientRemark = newPatientRemark; // now round-trippable as well
                 ReportRadiologist = newReportRadiologist; // round-trippable
@@ -426,7 +610,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 _conclusionProofread = newConclusionPf; OnPropertyChanged(nameof(ConclusionProofread));
                 // Recompute HeaderText from component fields even during JSON updates
                 UpdateFormattedHeader();
-                // Do not assign PatientRemark here; it is updated by automation AcquirePatientRemarkAsync only
+                
+                // Update Findings/Conclusion editors from JSON
                 if (!_reportified)
                 {
                     if (FindingsText != newFindings) _findingsText = newFindings; // assign backing fields directly to avoid auto toggle
@@ -436,6 +621,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 }
                 else
                 {
+                    // If reportified, apply transformation to the loaded values
                     FindingsText = ApplyReportifyBlock(newFindings, false);
                     ConclusionText = ApplyReportifyConclusion(newConclusion);
                 }

@@ -62,10 +62,12 @@ The application works with three main files in its working directory:
     "input": "The launch were sucessful",
     "output": "The launch was successful",
     "protoOutput": "The launch was successful",
-    "appliedPromptNumbers": [1, 2]
+    "appliedPromptNumbers": ["1", "1.1", "2"]
   }
 ]
 ```
+
+**Note**: Applied Prompt Numbers are stored as strings to support both integers (1, 2, 3) and decimals (1.1, 1.2, 2.1) for hierarchical prompt organization.
 
 ### prompt.txt
 Contains the master prompt template used for API calls. This is sent as the "prompt" parameter to the proofreading API. Default value is "Proofread".
@@ -198,7 +200,7 @@ The application enforces the following validation rules:
 1. **Input cannot be empty or whitespace** - You must provide an input value with actual content (leading/trailing spaces are automatically trimmed)
 2. **Output cannot be empty or whitespace** - You must provide an output value with actual content (leading/trailing spaces are automatically trimmed)
 3. **Prompt cannot be empty** - Required when calling the API
-4. **Applied Prompt Numbers must be valid integers** - If provided, they must be comma-separated numbers
+4. **Applied Prompt Numbers must be valid numbers** - If provided, they must be comma-separated numbers (supports both integers and decimals, e.g., 1,2,3 or 1.1,1.2,2.1)
 5. **Automatic trimming** - All text inputs are automatically trimmed of leading/trailing whitespace before saving
 
 ## Technical Details

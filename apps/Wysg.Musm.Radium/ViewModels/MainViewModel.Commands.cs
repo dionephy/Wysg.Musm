@@ -26,8 +26,39 @@ namespace Wysg.Musm.Radium.ViewModels
         public ICommand OpenEditStudyTechniqueCommand { get; private set; } = null!;
 
         // UI mode toggles
-        private bool _proofreadMode; public bool ProofreadMode { get => _proofreadMode; set => SetProperty(ref _proofreadMode, value); }
-        private bool _previousProofreadMode; public bool PreviousProofreadMode { get => _previousProofreadMode; set => SetProperty(ref _previousProofreadMode, value); }
+        private bool _proofreadMode; 
+        public bool ProofreadMode 
+        { 
+            get => _proofreadMode; 
+            set 
+            { 
+                if (SetProperty(ref _proofreadMode, value))
+                {
+                    // Notify computed display properties for editors (Findings and Conclusion only)
+                    OnPropertyChanged(nameof(FindingsDisplay));
+                    OnPropertyChanged(nameof(ConclusionDisplay));
+                }
+            } 
+        }
+        
+        private bool _previousProofreadMode; 
+        public bool PreviousProofreadMode 
+        { 
+            get => _previousProofreadMode; 
+            set 
+            { 
+                if (SetProperty(ref _previousProofreadMode, value))
+                {
+                    // Notify all previous report computed display properties
+                    OnPropertyChanged(nameof(PreviousChiefComplaintDisplay));
+                    OnPropertyChanged(nameof(PreviousPatientHistoryDisplay));
+                    OnPropertyChanged(nameof(PreviousStudyTechniquesDisplay));
+                    OnPropertyChanged(nameof(PreviousComparisonDisplay));
+                    OnPropertyChanged(nameof(PreviousFindingsDisplay));
+                    OnPropertyChanged(nameof(PreviousConclusionDisplay));
+                }
+            } 
+        }
 
         // Study opened toggle (set when OpenStudy module runs)
         private bool _studyOpened; public bool StudyOpened { get => _studyOpened; set => SetProperty(ref _studyOpened, value); }
@@ -500,15 +531,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine($"[Automation][GetReportedReport] Radiologist: '{radiologist ?? "(null)"}'");
                 Debug.WriteLine($"[Automation][GetReportedReport] Radiologist length: {radiologist?.Length ?? 0} characters");
                 
-                // Update the current report JSON by setting FindingsText and ConclusionText
-                // These properties will trigger UpdateCurrentReportJson() which saves to JSON
-                FindingsText = findings;
-                ConclusionText = conclusion;
-                
-                // NEW: Save radiologist to property (triggers JSON update)
+                // CRITICAL FIX: Set reported report fields (header_and_findings, final_conclusion)
+                // These are NOT bound to any UI editor - they preserve the original PACS report
+                ReportedHeaderAndFindings = findings;
+                ReportedFinalConclusion = conclusion;
                 ReportRadiologist = radiologist ?? string.Empty;
                 
-                Debug.WriteLine("[Automation][GetReportedReport] Updated FindingsText, ConclusionText, and ReportRadiologist properties");
+                Debug.WriteLine("[Automation][GetReportedReport] Updated ReportedHeaderAndFindings, ReportedFinalConclusion, and ReportRadiologist properties");
                 Debug.WriteLine("[Automation][GetReportedReport] CurrentReportJson should now contain header_and_findings, final_conclusion, and report_radiologist fields");
                 
                 SetStatus($"Reported report acquired: {findings.Length + conclusion.Length} total characters, radiologist: {(string.IsNullOrWhiteSpace(radiologist) ? "(none)" : radiologist)}");

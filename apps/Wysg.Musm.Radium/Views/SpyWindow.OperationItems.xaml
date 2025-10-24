@@ -26,6 +26,7 @@
         <ComboBoxItem Content="SimulateTab"/>
         <ComboBoxItem Content="SimulatePaste"/>
         <ComboBoxItem Content="IsMatch"/>
+        <ComboBoxItem Content="IsAlmostMatch"/>
         <ComboBoxItem Content="GetCurrentPatientNumber"/>
         <ComboBoxItem Content="GetCurrentStudyDateTime"/>
         <ComboBoxItem Content="GetCurrentHeader"/>

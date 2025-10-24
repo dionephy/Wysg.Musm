@@ -257,7 +257,7 @@ namespace Wysg.Musm.LlmDataBuilder
         public string Input { get; set; } = string.Empty;
         public string Output { get; set; } = string.Empty;
         public string ProtoOutput { get; set; } = string.Empty;
-        public List<int> AppliedPromptNumbers { get; set; } = new List<int>();
+        public List<string> AppliedPromptNumbers { get; set; } = new List<string>();
         
         public string AppliedPromptNumbersDisplay => 
             AppliedPromptNumbers.Count > 0 
@@ -270,7 +270,7 @@ namespace Wysg.Musm.LlmDataBuilder
             Input = record.Input;
             Output = record.Output;
             ProtoOutput = record.ProtoOutput;
-            AppliedPromptNumbers = record.AppliedPromptNumbers ?? new List<int>();
+            AppliedPromptNumbers = record.AppliedPromptNumbers ?? new List<string>();
         }
 
         public LlmDataRecord ToRecord()

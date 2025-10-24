@@ -155,10 +155,9 @@
                     </editor:EditorControl.Style>
                 </editor:EditorControl>
                 
-                <!-- Findings Editor -->
+                <!-- Findings Editor - NOW BINDS TO COMPUTED DISPLAY PROPERTY WITH REPORTIFIED + PROOFREAD SUPPORT -->
                 <editor:EditorControl x:Name="EditorFindings" 
                                       Grid.Row="1"
-                                      DocumentText="{Binding FindingsText, Mode=TwoWay}" 
                                       CaretOffsetAdjustment="{Binding FindingsCaretOffsetAdjustment, Mode=OneWay}"
                                       PhraseSnapshot="{Binding CurrentPhraseSnapshot}" 
                                       PhraseSemanticTags="{Binding PhraseSemanticTags}"
@@ -167,17 +166,82 @@
                                       Margin="0"
                                       MinHeight="20"
                                       VerticalScrollBarVisibility="Disabled"
-                                      HorizontalScrollBarVisibility="Disabled"/>
+                                      HorizontalScrollBarVisibility="Disabled">
+                    <editor:EditorControl.Style>
+                        <Style TargetType="editor:EditorControl">
+                            <!-- Default: Editable, binds to raw FindingsText -->
+                            <Setter Property="DocumentText" Value="{Binding FindingsText, Mode=TwoWay}"/>
+                            <Setter Property="IsReadOnly" Value="False"/>
+                            <Style.Triggers>
+                                <!-- When Reportified is ON: Read-only, binds to computed FindingsDisplay -->
+                                <DataTrigger Binding="{Binding Reportified}" Value="True">
+                                    <Setter Property="DocumentText" Value="{Binding FindingsDisplay, Mode=OneWay}"/>
+                                    <Setter Property="IsReadOnly" Value="True"/>
+                                </DataTrigger>
+                                <!-- When ProofreadMode is ON (and Reportified is OFF): Read-only, binds to computed FindingsDisplay -->
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding Reportified}" Value="False"/>
+                                        <Condition Binding="{Binding ProofreadMode}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="DocumentText" Value="{Binding FindingsDisplay, Mode=OneWay}"/>
+                                    <Setter Property="IsReadOnly" Value="True"/>
+                                </MultiDataTrigger>
+                                <!-- When BOTH are ON: Read-only, binds to FindingsDisplay (shows reportified proofread) -->
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding Reportified}" Value="True"/>
+                                        <Condition Binding="{Binding ProofreadMode}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="DocumentText" Value="{Binding FindingsDisplay, Mode=OneWay}"/>
+                                    <Setter Property="IsReadOnly" Value="True"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </editor:EditorControl.Style>
+                </editor:EditorControl>
             </Grid>
         </ScrollViewer>
         
         <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="2"/>
         
-        <!-- Conclusion Editor -->
+        <!-- Conclusion Editor - NOW BINDS TO COMPUTED DISPLAY PROPERTY WITH REPORTIFIED + PROOFREAD SUPPORT -->
         <editor:EditorControl x:Name="EditorConclusion" 
                               Grid.Row="6" 
-                              DocumentText="{Binding ConclusionText, Mode=TwoWay}" 
                               PhraseSnapshot="{Binding CurrentPhraseSnapshot}" 
-                              PhraseSemanticTags="{Binding PhraseSemanticTags}"/>
+                              PhraseSemanticTags="{Binding PhraseSemanticTags}">
+            <editor:EditorControl.Style>
+                <Style TargetType="editor:EditorControl">
+                    <!-- Default: Editable, binds to raw ConclusionText -->
+                    <Setter Property="DocumentText" Value="{Binding ConclusionText, Mode=TwoWay}"/>
+                    <Setter Property="IsReadOnly" Value="False"/>
+                    <Style.Triggers>
+                        <!-- When Reportified is ON: Read-only, binds to computed ConclusionDisplay -->
+                        <DataTrigger Binding="{Binding Reportified}" Value="True">
+                            <Setter Property="DocumentText" Value="{Binding ConclusionDisplay, Mode=OneWay}"/>
+                            <Setter Property="IsReadOnly" Value="True"/>
+                        </DataTrigger>
+                        <!-- When ProofreadMode is ON (and Reportified is OFF): Read-only, binds to computed ConclusionDisplay -->
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding Reportified}" Value="False"/>
+                                <Condition Binding="{Binding ProofreadMode}" Value="True"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="DocumentText" Value="{Binding ConclusionDisplay, Mode=OneWay}"/>
+                            <Setter Property="IsReadOnly" Value="True"/>
+                        </MultiDataTrigger>
+                        <!-- When BOTH are ON: Read-only, binds to ConclusionDisplay (shows reportified proofread) -->
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding Reportified}" Value="True"/>
+                                <Condition Binding="{Binding ProofreadMode}" Value="True"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="DocumentText" Value="{Binding ConclusionDisplay, Mode=OneWay}"/>
+                            <Setter Property="IsReadOnly" Value="True"/>
+                        </MultiDataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </editor:EditorControl.Style>
+        </editor:EditorControl>
     </Grid>
 </UserControl>

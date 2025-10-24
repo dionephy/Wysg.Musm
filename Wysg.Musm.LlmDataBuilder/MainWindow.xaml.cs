@@ -67,7 +67,14 @@ namespace Wysg.Musm.LlmDataBuilder
                     string json = File.ReadAllText(dataPath);
                     if (!string.IsNullOrWhiteSpace(json))
                     {
-                        var records = JsonSerializer.Deserialize<List<LlmDataRecord>>(json);
+                        // Use JsonSerializerOptions to match saved format (camelCase)
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                            PropertyNameCaseInsensitive = true
+                        };
+                        
+                        var records = JsonSerializer.Deserialize<List<LlmDataRecord>>(json, options);
                         txtRecordCount.Text = $"Records: {records?.Count ?? 0}";
                         return;
                     }
@@ -220,21 +227,31 @@ namespace Wysg.Musm.LlmDataBuilder
                     return;
                 }
 
-                // Parse applied prompt numbers
-                List<int> appliedPromptNumbers = new List<int>();
+                // Parse applied prompt numbers - now accepts decimals like 1.1, 1.2, 1.3
+                List<string> appliedPromptNumbers = new List<string>();
                 if (!string.IsNullOrWhiteSpace(txtAppliedPromptNumbers.Text))
                 {
                     try
                     {
                         appliedPromptNumbers = txtAppliedPromptNumbers.Text
                             .Split(',')
-                            .Select(s => int.Parse(s.Trim()))
+                            .Select(s => s.Trim())
+                            .Where(s => !string.IsNullOrWhiteSpace(s))
                             .ToList();
+                        
+                        // Validate that each entry is a valid number (integer or decimal)
+                        foreach (var num in appliedPromptNumbers)
+                        {
+                            if (!decimal.TryParse(num, out _))
+                            {
+                                throw new FormatException($"Invalid number format: {num}");
+                            }
+                        }
                     }
                     catch
                     {
                         UpdateStatus("Error: Invalid prompt numbers format", isError: true);
-                        MessageBox.Show("Please enter valid comma-separated numbers (e.g., 1,2,3).", 
+                        MessageBox.Show("Please enter valid comma-separated numbers.\nExamples: 1,2,3 or 1.1,1.2,2.1", 
                             "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                     }
@@ -258,7 +275,14 @@ namespace Wysg.Musm.LlmDataBuilder
                     string existingJson = File.ReadAllText(dataPath);
                     if (!string.IsNullOrWhiteSpace(existingJson))
                     {
-                        records = JsonSerializer.Deserialize<List<LlmDataRecord>>(existingJson) 
+                        // Use JsonSerializerOptions to properly deserialize camelCase JSON
+                        var deserializeOptions = new JsonSerializerOptions
+                        {
+                            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                            PropertyNameCaseInsensitive = true
+                        };
+                        
+                        records = JsonSerializer.Deserialize<List<LlmDataRecord>>(existingJson, deserializeOptions) 
                             ?? new List<LlmDataRecord>();
                     }
                 }
@@ -267,12 +291,12 @@ namespace Wysg.Musm.LlmDataBuilder
                 records.Add(newRecord);
 
                 // Save to JSON with formatting
-                var options = new JsonSerializerOptions
+                var serializeOptions = new JsonSerializerOptions
                 {
                     WriteIndented = true,
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 };
-                string jsonOutput = JsonSerializer.Serialize(records, options);
+                string jsonOutput = JsonSerializer.Serialize(records, serializeOptions);
                 File.WriteAllText(dataPath, jsonOutput);
 
                 // Save prompt.txt
@@ -376,7 +400,14 @@ namespace Wysg.Musm.LlmDataBuilder
                     return;
                 }
 
-                var records = JsonSerializer.Deserialize<List<LlmDataRecord>>(existingJson) 
+                // Use JsonSerializerOptions to match saved format (camelCase)
+                var deserializeOptions = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    PropertyNameCaseInsensitive = true
+                };
+
+                var records = JsonSerializer.Deserialize<List<LlmDataRecord>>(existingJson, deserializeOptions) 
                     ?? new List<LlmDataRecord>();
 
                 // Filter out blank records (where Input or Output is empty/whitespace)
@@ -396,12 +427,12 @@ namespace Wysg.Musm.LlmDataBuilder
                     File.Copy(dataPath, backupPath);
 
                     // Save cleaned data
-                    var options = new JsonSerializerOptions
+                    var serializeOptions = new JsonSerializerOptions
                     {
                         WriteIndented = true,
                         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                     };
-                    string jsonOutput = JsonSerializer.Serialize(records, options);
+                    string jsonOutput = JsonSerializer.Serialize(records, serializeOptions);
                     File.WriteAllText(dataPath, jsonOutput);
 
                     UpdateStatus($"Cleaned up {removedCount} blank record(s). Backup saved.");
@@ -441,6 +472,6 @@ namespace Wysg.Musm.LlmDataBuilder
         public string Input { get; set; } = string.Empty;
         public string Output { get; set; } = string.Empty;
         public string ProtoOutput { get; set; } = string.Empty;
-        public List<int> AppliedPromptNumbers { get; set; } = new List<int>();
+        public List<string> AppliedPromptNumbers { get; set; } = new List<string>();
     }
 }

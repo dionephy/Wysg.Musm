@@ -101,6 +101,11 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg2.Type = nameof(ArgKind.Var); row.Arg2Enabled = true;
                             row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
+                        case "IsAlmostMatch":
+                            row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
+                            row.Arg2.Type = nameof(ArgKind.Var); row.Arg2Enabled = true;
+                            row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
+                            break;
                         case "Replace":
                         case "Merge":
                             // Replace/Merge: Arg1=input (Var), Arg2=search/input2 (String or Var), Arg3=replacement/separator (String or Var)

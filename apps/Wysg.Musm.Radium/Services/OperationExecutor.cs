@@ -94,6 +94,8 @@ namespace Wysg.Musm.Radium.Services
                     return ExecuteSplit(resolveArg1String(), resolveArg2String(), resolveArg3String());
                 case "IsMatch":
                     return ExecuteIsMatch(resolveArg1String(), resolveArg2String());
+                case "IsAlmostMatch":
+                    return ExecuteIsAlmostMatch(resolveArg1String(), resolveArg2String());
                 case "TrimString":
                     return ExecuteTrimString(resolveArg1String(), resolveArg2String());
                 case "Replace":
