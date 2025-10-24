@@ -1,5 +1,7 @@
 {
   "apiUrl": "http://192.168.111.79:8081",
-  "authToken": "local-dev-token",
-  "defaultPrompt": "Proofread"
+  "authToken": "change-me",
+  "defaultPrompt": "Proofread",
+  "language": "en",
+  "strictness": 4
 }

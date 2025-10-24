@@ -15,10 +15,16 @@ namespace Wysg.Musm.LlmDataBuilder.Services
         public string ApiUrl { get; set; } = "http://192.168.111.79:8081";
 
         [JsonPropertyName("authToken")]
-        public string AuthToken { get; set; } = "local-dev-token";
+        public string AuthToken { get; set; } = "change-me";
 
         [JsonPropertyName("defaultPrompt")]
         public string DefaultPrompt { get; set; } = "Proofread";
+
+        [JsonPropertyName("language")]
+        public string Language { get; set; } = "en";
+
+        [JsonPropertyName("strictness")]
+        public int Strictness { get; set; } = 4;
 
         /// <summary>
         /// Loads the API configuration from file or returns default values

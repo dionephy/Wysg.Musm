@@ -12,6 +12,14 @@ The LLM Data Builder is a desktop application designed to help create and manage
 
 - **Always on Top**: Optional checkbox to keep the window above other applications
 
+- **Data Browser**: Dedicated window for viewing, managing, and exporting saved records
+  - View all records in a sortable data grid
+  - Detailed view panel for full record content
+  - Export individual records to separate JSON files
+  - Delete unwanted or incorrect records
+  - Real-time record count and status updates
+  - See [Data Browser Documentation](DATA_BROWSER.md) for details
+
 - **LLM API Integration**: Connect to proofreading API to generate prototype outputs
   - Calls external API with your input text and prompt
   - Automatically populates Proto Output field
@@ -67,10 +75,19 @@ Optional configuration file for API settings:
 ```json
 {
   "apiUrl": "http://192.168.111.79:8081",
-  "authToken": "local-dev-token",
-  "defaultPrompt": "Proofread"
+  "authToken": "change-me",
+  "defaultPrompt": "Proofread",
+  "language": "en",
+  "strictness": 4
 }
 ```
+
+**Configuration Options:**
+- `apiUrl`: Your API endpoint URL (default: http://192.168.111.79:8081)
+- `authToken`: Bearer token for authentication (default: "change-me")
+- `defaultPrompt`: Default prompt text (default: "Proofread")
+- `language`: Language code for proofreading (default: "en")
+- `strictness`: Strictness level 1-5 (default: 4, higher = more strict)
 
 If this file doesn't exist, the application will use default values. Copy `api_config.json.sample` to `api_config.json` and customize as needed.
 
@@ -90,9 +107,18 @@ If this file doesn't exist, the application will use default values. Copy `api_c
 1. **Copy sample config**: Copy `api_config.json.sample` to `api_config.json`
 2. **Edit settings**:
    - `apiUrl`: Your API endpoint (default: http://192.168.111.79:8081)
-   - `authToken`: Your authentication token (default: local-dev-token)
-   - `defaultPrompt`: Default prompt text (default: Proofread)
+   - `authToken`: Your authentication token (default: "change-me")
+   - `defaultPrompt`: Default prompt text (default: "Proofread")
+   - `language`: Language code (default: "en")
+   - `strictness`: Strictness level 1-5 (default: 4)
 3. **Restart application** to apply changes
+
+**Strictness Levels:**
+- 1: Very lenient (minimal corrections)
+- 2: Lenient (basic corrections)
+- 3: Moderate (standard corrections)
+- 4: Strict (thorough corrections) **ก็ Default**
+- 5: Very strict (maximum corrections)
 
 ### Window Settings
 
@@ -114,10 +140,13 @@ The "Get Proto Result" button calls an external API to proofread your input text
 **API Call Example:**
 ```json
 POST http://192.168.111.79:8081/v1/evaluations
-Headers: Authorization: Bearer local-dev-token
+Headers: Authorization: Bearer change-me
+        Content-Type: application/json
 Body: {
   "prompt": "Proofread",
-  "candidate_text": "The launch were sucessful"
+  "candidate_text": "The launch were sucessful",
+  "language": "en",
+  "strictness": 4
 }
 
 Response: {
@@ -128,6 +157,12 @@ Response: {
   "latency_ms": 1200
 }
 ```
+
+**Request Parameters:**
+- `prompt`: The instruction for the model (e.g., "Proofread")
+- `candidate_text`: The text to be evaluated/proofread
+- `language`: Language code ("en" for English, "ko" for Korean, etc.)
+- `strictness`: Evaluation strictness level (1-5)
 
 ### Creating a New Record
 
@@ -141,6 +176,17 @@ Response: {
 
 ### Managing Data
 
+- **Browse Data**: Click the "Browse Data" button to open the Data Browser window
+  - View all records in a sortable grid
+  - View full details of any record
+  - Export individual records
+  - Delete unwanted records
+  - See [Data Browser Documentation](DATA_BROWSER.md) for complete guide
+- **Cleanup Blank Records**: Click the "Cleanup Blank Records" button to remove invalid records
+  - Automatically removes records with empty Input or Output
+  - Creates a timestamped backup before making changes
+  - Shows summary of removed records
+  - Safe operation with automatic backup
 - **Clear Data Fields**: Click the "Clear Data Fields" button to reset all data entry fields (excluding the prompt)
 - **View Records**: The status bar shows the total number of records in `data.json`
 - **Edit Prompt**: The prompt text box always shows the current content of `prompt.txt`
@@ -149,10 +195,11 @@ Response: {
 
 The application enforces the following validation rules:
 
-1. **Input cannot be empty** - You must provide an input value (for both API calls and saving)
-2. **Output cannot be empty** - You must provide an output value (for saving)
+1. **Input cannot be empty or whitespace** - You must provide an input value with actual content (leading/trailing spaces are automatically trimmed)
+2. **Output cannot be empty or whitespace** - You must provide an output value with actual content (leading/trailing spaces are automatically trimmed)
 3. **Prompt cannot be empty** - Required when calling the API
 4. **Applied Prompt Numbers must be valid integers** - If provided, they must be comma-separated numbers
+5. **Automatic trimming** - All text inputs are automatically trimmed of leading/trailing whitespace before saving
 
 ## Technical Details
 
@@ -237,9 +284,10 @@ The application includes comprehensive error handling:
 | Issue | Possible Cause | Solution |
 |-------|---------------|----------|
 | Connection refused | API server not running | Start the API server |
-| 401 Unauthorized | Invalid auth token | Check `authToken` in `api_config.json` |
+| 401 Unauthorized | Invalid auth token | Check `authToken` in `api_config.json` (should be "change-me" by default) |
 | Timeout | Network issues | Check network connectivity and API URL |
 | Invalid response | API version mismatch | Verify API endpoint and version |
+| Invalid strictness | Value out of range | Ensure strictness is between 1 and 5 |
 
 ## Troubleshooting
 
@@ -267,6 +315,21 @@ The application includes comprehensive error handling:
 ### Problem: Get Proto Result button disabled
 
 **Solution**: The button is disabled during API calls. If it stays disabled, restart the application.
+
+### Problem: Data file contains blank records
+
+**Solution**: 
+1. Click the "Cleanup Blank Records" button
+2. Confirm the operation when prompted
+3. A backup will be automatically created before cleanup
+4. All records with empty Input or Output will be removed
+5. Check the status bar for the cleanup summary
+
+**Manual cleanup**:
+1. Locate `data.json` in the application directory
+2. Create a backup: `data.backup.json`
+3. Edit the file and remove objects with empty `"input"` or `"output"` fields
+4. Save and restart the application
 
 ## Support
 

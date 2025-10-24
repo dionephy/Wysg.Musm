@@ -14,7 +14,7 @@ namespace Wysg.Musm.LlmDataBuilder.Services
         private readonly string _apiUrl;
         private readonly string _authToken;
 
-        public ProofreadApiService(string apiUrl = "http://192.168.111.79:8081", string authToken = "local-dev-token")
+        public ProofreadApiService(string apiUrl = "http://192.168.111.79:8081", string authToken = "change-me")
         {
             _httpClient = new HttpClient();
             _apiUrl = apiUrl;
@@ -26,15 +26,23 @@ namespace Wysg.Musm.LlmDataBuilder.Services
         /// </summary>
         /// <param name="prompt">The prompt (e.g., "Proofread")</param>
         /// <param name="candidateText">The text to proofread</param>
+        /// <param name="language">The language code (default: "en")</param>
+        /// <param name="strictness">The strictness level (1-5, default: 4)</param>
         /// <returns>The API response containing the proofread text and issues</returns>
-        public async Task<ProofreadResponse?> GetProofreadResultAsync(string prompt, string candidateText)
+        public async Task<ProofreadResponse?> GetProofreadResultAsync(
+            string prompt,
+            string candidateText,
+            string language = "en",
+            int strictness = 4)
         {
             try
             {
                 var request = new ProofreadRequest
                 {
                     Prompt = prompt,
-                    CandidateText = candidateText
+                    CandidateText = candidateText,
+                    Language = language,
+                    Strictness = strictness
                 };
 
                 var jsonContent = JsonSerializer.Serialize(request, new JsonSerializerOptions
@@ -77,6 +85,12 @@ namespace Wysg.Musm.LlmDataBuilder.Services
 
         [JsonPropertyName("candidate_text")]
         public string CandidateText { get; set; } = string.Empty;
+
+        [JsonPropertyName("language")]
+        public string Language { get; set; } = "en";
+
+        [JsonPropertyName("strictness")]
+        public int Strictness { get; set; } = 4;
     }
 
     /// <summary>

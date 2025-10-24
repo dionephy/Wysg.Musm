@@ -60,8 +60,8 @@
 弛 Action Buttons (Right-aligned)                                   弛
 弛                                                                   弛
 弛              忙式式式式式式式式式式式式式式式式式式忖 忙式式式式式式式式忖 忙式式式式式式式式式式式式式式式式式式忖弛
-弛              弛 Get Proto Result 弛 弛  Save  弛 弛 Clear Data     弛弛
-弛              弛  (Yellow border) 弛 弛(Green) 弛 弛 Fields (Red)   弛弛
+弛              弛 Browse Data      弛 弛 Cleanup Blank Records 弛 弛 Get Proto Result 弛 弛  Save  弛 弛 Clear Data     弛弛
+弛              弛   (Blue)        弛 弛      (Yellow)          弛 弛  (Yellow border) 弛 弛(Green) 弛 弛 Fields (Red)   弛弛
 弛              戌式式式式式式式式式式式式式式式式式式戎 戌式式式式式式式式戎 戌式式式式式式式式式式式式式式式式式式戎弛
 戌式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式戎
 ```
@@ -91,6 +91,17 @@
 - **Secondary Text**: `#9E9E9E`
 
 #### Buttons
+- **Browse Data**
+  - Background: `#2D2D30`
+  - Border: `#007ACC` (Accent/Blue)
+  - Text: `#CCCCCC`
+
+- **Cleanup Blank Records**
+  - Background: `#2D2D30`
+  - Border: `#CCA700` (Warning/Yellow)
+  - Text: `#CCCCCC`
+  - Tooltip: "Remove all records with empty Input or Output fields (creates backup first)"
+
 - **Get Proto Result**
   - Background: `#2D2D30`
   - Border: `#CCA700` (Warning/Yellow)
@@ -283,12 +294,14 @@ Window is no longer always on top  (Light Gray text)
 3. txtProtoOutput (skipped - read-only)
 4. txtAppliedPromptNumbers
 5. txtPrompt
-6. btnGetProtoResult
-7. btnSave
-8. btnClear
-9. chkAlwaysOnTop
+6. btnBrowseData
+7. btnGetProtoResult
+8. btnSave
+9. btnClear
+10. chkAlwaysOnTop
 
 ### Shortcuts (Future Enhancement)
+- **Ctrl+B**: Browse Data
 - **Ctrl+S**: Save
 - **Ctrl+N**: Clear fields
 - **F5**: Get Proto Result

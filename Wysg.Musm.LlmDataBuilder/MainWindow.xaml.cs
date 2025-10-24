@@ -128,7 +128,9 @@ namespace Wysg.Musm.LlmDataBuilder
                 // Call the API
                 var response = await _apiService.GetProofreadResultAsync(
                     txtPrompt.Text,
-                    txtInput.Text
+                    txtInput.Text,
+                    _apiConfig.Language,
+                    _apiConfig.Strictness
                 );
 
                 if (response != null && response.Status == "completed")
@@ -191,20 +193,30 @@ namespace Wysg.Musm.LlmDataBuilder
         {
             try
             {
-                // Validate input
-                if (string.IsNullOrWhiteSpace(txtInput.Text))
+                // Trim all inputs first to prevent saving whitespace-only content
+                string inputText = txtInput.Text?.Trim() ?? string.Empty;
+                string outputText = txtOutput.Text?.Trim() ?? string.Empty;
+                string protoOutputText = txtProtoOutput.Text?.Trim() ?? string.Empty;
+                
+                // Validate input (must have actual content, not just whitespace)
+                if (string.IsNullOrWhiteSpace(inputText))
                 {
                     UpdateStatus("Error: Input cannot be empty", isError: true);
-                    MessageBox.Show("Please enter an input value.", "Validation Error", 
+                    MessageBox.Show("Please enter an input value with actual content.", 
+                        "Validation Error", 
                         MessageBoxButton.OK, MessageBoxImage.Warning);
+                    txtInput.Focus();
                     return;
                 }
 
-                if (string.IsNullOrWhiteSpace(txtOutput.Text))
+                // Validate output (must have actual content, not just whitespace)
+                if (string.IsNullOrWhiteSpace(outputText))
                 {
                     UpdateStatus("Error: Output cannot be empty", isError: true);
-                    MessageBox.Show("Please enter an output value.", "Validation Error", 
+                    MessageBox.Show("Please enter an output value with actual content.", 
+                        "Validation Error", 
                         MessageBoxButton.OK, MessageBoxImage.Warning);
+                    txtOutput.Focus();
                     return;
                 }
 
@@ -228,12 +240,12 @@ namespace Wysg.Musm.LlmDataBuilder
                     }
                 }
 
-                // Create new record
+                // Create new record with trimmed values
                 var newRecord = new LlmDataRecord
                 {
-                    Input = txtInput.Text,
-                    Output = txtOutput.Text,
-                    ProtoOutput = txtProtoOutput.Text,
+                    Input = inputText,
+                    Output = outputText,
+                    ProtoOutput = protoOutputText,
                     AppliedPromptNumbers = appliedPromptNumbers
                 };
 
@@ -304,6 +316,120 @@ namespace Wysg.Musm.LlmDataBuilder
             txtProtoOutput.Clear();
             txtAppliedPromptNumbers.Clear();
             // Note: txtPrompt is intentionally NOT cleared
+        }
+
+        private void BtnBrowseData_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var browserWindow = new DataBrowserWindow(_workingDirectory);
+                browserWindow.Owner = this;
+                browserWindow.ShowDialog();
+                
+                // Refresh record count in case data was modified in the browser
+                UpdateRecordCount();
+                UpdateStatus("Data browser closed");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error opening data browser: {ex.Message}", isError: true);
+                MessageBox.Show($"Failed to open data browser:\n\n{ex.Message}", 
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnCleanup_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(
+                "This will remove all records where Input or Output is blank.\n\n" +
+                "A backup will be created first.\n\nContinue?",
+                "Confirm Cleanup",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                CleanupBlankRecords();
+                UpdateRecordCount();
+            }
+        }
+
+        private void CleanupBlankRecords()
+        {
+            try
+            {
+                string dataPath = System.IO.Path.Combine(_workingDirectory, DataFileName);
+                if (!File.Exists(dataPath))
+                {
+                    UpdateStatus("No data file to clean up");
+                    MessageBox.Show("No data.json file found.", 
+                        "Cleanup", 
+                        MessageBoxButton.OK, 
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                string existingJson = File.ReadAllText(dataPath);
+                if (string.IsNullOrWhiteSpace(existingJson))
+                {
+                    UpdateStatus("Data file is empty");
+                    return;
+                }
+
+                var records = JsonSerializer.Deserialize<List<LlmDataRecord>>(existingJson) 
+                    ?? new List<LlmDataRecord>();
+
+                // Filter out blank records (where Input or Output is empty/whitespace)
+                int originalCount = records.Count;
+                records = records.Where(r => 
+                    !string.IsNullOrWhiteSpace(r.Input) && 
+                    !string.IsNullOrWhiteSpace(r.Output)
+                ).ToList();
+
+                int removedCount = originalCount - records.Count;
+
+                if (removedCount > 0)
+                {
+                    // Create backup file first
+                    string backupPath = System.IO.Path.Combine(_workingDirectory, 
+                        $"data.backup.{DateTime.Now:yyyyMMddHHmmss}.json");
+                    File.Copy(dataPath, backupPath);
+
+                    // Save cleaned data
+                    var options = new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    };
+                    string jsonOutput = JsonSerializer.Serialize(records, options);
+                    File.WriteAllText(dataPath, jsonOutput);
+
+                    UpdateStatus($"Cleaned up {removedCount} blank record(s). Backup saved.");
+                    MessageBox.Show(
+                        $"Removed {removedCount} blank record(s).\n\n" +
+                        $"Remaining records: {records.Count}\n\n" +
+                        $"Backup saved: {System.IO.Path.GetFileName(backupPath)}",
+                        "Cleanup Complete",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    UpdateStatus("No blank records found");
+                    MessageBox.Show("No blank records found to clean up.", 
+                        "Cleanup", 
+                        MessageBoxButton.OK, 
+                        MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Cleanup error: {ex.Message}", isError: true);
+                MessageBox.Show($"Failed to clean up blank records:\n\n{ex.Message}", 
+                    "Cleanup Error", 
+                    MessageBoxButton.OK, 
+                    MessageBoxImage.Error);
+            }
         }
     }
 
