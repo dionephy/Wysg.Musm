@@ -40,7 +40,6 @@ namespace Wysg.Musm.Radium.Services.Procedures
             catch (Exception ex) { Debug.WriteLine("[NewStudyProcedure] autofill techniques error: " + ex.Message); }
 
             vm.Reportified = false; // will trigger property logic
-            vm.PreviousReportified = true;
             vm.SetStatusInternal("New study initialized (unlocked)");
         }
     }

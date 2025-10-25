@@ -31,8 +31,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         Id = Guid.NewGuid(),
                         StudyDateTime = g.Key.StudyDateTime,
                         Modality = modality,
-                        Title = $"{g.Key.StudyDateTime:yyyy-MM-dd} {modality}",
-                        OriginalHeader = string.Empty
+                        Title = $"{g.Key.StudyDateTime:yyyy-MM-dd} {modality}"
                     };
                     foreach (var row in g.OrderByDescending(r => r.ReportDateTime))
                     {
@@ -90,7 +89,6 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (PreviousStudies.Count > 0)
                 {
                     SelectedPreviousStudy = PreviousStudies.First();
-                    PreviousReportified = true; // default ON
                 }
             }
             catch (Exception ex) { Debug.WriteLine("[PrevLoad] error: " + ex.Message); }

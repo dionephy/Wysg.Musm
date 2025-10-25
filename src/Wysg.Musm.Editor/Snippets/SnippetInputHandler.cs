@@ -286,12 +286,21 @@ public static class SnippetInputHandler
 
                 if (cur.Kind == PlaceholderKind.MultiChoice)
                 {
+                    // Mode 2: Use only the checked items from the popup
                     var texts = session.Popup?.GetSelectedTexts() ?? new List<string>();
+                    
+                    // FIXED: If no items are checked, use the first option as default
+                    // (DO NOT fall back to the currently selected item)
                     if (texts.Count == 0)
                     {
-                        var sel = session.Popup?.Selected;
-                        if (sel != null) texts.Add(sel.Text);
+                        // Default to first option when nothing is explicitly checked
+                        var firstOption = cur.Options.FirstOrDefault();
+                        if (firstOption != null)
+                        {
+                            texts = new List<string> { firstOption.Text };
+                        }
                     }
+                    
                     var output = FormatJoin(texts, cur.Joiner);
                     AcceptOptionAndComplete(output);
                     e.Handled = true;
@@ -322,7 +331,26 @@ public static class SnippetInputHandler
 
             if (e.Key is Key.Enter)
             {
-                // End snippet mode and move caret to next line; apply fallback replacement for ALL remaining placeholders
+                // SPECIAL HANDLING FOR MODE 2 CURRENT PLACEHOLDER:
+                // If current placeholder is mode 2, accept its checked items before ending
+                if (cur.Kind == PlaceholderKind.MultiChoice && cur == session.Current)
+                {
+                    // Get checked items from popup
+                    var texts = session.Popup?.GetSelectedTexts() ?? new List<string>();
+                    
+                    // If no items checked, use all items as default (fallback)
+                    if (texts.Count == 0)
+                    {
+                        texts = cur.Options.Select(o => o.Text).ToList();
+                    }
+                    
+                    // Replace current placeholder with checked items
+                    var output = FormatJoin(texts, cur.Joiner);
+                    ReplaceSelection(area, output);
+                    MarkCurrentCompleted();
+                }
+                
+                // End snippet mode and move caret to next line; apply fallback replacement for remaining placeholders
                 ApplyFallbackAndEnd(moveToNextLine: true);
                 e.Handled = true;
                 return;

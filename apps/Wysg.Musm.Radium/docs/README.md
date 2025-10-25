@@ -108,6 +108,73 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ## Recent Updates (2025-01-20)
 
+### Snippet Mode 2 - Only Insert Selected Items (2025-01-28)
+
+**What Changed:**
+- Fixed snippet mode 2 (multi-choice) to insert only checked items, not all items
+- **Tab key**: When no items are checked, now inserts first option as default (not highlighted item)
+- **Enter key**: Inserts checked items for current placeholder (or all items if none checked), defaults for others
+- Fallback logic corrected to respect user's explicit selections
+
+**Why This Matters:**
+- **Correct Behavior** - Mode 2 snippets now work as documented
+- **User Control** - Users can precisely control which items are inserted
+- **Predictable** - Different but consistent defaults for Tab (first) vs Enter (all)
+
+**Example Fix:**
+```
+Snippet: ${2^location^or=r^right|l^left|b^bilateral}
+
+Tab Behavior:
+  User checks: r (right), then Tab
+  Before: "right, left, or bilateral" ❌ All items
+  After:  "right" ✅ Only checked item
+  
+  User presses Tab without checking
+  Before: "right, left, or bilateral" ❌ All items
+  After:  "right" ✅ First option (conservative)
+
+Enter Behavior:
+  User checks: r (right), then Enter
+  Before: "right, left, or bilateral" ❌ All items
+  After:  "right" ✅ Only checked item
+  
+  User presses Enter without checking
+  Before: "right, left, or bilateral" ✅ All items (intended fallback)
+  After:  "right, left, or bilateral" ✅ All items (fallback preserved)
+```
+
+**Key File Changes:**
+- `src\Wysg.Musm.Editor\Snippets\SnippetInputHandler.cs` - Fixed Tab and Enter key handlers for mode 2
+
+**Documentation:**
+- See `FIX_2025-01-28_SnippetMode2OnlySelectedItems.md` for complete details
+
+---
+
+### Remove Previous Reportified Toggle (2025-01-28)
+
+**What Changed:**
+- Removed "Reportified" toggle button from Previous Report panel
+- Removed "test button" from Previous Report panel
+- Removed all related transformation code (~50 lines)
+- Kept "Splitted" and "Proofread" toggles intact
+
+**Why This Matters:**
+- **Simplified UI** - Removed confusing and unused toggle
+- **Better UX** - Only shows relevant toggles for previous reports  
+- **Cleaner Code** - Removed unused transformation logic
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\Controls\PreviousReportEditorPanel.xaml` - Removed toggle button
+- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.PreviousStudies.cs` - Removed property and methods
+- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Commands.cs` - Removed toggle set in automation
+
+**Documentation:**
+- See `IMPLEMENTATION_SUMMARY_2025-01-28_RemovePreviousReportifiedToggle.md` for complete details
+
+---
+
 ### Operation Executor Consolidation (2025-01-16)
 
 **What Changed:**

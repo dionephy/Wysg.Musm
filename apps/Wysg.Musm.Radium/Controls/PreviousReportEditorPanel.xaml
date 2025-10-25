@@ -48,16 +48,12 @@
                     
                     <!-- Toggles -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,0,0,0">
-                        <Button Content="test button" FontSize="11" Margin="0,0,0,0" />
-                        <ToggleButton Content="Splitted" FontSize="11" Margin="4,0,0,0" 
+                        <ToggleButton Content="Splitted" FontSize="11" Margin="0,0,0,0" 
                                       Style="{StaticResource DarkToggleButtonStyle}" 
                                       IsChecked="{Binding PreviousReportSplitted, Mode=TwoWay}"/>
                         <ToggleButton Content="Proofread" FontSize="11" Margin="4,0,0,0" 
                                       Style="{StaticResource DarkToggleButtonStyle}" 
                                       IsChecked="{Binding PreviousProofreadMode, Mode=TwoWay}"/>
-                        <ToggleButton Content="Reportified" FontSize="11" Margin="4,0,0,0" 
-                                      Style="{StaticResource DarkToggleButtonStyle}" 
-                                      IsChecked="{Binding PreviousReportified, Mode=TwoWay}"/>
                     </StackPanel>
                     
                     <!-- Report selector ComboBox -->

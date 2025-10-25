@@ -28,10 +28,8 @@ namespace Wysg.Musm.Radium.ViewModels
             private string _findings = string.Empty; public string Findings { get => _findings; set { if (SetProperty(ref _findings, value)) Debug.WriteLine($"[PrevTab] Findings changed -> len={value?.Length}"); } }
             private string _conclusion = string.Empty; public string Conclusion { get => _conclusion; set { if (SetProperty(ref _conclusion, value)) Debug.WriteLine($"[PrevTab] Conclusion changed -> len={value?.Length}"); } }
             public string RawJson { get; set; } = string.Empty;
-            public string OriginalHeader { get; set; } = string.Empty;
             public string OriginalFindings { get; set; } = string.Empty;
             public string OriginalConclusion { get; set; } = string.Empty;
-            public bool ReportifiedApplied { get; set; }
             private bool _isSelected; public bool IsSelected { get => _isSelected; set => SetProperty(ref _isSelected, value); }
             public ObservableCollection<PreviousReportChoice> Reports { get; } = new();
             private PreviousReportChoice? _selectedReport; public PreviousReportChoice? SelectedReport { get => _selectedReport; set { if (SetProperty(ref _selectedReport, value)) { Debug.WriteLine($"[PrevTab] Report selection changed"); ApplyReportSelection(value); } } }
@@ -93,8 +91,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
         // ---------------- Selection + Reportified Toggle ----------------
         private PreviousStudyTab? _selectedPreviousStudy; public PreviousStudyTab? SelectedPreviousStudy
-        { get => _selectedPreviousStudy; set { var old = _selectedPreviousStudy; if (SetProperty(ref _selectedPreviousStudy, value)) { Debug.WriteLine($"[Prev] SelectedPreviousStudy set -> {(value==null?"<null>":value.Title)}"); foreach (var t in PreviousStudies) t.IsSelected = (value != null && t.Id == value.Id); HookPreviousStudy(old, value); EnsureSplitDefaultsIfNeeded(); ApplyPreviousReportifiedState(); OnPropertyChanged(nameof(PreviousHeaderText)); OnPropertyChanged(nameof(PreviousHeaderAndFindingsText)); OnPropertyChanged(nameof(PreviousFinalConclusionText)); UpdatePreviousReportJson(); } } }
-        private bool _previousReportified; public bool PreviousReportified { get => _previousReportified; set { if (SetProperty(ref _previousReportified, value)) { Debug.WriteLine($"[Prev] PreviousReportified -> {value}"); ApplyPreviousReportifiedState(); } } }
+        { get => _selectedPreviousStudy; set { var old = _selectedPreviousStudy; if (SetProperty(ref _selectedPreviousStudy, value)) { Debug.WriteLine($"[Prev] SelectedPreviousStudy set -> {(value==null?"<null>":value.Title)}"); foreach (var t in PreviousStudies) t.IsSelected = (value != null && t.Id == value.Id); HookPreviousStudy(old, value); EnsureSplitDefaultsIfNeeded(); OnPropertyChanged(nameof(PreviousHeaderText)); OnPropertyChanged(nameof(PreviousHeaderAndFindingsText)); OnPropertyChanged(nameof(PreviousFinalConclusionText)); UpdatePreviousReportJson(); } } }
         private bool _previousReportSplitted; public bool PreviousReportSplitted
         {
             get => _previousReportSplitted;
@@ -288,28 +285,6 @@ namespace Wysg.Musm.Radium.ViewModels
             int findingsFrom = Clamp(tab.FcFindingsFrom ?? 0, 0, fc.Length);
             if ((tab.FcHeaderFrom ?? 0) > findingsFrom) tab.FcHeaderFrom = findingsFrom;
             if ((tab.FcHeaderTo ?? 0) > findingsFrom) tab.FcHeaderTo = findingsFrom;
-            UpdatePreviousReportJson();
-        }
-
-        private void ApplyPreviousReportifiedState()
-        {
-            var tab = SelectedPreviousStudy; if (tab == null) return;
-            Debug.WriteLine($"[Prev] ApplyPreviousReportifiedState reportified={PreviousReportified}");
-            if (PreviousReportified)
-            {
-                tab.Header = tab.OriginalHeader;
-                tab.Findings = tab.OriginalFindings;
-                tab.Conclusion = tab.OriginalConclusion;
-                tab.ReportifiedApplied = true;
-            }
-            else
-            {
-                tab.Header = DereportifyPreserveLines(tab.OriginalHeader);
-                tab.Findings = DereportifyPreserveLines(tab.OriginalFindings);
-                tab.Conclusion = DereportifyPreserveLines(tab.OriginalConclusion);
-                tab.ReportifiedApplied = false;
-            }
-            OnPropertyChanged(nameof(SelectedPreviousStudy));
             UpdatePreviousReportJson();
         }
 

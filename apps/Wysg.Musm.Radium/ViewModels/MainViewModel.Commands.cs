@@ -969,8 +969,6 @@ namespace Wysg.Musm.Radium.ViewModels
                     catch (Exception ex) { Debug.WriteLine("[AddPreviousStudyModule][Reload] " + ex.Message); }
                 }
                 ReloadAndSelectAsync();
-
-                PreviousReportified = true;
                 
                 // Append simplified study string to current report's Comparison field
                 try

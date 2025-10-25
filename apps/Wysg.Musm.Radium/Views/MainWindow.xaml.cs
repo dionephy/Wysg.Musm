@@ -394,7 +394,6 @@ namespace Wysg.Musm.Radium.Views
                 StudyDateTime = DateTime.Now.AddDays(-1),
                 Modality = "CT",
                 Title = $"{DateTime.Now.AddDays(-1):yyyy-MM-dd} CT",
-                OriginalHeader = string.Empty,
                 OriginalFindings = "Dummy findings A\nLine 2",
                 OriginalConclusion = "Dummy conclusion A"
             };
@@ -424,7 +423,6 @@ namespace Wysg.Musm.Radium.Views
             }
             vm.PreviousStudies.Add(tab);
             vm.SelectedPreviousStudy = tab;
-            vm.PreviousReportified = true;
             // initialize splitters to defaults
             if (vm.SelectedPreviousStudy != null)
             {
