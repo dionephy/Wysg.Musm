@@ -11,6 +11,7 @@
   <Color x:Key="Dark.Color.Selection">#094771</Color>
   <Color x:Key="Dark.Color.Foreground">#D0D0D0</Color>
   <Color x:Key="Dark.Color.ForegroundDim">#A0A0A0</Color>
+  <Color x:Key="Dark.Color.ToggleActive">#90EE90</Color>
 
   <!-- New: Scrollbar specific colors -->
   <Color x:Key="Dark.Color.Scrollbar.Track">#2A2A2A</Color>
@@ -29,6 +30,7 @@
   <SolidColorBrush x:Key="Dark.Brush.Selection" Color="{StaticResource Dark.Color.Selection}"/>
   <SolidColorBrush x:Key="Dark.Brush.Foreground" Color="{StaticResource Dark.Color.Foreground}"/>
   <SolidColorBrush x:Key="Dark.Brush.ForegroundDim" Color="{StaticResource Dark.Color.ForegroundDim}"/>
+  <SolidColorBrush x:Key="Dark.Brush.ToggleActive" Color="{StaticResource Dark.Color.ToggleActive}"/>
   <!-- Optional: Phrase missing color (used by PhraseColorizer if present) -->
   <SolidColorBrush x:Key="Dark.Brush.PhraseMissing" Color="#FF0000"/>
 
@@ -61,10 +63,10 @@
     <!-- Base control styles -->
     <Style TargetType="{x:Type Window}">
         <Setter Property="Background" Value="{StaticResource Dark.Brush.Background}"/>
-    <Setter Property="Foreground" Value="{StaticResource Dark.Brush.Foreground}"/>
-    <Setter Property="FontFamily" Value="{StaticResource Dark.MonoFont}"/>
-    <Setter Property="FontSize" Value="13"/>
-  </Style>    
+        <Setter Property="Foreground" Value="{StaticResource Dark.Brush.Foreground}"/>
+        <Setter Property="FontFamily" Value="{StaticResource Dark.MonoFont}"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>    
     
 
   <Style TargetType="Button">
@@ -445,6 +447,50 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="2">
+            <ContentPresenter x:Name="contentPresenter"
+                              HorizontalAlignment="Center" 
+                              VerticalAlignment="Center"
+                              TextElement.Foreground="{TemplateBinding Foreground}">
+              <ContentPresenter.Resources>
+                <Style TargetType="TextBlock">
+                  <Setter Property="Foreground" Value="{Binding RelativeSource={RelativeSource AncestorType=ToggleButton}, Path=Foreground}"/>
+                </Style>
+              </ContentPresenter.Resources>
+            </ContentPresenter>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="border" Property="Background" Value="{StaticResource Dark.Brush.Border}"/>
+              <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource Dark.Brush.AccentAlt}"/>
+              <Setter Property="Foreground" Value="{StaticResource Dark.Brush.ToggleActive}"/>
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource Dark.Brush.AccentAlt}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.6"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Icon ToggleButton Style (for image/icon toggles like lock button) -->
+  <Style x:Key="IconToggleButtonStyle" TargetType="ToggleButton">
+    <Setter Property="Background" Value="{StaticResource Dark.Brush.PanelAlt}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource Dark.Brush.Border}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="4"/>
+    <Setter Property="Margin" Value="2,0,0,2"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <Border x:Name="border"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="2">
             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
           <ControlTemplate.Triggers>
@@ -468,6 +514,12 @@
   <Style TargetType="GridSplitter">
     <Setter Property="Background" Value="{StaticResource Dark.Brush.Border}"/>
     <Setter Property="ShowsPreview" Value="False"/>
+  </Style>
+
+  <!-- D2Coding font for all editors (AvalonEdit-based MusmEditor) -->
+  <Style TargetType="{x:Type Control}" x:Key="MusmEditorStyle">
+    <Setter Property="FontFamily" Value="{StaticResource Dark.MonoFont}"/>
+    <Setter Property="FontSize" Value="13"/>
   </Style>
 
 </ResourceDictionary>

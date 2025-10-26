@@ -23,7 +23,7 @@ namespace Wysg.Musm.Radium.ViewModels
         public ICommand SelectPreviousStudyCommand { get; private set; } = null!;
         public ICommand OpenStudynameMapCommand { get; private set; } = null!;
         public ICommand GenerateFieldCommand { get; private set; } = null!;
-        public ICommand OpenEditStudyTechniqueCommand { get; private set; } = null!;
+        public ICommand EditStudyTechniqueCommand { get; private set; } = null!;
 
         // UI mode toggles
         private bool _proofreadMode; 
@@ -41,7 +41,7 @@ namespace Wysg.Musm.Radium.ViewModels
             } 
         }
         
-        private bool _previousProofreadMode; 
+        private bool _previousProofreadMode=true; 
         public bool PreviousProofreadMode 
         { 
             get => _previousProofreadMode; 
@@ -110,7 +110,7 @@ namespace Wysg.Musm.Radium.ViewModels
             SelectPreviousStudyCommand = new DelegateCommand(o => OnSelectPrevious(o), _ => PatientLocked);
             OpenStudynameMapCommand = new DelegateCommand(_ => Views.StudynameLoincWindow.Open());
             GenerateFieldCommand = new DelegateCommand(p => OnGenerateField(p));
-            OpenEditStudyTechniqueCommand = new DelegateCommand(_ => Views.StudyTechniqueWindow.Open());
+            EditStudyTechniqueCommand = new DelegateCommand(_ => OnEditStudyTechnique(), _ => PatientLocked);
         }
 
         // ------------- Handlers -------------
@@ -1033,37 +1033,21 @@ namespace Wysg.Musm.Radium.ViewModels
             catch { }
         }
 
-        // -------- PACS-scoped automation loader (replaces obsolete IRadiumLocalSettings sequences) --------
-        // Fix summary:
-        // Previously, automation sequences (New/Add/Shortcuts) were read from legacy IRadiumLocalSettings keys.
-        // That caused stale or unintended modules (e.g., LockStudy) to run even when not present in the UI pane.
-        // We now read from the PACS-scoped automation.json in %AppData%/Wysg.Musm/Radium/Pacs/{pacs_key}/automation.json,
-        // ensuring the active PACS profile's saved sequences are the only ones executed.
-        private string GetAutomationSequenceForCurrentPacs(Func<AutomationSettings, string?> selector)
+        private void OnEditStudyTechnique()
         {
             try
             {
-                var pacsKey = string.IsNullOrWhiteSpace(_tenant.CurrentPacsKey) ? "default_pacs" : _tenant.CurrentPacsKey;
-                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var path = System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey), "automation.json");
-                if (!System.IO.File.Exists(path)) return string.Empty;
-                var json = System.IO.File.ReadAllText(path);
-                var settings = System.Text.Json.JsonSerializer.Deserialize<AutomationSettings>(json);
-                var seq = settings != null ? selector(settings) : null;
-                return seq ?? string.Empty;
+                // Open window to edit technique combination for current study
+                Views.StudyTechniqueWindow.OpenForStudy(this);
             }
-            catch
+            catch (Exception ex)
             {
-                return string.Empty;
+                Debug.WriteLine($"[EditStudyTechnique] Error: {ex.Message}");
+                SetStatus("Failed to open study technique editor", true);
             }
         }
 
-        private static string SanitizeFileName(string name)
-        {
-            var invalid = System.IO.Path.GetInvalidFileNameChars();
-            return string.Join("_", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
-        }
-
+        // Internal AutomationSettings class for deserialization
         private sealed class AutomationSettings
         {
             public string? NewStudySequence { get; set; }
@@ -1078,14 +1062,75 @@ namespace Wysg.Musm.Radium.ViewModels
             public string? TestSequence { get; set; }
         }
 
-        // DelegateCommand implementation kept local for simplicity
+        // Helper to get automation sequence for current PACS
+        private string GetAutomationSequenceForCurrentPacs(Func<AutomationSettings, string?> selector)
+        {
+            try
+            {
+                var pacsKey = _tenant?.CurrentPacsKey ?? "default_pacs";
+                var automationFile = GetAutomationFilePath(pacsKey);
+                
+                if (!System.IO.File.Exists(automationFile))
+                {
+                    Debug.WriteLine($"[GetAutomationSequence] No automation file found at {automationFile}");
+                    return string.Empty;
+                }
+                
+                var json = System.IO.File.ReadAllText(automationFile);
+                var settings = System.Text.Json.JsonSerializer.Deserialize<AutomationSettings>(json);
+                
+                if (settings == null)
+                {
+                    Debug.WriteLine($"[GetAutomationSequence] Failed to deserialize automation settings");
+                    return string.Empty;
+                }
+                
+                var sequence = selector(settings);
+                Debug.WriteLine($"[GetAutomationSequence] PACS={pacsKey}, Sequence='{sequence}'");
+                return sequence ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[GetAutomationSequence] Error: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        private static string GetAutomationFilePath(string pacsKey)
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            return System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey), "automation.json");
+        }
+
+        private static string SanitizeFileName(string name)
+        {
+            var invalid = System.IO.Path.GetInvalidFileNameChars();
+            return string.Join("_", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
+        }
+
+        // DelegateCommand helper class
         private sealed class DelegateCommand : ICommand
         {
-            private readonly Action<object?> _exec; private readonly Predicate<object?>? _can;
-            public DelegateCommand(Action<object?> exec, Predicate<object?>? can = null) { _exec = exec; _can = can; }
-            public bool CanExecute(object? parameter) => _can?.Invoke(parameter) ?? true;
-            public void Execute(object? parameter) => _exec(parameter);
-            public event EventHandler? CanExecuteChanged; public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+            private readonly Action<object?> _execute;
+            private readonly Predicate<object?>? _canExecute;
+
+            public DelegateCommand(Action<object?> execute, Predicate<object?>? canExecute = null)
+            {
+                _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+                _canExecute = canExecute;
+            }
+
+            public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
+
+            public void Execute(object? parameter) => _execute(parameter);
+
+            public event EventHandler? CanExecuteChanged
+            {
+                add { CommandManager.RequerySuggested += value; }
+                remove { CommandManager.RequerySuggested -= value; }
+            }
+
+            public void RaiseCanExecuteChanged() => CommandManager.InvalidateRequerySuggested();
         }
     }
 }

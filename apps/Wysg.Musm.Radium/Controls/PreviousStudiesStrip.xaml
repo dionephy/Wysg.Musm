@@ -36,7 +36,7 @@
                                       IsThreeState="False"
                                       IsChecked="{Binding IsSelected, Mode=TwoWay}"
                                       Margin="4,0,0,0"
-                                      Style="{DynamicResource DarkToggleButtonStyle}"
+                                      Style="{StaticResource DarkToggleButtonStyle}"
                                       PreviewMouseDown="OnTabPreviewMouseDown"/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

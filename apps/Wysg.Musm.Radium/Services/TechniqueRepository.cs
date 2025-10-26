@@ -19,6 +19,8 @@ namespace Wysg.Musm.Radium.Services
         Task AddCombinationItemsAsync(long combinationId, IEnumerable<(long techniqueId, int sequenceOrder)> items);
         Task LinkStudynameCombinationAsync(long studynameId, long combinationId, bool isDefault = false);
         Task DeleteStudynameCombinationLinkAsync(long studynameId, long combinationId);
+        Task<long?> GetStudyTechniqueCombinationAsync(long studyId);
+        Task LinkStudyTechniqueCombinationAsync(long studyId, long combinationId);
     }
 
     public sealed record SimpleTextRow(long Id, string Text);

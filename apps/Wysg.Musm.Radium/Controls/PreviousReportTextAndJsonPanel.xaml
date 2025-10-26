@@ -4,9 +4,14 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="450" d:DesignWidth="800" >
+
+    
+    
     <UserControl.Resources>
+        
         <FontFamily x:Key="UiMonospaceFont">pack://application:,,,/Wysg.Musm.Radium;component/Fonts/#D2Coding</FontFamily>
+        
         
         <Style x:Key="DarkToggleButtonStyle" TargetType="ToggleButton">
             <Setter Property="Background" Value="#2D2D30"/>
@@ -173,12 +178,13 @@
             
             <!-- Row 10: Chief Complaint Textboxes -->
             <TextBox Grid.Row="10" Grid.Column="0" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+                     
                      Text="{Binding ChiefComplaint, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
             
             <!-- Chief Complaint Proofread - Now binds to computed ChiefComplaintProofreadDisplay when ProofreadMode is ON -->
             <TextBox Grid.Row="10" Grid.Column="2" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True">
                 <TextBox.Style>
-                    <Style TargetType="TextBox">
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                         <!-- Default: Editable, binds to raw ChiefComplaintProofread -->
                         <Setter Property="Text" Value="{Binding ChiefComplaintProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                         <Setter Property="IsReadOnly" Value="False"/>
@@ -219,7 +225,7 @@
             <!-- Patient History Proofread - Now binds to computed PatientHistoryProofreadDisplay when ProofreadMode is ON -->
             <TextBox Grid.Row="12" Grid.Column="2" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True">
                 <TextBox.Style>
-                    <Style TargetType="TextBox">
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                         <Setter Property="Text" Value="{Binding PatientHistoryProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                         <Setter Property="IsReadOnly" Value="False"/>
                         <Style.Triggers>
@@ -258,7 +264,7 @@
             <!-- Study Techniques Proofread - Now binds to computed StudyTechniquesProofreadDisplay when ProofreadMode is ON -->
             <TextBox Grid.Row="14" Grid.Column="2" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True">
                 <TextBox.Style>
-                    <Style TargetType="TextBox">
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                         <Setter Property="Text" Value="{Binding StudyTechniquesProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                         <Setter Property="IsReadOnly" Value="False"/>
                         <Style.Triggers>
@@ -297,7 +303,7 @@
             <!-- Comparison Proofread - Now binds to computed ComparisonProofreadDisplay when ProofreadMode is ON -->
             <TextBox Grid.Row="16" Grid.Column="2" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True">
                 <TextBox.Style>
-                    <Style TargetType="TextBox">
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                         <Setter Property="Text" Value="{Binding ComparisonProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                         <Setter Property="IsReadOnly" Value="False"/>
                         <Style.Triggers>
@@ -329,7 +335,7 @@
             <!-- Findings Proofread - Now binds to computed FindingsProofreadDisplay when ProofreadMode is ON -->
             <TextBox Grid.Row="18" Grid.Column="2" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True">
                 <TextBox.Style>
-                    <Style TargetType="TextBox">
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                         <Setter Property="Text" Value="{Binding FindingsProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                         <Setter Property="IsReadOnly" Value="False"/>
                         <Style.Triggers>
@@ -361,7 +367,7 @@
             <!-- Conclusion Proofread - Now binds to computed ConclusionProofreadDisplay when ProofreadMode is ON -->
             <TextBox Grid.Row="20" Grid.Column="2" Padding="6" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True">
                 <TextBox.Style>
-                    <Style TargetType="TextBox">
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                         <Setter Property="Text" Value="{Binding ConclusionProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                         <Setter Property="IsReadOnly" Value="False"/>
                         <Style.Triggers>

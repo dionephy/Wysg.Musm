@@ -7,13 +7,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <!-- App executable icon -->
-    <ApplicationIcon>radium.ico</ApplicationIcon>
+    <ApplicationIcon>assets/radium.ico</ApplicationIcon>
     <!-- Fix for XLS0414 XAML build error in .NET 9 -->
     <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\Images\folder_closed.png" />
+    <None Remove="Assets\Images\folder_open.png" />
+    <None Remove="Assets\Images\linked.png" />
     <None Remove="Assets\Images\radium.png" />
+    <None Remove="Assets\Images\unlinked.png" />
     <None Remove="Fonts\D2Coding-Ver1.3.2-20180524.ttf" />
   </ItemGroup>
 
@@ -22,6 +26,8 @@
     <Compile Remove="docs\db\db_local_postgre_20251014.sql" />
     <EmbeddedResource Remove="docs\db\db_local_postgre_20251014.sql" />
     <None Remove="docs\db\db_local_postgre_20251014.sql" />
+    <None Remove="locked.png" />
+    <None Remove="unlocked.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -66,10 +72,28 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\Images\folder_closed.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Assets\Images\folder_open.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Assets\Images\linked.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="Assets\Images\radium.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Assets\Images\unlinked.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="Fonts\D2Coding-Ver1.3.2-20180524.ttf">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Assets\Images\locked.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Assets\Images\unlocked.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
   </ItemGroup>

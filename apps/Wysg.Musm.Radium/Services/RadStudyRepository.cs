@@ -12,6 +12,7 @@ namespace Wysg.Musm.Radium.Services
         Task<long?> EnsureStudyAsync(string patientNumber, string? patientName, string? sex, string? birthDateRaw, string? studyName, DateTime? studyDateTime);
         Task<long?> UpsertPartialReportAsync(long studyId, DateTime? reportDateTime, string reportJson, bool isMine);
         Task<List<PatientReportRow>> GetReportsForPatientAsync(string patientNumber);
+        Task<long?> GetStudyIdAsync(string patientNumber, string studyName, DateTime studyDateTime);
     }
 
     public sealed record PatientReportRow(long StudyId, DateTime StudyDateTime, string Studyname, DateTime? ReportDateTime, string ReportJson);
@@ -134,6 +135,36 @@ ORDER BY rs.study_datetime DESC, rr.report_datetime DESC NULLS LAST;", cn);
             }
             catch (Exception ex) { Debug.WriteLine("[RadStudyRepo] GetReportsForPatient error: " + ex.Message); }
             return list;
+        }
+        
+        public async Task<long?> GetStudyIdAsync(string patientNumber, string studyName, DateTime studyDateTime)
+        {
+            if (string.IsNullOrWhiteSpace(patientNumber) || string.IsNullOrWhiteSpace(studyName)) return null;
+            
+            await using var cn = Open();
+            await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            
+            try
+            {
+                await using var cmd = new NpgsqlCommand(@"SELECT rs.id
+FROM med.rad_study rs
+JOIN med.patient p ON p.id = rs.patient_id AND p.tenant_id=@tid AND p.patient_number = @num
+JOIN med.rad_studyname sn ON sn.id = rs.studyname_id AND sn.studyname = @sname
+WHERE rs.study_datetime = @dt
+LIMIT 1;", cn);
+                cmd.Parameters.AddWithValue("@tid", Tid);
+                cmd.Parameters.AddWithValue("@num", patientNumber);
+                cmd.Parameters.AddWithValue("@sname", studyName);
+                cmd.Parameters.AddWithValue("@dt", studyDateTime);
+                
+                var result = await cmd.ExecuteScalarAsync();
+                return result is long l ? l : null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[RadStudyRepo] GetStudyIdAsync error: {ex.Message}");
+                return null;
+            }
         }
     }
 }

@@ -271,5 +271,25 @@ namespace Wysg.Musm.Radium.Views
             w.Owner = Application.Current?.Windows.OfType<Window>().FirstOrDefault(x => x.IsActive);
             w.Show();
         }
+        
+        public static void OpenForStudy(ViewModels.MainViewModel mainVm)
+        {
+            var app = (App)Application.Current;
+            var vm = app.Services.GetRequiredService<StudyTechniqueViewModel>();
+            // Initialize for current study context
+            vm.InitializeForStudy(mainVm);
+            var w = new StudyTechniqueWindow(vm);
+            w.Owner = Application.Current?.Windows.OfType<Window>().FirstOrDefault(x => x.IsActive);
+            w.Closed += async (_, __) => 
+            {
+                // Refresh study techniques in main VM after window closes
+                try
+                {
+                    await ViewModels.MainViewModel.RefreshStudyTechniqueAfterEditAsync(mainVm);
+                }
+                catch { }
+            };
+            w.Show();
+        }
     }
 }

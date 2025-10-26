@@ -76,18 +76,34 @@ namespace Wysg.Musm.Radium.ViewModels
 
                 var combId = await _repo.CreateCombinationAsync(null);
                 await _repo.AddCombinationItemsAsync(combId, items);
-                if (SetAsDefaultAfterSave)
+                
+                if (_isStudyMode && _mainVm != null)
                 {
-                    await _repo.SetDefaultForStudynameAsync(StudynameId.Value, combId);
+                    // Study mode: Link combination to specific study in med.rad_study_technique_combination
+                    var studyId = await ResolveCurrentStudyIdAsync();
+                    if (studyId.HasValue)
+                    {
+                        await _repo.LinkStudyTechniqueCombinationAsync(studyId.Value, combId);
+                        System.Diagnostics.Debug.WriteLine($"[StudyTechniqueViewModel] Linked study {studyId.Value} to combination {combId}");
+                    }
+                    CurrentCombinationItems.Clear();
                 }
                 else
                 {
-                    await _repo.LinkStudynameCombinationAsync(StudynameId.Value, combId, isDefault: false);
+                    // Studyname mode: Link to studyname as before
+                    if (SetAsDefaultAfterSave)
+                    {
+                        await _repo.SetDefaultForStudynameAsync(StudynameId.Value, combId);
+                    }
+                    else
+                    {
+                        await _repo.LinkStudynameCombinationAsync(StudynameId.Value, combId, isDefault: false);
+                    }
+                    await ReloadStudynameCombinationsAsync();
+                    CurrentCombinationItems.Clear();
+                    // Notify main VM to refresh study_techniques from new default (if applicable)
+                    try { await NotifyDefaultChangedAsync(); } catch { }
                 }
-                await ReloadStudynameCombinationsAsync();
-                CurrentCombinationItems.Clear();
-                // Notify main VM to refresh study_techniques from new default (if applicable)
-                try { await NotifyDefaultChangedAsync(); } catch { }
             });
         }
 
@@ -138,6 +154,90 @@ namespace Wysg.Musm.Radium.ViewModels
             await ReloadStudynameCombinationsAsync();
         }
 
+        public void InitializeForStudy(MainViewModel mainVm)
+        {
+            _mainVm = mainVm;
+            _isStudyMode = true;
+            
+            // Set display labels
+            CurrentStudyLabel = $"{mainVm.PatientName} - {mainVm.StudyName} - {mainVm.StudyDateTime}";
+            Studyname = mainVm.StudyName ?? string.Empty;
+            
+            // Load lookups and attempt to load existing study technique combination
+            System.Threading.Tasks.Task.Run(async () =>
+            {
+                await ReloadLookupsAsync();
+                
+                // Try to resolve studyname ID
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(Studyname))
+                    {
+                        var snId = await _repo.GetStudynameIdByNameAsync(Studyname);
+                        if (snId.HasValue)
+                        {
+                            StudynameId = snId.Value;
+                            await ReloadStudynameCombinationsAsync();
+                        }
+                    }
+                    
+                    // Load existing study technique if mapped
+                    await LoadExistingStudyTechniqueAsync();
+                }
+                catch { }
+            });
+        }
+
+        private MainViewModel? _mainVm;
+        private bool _isStudyMode;
+        
+        private async System.Threading.Tasks.Task LoadExistingStudyTechniqueAsync()
+        {
+            if (_mainVm == null || !_isStudyMode) return;
+            
+            try
+            {
+                // Get study ID from patient number, studyname, and datetime
+                var studyId = await ResolveCurrentStudyIdAsync();
+                if (!studyId.HasValue) return;
+                
+                // Check if study has custom technique combination
+                var combId = await _repo.GetStudyTechniqueCombinationAsync(studyId.Value);
+                if (!combId.HasValue) return;
+                
+                // Load items into current combination
+                await LoadCombinationIntoCurrentAsync(combId.Value);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[StudyTechniqueViewModel] LoadExistingStudyTechnique error: {ex.Message}");
+            }
+        }
+        
+        private async System.Threading.Tasks.Task<long?> ResolveCurrentStudyIdAsync()
+        {
+            if (_mainVm == null || _studies == null) return null;
+            
+            try
+            {
+                var patientNumber = _mainVm.PatientNumber;
+                var studyName = _mainVm.StudyName;
+                var studyDateTimeStr = _mainVm.StudyDateTime;
+                
+                if (string.IsNullOrWhiteSpace(patientNumber) || string.IsNullOrWhiteSpace(studyName) || string.IsNullOrWhiteSpace(studyDateTimeStr))
+                    return null;
+                
+                if (!System.DateTime.TryParse(studyDateTimeStr, out var studyDateTime))
+                    return null;
+                
+                return await _studies.GetStudyIdAsync(patientNumber, studyName, studyDateTime);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public async System.Threading.Tasks.Task ReloadLookupsAsync()
         {
             Prefixes.Clear(); foreach (var p in await _repo.GetPrefixesAsync()) Prefixes.Add(new TechText { Id = p.Id, Text = p.Text });
@@ -168,6 +268,53 @@ namespace Wysg.Musm.Radium.ViewModels
         public sealed class TechText { public long Id { get; set; } public string Text { get; set; } = string.Empty; }
         public sealed class CombinationItem { public int SequenceOrder { get; set; } public string TechniqueDisplay { get; set; } = string.Empty; public long? PrefixId { get; set; } public long TechId { get; set; } public long? SuffixId { get; set; } }
         public sealed class CombinationRow { public long CombinationId { get; set; } public string Display { get; set; } = string.Empty; public bool IsDefault { get; set; } }
+
+        private async System.Threading.Tasks.Task LoadCombinationIntoCurrentAsync(long combinationId)
+        {
+            var items = await _repo.GetCombinationItemsAsync(combinationId);
+            
+            // Convert to CombinationItem and add if not duplicate
+            foreach (var (prefix, tech, suffix, seq) in items)
+            {
+                // Find matching IDs from lookups
+                long? prefixId = string.IsNullOrWhiteSpace(prefix) ? null : Prefixes.FirstOrDefault(p => p.Text == prefix)?.Id;
+                long? techId = Techs.FirstOrDefault(t => t.Text == tech)?.Id;
+                long? suffixId = string.IsNullOrWhiteSpace(suffix) ? null : Suffixes.FirstOrDefault(s => s.Text == suffix)?.Id;
+                
+                if (techId == null) continue; // Skip if tech not found
+                
+                // Check for duplicate
+                bool isDuplicate = false;
+                foreach (var existing in CurrentCombinationItems)
+                {
+                    if (existing.PrefixId == prefixId && existing.TechId == techId.Value && existing.SuffixId == suffixId)
+                    {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                
+                if (!isDuplicate)
+                {
+                    var display = string.Join(" ", new[] 
+                    { 
+                        string.IsNullOrWhiteSpace(prefix) ? null : prefix, 
+                        tech, 
+                        string.IsNullOrWhiteSpace(suffix) ? null : suffix 
+                    }.Where(s => !string.IsNullOrWhiteSpace(s))) ?? tech;
+                    
+                    var nextSeq = CurrentCombinationItems.Count + 1;
+                    CurrentCombinationItems.Add(new CombinationItem
+                    {
+                        SequenceOrder = nextSeq,
+                        TechniqueDisplay = display,
+                        PrefixId = prefixId,
+                        TechId = techId.Value,
+                        SuffixId = suffixId
+                    });
+                }
+            }
+        }
 
         private sealed class RelayCommand : ICommand
         {

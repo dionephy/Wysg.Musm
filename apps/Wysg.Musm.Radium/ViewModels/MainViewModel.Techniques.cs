@@ -94,5 +94,19 @@ namespace Wysg.Musm.Radium.ViewModels
                 }
             }
         }
+        
+        public static async Task RefreshStudyTechniqueAfterEditAsync(MainViewModel vm)
+        {
+            try
+            {
+                Debug.WriteLine("[MainViewModel.Techniques] RefreshStudyTechniqueAfterEditAsync - START");
+                await vm.RefreshStudyTechniqueFromDefaultAsync();
+                Debug.WriteLine("[MainViewModel.Techniques] RefreshStudyTechniqueAfterEditAsync - COMPLETED");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainViewModel.Techniques] EXCEPTION in RefreshStudyTechniqueAfterEditAsync: {ex.Message}");
+            }
+        }
     }
 }

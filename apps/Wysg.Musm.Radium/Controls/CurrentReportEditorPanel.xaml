@@ -45,54 +45,69 @@
                               Margin="2,0,0,2"
                               VerticalAlignment="Center"
                               IsChecked="{Binding PatientLocked, Mode=TwoWay}"
-                              Style="{StaticResource DarkToggleButtonStyle}"
+                              Style="{StaticResource IconToggleButtonStyle}"
                               Padding="4" Width="28" Height="28" 
-                              ToolTip="Toggle Study Lock"
-                              FontFamily="./Fonts/#D2Coding">
-                    <ToggleButton.Resources>
-                        <Geometry x:Key="LockedGeometry">M4,9 L4,16 C4,17.1 4.9,18 6,18 L14,18 C15.1,18 16,17.1 16,16 L16,9 L14,9 L14,7 C14,4.8 12.2,3 10,3 C7.8,3 6,4.8 6,7 L6,9 L4,9 Z M8,9 L8,7 C8,5.9 8.9,5 10,5 C11.1,5 12,5.9 12,7 L12,9 Z</Geometry>
-                        <Geometry x:Key="UnlockedGeometry">M4,9 L4,16 C4,17.1 4.9,18 6,18 L14,18 C15.1,18 16,17.1 16,16 L16,9 L10,9 L10,7 C10,5.9 10.9,5 12,5 C12.7,5 13.3,5.3 13.7,5.8 L15.1,4.4 C14.2,3.5 13.1,3 12,3 C9.8,3 8,4.8 8,7 L8,9 L4,9 Z</Geometry>
-                    </ToggleButton.Resources>
-                    <Grid>
-                        <Path Width="16" Height="16" Stretch="Uniform" Fill="#C8C8C8">
-                            <Path.Style>
-                                <Style TargetType="Path">
-                                    <Setter Property="Data" Value="{StaticResource UnlockedGeometry}"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
-                                            <Setter Property="Data" Value="{StaticResource LockedGeometry}"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Path.Style>
-                        </Path>
-                    </Grid>
+                              ToolTip="Toggle Study Lock">
+                    <Image Width="16" Height="16" Stretch="Uniform">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/unlocked.png"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                        <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/locked.png"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
                 </ToggleButton>
                 
                 <ToggleButton x:Name="btnStudyOpened"
                               Margin="2,0,0,2"
                               VerticalAlignment="Center"
                               IsChecked="{Binding StudyOpened, Mode=TwoWay}"
-                              Style="{StaticResource DarkToggleButtonStyle}"
-                              Padding="4" Height="28" 
+                              Style="{StaticResource IconToggleButtonStyle}"
+                              Padding="4" Width="28" Height="28" 
                               ToolTip="Toggle Study Opened">
-                    <TextBlock Text="Study opened"/>
+                    <Image Width="16" Height="16" Stretch="Uniform">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/folder_closed.png"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                        <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/folder_open.png"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
                 </ToggleButton>
                 
                 <ToggleButton x:Name="btnSyncText"
                               Margin="2,0,0,2"
                               VerticalAlignment="Center"
                               IsChecked="{Binding TextSyncEnabled, Mode=TwoWay}"
-                              Style="{StaticResource DarkToggleButtonStyle}"
-                              Padding="4" Height="28" 
+                              Style="{StaticResource IconToggleButtonStyle}"
+                              Padding="4" Width="28" Height="28" 
                               ToolTip="Sync text with foreign textbox (e.g. Notepad)">
-                    <TextBlock Text="Sync Text"/>
+                    <Image Width="16" Height="16" Stretch="Uniform">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/unlinked.png"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                        <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/linked.png"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
                 </ToggleButton>
                 
                 <!-- Selectable Current Study Label -->
                 <TextBox Text="{Binding CurrentStudyLabel, Mode=OneWay}" 
                          Margin="2,0,0,0" 
-                         FontFamily="{StaticResource UiMonospaceFont}" 
+                         FontFamily="{StaticResource Dark.MonoFont}" 
                          Foreground="#5A9FD6" 
                          Background="Transparent" 
                          BorderThickness="0" 

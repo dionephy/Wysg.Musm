@@ -38,84 +38,6 @@ RETURNING id";
             return o is long l ? l : 0L;
         }
 
-        public async Task<long> EnsureTechniqueAsync(long? prefixId, long techId, long? suffixId)
-        {
-            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            const string sql = @"INSERT INTO med.rad_technique(account_id, prefix_id, tech_id, suffix_id)
-VALUES (@aid, @p, @t, @s)
-ON CONFLICT (account_id, prefix_id, tech_id, suffix_id) DO UPDATE SET tech_id = EXCLUDED.tech_id
-RETURNING id";
-            await using var cmd = new NpgsqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@aid", Aid);
-            cmd.Parameters.AddWithValue("@p", prefixId.HasValue ? prefixId.Value : (object)System.DBNull.Value);
-            cmd.Parameters.AddWithValue("@t", techId);
-            cmd.Parameters.AddWithValue("@s", suffixId.HasValue ? suffixId.Value : (object)System.DBNull.Value);
-            var o = await cmd.ExecuteScalarAsync();
-            return o is long l ? l : 0L;
-        }
-
-        public async Task<long> CreateCombinationAsync(string? name)
-        {
-            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            const string sql = "INSERT INTO med.rad_technique_combination(account_id, combination_name) VALUES (@aid, @n) RETURNING id";
-            await using var cmd = new NpgsqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@aid", Aid);
-            cmd.Parameters.AddWithValue("@n", (object?)name ?? System.DBNull.Value);
-            var o = await cmd.ExecuteScalarAsync();
-            return o is long l ? l : 0L;
-        }
-
-        public async Task AddCombinationItemsAsync(long combinationId, IEnumerable<(long techniqueId, int sequenceOrder)> items)
-        {
-            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            await using var tx = await cn.BeginTransactionAsync();
-            try
-            {
-                const string sql = @"INSERT INTO med.rad_technique_combination_item(combination_id, technique_id, sequence_order)
-VALUES (@c, @t, @o)
-ON CONFLICT (combination_id, technique_id, sequence_order) DO NOTHING";
-                await using var cmd = new NpgsqlCommand(sql, cn, (NpgsqlTransaction)tx);
-                var pC = cmd.Parameters.Add("@c", NpgsqlTypes.NpgsqlDbType.Bigint);
-                var pT = cmd.Parameters.Add("@t", NpgsqlTypes.NpgsqlDbType.Bigint);
-                var pO = cmd.Parameters.Add("@o", NpgsqlTypes.NpgsqlDbType.Integer);
-                foreach (var (techId, seq) in items)
-                {
-                    pC.Value = combinationId; pT.Value = techId; pO.Value = seq;
-                    await cmd.ExecuteNonQueryAsync();
-                }
-                await tx.CommitAsync();
-            }
-            catch
-            {
-                try { await tx.RollbackAsync(); } catch { }
-                throw;
-            }
-        }
-
-        public async Task LinkStudynameCombinationAsync(long studynameId, long combinationId, bool isDefault = false)
-        {
-            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            const string sql = @"INSERT INTO med.rad_studyname_technique_combination(studyname_id, combination_id, is_default)
-VALUES (@sid, @cid, @def)
-ON CONFLICT (studyname_id, combination_id) DO UPDATE SET is_default = EXCLUDED.is_default";
-            await using var cmd = new NpgsqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@sid", studynameId);
-            cmd.Parameters.AddWithValue("@cid", combinationId);
-            cmd.Parameters.AddWithValue("@def", isDefault);
-            await cmd.ExecuteNonQueryAsync();
-        }
-
-        public async Task DeleteStudynameCombinationLinkAsync(long studynameId, long combinationId)
-        {
-            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
-            const string sql = @"DELETE FROM med.rad_studyname_technique_combination 
-WHERE studyname_id = @sid AND combination_id = @cid";
-            await using var cmd = new NpgsqlCommand(sql, cn);
-            cmd.Parameters.AddWithValue("@sid", studynameId);
-            cmd.Parameters.AddWithValue("@cid", combinationId);
-            await cmd.ExecuteNonQueryAsync();
-        }
-
         public async Task<IReadOnlyList<SimpleTextRow>> GetTechsAsync()
         {
             var list = new List<SimpleTextRow>();
@@ -215,6 +137,106 @@ ON CONFLICT (studyname_id, combination_id) DO UPDATE SET is_default = EXCLUDED.i
                 try { await tx.RollbackAsync(); } catch { }
                 throw;
             }
+        }
+
+        public async Task<long> EnsureTechniqueAsync(long? prefixId, long techId, long? suffixId)
+        {
+            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            const string sql = @"INSERT INTO med.rad_technique(account_id, prefix_id, tech_id, suffix_id)
+VALUES (@aid, @p, @t, @s)
+ON CONFLICT (account_id, prefix_id, tech_id, suffix_id) DO UPDATE SET tech_id = EXCLUDED.tech_id
+RETURNING id";
+            await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@aid", Aid);
+            cmd.Parameters.AddWithValue("@p", prefixId.HasValue ? prefixId.Value : (object)System.DBNull.Value);
+            cmd.Parameters.AddWithValue("@t", techId);
+            cmd.Parameters.AddWithValue("@s", suffixId.HasValue ? suffixId.Value : (object)System.DBNull.Value);
+            var o = await cmd.ExecuteScalarAsync();
+            return o is long l ? l : 0L;
+        }
+
+        public async Task<long> CreateCombinationAsync(string? name)
+        {
+            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            const string sql = "INSERT INTO med.rad_technique_combination(account_id, combination_name) VALUES (@aid, @n) RETURNING id";
+            await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@aid", Aid);
+            cmd.Parameters.AddWithValue("@n", (object?)name ?? System.DBNull.Value);
+            var o = await cmd.ExecuteScalarAsync();
+            return o is long l ? l : 0L;
+        }
+
+        public async Task AddCombinationItemsAsync(long combinationId, IEnumerable<(long techniqueId, int sequenceOrder)> items)
+        {
+            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            await using var tx = await cn.BeginTransactionAsync();
+            try
+            {
+                const string sql = @"INSERT INTO med.rad_technique_combination_item(combination_id, technique_id, sequence_order)
+VALUES (@c, @t, @o)
+ON CONFLICT (combination_id, technique_id, sequence_order) DO NOTHING";
+                await using var cmd = new NpgsqlCommand(sql, cn, (NpgsqlTransaction)tx);
+                var pC = cmd.Parameters.Add("@c", NpgsqlTypes.NpgsqlDbType.Bigint);
+                var pT = cmd.Parameters.Add("@t", NpgsqlTypes.NpgsqlDbType.Bigint);
+                var pO = cmd.Parameters.Add("@o", NpgsqlTypes.NpgsqlDbType.Integer);
+                foreach (var (techId, seq) in items)
+                {
+                    pC.Value = combinationId; pT.Value = techId; pO.Value = seq;
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                await tx.CommitAsync();
+            }
+            catch
+            {
+                try { await tx.RollbackAsync(); } catch { }
+                throw;
+            }
+        }
+
+        public async Task LinkStudynameCombinationAsync(long studynameId, long combinationId, bool isDefault = false)
+        {
+            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            const string sql = @"INSERT INTO med.rad_studyname_technique_combination(studyname_id, combination_id, is_default)
+VALUES (@sid, @cid, @def)
+ON CONFLICT (studyname_id, combination_id) DO UPDATE SET is_default = EXCLUDED.is_default";
+            await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@sid", studynameId);
+            cmd.Parameters.AddWithValue("@cid", combinationId);
+            cmd.Parameters.AddWithValue("@def", isDefault);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        public async Task DeleteStudynameCombinationLinkAsync(long studynameId, long combinationId)
+        {
+            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            const string sql = @"DELETE FROM med.rad_studyname_technique_combination 
+WHERE studyname_id = @sid AND combination_id = @cid";
+            await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@sid", studynameId);
+            cmd.Parameters.AddWithValue("@cid", combinationId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        public async Task<long?> GetStudyTechniqueCombinationAsync(long studyId)
+        {
+            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            const string sql = @"SELECT combination_id FROM med.rad_study_technique_combination WHERE study_id = @sid LIMIT 1";
+            await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@sid", studyId);
+            var result = await cmd.ExecuteScalarAsync();
+            return result is long l ? l : null;
+        }
+        
+        public async Task LinkStudyTechniqueCombinationAsync(long studyId, long combinationId)
+        {
+            await using var cn = Open(); await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            const string sql = @"INSERT INTO med.rad_study_technique_combination(study_id, combination_id)
+VALUES (@sid, @cid)
+ON CONFLICT (study_id) DO UPDATE SET combination_id = EXCLUDED.combination_id";
+            await using var cmd = new NpgsqlCommand(sql, cn);
+            cmd.Parameters.AddWithValue("@sid", studyId);
+            cmd.Parameters.AddWithValue("@cid", combinationId);
+            await cmd.ExecuteNonQueryAsync();
         }
     }
 }

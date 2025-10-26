@@ -12,6 +12,8 @@
 
     <Grid>
         <ed:MusmEditor x:Name="Editor"
+                   FontFamily="{DynamicResource Dark.MonoFont}"
+                   FontSize="13"
                    DocumentText="{Binding ElementName=Root, Path=DocumentText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                    HorizontalScrollBarVisibility="{Binding ElementName=Root, Path=HorizontalScrollBarVisibility}"
                    VerticalScrollBarVisibility="{Binding ElementName=Root, Path=VerticalScrollBarVisibility}"

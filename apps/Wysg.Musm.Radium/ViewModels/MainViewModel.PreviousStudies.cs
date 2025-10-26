@@ -124,7 +124,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 } 
             } 
         }
-        private bool _previousReportSplitted; public bool PreviousReportSplitted
+        private bool _previousReportSplitted = true; 
+        public bool PreviousReportSplitted
         {
             get => _previousReportSplitted;
             set
