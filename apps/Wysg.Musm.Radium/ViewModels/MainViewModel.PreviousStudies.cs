@@ -91,7 +91,39 @@ namespace Wysg.Musm.Radium.ViewModels
 
         // ---------------- Selection + Reportified Toggle ----------------
         private PreviousStudyTab? _selectedPreviousStudy; public PreviousStudyTab? SelectedPreviousStudy
-        { get => _selectedPreviousStudy; set { var old = _selectedPreviousStudy; if (SetProperty(ref _selectedPreviousStudy, value)) { Debug.WriteLine($"[Prev] SelectedPreviousStudy set -> {(value==null?"<null>":value.Title)}"); foreach (var t in PreviousStudies) t.IsSelected = (value != null && t.Id == value.Id); HookPreviousStudy(old, value); EnsureSplitDefaultsIfNeeded(); OnPropertyChanged(nameof(PreviousHeaderText)); OnPropertyChanged(nameof(PreviousHeaderAndFindingsText)); OnPropertyChanged(nameof(PreviousFinalConclusionText)); UpdatePreviousReportJson(); } } }
+        { 
+            get => _selectedPreviousStudy; 
+            set 
+            { 
+                var old = _selectedPreviousStudy; 
+                if (SetProperty(ref _selectedPreviousStudy, value)) 
+                { 
+                    Debug.WriteLine($"[Prev] SelectedPreviousStudy set -> {(value==null?"<null>":value.Title)}"); 
+                    foreach (var t in PreviousStudies) t.IsSelected = (value != null && t.Id == value.Id); 
+                    HookPreviousStudy(old, value); 
+                    EnsureSplitDefaultsIfNeeded(); 
+                    
+                    // Notify all wrapper properties that depend on SelectedPreviousStudy
+                    OnPropertyChanged(nameof(PreviousHeaderText)); 
+                    OnPropertyChanged(nameof(PreviousHeaderAndFindingsText)); 
+                    OnPropertyChanged(nameof(PreviousFinalConclusionText)); 
+                    
+                    // CRITICAL FIX: Notify split-mode properties so editors update when switching tabs in splitted mode
+                    OnPropertyChanged(nameof(PreviousHeaderTemp));
+                    OnPropertyChanged(nameof(PreviousSplitFindings));
+                    OnPropertyChanged(nameof(PreviousSplitConclusion));
+                    OnPropertyChanged(nameof(PreviousHeaderSplitView));
+                    OnPropertyChanged(nameof(PreviousFindingsSplitView));
+                    OnPropertyChanged(nameof(PreviousConclusionSplitView));
+                    
+                    // NEW: Notify computed editor properties for proofread support
+                    OnPropertyChanged(nameof(PreviousFindingsEditorText));
+                    OnPropertyChanged(nameof(PreviousConclusionEditorText));
+                    
+                    UpdatePreviousReportJson(); 
+                } 
+            } 
+        }
         private bool _previousReportSplitted; public bool PreviousReportSplitted
         {
             get => _previousReportSplitted;
@@ -104,6 +136,10 @@ namespace Wysg.Musm.Radium.ViewModels
                     OnPropertyChanged(nameof(PreviousHeaderSplitView));
                     OnPropertyChanged(nameof(PreviousFindingsSplitView));
                     OnPropertyChanged(nameof(PreviousConclusionSplitView));
+                    
+                    // NEW: Notify editor properties when split mode changes (affects fallback)
+                    OnPropertyChanged(nameof(PreviousFindingsEditorText));
+                    OnPropertyChanged(nameof(PreviousConclusionEditorText));
                 }
             }
         }
@@ -123,6 +159,58 @@ namespace Wysg.Musm.Radium.ViewModels
         private bool _autoSplitHeader; public bool AutoSplitHeader { get => _autoSplitHeader; set => SetProperty(ref _autoSplitHeader, value); }
         private bool _autoSplitConclusion; public bool AutoSplitConclusion { get => _autoSplitConclusion; set => SetProperty(ref _autoSplitConclusion, value); }
         private bool _autoSplit; public bool AutoSplit { get => _autoSplit; set => SetProperty(ref _autoSplit, value); }
+        
+        // NEW: Computed properties for previous report Findings and Conclusion editors with proofread support
+        // These follow the fallback chain: proofread ¡æ splitted (if on) ¡æ original
+        public string PreviousFindingsEditorText
+        {
+            get
+            {
+                var tab = SelectedPreviousStudy;
+                if (tab == null) return _prevHeaderAndFindingsCache ?? string.Empty;
+                
+                // Proofread mode: use proofread version if available
+                if (PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.FindingsProofread))
+                {
+                    return tab.FindingsProofread;
+                }
+                
+                // Fallback: splitted mode uses split version, otherwise original
+                if (PreviousReportSplitted)
+                {
+                    return tab.FindingsOut ?? string.Empty;
+                }
+                else
+                {
+                    return tab.Findings ?? string.Empty;
+                }
+            }
+        }
+        
+        public string PreviousConclusionEditorText
+        {
+            get
+            {
+                var tab = SelectedPreviousStudy;
+                if (tab == null) return _prevFinalConclusionCache ?? string.Empty;
+                
+                // Proofread mode: use proofread version if available
+                if (PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.ConclusionProofread))
+                {
+                    return tab.ConclusionProofread;
+                }
+                
+                // Fallback: splitted mode uses split version, otherwise original
+                if (PreviousReportSplitted)
+                {
+                    return tab.ConclusionOut ?? string.Empty;
+                }
+                else
+                {
+                    return tab.Conclusion ?? string.Empty;
+                }
+            }
+        }
         
         // NEW: Computed properties for previous report that switch between raw and proofread versions based on PreviousProofreadMode
         // These properties will be bound to the previous report editor DocumentText
@@ -713,6 +801,11 @@ namespace Wysg.Musm.Radium.ViewModels
                 OnPropertyChanged(nameof(PreviousHeaderSplitView));
                 OnPropertyChanged(nameof(PreviousFindingsSplitView));
                 OnPropertyChanged(nameof(PreviousConclusionSplitView));
+                
+                // NEW: Notify editor properties when underlying data changes (especially proofread fields)
+                OnPropertyChanged(nameof(PreviousFindingsEditorText));
+                OnPropertyChanged(nameof(PreviousConclusionEditorText));
+                
                 UpdatePreviousReportJson();
             }
         }

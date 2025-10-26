@@ -105,41 +105,19 @@
         <!-- Previous Findings Editor -->
         <editor:EditorControl x:Name="EditorPreviousFindings" 
                               Grid.Row="4" 
+                              IsReadOnly="True"
+                              DocumentText="{Binding PreviousFindingsEditorText, Mode=OneWay}"
                               PhraseSnapshot="{Binding CurrentPhraseSnapshot}" 
-                              PhraseSemanticTags="{Binding PhraseSemanticTags}">
-            <editor:EditorControl.Style>
-                <Style TargetType="editor:EditorControl">
-                    <Setter Property="IsReadOnly" Value="True"/>
-                    <Setter Property="DocumentText" Value="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay}"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding PreviousReportSplitted}" Value="True">
-                            <Setter Property="DocumentText" Value="{Binding PreviousSplitFindings, Mode=TwoWay}"/>
-                            <Setter Property="IsReadOnly" Value="False"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </editor:EditorControl.Style>
-        </editor:EditorControl>
+                              PhraseSemanticTags="{Binding PhraseSemanticTags}"/>
         
         <GridSplitter Grid.Row="5" HorizontalAlignment="Stretch" Height="2"/>
         
         <!-- Previous Conclusion Editor -->
         <editor:EditorControl x:Name="EditorPreviousConclusion" 
                               Grid.Row="6" 
+                              IsReadOnly="True"
+                              DocumentText="{Binding PreviousConclusionEditorText, Mode=OneWay}"
                               PhraseSnapshot="{Binding CurrentPhraseSnapshot}" 
-                              PhraseSemanticTags="{Binding PhraseSemanticTags}">
-            <editor:EditorControl.Style>
-                <Style TargetType="editor:EditorControl">
-                    <Setter Property="IsReadOnly" Value="True"/>
-                    <Setter Property="DocumentText" Value="{Binding PreviousFinalConclusionText, Mode=TwoWay}"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding PreviousReportSplitted}" Value="True">
-                            <Setter Property="DocumentText" Value="{Binding PreviousSplitConclusion, Mode=TwoWay}"/>
-                            <Setter Property="IsReadOnly" Value="False"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </editor:EditorControl.Style>
-        </editor:EditorControl>
+                              PhraseSemanticTags="{Binding PhraseSemanticTags}"/>
     </Grid>
 </UserControl>

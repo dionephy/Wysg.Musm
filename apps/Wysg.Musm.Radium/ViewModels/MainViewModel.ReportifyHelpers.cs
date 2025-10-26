@@ -146,124 +146,30 @@ namespace Wysg.Musm.Radium.ViewModels
                 input = RxBlankLines.Replace(input, "\n\n");
             }
 
-            // Paragraph numbering for conclusion (after blank line normalization)
-            if (isConclusion && cfg.NumberConclusionParagraphs)
+            // STEP 1: Apply line-level transformations (capitalization, punctuation, arrows, bullets, etc.)
+            // This must happen BEFORE paragraph numbering so that arrows/bullets are normalized
+            var lines = input.Split('\n');
+            for (int i = 0; i < lines.Length; i++)
             {
-                if (cfg.NumberConclusionLinesOnOneParagraph)
-                {
-                    // LINE MODE: Number each line as a separate point, remove all blank lines
-                    var lines = input.Split('\n');
-                    var resultLines = new List<string>();
-                    int num = 1;
-                    
-                    foreach (var line in lines)
-                    {
-                        var trimmed = line.Trim();
-                        
-                        // Skip completely blank lines
-                        if (string.IsNullOrWhiteSpace(trimmed))
-                        {
-                            continue; // Don't add blank lines at all in line mode
-                        }
-                        
-                        // Check if this line already has a number (from manual entry)
-                        bool hasNumber = RxNumbered.IsMatch(trimmed);
-                        
-                        if (hasNumber)
-                        {
-                            // Line already numbered - renumber for consistency
-                            var match = RxNumbered.Match(trimmed);
-                            var content = trimmed.Substring(match.Length);
-                            resultLines.Add($"{num}. {content}");
-                            num++;
-                        }
-                        else
-                        {
-                            // Line not numbered - add number
-                            resultLines.Add($"{num}. {trimmed}");
-                            num++;
-                        }
-                    }
-                    
-                    input = string.Join("\n", resultLines);
-                }
-                else
-                {
-                    // PARAGRAPH MODE: Number paragraphs separated by blank lines, preserve blank lines
-                    var paras = input.Split("\n\n", StringSplitOptions.None);
-                    int num = 1;
-                    var resultParas = new List<string>();
-                    
-                    foreach (var para in paras)
-                    {
-                        var trimmed = para.Trim();
-                        
-                        // Empty paragraph (blank line) - preserve it
-                        if (string.IsNullOrWhiteSpace(trimmed))
-                        {
-                            // Keep empty paragraphs to preserve spacing
-                            // This will result in double newlines when joined
-                            continue; // Skip empty paragraphs in the loop, they're already handled by the split/join
-                        }
-                        
-                        // Split paragraph into lines for proper indenting
-                        var paraLines = trimmed.Split('\n');
-                        var formattedLines = new List<string>();
-                        
-                        for (int i = 0; i < paraLines.Length; i++)
-                        {
-                            var line = paraLines[i].Trim();
-                            if (string.IsNullOrWhiteSpace(line)) continue;
-                            
-                            if (i == 0)
-                            {
-                                // First line gets the number
-                                formattedLines.Add($"{num}. {line}");
-                            }
-                            else
-                            {
-                                // Continuation lines get indented
-                                formattedLines.Add($"   {line}");
-                            }
-                        }
-                        
-                        if (formattedLines.Count > 0)
-                        {
-                            resultParas.Add(string.Join("\n", formattedLines));
-                            num++;
-                        }
-                    }
-                    
-                    // Join with double newlines to preserve paragraph separation
-                    input = string.Join("\n\n", resultParas);
-                }
-            }
-
-            // Apply line-level transformations (capitalization, punctuation, etc.)
-            var lines2 = input.Split('\n');
-            for (int i = 0; i < lines2.Length; i++)
-            {
-                var line = lines2[i];
+                var line = lines[i];
                 string working = line.TrimEnd();
                 
                 // Preserve blank lines - don't process them
                 if (working.Length == 0) 
                 { 
-                    lines2[i] = string.Empty; 
+                    lines[i] = string.Empty; 
                     continue; 
                 }
 
                 // Track if we added a leading space (for space before arrows/bullets)
                 bool hasLeadingSpace = false;
 
-                // FIXED: Apply granular arrow spacing
+                // Apply granular arrow spacing
                 if (cfg.SpaceBeforeArrows || cfg.SpaceAfterArrows)
                 {
-                    // Match arrow patterns at start of line (with any trailing whitespace)
                     var arrowMatch = RxArrowAny.Match(working);
                     if (arrowMatch.Success)
                     {
-                        // Extract the content after the arrow and any whitespace
                         var content = working.Substring(arrowMatch.Length).TrimStart();
                         var arrow = cfg.Arrow;
                         var prefix = cfg.SpaceBeforeArrows ? " " : "";
@@ -273,14 +179,12 @@ namespace Wysg.Musm.Radium.ViewModels
                     }
                 }
                 
-                // FIXED: Apply granular bullet spacing
+                // Apply granular bullet spacing
                 if (cfg.SpaceBeforeBullets || cfg.SpaceAfterBullets)
                 {
-                    // Match bullet patterns at start of line (with any trailing whitespace)
                     var bulletMatch = RxBullet.Match(working);
                     if (bulletMatch.Success)
                     {
-                        // Extract the content after the bullet and any whitespace
                         var content = working.Substring(bulletMatch.Length).TrimStart();
                         var bullet = cfg.DetailingPrefix;
                         var prefix = cfg.SpaceBeforeBullets ? " " : "";
@@ -312,8 +216,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     working = RxCollapseWs.Replace(working, " ");
                 }
                 
-                // CRITICAL FIX: Only trim if we didn't add a leading space
-                // If hasLeadingSpace is true, use TrimEnd only to preserve the space before arrow/bullet
+                // Only trim if we didn't add a leading space
                 if (hasLeadingSpace)
                 {
                     working = working.TrimEnd();
@@ -326,7 +229,6 @@ namespace Wysg.Musm.Radium.ViewModels
                 // Enhanced capitalization logic
                 if (cfg.CapitalizeSentence && working.Length > 0)
                 {
-                    // Find the first letter position (skip bullets, numbers, arrows, whitespace)
                     int firstLetterPos = 0;
                     
                     // Skip leading space (from space before arrows/bullets)
@@ -340,18 +242,12 @@ namespace Wysg.Musm.Radium.ViewModels
                     {
                         firstLetterPos += 2;
                     }
-                    // Skip leading number (1. 2. etc)
-                    else if (RxNumbered.IsMatch(working.Substring(firstLetterPos)))
-                    {
-                        var match = RxNumbered.Match(working.Substring(firstLetterPos));
-                        firstLetterPos += match.Length;
-                    }
                     // Skip leading arrow (--> )
                     else if (working.Length > firstLetterPos + cfg.Arrow.Length && working.Substring(firstLetterPos).StartsWith(cfg.Arrow + " "))
                     {
                         firstLetterPos += cfg.Arrow.Length + 1;
                     }
-                    // Skip indentation (3 spaces for continuation)
+                    // Skip indentation (3 spaces for continuation) - will be added later by numbering
                     else if (working.Length > firstLetterPos + 2 && working.Substring(firstLetterPos).StartsWith("   "))
                     {
                         firstLetterPos += 3;
@@ -374,10 +270,140 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     working += '.';
                 }
-                lines2[i] = working;
+                lines[i] = working;
+            }
+            
+            // Rejoin lines after transformations
+            input = string.Join("\n", lines);
+
+            // STEP 2: Paragraph numbering for conclusion (after line transformations)
+            // Now arrows/bullets are already normalized, so paragraph splitting will work correctly
+            if (isConclusion && cfg.NumberConclusionParagraphs)
+            {
+                // SMART LOGIC: Detect if input has multiple paragraphs (separated by blank lines)
+                // If multiple paragraphs exist, ignore the line mode setting and force paragraph mode
+                var hasMulipleParagraphs = input.Contains("\n\n");
+                var effectiveLineMode = cfg.NumberConclusionLinesOnOneParagraph && !hasMulipleParagraphs;
+                
+                Debug.WriteLine($"[Reportify] Conclusion numbering mode: LineMode={cfg.NumberConclusionLinesOnOneParagraph}, HasMultipleParagraphs={hasMulipleParagraphs}, EffectiveMode={(effectiveLineMode ? "LINE" : "PARAGRAPH")}");
+                Debug.WriteLine($"[Reportify] Input before numbering (length={input.Length}):\n{input}");
+                
+                if (effectiveLineMode)
+                {
+                    // LINE MODE: Number each line as a separate point, remove all blank lines
+                    // ONLY applies when there's a single paragraph (no blank line separators)
+                    var linesList = input.Split('\n');
+                    var resultLines = new List<string>();
+                    int num = 1;
+                    
+                    Debug.WriteLine($"[Reportify] LINE MODE: Split into {linesList.Length} lines");
+                    
+                    foreach (var line in linesList)
+                    {
+                        var trimmed = line.Trim();
+                        
+                        // Skip completely blank lines
+                        if (string.IsNullOrWhiteSpace(trimmed))
+                        {
+                            continue; // Don't add blank lines at all in line mode
+                        }
+                        
+                        // Check if this line already has a number (from manual entry)
+                        bool hasNumber = RxNumbered.IsMatch(trimmed);
+                        
+                        if (hasNumber)
+                        {
+                            // Line already numbered - renumber for consistency
+                            var match = RxNumbered.Match(trimmed);
+                            var content = trimmed.Substring(match.Length);
+                            resultLines.Add($"{num}. {content}");
+                            num++;
+                        }
+                        else
+                        {
+                            // Line not numbered - add number
+                            resultLines.Add($"{num}. {trimmed}");
+                            num++;
+                        }
+                    }
+                    
+                    input = string.Join("\n", resultLines);
+                    Debug.WriteLine($"[Reportify] LINE MODE result: {resultLines.Count} numbered lines");
+                }
+                else
+                {
+                    // PARAGRAPH MODE: Number paragraphs separated by blank lines, preserve blank lines
+                    // ALWAYS applies when multiple paragraphs exist (even if line mode setting is enabled)
+                    // Lines are already transformed (arrows, bullets, capitalization, etc.)
+                    var paras = input.Split("\n\n", StringSplitOptions.None);
+                    int num = 1;
+                    var resultParas = new List<string>();
+                    
+                    Debug.WriteLine($"[Reportify] PARAGRAPH MODE: Split into {paras.Length} paragraphs");
+                    
+                    for (int pIdx = 0; pIdx < paras.Length; pIdx++)
+                    {
+                        var para = paras[pIdx];
+                        var trimmed = para.Trim();
+                        
+                        Debug.WriteLine($"[Reportify] Para {pIdx + 1}: '{trimmed.Substring(0, Math.Min(30, trimmed.Length))}...' (length={trimmed.Length})");
+                        
+                        // Empty paragraph (blank line) - skip it
+                        if (string.IsNullOrWhiteSpace(trimmed))
+                        {
+                            Debug.WriteLine($"[Reportify] Para {pIdx + 1}: SKIPPED (blank)");
+                            continue;
+                        }
+                        
+                        // Split paragraph into lines for numbering first line + indenting continuation
+                        var paraLines = trimmed.Split('\n');
+                        var formattedLines = new List<string>();
+                        
+                        Debug.WriteLine($"[Reportify] Para {pIdx + 1}: Contains {paraLines.Length} lines");
+                        
+                        for (int i = 0; i < paraLines.Length; i++)
+                        {
+                            var line = paraLines[i].Trim();
+                            if (string.IsNullOrWhiteSpace(line)) continue;
+                            
+                            Debug.WriteLine($"[Reportify] Para {pIdx + 1}, Line {i + 1}: '{line.Substring(0, Math.Min(20, line.Length))}'");
+                            
+                            if (i == 0)
+                            {
+                                // First line gets the number
+                                // If line already has a number from manual entry, remove it first
+                                if (RxNumbered.IsMatch(line))
+                                {
+                                    var match = RxNumbered.Match(line);
+                                    line = line.Substring(match.Length);
+                                }
+                                formattedLines.Add($"{num}. {line}");
+                                Debug.WriteLine($"[Reportify] Para {pIdx + 1}, Line {i + 1}: NUMBERED as {num}");
+                            }
+                            else
+                            {
+                                // Continuation lines get indented (preserve any leading spaces from arrows/bullets)
+                                formattedLines.Add($"   {line}");
+                                Debug.WriteLine($"[Reportify] Para {pIdx + 1}, Line {i + 1}: INDENTED");
+                            }
+                        }
+                        
+                        if (formattedLines.Count > 0)
+                        {
+                            resultParas.Add(string.Join("\n", formattedLines));
+                            num++;
+                        }
+                    }
+                    
+                    // Join with double newlines to preserve paragraph separation
+                    input = string.Join("\n\n", resultParas);
+                    Debug.WriteLine($"[Reportify] PARAGRAPH MODE result: {resultParas.Count} numbered paragraphs");
+                }
+                
+                Debug.WriteLine($"[Reportify] Output after numbering (length={input.Length}):\n{input}");
             }
 
-            return string.Join("\n", lines2);
+            return input;
         }
 
         // For dereportify we already had logic; keep existing DereportifySingleLine methods.
@@ -403,8 +429,8 @@ namespace Wysg.Musm.Radium.ViewModels
         private static readonly Regex _rxModality = new(@"\b(CT|MRI|MR|XR|CR|DX|US|PET[- ]?CT|PETCT|PET|MAMMO|MMG|DXA|NM)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private string ExtractModality(string? studyName)
         {
-            if (string.IsNullOrWhiteSpace(studyName)) return "UNK";
-            var m = _rxModality.Match(studyName); if (!m.Success) return "UNK";
+            if (string.IsNullOrWhiteSpace(studyName)) return "OT"; // Changed from "UNK" to "OT" (Other)
+            var m = _rxModality.Match(studyName); if (!m.Success) return "OT"; // Changed from "UNK" to "OT" (Other)
             var v = m.Value.ToUpperInvariant();
             return v switch { "MRI" => "MR", "PET-CT" => "PETCT", "PET CT" => "PETCT", "MMG" => "MAMMO", _ => v };
         }

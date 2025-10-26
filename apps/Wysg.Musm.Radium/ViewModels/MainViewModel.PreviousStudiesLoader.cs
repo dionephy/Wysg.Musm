@@ -23,7 +23,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 var groups = rows.GroupBy(r => new { r.StudyId, r.StudyDateTime, r.Studyname });
                 foreach (var g in groups.OrderByDescending(g => g.Key.StudyDateTime))
                 {
-                    string modality = ExtractModality(StudyName);
+                    string modality = ExtractModality(g.Key.Studyname); // Extract modality from Studyname, not StudyName
                     if (PreviousStudies.Any(t => t.StudyDateTime == g.Key.StudyDateTime && string.Equals(t.Modality, modality, StringComparison.OrdinalIgnoreCase)))
                         continue; // enforce uniqueness by datetime + modality
                     var tab = new PreviousStudyTab
@@ -31,7 +31,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         Id = Guid.NewGuid(),
                         StudyDateTime = g.Key.StudyDateTime,
                         Modality = modality,
-                        Title = $"{g.Key.StudyDateTime:yyyy-MM-dd} {modality}"
+                        Title = $"{modality} {g.Key.StudyDateTime:yyyy-MM-dd}" // Changed format: "{Modality} {Date}" instead of "{Date} {Modality}"
                     };
                     foreach (var row in g.OrderByDescending(r => r.ReportDateTime))
                     {

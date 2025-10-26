@@ -56,6 +56,10 @@ namespace Wysg.Musm.Radium.ViewModels
                     OnPropertyChanged(nameof(PreviousComparisonDisplay));
                     OnPropertyChanged(nameof(PreviousFindingsDisplay));
                     OnPropertyChanged(nameof(PreviousConclusionDisplay));
+                    
+                    // NEW: Notify editor properties when proofread mode changes
+                    OnPropertyChanged(nameof(PreviousFindingsEditorText));
+                    OnPropertyChanged(nameof(PreviousConclusionEditorText));
                 }
             } 
         }
