@@ -132,9 +132,10 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 var tab = SelectedPreviousStudy;
                 if (tab == null) return string.Empty;
-                return PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.ChiefComplaintProofread) 
+                var text = PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.ChiefComplaintProofread) 
                     ? tab.ChiefComplaintProofread 
                     : tab.ChiefComplaint;
+                return PreviousProofreadMode ? ApplyProofreadPlaceholders(text) : text;
             }
         }
 
@@ -144,9 +145,10 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 var tab = SelectedPreviousStudy;
                 if (tab == null) return string.Empty;
-                return PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.PatientHistoryProofread) 
+                var text = PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.PatientHistoryProofread) 
                     ? tab.PatientHistoryProofread 
                     : tab.PatientHistory;
+                return PreviousProofreadMode ? ApplyProofreadPlaceholders(text) : text;
             }
         }
 
@@ -156,9 +158,10 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 var tab = SelectedPreviousStudy;
                 if (tab == null) return string.Empty;
-                return PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.StudyTechniquesProofread) 
+                var text = PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.StudyTechniquesProofread) 
                     ? tab.StudyTechniquesProofread 
                     : tab.StudyTechniques;
+                return PreviousProofreadMode ? ApplyProofreadPlaceholders(text) : text;
             }
         }
 
@@ -168,9 +171,10 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 var tab = SelectedPreviousStudy;
                 if (tab == null) return string.Empty;
-                return PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.ComparisonProofread) 
+                var text = PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.ComparisonProofread) 
                     ? tab.ComparisonProofread 
                     : tab.Comparison;
+                return PreviousProofreadMode ? ApplyProofreadPlaceholders(text) : text;
             }
         }
 
@@ -180,9 +184,10 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 var tab = SelectedPreviousStudy;
                 if (tab == null) return string.Empty;
-                return PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.FindingsProofread) 
+                var text = PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.FindingsProofread) 
                     ? tab.FindingsProofread 
                     : tab.FindingsOut;
+                return PreviousProofreadMode ? ApplyProofreadPlaceholders(text) : text;
             }
         }
 
@@ -192,9 +197,10 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 var tab = SelectedPreviousStudy;
                 if (tab == null) return string.Empty;
-                return PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.ConclusionProofread) 
+                var text = PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.ConclusionProofread) 
                     ? tab.ConclusionProofread 
                     : tab.ConclusionOut;
+                return PreviousProofreadMode ? ApplyProofreadPlaceholders(text) : text;
             }
         }
         

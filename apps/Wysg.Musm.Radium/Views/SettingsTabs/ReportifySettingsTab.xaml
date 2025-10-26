@@ -47,24 +47,32 @@
                             <CheckBox Content="Ensure trailing period" IsChecked="{Binding EnsureTrailingPeriod}"/>
                             <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="ensure_trailing_period"/>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <CheckBox Content="Preserve known tokens" IsChecked="{Binding PreserveKnownTokens}"/>
-                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="preserve_known_tokens"/>
-                        </StackPanel>
                     </StackPanel>
                 </Expander>
                 <!-- Symbols & Punctuation -->
                 <Expander Header="Symbols &amp; Punctuation">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <CheckBox Content="Normalize arrows" IsChecked="{Binding NormalizeArrows}"/>
-                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="normalize_arrows"/>
+                        <TextBlock Text="Arrows:" FontWeight="SemiBold" Margin="0,4,0,2"/>
+                        <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
+                            <CheckBox Content="Space before arrows" IsChecked="{Binding SpaceBeforeArrows}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="space_before_arrows"/>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <CheckBox Content="Normalize bullets" IsChecked="{Binding NormalizeBullets}"/>
-                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="normalize_bullets"/>
+                        <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
+                            <CheckBox Content="Space after arrows" IsChecked="{Binding SpaceAfterArrows}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="space_after_arrows"/>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal">
+                        
+                        <TextBlock Text="Bullets:" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                        <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
+                            <CheckBox Content="Space before bullets" IsChecked="{Binding SpaceBeforeBullets}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="space_before_bullets"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
+                            <CheckBox Content="Space after bullets" IsChecked="{Binding SpaceAfterBullets}"/>
+                            <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="space_after_bullets"/>
+                        </StackPanel>
+                        
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                             <CheckBox Content="Space after punctuation" IsChecked="{Binding SpaceAfterPunctuation}"/>
                             <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="space_after_punctuation"/>
                         </StackPanel>
@@ -102,6 +110,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="240"/>
@@ -113,6 +122,8 @@
                         <TextBox Grid.Row="1" Grid.Column="1" Margin="4,2,0,2" Text="{Binding DefaultConclusionNumbering}"/>
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="Default detailing prefix" VerticalAlignment="Center"/>
                         <TextBox Grid.Row="2" Grid.Column="1" Margin="4,2,0,2" Text="{Binding DefaultDetailingPrefix}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Default differential diagnosis" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="3" Grid.Column="1" Margin="4,2,0,2" Text="{Binding DefaultDifferentialDiagnosis}"/>
                     </Grid>
                 </Expander>
                 <Border Margin="0,12,0,0" Padding="10" Background="{DynamicResource BrushSurfaceAlt}" BorderBrush="{DynamicResource BrushBorderLight}" BorderThickness="1" CornerRadius="4">

@@ -68,8 +68,11 @@ namespace Wysg.Musm.Radium.ViewModels
         private bool _removeExcessiveBlankLines = true; public bool RemoveExcessiveBlankLines { get => _removeExcessiveBlankLines; set { if (SetProperty(ref _removeExcessiveBlankLines, value)) UpdateReportifyJson(); } }
         private bool _capitalizeSentence = true; public bool CapitalizeSentence { get => _capitalizeSentence; set { if (SetProperty(ref _capitalizeSentence, value)) UpdateReportifyJson(); } }
         private bool _ensureTrailingPeriod = true; public bool EnsureTrailingPeriod { get => _ensureTrailingPeriod; set { if (SetProperty(ref _ensureTrailingPeriod, value)) UpdateReportifyJson(); } }
-        private bool _normalizeArrows = true; public bool NormalizeArrows { get => _normalizeArrows; set { if (SetProperty(ref _normalizeArrows, value)) UpdateReportifyJson(); } }
-        private bool _normalizeBullets = true; public bool NormalizeBullets { get => _normalizeBullets; set { if (SetProperty(ref _normalizeBullets, value)) UpdateReportifyJson(); } }
+        // CHANGED: Granular arrow/bullet spacing instead of normalize
+        private bool _spaceBeforeArrows = false; public bool SpaceBeforeArrows { get => _spaceBeforeArrows; set { if (SetProperty(ref _spaceBeforeArrows, value)) UpdateReportifyJson(); } }
+        private bool _spaceAfterArrows = true; public bool SpaceAfterArrows { get => _spaceAfterArrows; set { if (SetProperty(ref _spaceAfterArrows, value)) UpdateReportifyJson(); } }
+        private bool _spaceBeforeBullets = false; public bool SpaceBeforeBullets { get => _spaceBeforeBullets; set { if (SetProperty(ref _spaceBeforeBullets, value)) UpdateReportifyJson(); } }
+        private bool _spaceAfterBullets = true; public bool SpaceAfterBullets { get => _spaceAfterBullets; set { if (SetProperty(ref _spaceAfterBullets, value)) UpdateReportifyJson(); } }
         private bool _spaceAfterPunctuation = true; public bool SpaceAfterPunctuation { get => _spaceAfterPunctuation; set { if (SetProperty(ref _spaceAfterPunctuation, value)) UpdateReportifyJson(); } }
         private bool _normalizeParentheses = true; public bool NormalizeParentheses { get => _normalizeParentheses; set { if (SetProperty(ref _normalizeParentheses, value)) UpdateReportifyJson(); } }
         private bool _spaceNumberUnit = true; public bool SpaceNumberUnit { get => _spaceNumberUnit; set { if (SetProperty(ref _spaceNumberUnit, value)) UpdateReportifyJson(); } }
@@ -85,6 +88,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _defaultArrow = "-->"; public string DefaultArrow { get => _defaultArrow; set { if (SetProperty(ref _defaultArrow, value)) UpdateReportifyJson(); } }
         private string _defaultConclusionNumbering = "1."; public string DefaultConclusionNumbering { get => _defaultConclusionNumbering; set { if (SetProperty(ref _defaultConclusionNumbering, value)) UpdateReportifyJson(); } }
         private string _defaultDetailingPrefix = "-"; public string DefaultDetailingPrefix { get => _defaultDetailingPrefix; set { if (SetProperty(ref _defaultDetailingPrefix, value)) UpdateReportifyJson(); } }
+        private string _defaultDifferentialDiagnosis = "DDx:"; public string DefaultDifferentialDiagnosis { get => _defaultDifferentialDiagnosis; set { if (SetProperty(ref _defaultDifferentialDiagnosis, value)) UpdateReportifyJson(); } }
 
         private string _reportifySettingsJson = "{}"; public string ReportifySettingsJson { get => _reportifySettingsJson; private set => SetProperty(ref _reportifySettingsJson, value); }
 
@@ -160,7 +164,15 @@ namespace Wysg.Musm.Radium.ViewModels
         private async Task SaveReportifySettingsAsync()
         {
             if (!CanPersistSettings()) return;
-            try { var res = await _reportifySvc!.UpsertAsync(_tenant!.AccountId, ReportifySettingsJson); _tenant.ReportifySettingsJson = res.settingsJson; }
+            try 
+            { 
+                var res = await _reportifySvc!.UpsertAsync(_tenant!.AccountId, ReportifySettingsJson); 
+                _tenant.ReportifySettingsJson = res.settingsJson; 
+                
+                // Force immediate notification to MainViewModel to reload config
+                // This ensures the next reportify operation uses the new settings
+                System.Diagnostics.Debug.WriteLine($"[SettingsVM] Saved reportify settings, triggering tenant reload");
+            }
             catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine("[SettingsVM] Save reportify error: " + ex.Message); }
         }
 
@@ -180,8 +192,16 @@ namespace Wysg.Musm.Radium.ViewModels
                 RemoveExcessiveBlankLines = GetBool("remove_excessive_blank_lines", RemoveExcessiveBlankLines);
                 CapitalizeSentence = GetBool("capitalize_sentence", CapitalizeSentence);
                 EnsureTrailingPeriod = GetBool("ensure_trailing_period", EnsureTrailingPeriod);
-                NormalizeArrows = GetBool("normalize_arrows", NormalizeArrows);
-                NormalizeBullets = GetBool("normalize_bullets", NormalizeBullets);
+                // CHANGED: Load new granular settings with backward compatibility
+                SpaceBeforeArrows = GetBool("space_before_arrows", SpaceBeforeArrows);
+                SpaceAfterArrows = GetBool("space_after_arrows", SpaceAfterArrows);
+                SpaceBeforeBullets = GetBool("space_before_bullets", SpaceBeforeBullets);
+                SpaceAfterBullets = GetBool("space_after_bullets", SpaceAfterBullets);
+                // Backward compatibility: if old "normalize_arrows" or "normalize_bullets" exist, migrate to space_after
+                if (root.TryGetProperty("normalize_arrows", out var oldArrows) && !root.TryGetProperty("space_after_arrows", out _))
+                    SpaceAfterArrows = oldArrows.ValueKind == System.Text.Json.JsonValueKind.True;
+                if (root.TryGetProperty("normalize_bullets", out var oldBullets) && !root.TryGetProperty("space_after_bullets", out _))
+                    SpaceAfterBullets = oldBullets.ValueKind == System.Text.Json.JsonValueKind.True;
                 SpaceAfterPunctuation = GetBool("space_after_punctuation", SpaceAfterPunctuation);
                 NormalizeParentheses = GetBool("normalize_parentheses", NormalizeParentheses);
                 SpaceNumberUnit = GetBool("space_number_unit", SpaceNumberUnit);
@@ -195,6 +215,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 DefaultArrow = GetDef("arrow", DefaultArrow);
                 DefaultConclusionNumbering = GetDef("conclusion_numbering", DefaultConclusionNumbering);
                 DefaultDetailingPrefix = GetDef("detailing_prefix", DefaultDetailingPrefix);
+                DefaultDifferentialDiagnosis = GetDef("differential_diagnosis", DefaultDifferentialDiagnosis); // NEW: Load default differential diagnosis
                 UpdateReportifyJson();
             }
             catch { }
@@ -316,8 +337,11 @@ namespace Wysg.Musm.Radium.ViewModels
                 remove_excessive_blank_lines = RemoveExcessiveBlankLines,
                 capitalize_sentence = CapitalizeSentence,
                 ensure_trailing_period = EnsureTrailingPeriod,
-                normalize_arrows = NormalizeArrows,
-                normalize_bullets = NormalizeBullets,
+                // CHANGED: Use new granular settings
+                space_before_arrows = SpaceBeforeArrows,
+                space_after_arrows = SpaceAfterArrows,
+                space_before_bullets = SpaceBeforeBullets,
+                space_after_bullets = SpaceAfterBullets,
                 space_after_punctuation = SpaceAfterPunctuation,
                 normalize_parentheses = NormalizeParentheses,
                 space_number_unit = SpaceNumberUnit,
@@ -327,12 +351,12 @@ namespace Wysg.Musm.Radium.ViewModels
                 // NEW: Include the new settings
                 number_conclusion_lines_on_one_paragraph = NumberConclusionLinesOnOneParagraph,
                 capitalize_after_bullet_or_number = CapitalizeAfterBulletOrNumber,
-                // preserve_known_tokens removed (deprecated)
                 defaults = new
                 {
                     arrow = DefaultArrow,
                     conclusion_numbering = DefaultConclusionNumbering,
-                    detailing_prefix = DefaultDetailingPrefix
+                    detailing_prefix = DefaultDetailingPrefix,
+                    differential_diagnosis = DefaultDifferentialDiagnosis
                 }
             };
             ReportifySettingsJson = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true });
@@ -360,8 +384,10 @@ namespace Wysg.Musm.Radium.ViewModels
             ["remove_excessive_blank_lines"] = ("Line1\n\n\nLine2", "Line1\n\nLine2"),
             ["capitalize_sentence"] = ("multiple hypodense lesions", "Multiple hypodense lesions"),
             ["ensure_trailing_period"] = ("Gall bladder unremarkable", "Gall bladder unremarkable."),
-            ["normalize_arrows"] = ("-->Finding", "--> Finding"),
-            ["normalize_bullets"] = ("-mass\n*calcification", "- mass\n- calcification"),
+            ["space_before_arrows"] = ("Finding-->recommend", "Finding --> recommend"),
+            ["space_after_arrows"] = ("-->Finding", "--> Finding"),
+            ["space_before_bullets"] = ("Finding-mass", "Finding - mass"),
+            ["space_after_bullets"] = ("-mass\n*calcification", "- mass\n- calcification"),
             ["space_after_punctuation"] = ("Size:10mm;Shape:round", "Size: 10 mm; Shape: round"),
             ["normalize_parentheses"] = ("( left lobe ) normal", "(left lobe) normal"),
             ["space_number_unit"] = ("Measured 10mm lesion", "Measured 10 mm lesion"),
@@ -370,7 +396,6 @@ namespace Wysg.Musm.Radium.ViewModels
             ["indent_continuation_lines"] = ("1. First line\nSecond line", "1. First line\n   Second line"),
             ["number_conclusion_lines_on_one_paragraph"] = ("apple\nbanana\n\nmelon", "1. Apple.\n   Banana.\n\n2. Melon."),
             ["capitalize_after_bullet_or_number"] = ("1. apple\n2. banana", "1. Apple\n2. Banana"),
-            // preserve_known_tokens sample removed
         };
     }
 }

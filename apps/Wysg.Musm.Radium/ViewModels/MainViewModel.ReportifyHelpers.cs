@@ -15,8 +15,11 @@ namespace Wysg.Musm.Radium.ViewModels
             public bool RemoveExcessiveBlankLines { get; init; } = true;
             public bool CapitalizeSentence { get; init; } = true;
             public bool EnsureTrailingPeriod { get; init; } = true;
-            public bool NormalizeArrows { get; init; } = true;
-            public bool NormalizeBullets { get; init; } = true;
+            // CHANGED: Granular arrow/bullet spacing
+            public bool SpaceBeforeArrows { get; init; } = false;
+            public bool SpaceAfterArrows { get; init; } = true;
+            public bool SpaceBeforeBullets { get; init; } = false;
+            public bool SpaceAfterBullets { get; init; } = true;
             public bool SpaceAfterPunctuation { get; init; } = true;
             public bool NormalizeParentheses { get; init; } = true;
             public bool SpaceNumberUnit { get; init; } = true;
@@ -38,7 +41,29 @@ namespace Wysg.Musm.Radium.ViewModels
         private void EnsureReportifyConfig()
         {
             var json = _tenant.ReportifySettingsJson;
-            if (json == null || json == _reportifyConfigJsonApplied) return;
+            
+            // CRITICAL FIX: Always reload if JSON changed OR if config is null
+            // This ensures settings changes are applied immediately
+            if (json != _reportifyConfigJsonApplied || _reportifyConfig == null)
+            {
+                Debug.WriteLine($"[ReportifyConfig] Reloading - JSON changed or config null");
+                Debug.WriteLine($"[ReportifyConfig] Old JSON length: {_reportifyConfigJsonApplied?.Length ?? 0}");
+                Debug.WriteLine($"[ReportifyConfig] New JSON length: {json?.Length ?? 0}");
+            }
+            else
+            {
+                // Config is up to date
+                return;
+            }
+            
+            if (json == null)
+            {
+                Debug.WriteLine("[ReportifyConfig] JSON is null, using defaults");
+                _reportifyConfig = new ReportifyConfig();
+                _reportifyConfigJsonApplied = null;
+                return;
+            }
+            
             try
             {
                 using var doc = System.Text.Json.JsonDocument.Parse(json);
@@ -49,14 +74,18 @@ namespace Wysg.Musm.Radium.ViewModels
                     if (root.TryGetProperty("defaults", out var d) && d.TryGetProperty(prop, out var el) && el.ValueKind == System.Text.Json.JsonValueKind.String) return el.GetString() ?? def;
                     return def;
                 }
+                
                 _reportifyConfig = new ReportifyConfig
                 {
                     RemoveExcessiveBlanks = B("remove_excessive_blanks", true),
                     RemoveExcessiveBlankLines = B("remove_excessive_blank_lines", true),
                     CapitalizeSentence = B("capitalize_sentence", true),
                     EnsureTrailingPeriod = B("ensure_trailing_period", true),
-                    NormalizeArrows = B("normalize_arrows", true),
-                    NormalizeBullets = B("normalize_bullets", true),
+                    // CHANGED: Load new granular settings with backward compat
+                    SpaceBeforeArrows = B("space_before_arrows", false),
+                    SpaceAfterArrows = B("space_after_arrows", B("normalize_arrows", true)), // fallback to old normalize_arrows
+                    SpaceBeforeBullets = B("space_before_bullets", false),
+                    SpaceAfterBullets = B("space_after_bullets", B("normalize_bullets", true)), // fallback to old normalize_bullets
                     SpaceAfterPunctuation = B("space_after_punctuation", true),
                     NormalizeParentheses = B("normalize_parentheses", true),
                     SpaceNumberUnit = B("space_number_unit", true),
@@ -66,12 +95,19 @@ namespace Wysg.Musm.Radium.ViewModels
                     // NEW: Parse the two new settings
                     NumberConclusionLinesOnOneParagraph = B("number_conclusion_lines_on_one_paragraph", false),
                     CapitalizeAfterBulletOrNumber = B("capitalize_after_bullet_or_number", false),
-                    // preserve_known_tokens removed (deprecated)
                     Arrow = Def("arrow", "-->"),
                     ConclusionNumbering = Def("conclusion_numbering", "1."),
                     DetailingPrefix = Def("detailing_prefix", "-")
                 };
+                
                 _reportifyConfigJsonApplied = json;
+                
+                // Debug log loaded settings
+                Debug.WriteLine($"[ReportifyConfig] Loaded settings:");
+                Debug.WriteLine($"[ReportifyConfig]   SpaceBeforeArrows: {_reportifyConfig.SpaceBeforeArrows}");
+                Debug.WriteLine($"[ReportifyConfig]   SpaceAfterArrows: {_reportifyConfig.SpaceAfterArrows}");
+                Debug.WriteLine($"[ReportifyConfig]   SpaceBeforeBullets: {_reportifyConfig.SpaceBeforeBullets}");
+                Debug.WriteLine($"[ReportifyConfig]   SpaceAfterBullets: {_reportifyConfig.SpaceAfterBullets}");
             }
             catch (Exception ex)
             {
@@ -84,7 +120,9 @@ namespace Wysg.Musm.Radium.ViewModels
         private static readonly Regex RxMultiSpaces = new(@" {2,}", RegexOptions.Compiled);
         private static readonly Regex RxBlankLines = new(@"(\r?\n){3,}", RegexOptions.Compiled);
         private static readonly Regex RxArrowAny = new(@"^(--?>|=>)\s*", RegexOptions.Compiled);
-        private static readonly Regex RxBullet = new(@"^([*-])\s*", RegexOptions.Compiled);
+        // FIXED: Bullet regex now matches - followed by anything (not just space or EOL)
+        // Excludes arrow patterns (doesn't match when followed by another -)
+        private static readonly Regex RxBullet = new(@"^([*]|-(?!-))(?:\s*)", RegexOptions.Compiled);
         private static readonly Regex RxAfterPunct = new(@"([;,:])(?!\s)" , RegexOptions.Compiled);
         private static readonly Regex RxParenTrimL = new(@"\(\s+", RegexOptions.Compiled);
         private static readonly Regex RxParenTrimR = new(@"\s+\)", RegexOptions.Compiled);
@@ -215,14 +253,43 @@ namespace Wysg.Musm.Radium.ViewModels
                     continue; 
                 }
 
-                if (cfg.NormalizeArrows)
+                // Track if we added a leading space (for space before arrows/bullets)
+                bool hasLeadingSpace = false;
+
+                // FIXED: Apply granular arrow spacing
+                if (cfg.SpaceBeforeArrows || cfg.SpaceAfterArrows)
                 {
-                    working = RxArrowAny.Replace(working, cfg.Arrow + " ");
+                    // Match arrow patterns at start of line (with any trailing whitespace)
+                    var arrowMatch = RxArrowAny.Match(working);
+                    if (arrowMatch.Success)
+                    {
+                        // Extract the content after the arrow and any whitespace
+                        var content = working.Substring(arrowMatch.Length).TrimStart();
+                        var arrow = cfg.Arrow;
+                        var prefix = cfg.SpaceBeforeArrows ? " " : "";
+                        var suffix = cfg.SpaceAfterArrows ? " " : "";
+                        working = prefix + arrow + suffix + content;
+                        hasLeadingSpace = cfg.SpaceBeforeArrows;
+                    }
                 }
-                if (cfg.NormalizeBullets)
+                
+                // FIXED: Apply granular bullet spacing
+                if (cfg.SpaceBeforeBullets || cfg.SpaceAfterBullets)
                 {
-                    working = RxBullet.Replace(working, "- ");
+                    // Match bullet patterns at start of line (with any trailing whitespace)
+                    var bulletMatch = RxBullet.Match(working);
+                    if (bulletMatch.Success)
+                    {
+                        // Extract the content after the bullet and any whitespace
+                        var content = working.Substring(bulletMatch.Length).TrimStart();
+                        var bullet = cfg.DetailingPrefix;
+                        var prefix = cfg.SpaceBeforeBullets ? " " : "";
+                        var suffix = cfg.SpaceAfterBullets ? " " : "";
+                        working = prefix + bullet + suffix + content;
+                        hasLeadingSpace = cfg.SpaceBeforeBullets;
+                    }
                 }
+                
                 if (cfg.RemoveExcessiveBlanks)
                 {
                     working = RxMultiSpaces.Replace(working, " ");
@@ -244,7 +311,17 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     working = RxCollapseWs.Replace(working, " ");
                 }
-                working = working.Trim();
+                
+                // CRITICAL FIX: Only trim if we didn't add a leading space
+                // If hasLeadingSpace is true, use TrimEnd only to preserve the space before arrow/bullet
+                if (hasLeadingSpace)
+                {
+                    working = working.TrimEnd();
+                }
+                else
+                {
+                    working = working.Trim();
+                }
 
                 // Enhanced capitalization logic
                 if (cfg.CapitalizeSentence && working.Length > 0)
@@ -252,26 +329,32 @@ namespace Wysg.Musm.Radium.ViewModels
                     // Find the first letter position (skip bullets, numbers, arrows, whitespace)
                     int firstLetterPos = 0;
                     
-                    // Skip leading bullet (- )
-                    if (working.StartsWith("- "))
+                    // Skip leading space (from space before arrows/bullets)
+                    if (working.StartsWith(" "))
                     {
-                        firstLetterPos = 2;
+                        firstLetterPos = 1;
+                    }
+                    
+                    // Skip leading bullet (- )
+                    if (working.Length > firstLetterPos + 1 && working.Substring(firstLetterPos).StartsWith("- "))
+                    {
+                        firstLetterPos += 2;
                     }
                     // Skip leading number (1. 2. etc)
-                    else if (RxNumbered.IsMatch(working))
+                    else if (RxNumbered.IsMatch(working.Substring(firstLetterPos)))
                     {
-                        var match = RxNumbered.Match(working);
-                        firstLetterPos = match.Length;
+                        var match = RxNumbered.Match(working.Substring(firstLetterPos));
+                        firstLetterPos += match.Length;
                     }
                     // Skip leading arrow (--> )
-                    else if (working.StartsWith(cfg.Arrow + " "))
+                    else if (working.Length > firstLetterPos + cfg.Arrow.Length && working.Substring(firstLetterPos).StartsWith(cfg.Arrow + " "))
                     {
-                        firstLetterPos = cfg.Arrow.Length + 1;
+                        firstLetterPos += cfg.Arrow.Length + 1;
                     }
                     // Skip indentation (3 spaces for continuation)
-                    else if (working.StartsWith("   "))
+                    else if (working.Length > firstLetterPos + 2 && working.Substring(firstLetterPos).StartsWith("   "))
                     {
-                        firstLetterPos = 3;
+                        firstLetterPos += 3;
                     }
                     
                     // Find first letter after the prefix

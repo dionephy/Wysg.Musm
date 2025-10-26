@@ -108,6 +108,39 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ## Recent Updates (2025-01-20)
 
+### Default Differential Diagnosis Field (2025-01-28)
+
+**What Changed:**
+- Added new configurable textbox "Default differential diagnosis" in Settings → Reportify → Defaults pane
+- Default value: "DDx:" (common medical abbreviation for Differential Diagnosis)
+- Persists to database with other reportify settings
+
+**Why This Matters:**
+- **User Customization** - Users can set their preferred differential diagnosis prefix (e.g., "DDx:", "Differential:", "DD:")
+- **Consistency** - Foundation for future automation features (auto-insertion, templates)
+- **Flexibility** - Each account can have their own default
+
+**Example Usage:**
+```
+Settings → Reportify → Defaults
+┌─────────────────────────────────────────────┐
+│ Default arrow                    [   -->  ] │
+│ Default conclusion numbering     [   1.   ] │
+│ Default detailing prefix         [   -    ] │
+│ Default differential diagnosis   [   DDx: ] │ ← NEW
+└─────────────────────────────────────────────┘
+```
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\ViewModels\SettingsViewModel.cs` - Added DefaultDifferentialDiagnosis property
+- `apps\Wysg.Musm.Radium\Views\SettingsTabs\ReportifySettingsTab.xaml` - Added UI textbox
+
+**Documentation:**
+- See `ENHANCEMENT_2025-01-28_DefaultDifferentialDiagnosisField.md` for complete details
+- See `IMPLEMENTATION_SUMMARY_2025-01-28_DefaultDifferentialDiagnosisField.md` for technical implementation
+
+---
+
 ### Snippet Mode 2 - Only Insert Selected Items (2025-01-28)
 
 **What Changed:**

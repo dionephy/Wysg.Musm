@@ -282,8 +282,9 @@ namespace Wysg.Musm.Radium.ViewModels
                 // Show reportified version of PROOFREAD text
                 if (_reportified && ProofreadMode && !string.IsNullOrWhiteSpace(_findingsProofread))
                 {
-                    result = ApplyReportifyBlock(_findingsProofread, false);
-                    Debug.WriteLine($"[FindingsDisplay] BOTH ON, returning reportified(proofread) length={result?.Length ?? 0}");
+                    var proofreadWithPlaceholders = ApplyProofreadPlaceholders(_findingsProofread);
+                    result = ApplyReportifyBlock(proofreadWithPlaceholders, false);
+                    Debug.WriteLine($"[FindingsDisplay] BOTH ON, returning reportified(proofread+placeholders) length={result?.Length ?? 0}");
                 }
                 // PRIORITY 2: Only Reportified is ON
                 // Show reportified version of RAW text
@@ -293,11 +294,11 @@ namespace Wysg.Musm.Radium.ViewModels
                     Debug.WriteLine($"[FindingsDisplay] Reportified=true only, returning _findingsText length={result?.Length ?? 0}");
                 }
                 // PRIORITY 3: Only ProofreadMode is ON
-                // Show proofread text as-is (not reportified)
+                // Show proofread text with placeholders as-is (not reportified)
                 else if (ProofreadMode && !string.IsNullOrWhiteSpace(_findingsProofread))
                 {
-                    result = _findingsProofread;
-                    Debug.WriteLine($"[FindingsDisplay] ProofreadMode=true only, returning _findingsProofread length={result?.Length ?? 0}");
+                    result = ApplyProofreadPlaceholders(_findingsProofread);
+                    Debug.WriteLine($"[FindingsDisplay] ProofreadMode=true only, returning _findingsProofread+placeholders length={result?.Length ?? 0}");
                 }
                 // PRIORITY 4: Both OFF
                 // Show raw text
@@ -320,8 +321,9 @@ namespace Wysg.Musm.Radium.ViewModels
                 // Show reportified version of PROOFREAD text
                 if (_reportified && ProofreadMode && !string.IsNullOrWhiteSpace(_conclusionProofread))
                 {
-                    result = ApplyReportifyConclusion(_conclusionProofread);
-                    Debug.WriteLine($"[ConclusionDisplay] BOTH ON, returning reportified(proofread) length={result?.Length ?? 0}");
+                    var proofreadWithPlaceholders = ApplyProofreadPlaceholders(_conclusionProofread);
+                    result = ApplyReportifyConclusion(proofreadWithPlaceholders);
+                    Debug.WriteLine($"[ConclusionDisplay] BOTH ON, returning reportified(proofread+placeholders) length={result?.Length ?? 0}");
                 }
                 // PRIORITY 2: Only Reportified is ON
                 // Show reportified version of RAW text
@@ -331,11 +333,11 @@ namespace Wysg.Musm.Radium.ViewModels
                     Debug.WriteLine($"[ConclusionDisplay] Reportified=true only, returning _conclusionText length={result?.Length ?? 0}");
                 }
                 // PRIORITY 3: Only ProofreadMode is ON
-                // Show proofread text as-is (not reportified)
+                // Show proofread text with placeholders as-is (not reportified)
                 else if (ProofreadMode && !string.IsNullOrWhiteSpace(_conclusionProofread))
                 {
-                    result = _conclusionProofread;
-                    Debug.WriteLine($"[ConclusionDisplay] ProofreadMode=true only, returning _conclusionProofread length={result?.Length ?? 0}");
+                    result = ApplyProofreadPlaceholders(_conclusionProofread);
+                    Debug.WriteLine($"[ConclusionDisplay] ProofreadMode=true only, returning _conclusionProofread+placeholders length={result?.Length ?? 0}");
                 }
                 // PRIORITY 4: Both OFF
                 // Show raw text
@@ -648,6 +650,53 @@ namespace Wysg.Musm.Radium.ViewModels
             }
             catch { }
             finally { _updatingFromJson = false; }
+        }
+
+        /// <summary>
+        /// Applies placeholder replacements for reportify default values in proofread text.
+        /// Replaces {DDx} with DefaultDifferentialDiagnosis, {arrow} with DefaultArrow, {bullet} with DefaultDetailingPrefix.
+        /// </summary>
+        private string ApplyProofreadPlaceholders(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return text;
+            
+            // Get defaults from reportify settings JSON
+            string ddx = "DDx:";  // default fallback
+            string arrow = "-->";  // default fallback
+            string bullet = "-";  // default fallback
+            
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(_tenant?.ReportifySettingsJson))
+                {
+                    using var doc = JsonDocument.Parse(_tenant.ReportifySettingsJson);
+                    var root = doc.RootElement;
+                    
+                    if (root.TryGetProperty("defaults", out var defaults))
+                    {
+                        if (defaults.TryGetProperty("differential_diagnosis", out var ddxEl) && ddxEl.ValueKind == JsonValueKind.String)
+                            ddx = ddxEl.GetString() ?? ddx;
+                        
+                        if (defaults.TryGetProperty("arrow", out var arrowEl) && arrowEl.ValueKind == JsonValueKind.String)
+                            arrow = arrowEl.GetString() ?? arrow;
+                        
+                        if (defaults.TryGetProperty("detailing_prefix", out var bulletEl) && bulletEl.ValueKind == JsonValueKind.String)
+                            bullet = bulletEl.GetString() ?? bullet;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProofreadPlaceholders] JSON parse error: {ex.Message}");
+                // Fall through to use defaults
+            }
+            
+            // Apply replacements (case-insensitive)
+            text = Regex.Replace(text, @"\{DDx\}", ddx, RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{arrow\}", arrow, RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\{bullet\}", bullet, RegexOptions.IgnoreCase);
+            
+            return text;
         }
 
         // Utility access for exporting raw or transformed sections
