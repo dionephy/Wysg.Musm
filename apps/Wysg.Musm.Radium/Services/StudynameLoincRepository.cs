@@ -126,6 +126,54 @@ namespace Wysg.Musm.Radium.Services
             return list;
         }
 
+        public async Task<IReadOnlyList<StudynameRow>> GetMappedStudynamesAsync()
+        {
+            var callId = Interlocked.Increment(ref _methodCallCounter);
+            var sw = Stopwatch.StartNew();
+            Debug.WriteLine($"[Repo][Call#{callId}] GetMappedStudynamesAsync START Thread={Environment.CurrentManagedThreadId}");
+            var list = new List<StudynameRow>();
+            await using var cn = Open();
+            try
+            {
+                try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn); }
+                catch (Exception openEx) { LogNetworkException("Open", openEx); throw; }
+                Debug.WriteLine($"[Repo][Call#{callId}] Connection Opened State={cn.FullState}");
+                var tbl = await GetMapTableAsync(cn);
+                long tid = _tenant?.TenantId ?? 0L;
+                string sql = tid > 0 
+                    ? $@"SELECT DISTINCT s.id, s.studyname 
+                         FROM med.rad_studyname s
+                         INNER JOIN {tbl} m ON m.studyname_id = s.id
+                         WHERE s.tenant_id=@tid 
+                         ORDER BY s.studyname" 
+                    : $@"SELECT DISTINCT s.id, s.studyname 
+                         FROM med.rad_studyname s
+                         INNER JOIN {tbl} m ON m.studyname_id = s.id
+                         ORDER BY s.studyname";
+                await using var cmd = new NpgsqlCommand(sql, cn);
+                if (tid > 0) cmd.Parameters.AddWithValue("@tid", tid);
+                await using var rd = await cmd.ExecuteReaderAsync();
+                while (await rd.ReadAsync()) list.Add(new StudynameRow(rd.GetInt64(0), rd.GetString(1)));
+                sw.Stop();
+                Debug.WriteLine($"[Repo][Call#{callId}] GetMappedStudynamesAsync OK Rows={list.Count} Elapsed={sw.ElapsedMilliseconds}ms Table={tbl}");
+            }
+            catch (PostgresException pex)
+            {
+                sw.Stop();
+                Debug.WriteLine($"[Repo][Call#{callId}][PGX] SqlState={pex.SqlState} Msg={pex.MessageText} Table={pex.TableName} Schema={pex.SchemaName} Position={pex.Position}\n{pex.StackTrace}");
+                Serilog.Log.Error(pex, "[StudynameRepo] GetMappedStudynamesAsync PostgresException {Code} {Message}", pex.SqlState, pex.MessageText);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                Debug.WriteLine($"[Repo][Call#{callId}][EX] {ex.GetType().Name} {ex.Message}\n{ex.StackTrace}");
+                Serilog.Log.Error(ex, "[StudynameRepo] GetMappedStudynamesAsync error");
+                throw;
+            }
+            return list;
+        }
+
         public async Task<long> EnsureStudynameAsync(string studyname)
         {
             var callId = Interlocked.Increment(ref _methodCallCounter);

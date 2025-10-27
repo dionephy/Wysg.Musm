@@ -164,6 +164,21 @@ namespace Wysg.Musm.Radium.ViewModels
         public ObservableCollection<PlaybookItem> PlaybookMatches { get; } = new();
         public ObservableCollection<PlaybookPartItem> PlaybookParts { get; } = new();
 
+        public ObservableCollection<StudynameItem> MappedStudynames { get; } = new();
+        
+        private StudynameItem? _selectedMappedStudyname;
+        public StudynameItem? SelectedMappedStudyname
+        {
+            get => _selectedMappedStudyname;
+            set
+            {
+                if (SetProperty(ref _selectedMappedStudyname, value))
+                    _ = LoadMappedStudynamePartsAsync(value);
+            }
+        }
+        
+        public ObservableCollection<MappingPreviewItem> MappedStudynameParts { get; } = new();
+
         public async Task LoadAsync()
         {
             try
@@ -176,6 +191,9 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     SelectedStudyname = Studynames[0];
                 }
+                
+                // Load mapped studynames
+                await LoadMappedStudynamesAsync();
             }
             catch { }
         }
@@ -192,6 +210,18 @@ namespace Wysg.Musm.Radium.ViewModels
                 SelectedStudyname = item;
             }
             else SelectedStudyname = found;
+        }
+
+        private async Task LoadMappedStudynamesAsync()
+        {
+            try
+            {
+                MappedStudynames.Clear();
+                var rows = await _repo.GetMappedStudynamesAsync();
+                foreach (var row in rows)
+                    MappedStudynames.Add(new StudynameItem { Id = row.Id, Studyname = row.Studyname });
+            }
+            catch { }
         }
 
         private async Task AddStudynameAsync()
@@ -320,6 +350,32 @@ namespace Wysg.Musm.Radium.ViewModels
             catch { }
         }
 
+        private async Task LoadMappedStudynamePartsAsync(StudynameItem? item)
+        {
+            MappedStudynameParts.Clear();
+            if (item == null) return;
+            try
+            {
+                var parts = await _repo.GetPartsAsync();
+                var partsByNumber = parts.ToDictionary(p => p.PartNumber, p => p);
+                var mappings = await _repo.GetMappingsAsync(item.Id);
+                
+                foreach (var m in mappings)
+                {
+                    if (partsByNumber.TryGetValue(m.PartNumber, out var p))
+                    {
+                        MappedStudynameParts.Add(new MappingPreviewItem 
+                        { 
+                            PartNumber = p.PartNumber, 
+                            PartDisplay = p.PartName, 
+                            PartSequenceOrder = string.IsNullOrWhiteSpace(m.PartSequenceOrder) ? "A" : m.PartSequenceOrder 
+                        });
+                    }
+                }
+            }
+            catch { }
+        }
+
         private void AddPartToPreview(PartItem p)
         {
             if (p == null) return;
@@ -333,6 +389,9 @@ namespace Wysg.Musm.Radium.ViewModels
             var payload = SelectedParts.Select(p => new MappingRow(p.PartNumber, string.IsNullOrWhiteSpace(p.PartSequenceOrder) ? "A" : p.PartSequenceOrder));
             await _repo.SaveMappingsAsync(SelectedStudyname.Id, payload);
             StatusMessage = $"Studyname '{SelectedStudyname.Studyname}' mappings saved ({SelectedParts.Count}).";
+            
+            // Refresh mapped studynames list after save
+            await LoadMappedStudynamesAsync();
         }
 
         public class StudynameItem : BaseViewModel

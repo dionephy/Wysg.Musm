@@ -14,6 +14,7 @@ namespace Wysg.Musm.Radium.Services
         Task<IReadOnlyList<PlaybookMatchRow>> GetPlaybookMatchesAsync(IEnumerable<string> partNumbers);
         Task<IReadOnlyList<PlaybookPartDetailRow>> GetPlaybookPartsAsync(string loincNumber);
         Task<StudynameDbDiagnostics> GetDiagnosticsAsync();
+        Task<IReadOnlyList<StudynameRow>> GetMappedStudynamesAsync();
     }
 
     public sealed record StudynameRow(long Id, string Studyname);

@@ -180,23 +180,41 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <!-- Suggestions: two listboxes side-by-side in remaining space -->
+                <!-- Suggestions: four listboxes in a 2x2 grid in remaining space -->
                 <Grid Grid.Row="1" Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="6"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <ListBox Grid.Column="0" ItemsSource="{Binding PlaybookMatches}" DisplayMemberPath="LongCommonName"
+                    
+                    <!-- Header for Playbook Matches and Parts -->
+                    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Playbook Suggestions" 
+                               FontWeight="Bold" Margin="0,0,0,4"/>
+                    
+                    <!-- Playbook Matches -->
+                    <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding PlaybookMatches}" DisplayMemberPath="LongCommonName"
                              Visibility="{Binding SelectedParts.Count, Converter={StaticResource CountToVisibilityConverter}}"
                              SelectedItem="{Binding SelectedPlaybook, Mode=TwoWay}"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             Margin="0,0,3,0">
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
                                 <EventSetter Event="MouseDoubleClick" Handler="OnPlaybookMatchDoubleClick"/>
                             </Style>
                         </ListBox.ItemContainerStyle>
                     </ListBox>
-                    <ListBox Grid.Column="1" ItemsSource="{Binding PlaybookParts}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    
+                    <!-- Playbook Parts -->
+                    <ListBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding PlaybookParts}" 
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             Margin="3,0,0,0">
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
                                 <EventSetter Event="MouseDoubleClick" Handler="OnPlaybookPartDoubleClick"/>
@@ -207,6 +225,45 @@
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding PartSequenceOrder}" FontWeight="Bold" Margin="0,0,6,0"/>
                                     <TextBlock Text="{Binding PartName}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    
+                    <GridSplitter Grid.Row="2" Grid.ColumnSpan="2" Height="6" HorizontalAlignment="Stretch" Background="#2D2D30"/>
+                    
+                    <!-- Header for Mapped Studynames -->
+                    <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Text="Mapped Studynames" 
+                               FontWeight="Bold" Margin="0,0,0,4"/>
+                    
+                    <!-- Mapped Studynames List -->
+                    <ListBox Grid.Row="4" Grid.Column="0" x:Name="lstMappedStudynames"
+                             ItemsSource="{Binding MappedStudynames}"
+                             SelectedItem="{Binding SelectedMappedStudyname, Mode=TwoWay}"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             Margin="0,0,3,0">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <EventSetter Event="MouseDoubleClick" Handler="OnMappedStudynameDoubleClick"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Studyname}" TextWrapping="Wrap"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    
+                    <!-- Mapped Studyname Parts -->
+                    <ListBox Grid.Row="4" Grid.Column="1"
+                             ItemsSource="{Binding MappedStudynameParts}"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             Margin="3,0,0,0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding PartSequenceOrder}" FontWeight="Bold" Margin="0,0,6,0"/>
+                                    <TextBlock Text="{Binding PartDisplay}" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

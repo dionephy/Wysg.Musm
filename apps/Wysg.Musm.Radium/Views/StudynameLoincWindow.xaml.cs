@@ -136,6 +136,44 @@ namespace Wysg.Musm.Radium.Views
             }
         }
 
+        private async void OnMappedStudynameDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is ListBoxItem lbi && lbi.DataContext is StudynameLoincViewModel.StudynameItem studyname)
+            {
+                if (DataContext is StudynameLoincViewModel vm)
+                {
+                    // If a different mapped studyname, set SelectedMappedStudyname (triggers async load)
+                    if (vm.SelectedMappedStudyname?.Id != studyname.Id)
+                    {
+                        vm.SelectedMappedStudyname = studyname; // triggers async load of parts
+                        // Small yield to allow async load method to populate collection
+                        await Task.Delay(50);
+                    }
+
+                    // Defensive wait loop (short) until parts appear or timeout
+                    int tries = 0;
+                    while (vm.MappedStudynameParts.Count == 0 && tries < 10)
+                    {
+                        await Task.Delay(30);
+                        tries++;
+                    }
+
+                    // Clear existing parts and add all from the mapped studyname
+                    vm.SelectedParts.Clear();
+                    foreach (var part in vm.MappedStudynameParts.ToList())
+                    {
+                        vm.SelectedParts.Add(new StudynameLoincViewModel.MappingPreviewItem
+                        {
+                            PartNumber = part.PartNumber,
+                            PartDisplay = part.PartDisplay,
+                            PartSequenceOrder = string.IsNullOrWhiteSpace(part.PartSequenceOrder) ? "A" : part.PartSequenceOrder
+                        });
+                    }
+                    Debug.WriteLine($"[Radium][View] Mapped studyname import: {studyname.Studyname} added {vm.SelectedParts.Count} parts to preview");
+                }
+            }
+        }
+
         private void OnCloseClick(object sender, RoutedEventArgs e)
         {
             Close();

@@ -51,7 +51,10 @@ namespace Wysg.Musm.Radium.Services
                 if (r.Width <= 0 || r.Height <= 0) { return ("(no bounds)", null); }
                 var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
                 if (hwnd == IntPtr.Zero) { return ("(no hwnd)", null); }
-                var (engine, text) = Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(0, 0, (int)r.Width, (int)r.Height)).ConfigureAwait(false).GetAwaiter().GetResult();
+                
+                // Capture only top 40 pixels of the element
+                var captureHeight = Math.Min(40, (int)r.Height);
+                var (engine, text) = Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(0, 0, (int)r.Width, captureHeight)).ConfigureAwait(false).GetAwaiter().GetResult();
                 if (!engine) { return ("(ocr unavailable)", null); }
                 return (string.IsNullOrWhiteSpace(text) ? "(empty)" : text!, text);
             }
@@ -67,7 +70,10 @@ namespace Wysg.Musm.Radium.Services
                 if (r.Width <= 0 || r.Height <= 0) { return ("(no bounds)", null); }
                 var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
                 if (hwnd == IntPtr.Zero) { return ("(no hwnd)", null); }
-                var (engine, text) = await Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(0, 0, (int)r.Width, (int)r.Height));
+                
+                // Capture only top 40 pixels of the element
+                var captureHeight = Math.Min(40, (int)r.Height);
+                var (engine, text) = await Wysg.Musm.MFCUIA.OcrReader.OcrTryReadRegionDetailedAsync(hwnd, new System.Drawing.Rectangle(0, 0, (int)r.Width, captureHeight));
                 if (!engine) { return ("(ocr unavailable)", null); }
                 return (string.IsNullOrWhiteSpace(text) ? "(empty)" : text!, text);
             }

@@ -10,6 +10,39 @@ namespace Wysg.Musm.Radium.Services.Procedures
         public async Task ExecuteAsync(MainViewModel vm)
         {
             if (vm == null) return;
+            
+            // FIRST: Clear all JSON components and toggle off Proofread and Reportified
+            Debug.WriteLine("[NewStudyProcedure] Clearing JSON components and toggling off Proofread/Reportified");
+            
+            // Clear current report JSON components (proofread fields)
+            vm.ChiefComplaintProofread = string.Empty;
+            vm.PatientHistoryProofread = string.Empty;
+            vm.StudyTechniquesProofread = string.Empty;
+            vm.ComparisonProofread = string.Empty;
+            vm.FindingsProofread = string.Empty;
+            vm.ConclusionProofread = string.Empty;
+            
+            // Clear previous report JSON components (if any previous study is selected)
+            if (vm.SelectedPreviousStudy != null)
+            {
+                vm.SelectedPreviousStudy.ChiefComplaintProofread = string.Empty;
+                vm.SelectedPreviousStudy.PatientHistoryProofread = string.Empty;
+                vm.SelectedPreviousStudy.StudyTechniquesProofread = string.Empty;
+                vm.SelectedPreviousStudy.ComparisonProofread = string.Empty;
+                vm.SelectedPreviousStudy.FindingsProofread = string.Empty;
+                vm.SelectedPreviousStudy.ConclusionProofread = string.Empty;
+            }
+            
+            // Toggle off Proofread (current)
+            vm.ProofreadMode = false;
+            //vm.PreviousProofreadMode = false;
+            
+            // Toggle off Reportified (current only - previous doesn't have this toggle anymore)
+            vm.Reportified = false;
+            
+            Debug.WriteLine("[NewStudyProcedure] Cleared all JSON components and toggled off Proofread/Reportified");
+            
+            // Continue with existing NewStudy logic
             vm.PreviousStudies.Clear();
             vm.SelectedPreviousStudy = null;
             // Clear header component fields (HeaderText is computed from these)
@@ -39,8 +72,7 @@ namespace Wysg.Musm.Radium.Services.Procedures
             }
             catch (Exception ex) { Debug.WriteLine("[NewStudyProcedure] autofill techniques error: " + ex.Message); }
 
-            vm.Reportified = false; // will trigger property logic
-            vm.SetStatusInternal("New study initialized (unlocked)");
+            vm.SetStatusInternal("New study initialized (unlocked, all toggles off, JSON cleared)");
         }
     }
 }

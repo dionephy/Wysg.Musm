@@ -1,6 +1,6 @@
 ﻿# Radium Documentation
 
-**Last Updated**: 2025-01-20
+**Last Updated**: 2025-01-29
 
 ---
 
@@ -11,7 +11,10 @@
 - **[Plan-active.md](Plan-active.md)** - Recent implementation plans  
 - **[Tasks.md](Tasks.md)** - Active and pending tasks
 
-### Recent Major Features (2025-01-20)
+### Recent Major Features (2025-01-29)
+- **[ENHANCEMENT_2025-01-29_GetTextOCR_Top40Pixels.md](ENHANCEMENT_2025-01-29_GetTextOCR_Top40Pixels.md)** - GetTextOCR operation now captures only top 40 pixels for improved performance and accuracy
+- **[ENHANCEMENT_2025-01-29_MappedStudynamesListbox.md](ENHANCEMENT_2025-01-29_MappedStudynamesListbox.md)** - Added mapped studynames quick copy feature to StudynameLoincWindow
+- **[IMPLEMENTATION_SUMMARY_2025-01-29_ClearJSONOnNewStudy.md](IMPLEMENTATION_SUMMARY_2025-01-29_ClearJSONOnNewStudy.md)** - Clear JSON components and toggles on NewStudy
 - **[SNOMED_INTEGRATION_COMPLETE.md](SNOMED_INTEGRATION_COMPLETE.md)** - Complete SNOMED CT integration status
 - **[SNOMED_BROWSER_FEATURE_SUMMARY.md](SNOMED_BROWSER_FEATURE_SUMMARY.md)** - SNOMED Browser feature specification
 
@@ -106,7 +109,78 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ---
 
-## Recent Updates (2025-01-20)
+## Recent Updates (2025-01-29)
+
+### GetTextOCR - Top 40 Pixels Only (2025-01-29)
+
+**What Changed:**
+- GetTextOCR operation now captures only the top 40 pixels of the selected element boundary
+- Both synchronous and asynchronous variants updated
+- Uses `Math.Min(40, elementHeight)` to handle elements shorter than 40 pixels
+
+**Why This Matters:**
+- **Faster OCR Processing** - Smaller image region means faster text recognition
+- **Reduced Noise** - Avoids capturing irrelevant content below the main text
+- **Better Accuracy** - Focuses OCR on the most relevant text area (top portion where text typically resides)
+- **Consistent Results** - Standardized capture region across different element heights
+
+**Example Behavior:**
+```
+Tall Element (200px height):
+  Before: Captured 200px height
+  After:  Captures 40px height ✓ Faster, more focused
+
+Short Element (25px height):
+  Before: Captured 25px height
+  After:  Captures 25px height ✓ No change (element height preserved)
+```
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\Services\OperationExecutor.ElementOps.cs` - Updated ExecuteGetTextOCR and ExecuteGetTextOCRAsync methods
+
+**Documentation:**
+- See `ENHANCEMENT_2025-01-29_GetTextOCR_Top40Pixels.md` for complete details
+
+---
+
+### Clear JSON Components and Toggles on NewStudy (2025-01-29)
+
+**What Changed:**
+- NewStudy automation module now clears all JSON components BEFORE fetching PACS data
+- Toggles off "Proofread" and "Reportified" in current editor section
+- Clears all 6 proofread fields in both current and previous reports
+- Provides clean slate for every new study
+
+**Why This Matters:**
+- **No Cross-Contamination** - Prevents old proofread text from previous study appearing in new study
+- **Consistent State** - Every new study starts with same clean state
+- **Better UX** - Users don't need to manually clear toggles and JSON fields
+- **Automation-Friendly** - Works seamlessly in automation sequences
+
+**Example Behavior:**
+```
+Before NewStudy:
+  - ProofreadMode = true
+  - Reportified = true
+  - FindingsProofread = "LLM-generated text from previous study"
+  - ConclusionProofread = "LLM-generated conclusion"
+
+After NewStudy:
+  ✓ ProofreadMode = false
+  ✓ Reportified = false
+  ✓ FindingsProofread = "" (empty)
+  ✓ ConclusionProofread = "" (empty)
+  ✓ All 6 current proofread fields cleared
+  ✓ All 6 previous proofread fields cleared (if tab selected)
+```
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\Services\Procedures\NewStudyProcedure.cs` - Added clearing logic at beginning of ExecuteAsync()
+
+**Documentation:**
+- See `IMPLEMENTATION_SUMMARY_2025-01-29_ClearJSONOnNewStudy.md` for complete details
+
+---
 
 ### Default Differential Diagnosis Field (2025-01-28)
 

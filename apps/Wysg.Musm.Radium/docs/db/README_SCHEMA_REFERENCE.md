@@ -224,6 +224,7 @@ WHERE object_id = OBJECT_ID('radium.phrase')
 - **SNOMED Integration Guide:** `apps/Wysg.Musm.Radium/docs/snomed-semantic-tag-debugging.md`
 - **Phrase Highlighting:** `apps/Wysg.Musm.Radium/docs/phrase-highlighting-usage.md`
 - **C# Service Layer:** `apps/Wysg.Musm.Radium/Services/ISnomedMapService.cs`
+- **Delete Global Phrases:** `apps/Wysg.Musm.Radium/docs/db/DELETE_GLOBAL_PHRASES.md`
 
 ---
 
