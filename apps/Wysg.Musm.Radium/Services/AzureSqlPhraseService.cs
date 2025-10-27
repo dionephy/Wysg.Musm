@@ -70,15 +70,15 @@ namespace Wysg.Musm.Radium.Services
         // ============================================================================
         
         /// <summary>
-        /// Get all active global phrases (account_id IS NULL) with 3-word filtering for completion.
+        /// Get all active global phrases (account_id IS NULL) with 4-word filtering for completion.
         /// 
-        /// FR-completion-filter-2025-01-20: Global phrases are filtered to ¡Â3 words to reduce
-        /// clutter in completion popup. Account-specific phrases are NOT filtered.
+        /// FR-completion-filter-2025-01-29: Global phrases are filtered to ¡Â4 words to reduce
+        /// clutter in completion popup. Increased from 3 to 4 to ensure 3-word phrases appear.
         /// 
         /// Filtering rationale:
         /// - Global phrases contain long medical terms (e.g., "ligament of distal interphalangeal joint...")
         /// - These long phrases crowd the completion window
-        /// - Short phrases (¡Â3 words) remain useful for quick completion
+        /// - Short phrases (¡Â4 words) remain useful for quick completion
         /// - Users can still access long phrases via syntax highlighting, phrase manager, etc.
         /// </summary>
         public async Task<IReadOnlyList<string>> GetGlobalPhrasesAsync()
@@ -87,12 +87,12 @@ namespace Wysg.Musm.Radium.Services
             if (state.ById.Count == 0) 
                 await LoadGlobalSnapshotAsync(state).ConfigureAwait(false);
             
-            // Apply 3-word filter for completion window (FR-completion-filter-2025-01-20)
+            // Apply 4-word filter for completion window (FR-completion-filter-2025-01-29 - increased from 3 to 4)
             var allActive = state.ById.Values.Where(r => r.Active).ToList();
             Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesAsync] Total active global phrases: {allActive.Count}");
             
-            var filtered = allActive.Where(r => CountWords(r.Text) <= 3).ToList();
-            Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesAsync] After 3-word filter: {filtered.Count}");
+            var filtered = allActive.Where(r => CountWords(r.Text) <= 4).ToList();
+            Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesAsync] After 4-word filter: {filtered.Count}");
             
             // Log filtering statistics and examples for debugging
             if (allActive.Count > 0 && allActive.Count - filtered.Count > 0)
@@ -100,18 +100,18 @@ namespace Wysg.Musm.Radium.Services
                 Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesAsync] Filtered out {allActive.Count - filtered.Count} long phrases");
                 
                 // Show first 3 examples of filtered phrases for debugging
-                var examples = allActive.Where(r => CountWords(r.Text) > 3).Take(3).ToList();
+                var examples = allActive.Where(r => CountWords(r.Text) > 4).Take(3).ToList();
                 foreach (var ex in examples)
                 {
                     Debug.WriteLine($"  FILTERED: \"{ex.Text}\" ({CountWords(ex.Text)} words)");
                 }
             }
             
-            return filtered.Select(r => r.Text).OrderBy(t => t).Take(500).ToList();
+            return filtered.Select(r => r.Text).OrderBy(t => t).ToList();
         }
 
         /// <summary>
-        /// Get global phrases matching a prefix with 3-word filtering for completion.
+        /// Get global phrases matching a prefix with 4-word filtering for completion.
         /// 
         /// This is the primary method used by completion popup when typing.
         /// Filtering logic is identical to GetGlobalPhrasesAsync().
@@ -134,16 +134,16 @@ namespace Wysg.Musm.Radium.Services
                 .ToList();
             Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesByPrefixAsync] Found {matching.Count} matches for prefix '{prefix}'");
             
-            // Apply 3-word filter for completion window (FR-completion-filter-2025-01-20)
-            var filtered = matching.Where(r => CountWords(r.Text) <= 3).ToList();
-            Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesByPrefixAsync] After 3-word filter: {filtered.Count}");
+            // Apply 4-word filter for completion window (FR-completion-filter-2025-01-29 - increased from 3 to 4)
+            var filtered = matching.Where(r => CountWords(r.Text) <= 4).ToList();
+            Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesByPrefixAsync] After 4-word filter: {filtered.Count}");
             
             // Log filtering statistics for debugging
             if (matching.Count > filtered.Count)
             {
                 Debug.WriteLine($"[AzureSqlPhraseService][GetGlobalPhrasesByPrefixAsync] Filtered out {matching.Count - filtered.Count} long phrases");
                 
-                var examples = matching.Where(r => CountWords(r.Text) > 3).Take(3).ToList();
+                var examples = matching.Where(r => CountWords(r.Text) > 4).Take(3).ToList();
                 foreach (var ex in examples)
                 {
                     Debug.WriteLine($"  FILTERED: \"{ex.Text}\" ({CountWords(ex.Text)} words)");
@@ -162,12 +162,14 @@ namespace Wysg.Musm.Radium.Services
         /// <summary>
         /// Count words in a phrase by splitting on whitespace.
         /// 
-        /// FR-completion-filter-2025-01-20: Used to filter global phrases to ¡Â3 words for completion window.
+        /// FR-completion-filter-2025-01-29: Used to filter global phrases to ¡Â4 words for completion window.
+        /// Increased from 3 to 4 to ensure 3-word phrases like "vein of calf" appear in completion.
         /// 
         /// Word counting rules:
         /// - Split on space, tab, CR, LF
         /// - Remove empty entries (multiple spaces count as one separator)
         /// - "no evidence" = 2 words
+        /// - "vein of calf" = 3 words (now included)
         /// - "ligament of distal interphalangeal joint" = 5 words (filtered out)
         /// </summary>
         /// <param name="text">Phrase text to count words in</param>
@@ -178,8 +180,10 @@ namespace Wysg.Musm.Radium.Services
             
             var count = text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
             
-            // Debug logging for long phrases containing "ligament" (sample debugging - can be removed in production)
-            if (count > 3 && text.Contains("ligament", StringComparison.OrdinalIgnoreCase))
+            // Debug logging for phrases containing specific keywords to help diagnose filtering issues
+            if (text.Contains("vein", StringComparison.OrdinalIgnoreCase) || 
+                text.Contains("ligament", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("artery", StringComparison.OrdinalIgnoreCase))
             {
                 Debug.WriteLine($"[AzureSqlPhraseService][CountWords] \"{text}\" = {count} words");
             }
@@ -498,7 +502,7 @@ namespace Wysg.Musm.Radium.Services
                 string selectSql = accountId.HasValue
                     ? @"SELECT id, account_id, [text], active, updated_at, rev FROM radium.phrase WHERE id=@pid AND account_id=@aid"
                     : @"SELECT id, account_id, [text], active, updated_at, rev FROM radium.phrase WHERE id=@pid AND account_id IS NULL";
-                    
+                
                 await using var con = CreateConnection();
                 await con.OpenAsync().ConfigureAwait(false);
                 await using (var cmd = new SqlCommand(toggleSql, con))
@@ -549,7 +553,7 @@ namespace Wysg.Musm.Radium.Services
                 string selectSql = accountId.HasValue
                     ? @"SELECT id, account_id, [text], active, updated_at, rev FROM radium.phrase WHERE id=@pid AND account_id=@aid"
                     : @"SELECT id, account_id, [text], active, updated_at, rev FROM radium.phrase WHERE id=@pid AND account_id IS NULL";
-                    
+                
                 await using var con = CreateConnection();
                 await con.OpenAsync().ConfigureAwait(false);
                 await using (var cmd = new SqlCommand(updateSql, con))

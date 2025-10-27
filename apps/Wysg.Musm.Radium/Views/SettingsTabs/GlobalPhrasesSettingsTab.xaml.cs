@@ -120,5 +120,54 @@ namespace Wysg.Musm.Radium.Views.SettingsTabs
                     MessageBoxImage.Error);
             }
         }
+
+        private void OnOpenWordCountImporterClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (Application.Current is not App app) return;
+   
+                // Get dependencies from DI
+                var snowstormClient = app.Services.GetService<ISnowstormClient>();
+                var phraseService = app.Services.GetService<IPhraseService>();
+                var snomedMapService = app.Services.GetService<ISnomedMapService>();
+
+                if (snowstormClient == null || phraseService == null || snomedMapService == null)
+                {
+                    MessageBox.Show(
+                        "SNOMED services not available. Check that Snowstorm is configured.",
+                        "Word Count Importer",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Create ViewModel
+                var vm = new SnomedWordCountImporterViewModel(snowstormClient, phraseService, snomedMapService);
+
+                // Create and show window
+                var window = new SnomedWordCountImporterWindow(vm)
+                {
+                    Owner = Window.GetWindow(this)
+                };
+
+                window.ShowDialog();
+
+                // Refresh the global phrases list after window closes
+                if (DataContext is GlobalPhrasesViewModel globalVm)
+                {
+                    _ = globalVm.RefreshPhrasesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[GlobalPhrasesSettingsTab] Open Word Count Importer error: " + ex.Message);
+                MessageBox.Show(
+                    $"Error opening Word Count Importer:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
     }
 }

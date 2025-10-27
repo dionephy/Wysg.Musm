@@ -35,7 +35,7 @@ namespace Wysg.Musm.Editor.Controls
 
         public static readonly DependencyProperty MinCharsForSuggestProperty =
             DependencyProperty.Register(nameof(MinCharsForSuggest), typeof(int), typeof(EditorControl),
-                new PropertyMetadata(2));
+                new PropertyMetadata(1));
 
         public static readonly DependencyProperty GhostIdleMsProperty =
     DependencyProperty.Register(nameof(GhostIdleMs), typeof(int), typeof(EditorControl),

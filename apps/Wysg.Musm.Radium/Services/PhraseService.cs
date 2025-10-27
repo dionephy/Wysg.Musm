@@ -1,3 +1,17 @@
+// ============================================================================
+// DEPRECATED: PostgreSQL Phrase Service Implementation
+// ============================================================================
+// 
+// This file contains the PostgreSQL implementation of IPhraseService.
+// 
+// STATUS: DEPRECATED (2025-01-29)
+// REASON: Production deployments now use Azure SQL (AzureSqlPhraseService.cs)
+// KEEP FOR: Reference, on-premise PostgreSQL scenarios, development environments
+// 
+// FOR NEW CODE: Use AzureSqlPhraseService instead
+// 
+// ============================================================================
+
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Npgsql;
@@ -11,6 +25,15 @@ using System.Net.Sockets;
 
 namespace Wysg.Musm.Radium.Services
 {
+    /// <summary>
+    /// PostgreSQL implementation of IPhraseService - DEPRECATED.
+    /// 
+    /// This implementation is deprecated in favor of AzureSqlPhraseService for production deployments.
+    /// Retained for reference and potential on-premise/development PostgreSQL scenarios.
+    /// 
+    /// For new code, use AzureSqlPhraseService instead.
+    /// </summary>
+    [Obsolete("Use AzureSqlPhraseService for production deployments. This PostgreSQL implementation is retained for on-premise scenarios only.", DiagnosticId = "MUSM001")]
     public class PhraseService : IPhraseService
     {
         private readonly IRadiumLocalSettings _settings;
@@ -147,6 +170,23 @@ namespace Wysg.Musm.Radium.Services
                     if (cur is SocketException se && se.SocketErrorCode == SocketError.TimedOut) return true;
                 return false;
             }
+        }
+
+        // Basic transient checker for network/DB hiccups (kept conservative; deprecated service)
+        private static bool IsTransient(Exception ex)
+        {
+            // Treat common network and database transport failures as transient
+            if (ex is TimeoutException) return true;
+            if (ex is IOException) return true;
+            if (ex is SocketException) return true;
+            if (ex is NpgsqlException) return true;
+            if (ex is PostgresException pex)
+            {
+                // Serialization failure or deadlock
+                if (string.Equals(pex.SqlState, "40001", StringComparison.Ordinal)) return true; // serialization_failure
+                if (string.Equals(pex.SqlState, "40P01", StringComparison.Ordinal)) return true; // deadlock_detected
+            }
+            return false;
         }
 
         private SemaphoreSlim GetLock(long key) => _locks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
@@ -413,25 +453,25 @@ namespace Wysg.Musm.Radium.Services
                 try { await LoadGlobalPhrasesAsync(state).ConfigureAwait(false); } 
                 catch { return Array.Empty<string>(); }
             }
-            // Filter global phrases to 3 words or less for completion (FR-completion-filter-2025-01-20)
+            // Filter global phrases to 4 words or less for completion (FR-completion-filter-2025-01-29 - increased from 3 to 4)
             var allActive = state.ById.Values.Where(r => r.Active).ToList();
             Debug.WriteLine($"[PhraseService][GetGlobalPhrasesAsync] Total active global phrases: {allActive.Count}");
             
-            var filtered = allActive.Where(r => CountWords(r.Text) <= 3).ToList();
-            Debug.WriteLine($"[PhraseService][GetGlobalPhrasesAsync] After 3-word filter: {filtered.Count}");
+            var filtered = allActive.Where(r => CountWords(r.Text) <= 4).ToList();
+            Debug.WriteLine($"[PhraseService][GetGlobalPhrasesAsync] After 4-word filter: {filtered.Count}");
             
             if (allActive.Count > 0 && allActive.Count - filtered.Count > 0)
             {
                 Debug.WriteLine($"[PhraseService][GetGlobalPhrasesAsync] Filtered out {allActive.Count - filtered.Count} long phrases");
                 // Show first 3 examples of filtered phrases
-                var examples = allActive.Where(r => CountWords(r.Text) > 3).Take(3).ToList();
+                var examples = allActive.Where(r => CountWords(r.Text) > 4).Take(3).ToList();
                 foreach (var ex in examples)
                 {
                     Debug.WriteLine($"  FILTERED: \"{ex.Text}\" ({CountWords(ex.Text)} words)");
                 }
             }
             
-            return filtered.Select(r => r.Text).OrderBy(t => t).Take(500).ToList();
+            return filtered.Select(r => r.Text).OrderBy(t => t).ToList();
         }
 
         public async Task<IReadOnlyList<string>> GetGlobalPhrasesByPrefixAsync(string prefix, int limit = 50)
@@ -452,14 +492,14 @@ namespace Wysg.Musm.Radium.Services
             var matching = state.ById.Values.Where(r => r.Active && r.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
             Debug.WriteLine($"[PhraseService][GetGlobalPhrasesByPrefixAsync] Found {matching.Count} matches for prefix '{prefix}'");
             
-            // Filter global phrases to 3 words or less for completion window (FR-completion-filter-2025-01-20)
-            var filtered = matching.Where(r => CountWords(r.Text) <= 3).ToList();
-            Debug.WriteLine($"[PhraseService][GetGlobalPhrasesByPrefixAsync] After 3-word filter: {filtered.Count}");
+            // Filter global phrases to 4 words or less for completion window (FR-completion-filter-2025-01-29 - increased from 3 to 4)
+            var filtered = matching.Where(r => CountWords(r.Text) <= 4).ToList();
+            Debug.WriteLine($"[PhraseService][GetGlobalPhrasesByPrefixAsync] After 4-word filter: {filtered.Count}");
             
             if (matching.Count > filtered.Count)
             {
                 Debug.WriteLine($"[PhraseService][GetGlobalPhrasesByPrefixAsync] Filtered out {matching.Count - filtered.Count} long phrases");
-                var examples = matching.Where(r => CountWords(r.Text) > 3).Take(3).ToList();
+                var examples = matching.Where(r => CountWords(r.Text) > 4).Take(3).ToList();
                 foreach (var ex in examples)
                 {
                     Debug.WriteLine($"  FILTERED: \"{ex.Text}\" ({CountWords(ex.Text)} words)");
@@ -493,7 +533,7 @@ namespace Wysg.Musm.Radium.Services
             
             Debug.WriteLine($"[PhraseService][GetCombinedPhrasesByPrefixAsync] accountId={accountId}, prefix='{prefix}', limit={limit}");
             
-            // Global phrases are already filtered to 3 words or less in GetGlobalPhrasesByPrefixAsync
+            // Global phrases are already filtered to 4 words or less in GetGlobalPhrasesByPrefixAsync
             var globalPhrases = await GetGlobalPhrasesByPrefixAsync(prefix, limit).ConfigureAwait(false);
             // Account-specific phrases are NOT filtered (no word limit)
             var accountPhrases = await GetPhrasesByPrefixAccountAsync(accountId, prefix, limit).ConfigureAwait(false);
@@ -841,7 +881,7 @@ namespace Wysg.Musm.Radium.Services
                     RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag"
                 : @"UPDATE radium.phrase SET active = NOT active
                     WHERE account_id IS NULL AND id=@pid
-                    RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag";
+                    RETURNING id, account_id, text, active, created_at, updatedAt, rev, tags, tags_source, tags_semantic_tag";
                     
             int attempts = 0;
             const int maxAttempts = 3;
@@ -886,10 +926,10 @@ namespace Wysg.Musm.Radium.Services
             string sql = accountId.HasValue
                 ? @"UPDATE radium.phrase SET text=@text
                     WHERE account_id=@aid AND id=@pid
-                    RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag"
+                    RETURNING id, account_id, text, active, created_at, updatedAt, rev, tags, tags_source, tags_semantic_tag"
                 : @"UPDATE radium.phrase SET text=@text
                     WHERE account_id IS NULL AND id=@pid
-                    RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag";
+                    RETURNING id, account_id, text, active, created_at, updatedAt, rev, tags, tags_source, tags_semantic_tag";
                     
             int attempts = 0;
             const int maxAttempts = 3;
@@ -960,7 +1000,6 @@ namespace Wysg.Musm.Radium.Services
                 row.TagsSemanticTag = info.TagsSemanticTag;
             }
             if (info.Rev > state.MaxRev) state.MaxRev = info.Rev;
-            if (info.Id > state.MaxIdLoaded) state.MaxIdLoaded = info.Id;
         }
 
         private void UpdateSnapshotAfterToggle(AccountPhraseState state, PhraseInfo info)
@@ -970,226 +1009,113 @@ namespace Wysg.Musm.Radium.Services
                 row.Active = info.Active;
                 row.UpdatedAt = info.UpdatedAt;
                 row.Rev = info.Rev;
-                row.Tags = info.Tags;
-                row.TagsSource = info.TagsSource;
-                row.TagsSemanticTag = info.TagsSemanticTag;
-                if (info.Rev > state.MaxRev) state.MaxRev = info.Rev;
             }
-            else
-            {
-                var newRow = new PhraseRow
-                {
-                    Id = info.Id,
-                    AccountId = info.AccountId,
-                    Text = info.Text,
-                    Active = info.Active,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = info.UpdatedAt,
-                    Rev = info.Rev,
-                    Tags = info.Tags,
-                    TagsSource = info.TagsSource,
-                    TagsSemanticTag = info.TagsSemanticTag
-                };
-                state.ById[info.Id] = newRow;
-                if (info.Rev > state.MaxRev) state.MaxRev = info.Rev;
-            }
+            if (info.Rev > state.MaxRev) state.MaxRev = info.Rev;
         }
 
+        private static int CountWords(string text)
+        {
+            // Simple word count: split by spaces, ignore empty
+            return text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+        }
+
+        // Convert account phrases to global (FR-279)
         public async Task<(int converted, int duplicatesRemoved)> ConvertToGlobalPhrasesAsync(long accountId, IEnumerable<long> phraseIds)
         {
             if (accountId <= 0) return (0, 0);
+            if (phraseIds == null) return (0, 0);
+            var ids = phraseIds.Distinct().Where(id => id > 0).ToList();
+            if (ids.Count == 0) return (0, 0);
+
             await EnsureBackendAsync().ConfigureAwait(false);
             if (!_radiumAvailable) return (0, 0);
-            
-            var ids = phraseIds.ToList();
-            if (ids.Count == 0) return (0, 0);
-            
+
             int converted = 0;
-            int duplicatesRemoved = 0;
-            
-            var accountKey = accountId;
-            var accountState = _states.GetOrAdd(accountKey, _ => new AccountPhraseState(accountId));
-            var globalState = _states.GetOrAdd(GLOBAL_KEY, _ => new AccountPhraseState(null));
-            
-            await accountState.UpdateLock.WaitAsync().ConfigureAwait(false);
-            await globalState.UpdateLock.WaitAsync().ConfigureAwait(false);
+            int removed = 0;
+
+            await using var con = CreateConnection();
+            await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false);
+            await using var tx = await con.BeginTransactionAsync().ConfigureAwait(false);
             try
             {
-                accountState.UpdatingSnapshot = true;
-                globalState.UpdatingSnapshot = true;
-                
-                await using var con = CreateConnection();
-                await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false);
-                
-                // Group phrases by text to detect duplicates across accounts
-                var phrasesToConvert = new Dictionary<string, List<long>>(StringComparer.OrdinalIgnoreCase);
-                
-                // Load all phrases to convert
-                foreach (var phraseId in ids)
+                foreach (var id in ids)
                 {
-                    const string selectSql = @"SELECT id, text FROM radium.phrase WHERE id=@pid AND account_id=@aid";
-                    await using var selCmd = new NpgsqlCommand(selectSql, con) { CommandTimeout = 12 };
-                    selCmd.Parameters.AddWithValue("pid", phraseId);
-                    selCmd.Parameters.AddWithValue("aid", accountId);
-                    
-                    await using var rd = await selCmd.ExecuteReaderAsync().ConfigureAwait(false);
-                    if (await rd.ReadAsync().ConfigureAwait(false))
+                    // Load source phrase
+                    const string selSql = @"SELECT text, active FROM radium.phrase WHERE account_id=@aid AND id=@pid";
+                    await using (var sel = new NpgsqlCommand(selSql, con, tx) { CommandTimeout = 12 })
                     {
-                        var text = rd.GetString(1);
-                        if (!phrasesToConvert.ContainsKey(text))
-                            phrasesToConvert[text] = new List<long>();
-                        phrasesToConvert[text].Add(phraseId);
-                    }
-                }
-                
-                // Process each unique phrase text
-                foreach (var kvp in phrasesToConvert)
-                {
-                    var text = kvp.Key;
-                    var phIds = kvp.Value;
-                    
-                    // Check if a global phrase with this text already exists
-                    const string checkGlobalSql = @"SELECT id FROM radium.phrase WHERE account_id IS NULL AND text=@text";
-                    await using var checkCmd = new NpgsqlCommand(checkGlobalSql, con) { CommandTimeout = 12 };
-                    checkCmd.Parameters.AddWithValue("text", text);
-                    var existingGlobalId = await checkCmd.ExecuteScalarAsync().ConfigureAwait(false);
-                    
-                    if (existingGlobalId != null)
-                    {
-                        // Global phrase exists - delete all account-specific duplicates ACROSS ALL accounts
-                        const string deleteSqlAll = @"DELETE FROM radium.phrase WHERE account_id IS NOT NULL AND text=@text";
-                        await using var delAllCmd = new NpgsqlCommand(deleteSqlAll, con) { CommandTimeout = 12 };
-                        delAllCmd.Parameters.AddWithValue("text", text);
-                        var removed = await delAllCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-                        duplicatesRemoved += removed;
-
-                        foreach (var id in phIds) accountState.ById.Remove(id);
-                    }
-                    else
-                    {
-                        // No global phrase exists - convert first occurrence to global
-                        var firstId = phIds[0];
-                        
-                        const string updateSql = @"UPDATE radium.phrase SET account_id = NULL 
-                                                   WHERE id=@pid AND account_id=@aid
-                                                   RETURNING id, account_id, text, active, created_at, updated_at, rev, tags, tags_source, tags_semantic_tag";
-                        await using var updCmd = new NpgsqlCommand(updateSql, con) { CommandTimeout = 12 };
-                        updCmd.Parameters.AddWithValue("pid", firstId);
-                        updCmd.Parameters.AddWithValue("aid", accountId);
-                        
-                        await using var updRd = await updCmd.ExecuteReaderAsync().ConfigureAwait(false);
-                        if (await updRd.ReadAsync().ConfigureAwait(false))
+                        sel.Parameters.AddWithValue("aid", accountId);
+                        sel.Parameters.AddWithValue("pid", id);
+                        await using var rd = await sel.ExecuteReaderAsync().ConfigureAwait(false);
+                        if (!await rd.ReadAsync().ConfigureAwait(false))
                         {
-                            var newInfo = new PhraseInfo(
-                                updRd.GetInt64(0),
-                                updRd.IsDBNull(1) ? null : updRd.GetInt64(1),
-                                updRd.GetString(2),
-                                updRd.GetBoolean(3),
-                                updRd.GetDateTime(5),
-                                updRd.GetInt64(6),
-                                updRd.IsDBNull(7) ? null : updRd.GetString(7),
-                                updRd.IsDBNull(8) ? null : updRd.GetString(8),
-                                updRd.IsDBNull(9) ? null : updRd.GetString(9)
-                            );
-                            
-                            // Remove from account snapshot
-                            accountState.ById.Remove(firstId);
-                            
-                            // Add to global snapshot
-                            var globalRow = new PhraseRow
-                            {
-                                Id = newInfo.Id,
-                                AccountId = null,
-                                Text = newInfo.Text,
-                                Active = newInfo.Active,
-                                CreatedAt = updRd.GetDateTime(4),
-                                UpdatedAt = newInfo.UpdatedAt,
-                                Rev = newInfo.Rev,
-                                Tags = newInfo.Tags,
-                                TagsSource = newInfo.TagsSource,
-                                TagsSemanticTag = newInfo.TagsSemanticTag
-                            };
-                            globalState.ById[firstId] = globalRow;
-                            if (newInfo.Rev > globalState.MaxRev) globalState.MaxRev = newInfo.Rev;
-                            
-                            converted++;
+                            // Not found for this account; skip
+                            continue;
                         }
-                        
-                        // Delete remaining duplicates ACROSS ALL accounts for this text
-                        const string deleteSqlAll2 = @"DELETE FROM radium.phrase WHERE account_id IS NOT NULL AND text=@text";
-                        await using var delDupCmd2 = new NpgsqlCommand(deleteSqlAll2, con) { CommandTimeout = 12 };
-                        delDupCmd2.Parameters.AddWithValue("text", text);
-                        var removed2 = await delDupCmd2.ExecuteNonQueryAsync().ConfigureAwait(false);
-                        duplicatesRemoved += removed2;
+                        var text = rd.GetString(0);
+                        var active = rd.GetBoolean(1);
+                        await rd.DisposeAsync().ConfigureAwait(false);
+
+                        // Ensure a global row exists
+                        bool existsGlobal;
+                        const string existsSql = @"SELECT 1 FROM radium.phrase WHERE account_id IS NULL AND text=@text LIMIT 1";
+                        await using (var exCmd = new NpgsqlCommand(existsSql, con, tx) { CommandTimeout = 12 })
+                        {
+                            exCmd.Parameters.AddWithValue("text", text);
+                            existsGlobal = (await exCmd.ExecuteScalarAsync().ConfigureAwait(false)) != null;
+                        }
+                        if (!existsGlobal)
+                        {
+                            const string insSql = @"INSERT INTO radium.phrase(account_id, text, active) VALUES(NULL, @text, @active)";
+                            await using var ins = new NpgsqlCommand(insSql, con, tx) { CommandTimeout = 12 };
+                            ins.Parameters.AddWithValue("text", text);
+                            ins.Parameters.AddWithValue("active", active);
+                            converted += await ins.ExecuteNonQueryAsync().ConfigureAwait(false);
+                        }
+
+                        // Delete all non-global duplicates of this text
+                        const string delSql = @"DELETE FROM radium.phrase WHERE account_id IS NOT NULL AND text=@text";
+                        await using var del = new NpgsqlCommand(delSql, con, tx) { CommandTimeout = 12 };
+                        del.Parameters.AddWithValue("text", text);
+                        removed += await del.ExecuteNonQueryAsync().ConfigureAwait(false);
                     }
                 }
-                
-                // Global phrases changed: affects all accounts' combined lists
-                _cache.ClearAll();
-                
-                return (converted, duplicatesRemoved);
+
+                await tx.CommitAsync().ConfigureAwait(false);
             }
-            finally
+            catch (Exception ex) when (IsTransient(ex) || IsTransientTimeout(ex))
             {
-                accountState.UpdatingSnapshot = false;
-                globalState.UpdatingSnapshot = false;
-                globalState.UpdateLock.Release();
-                accountState.UpdateLock.Release();
+                await tx.RollbackAsync().ConfigureAwait(false);
+                Debug.WriteLine($"[PhraseService][ConvertToGlobal] Transient error: {ex.GetType().Name} {ex.Message}");
+                throw;
             }
+
+            // Global changes affect all accounts
+            _cache.ClearAll();
+            return (converted, removed);
         }
 
-        public async Task<long?> GetAnyAccountIdAsync() => await GetAnyAccountIdInternalAsync(null).ConfigureAwait(false);
-
-        private async Task<long?> GetAnyAccountIdInternalAsync(long? cachedAccount)
+        // Try to fetch any account id that has phrases available (best-effort helper)
+        public async Task<long?> GetAnyAccountIdAsync()
         {
             await EnsureBackendAsync().ConfigureAwait(false);
-            if (!_radiumAvailable) return cachedAccount;
-            const string sql = "SELECT account_id FROM radium.phrase WHERE account_id IS NOT NULL ORDER BY account_id LIMIT 1";
-            await using var con = CreateConnection();
-            try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false); }
-            catch { return cachedAccount; }
-            await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 8 };
+            if (!_radiumAvailable) return null;
             try
             {
-                var result = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
-                return result == null ? cachedAccount : (long?)(result is long l ? l : Convert.ToInt64(result));
+                await using var con = _dsProvider.CentralMeta.CreateConnection();
+                await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con).ConfigureAwait(false);
+                const string sql = @"SELECT account_id FROM radium.phrase WHERE account_id IS NOT NULL ORDER BY updated_at DESC LIMIT 1";
+                await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 8 };
+                var obj = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
+                if (obj is long l) return l;
+                if (obj is int i) return (long)i;
+                return null;
             }
-            catch { return cachedAccount; }
-        }
-
-        private static bool IsTransient(Exception ex)
-        {
-            if (ex is TimeoutException) return true;
-            if (ex is IOException) return true;
-            if (ex is SocketException) return true;
-            if (ex is OperationCanceledException) return true;
-            if (ex is NpgsqlException npgEx)
+            catch (Exception ex)
             {
-                if (npgEx.InnerException is TimeoutException) return true;
-                if (npgEx.InnerException is SocketException) return true;
-                if (npgEx.InnerException is OperationCanceledException) return true;
-                if (npgEx.Message.IndexOf("reading from stream", StringComparison.OrdinalIgnoreCase) >= 0) return true;
-                if (npgEx.Message.IndexOf("Timeout", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                Debug.WriteLine($"[PhraseService][GetAnyAccountIdAsync] Error: {ex.Message}");
+                return null;
             }
-            return false;
-        }
-
-        /// <summary>
-        /// Count words in a phrase by splitting on whitespace.
-        /// Used to filter global phrases to 3 words or less for completion window (FR-completion-filter-2025-01-20).
-        /// </summary>
-        private static int CountWords(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return 0;
-            var count = text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
-            
-            // Debug logging for long phrases only (to avoid spam)
-            if (count > 3 && text.Contains("ligament", StringComparison.OrdinalIgnoreCase))
-            {
-                Debug.WriteLine($"[PhraseService][CountWords] \"{text}\" = {count} words");
-            }
-            
-            return count;
         }
     }
 }

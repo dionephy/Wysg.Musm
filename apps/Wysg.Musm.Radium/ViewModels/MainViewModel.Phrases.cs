@@ -51,9 +51,12 @@ namespace Wysg.Musm.Radium.ViewModels
                     return;
                 }
                 
-                // Load combined phrases (global + account)
-                var list = await _phrases.GetCombinedPhrasesAsync(accountId).ConfigureAwait(false);
+                // FIXED: Use unfiltered phrase list for syntax highlighting (includes ALL phrases regardless of word count)
+                // Completion window uses GetCombinedPhrasesByPrefixAsync which has its own 3-word filter
+                var list = await _phrases.GetAllPhrasesForHighlightingAsync(accountId).ConfigureAwait(false);
                 CurrentPhraseSnapshot = list ?? Array.Empty<string>();
+                
+                System.Diagnostics.Debug.WriteLine($"[LoadPhrases] Loaded {CurrentPhraseSnapshot.Count} phrases for highlighting (unfiltered)");
                 
                 // Load SNOMED semantic tags for global phrases (account phrases don't have SNOMED mappings yet)
                 var semanticTags = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);

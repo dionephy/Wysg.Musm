@@ -18,27 +18,37 @@ xmlns:views="clr-namespace:Wysg.Musm.Radium.Views">
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header with SNOMED Browser Button -->
+        <!-- Header with SNOMED Browser and Word Count Importer Buttons -->
         <Grid Grid.Row="0" Margin="0,0,0,10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
+          <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Column="0"
-                       Text="Global Phrases (Available to All Accounts)" 
-                       FontSize="16" 
-                       FontWeight="Bold" 
-                       Foreground="{DynamicResource BrushTextPrimary}"
-                       VerticalAlignment="Center"/>
+   <TextBlock Grid.Column="0"
+        Text="Global Phrases (Available to All Accounts)" 
+              FontSize="16" 
+          FontWeight="Bold" 
+    Foreground="{DynamicResource BrushTextPrimary}"
+   VerticalAlignment="Center"/>
 
             <Button Grid.Column="1"
-                    Content="?? Browse SNOMED CT"
-                    Click="OnOpenSnomedBrowserClick"
-                    Padding="12,6"
-                    MinWidth="180"
-                    FontSize="14"
-                    ToolTip="Open SNOMED CT Browser - Browse all concepts by domain with pagination"/>
+        Content="? Browse SNOMED CT"
+  Click="OnOpenSnomedBrowserClick"
+    Padding="12,6"
+      MinWidth="180"
+           FontSize="14"
+    Margin="0,0,8,0"
+ ToolTip="Open SNOMED CT Browser - Browse all concepts by domain with pagination"/>
+
+  <Button Grid.Column="2"
+ Content="? Import by Word Count"
+  Click="OnOpenWordCountImporterClick"
+         Padding="12,6"
+              MinWidth="180"
+        FontSize="14"
+       ToolTip="Import SNOMED CT concepts filtered by word count - Add/Ignore single-word synonyms"/>
         </Grid>
 
         <!-- Add New Phrase Section -->

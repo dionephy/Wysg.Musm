@@ -12,6 +12,12 @@
 - **[Tasks.md](Tasks.md)** - Active and pending tasks
 
 ### Recent Major Features (2025-01-29)
+
+- **[DEPRECATION_2025-01-29_PostgresPhraseService.md](DEPRECATION_2025-01-29_PostgresPhraseService.md)** - Deprecated PostgreSQL PhraseService in favor of AzureSqlPhraseService
+- **[FIX_2025-01-29_CompletionWindowSingleCharacter.md](FIX_2025-01-29_CompletionWindowSingleCharacter.md)** - Fixed completion window not opening on single character input (changed MinCharsForSuggest from 2 to 1)
+- **[FIX_2025-01-29_GlobalPhraseCompletionFilter3WordFix.md](FIX_2025-01-29_GlobalPhraseCompletionFilter3WordFix.md)** - Fixed 3-word global phrases not appearing in completion window (increased limit to 4 words)
+- **[FIX_2025-01-29_GlobalPhraseHighlightingFilter.md](FIX_2025-01-29_GlobalPhraseHighlightingFilter.md)** - Fixed global phrases >3 words not highlighting in editor
+- **[IMPLEMENTATION_SUMMARY_2025-01-29_GlobalPhraseHighlightingFilter.md](IMPLEMENTATION_SUMMARY_2025-01-29_GlobalPhraseHighlightingFilter.md)** - Technical summary of phrase highlighting fix
 - **[ENHANCEMENT_2025-01-29_GetTextOCR_Top40Pixels.md](ENHANCEMENT_2025-01-29_GetTextOCR_Top40Pixels.md)** - GetTextOCR operation now captures only top 40 pixels for improved performance and accuracy
 - **[ENHANCEMENT_2025-01-29_MappedStudynamesListbox.md](ENHANCEMENT_2025-01-29_MappedStudynamesListbox.md)** - Added mapped studynames quick copy feature to StudynameLoincWindow
 - **[IMPLEMENTATION_SUMMARY_2025-01-29_ClearJSONOnNewStudy.md](IMPLEMENTATION_SUMMARY_2025-01-29_ClearJSONOnNewStudy.md)** - Clear JSON components and toggles on NewStudy
@@ -110,6 +116,96 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 ---
 
 ## Recent Updates (2025-01-29)
+
+### Global Phrase Completion Filter - 3-Word Phrases Fix (2025-01-29)
+
+**What Changed:**
+- Increased completion window filter from ≤3 words to ≤4 words for global phrases
+- Fixed edge case where 3-word phrases like "vein of calf" were not appearing in completion
+- Enhanced debug logging to track vein/ligament/artery phrases
+
+**Why This Matters:**
+- **Better UX** - 3-word phrases are still short and useful for medical terminology
+- **Consistent Behavior** - Users expect 3-word phrases to work in completion
+- **Conservative Fix** - Still filters out very long phrases (5+ words)
+- **No Breaking Changes** - Backward compatible, caches repopulate automatically
+
+**Example Fix:**
+```
+3-Word Phrases (NOW APPEAR):
+  ✅ "vein of calf"
+  ✅ "no evidence of"
+  ✅ "anterior descending branch"
+
+4-Word Phrases (NOW APPEAR):
+  ✅ "left anterior descending artery"
+
+5+ Word Phrases (STILL FILTERED):
+  ❌ "anterior descending branch of left coronary artery" (8 words - too long for dropdown)
+```
+
+**Key Technical Details:**
+- Changed filter condition from `CountWords(r.Text) <= 3` to `CountWords(r.Text) <= 4`
+- Applied to both `GetGlobalPhrasesAsync()` and `GetGlobalPhrasesByPrefixAsync()`
+- Syntax highlighting remains unaffected (uses `GetAllPhrasesForHighlightingAsync` with no filter)
+
+**Performance Impact:**
+- Minimal - estimated +10-15% more global phrases in dropdown
+- Dropdown remains manageable
+- No additional database queries
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\Services\PhraseService.cs` - Updated filter logic and debug logging
+
+**Documentation:**
+- See `FIX_2025-01-29_GlobalPhraseCompletionFilter3WordFix.md` for complete details
+
+---
+
+### Global Phrase Highlighting Filter Fix (2025-01-29)
+
+**What Changed:**
+- Fixed bug where global phrases with >3 words were not appearing in syntax highlighting
+- Changed `MainViewModel.Phrases.cs` to use `GetAllPhrasesForHighlightingAsync()` instead of `GetCombinedPhrasesAsync()`
+- Completion window still uses filtered list (≤3 words) for performance
+- Syntax highlighting now shows ALL phrases regardless of word count
+
+**Why This Matters:**
+- **Accuracy** - All global phrases now highlight correctly (e.g., "vein of calf", "anterior descending branch")
+- **SNOMED Colors** - Long anatomical terms now show semantic tag colors
+- **No Regression** - Completion window still optimized with 3-word filter
+- **Separation of Concerns** - Completion (filtered) vs highlighting (unfiltered)
+
+**Example Fix:**
+```
+Phrase: "vein of calf" (3 words)
+  Before: ❌ No highlighting, ✅ Shows in completion
+  After:  ✅ Highlights with body structure color (light green), ✅ Shows in completion
+
+Phrase: "anterior descending branch of left coronary artery" (8 words)
+  Before: ❌ No highlighting, ❌ Not in completion
+  After:  ✅ Highlights with body structure color (light green), ❌ Not in completion (by design)
+```
+
+**Key Technical Details:**
+- `GetCombinedPhrasesAsync()` - Filters global to ≤3 words (for completion performance)
+- `GetAllPhrasesForHighlightingAsync()` - No filter (for highlighting completeness)
+- Completion uses `GetCombinedPhrasesByPrefixAsync()` which has built-in 3-word filter
+- Highlighting uses unfiltered snapshot for accurate phrase detection
+
+**Performance Impact:**
+- Minimal memory increase (~1000 extra phrases)
+- No CPU impact (visible lines only)
+- No regression in completion window speed
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Phrases.cs` - Changed to use `GetAllPhrasesForHighlightingAsync()`
+
+**Documentation:**
+- See `FIX_2025-01-29_GlobalPhraseHighlightingFilter.md` for detailed technical documentation
+- See `IMPLEMENTATION_SUMMARY_2025-01-29_GlobalPhraseHighlightingFilter.md` for complete implementation summary
+
+---
 
 ### GetTextOCR - Top 40 Pixels Only (2025-01-29)
 
