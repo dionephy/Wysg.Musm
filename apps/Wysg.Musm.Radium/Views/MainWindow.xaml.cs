@@ -1,19 +1,18 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Input;
-using System.Windows.Controls;
-using Wysg.Musm.Radium.ViewModels;
-using Wysg.Musm.Editor.Controls;
-using Wysg.Musm.Radium.Services;
-using Wysg.Musm.Radium.Views;
-using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
-using Microsoft.Extensions.DependencyInjection;
 using System.Windows.Media;
+using Microsoft.Extensions.DependencyInjection;
+using Wysg.Musm.Editor.Controls;
+using Wysg.Musm.Radium.ViewModels;
+using Wysg.Musm.Radium.Services;
 using WF = System.Windows.Forms;
+using Task = System.Threading.Tasks.Task;
 
 namespace Wysg.Musm.Radium.Views
 {
@@ -40,6 +39,9 @@ namespace Wysg.Musm.Radium.Views
             Loaded += OnLoaded;
             SizeChanged += OnWindowSizeChanged;
             Closing += OnClosing;
+            
+            // Initialize triple-click paragraph selection support
+            InitializeTripleClickSupport();
         }
 
         private void InitEditor(MainViewModel vm, EditorControl ctl)
@@ -708,6 +710,124 @@ namespace Wysg.Musm.Radium.Views
             }
             catch { }
             base.OnClosed(e);
+        }
+
+        private void InitializeTripleClickSupport()
+        {
+            // Add global PreviewMouseLeftButtonDown handler for triple-click paragraph selection
+            AddHandler(UIElement.PreviewMouseLeftButtonDownEvent, new MouseButtonEventHandler(OnPreviewMouseLeftButtonDown), true);
+      }
+
+        private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // Only handle triple-click (ClickCount == 3)
+         if (e.ClickCount != 3) return;
+
+            // Find the TextBox ancestor from the original source
+            var textBox = FindAncestor<TextBox>(e.OriginalSource as DependencyObject);
+            if (textBox == null) return;
+
+            // Select paragraph at caret position
+            SelectParagraphAtCaret(textBox);
+    e.Handled = true; // Prevent default triple-click behavior (select all)
+   }
+
+      private void SelectParagraphAtCaret(TextBox textBox)
+        {
+if (string.IsNullOrEmpty(textBox.Text)) return;
+
+        int caretIndex = textBox.CaretIndex;
+            string text = textBox.Text;
+
+            // Find line boundaries (delimited by single newlines or start/end of text)
+            int lineStart = FindLineStart(text, caretIndex);
+          int lineEnd = FindLineEnd(text, caretIndex);
+
+      // Select the line
+            textBox.Select(lineStart, lineEnd - lineStart);
+        }
+
+        private int FindLineStart(string text, int position)
+        {
+  // Search backwards for single newline or start of text
+          for (int i = position - 1; i >= 0; i--)
+      {
+         // Check for newline (any style)
+         if (text[i] == '\n')
+    {
+       // Return position after the newline
+        return i + 1;
+         }
+   }
+       // No line boundary found, return start of text
+    return 0;
+        }
+
+        private int FindLineEnd(string text, int position)
+    {
+            // Search forwards for single newline or end of text
+       for (int i = position; i < text.Length; i++)
+            {
+ // Check for newline (any style)
+          if (text[i] == '\r' || text[i] == '\n')
+  {
+ // Return position before the newline
+    return i;
+                }
+    }
+         // No line boundary found, return end of text
+            return text.Length;
+        }
+
+        private int FindParagraphStart(string text, int position)
+      {
+     // Search backwards for double newline or start of text
+            for (int i = position - 1; i >= 0; i--)
+   {
+                // Check for double newline (paragraph boundary)
+ if (i > 0 && text[i] == '\n' && text[i - 1] == '\n')
+          {
+       // Return position after the double newline
+       return i + 1;
+                }
+    // Check for \r\n\r\n
+          if (i > 2 && text[i] == '\n' && text[i - 1] == '\r' && text[i - 2] == '\n' && text[i - 3] == '\r')
+           {
+    return i + 1;
+      }
+}
+  // No paragraph boundary found, return start of text
+        return 0;
+        }
+
+        private int FindParagraphEnd(string text, int position)
+    {
+        // Search forwards for double newline or end of text
+       for (int i = position; i < text.Length; i++)
+            {
+                // Check for double newline (paragraph boundary)
+    if (i < text.Length - 1 && text[i] == '\n' && text[i + 1] == '\n')
+                {
+           // Return position before the double newline
+           return i;
+           }
+        // Check for \r\n\r\n
+   if (i < text.Length - 3 && text[i] == '\r' && text[i + 1] == '\n' && text[i + 2] == '\r' && text[i + 3] == '\n')
+     {
+return i;
+        }
+  }
+        // No paragraph boundary found, return end of text
+ return text.Length;
+        }
+
+        private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
+        {
+            while (current != null && current is not T)
+            {
+                current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+  }
+      return current as T;
         }
     }
 }

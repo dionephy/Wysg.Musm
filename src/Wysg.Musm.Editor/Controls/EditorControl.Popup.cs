@@ -40,41 +40,71 @@ namespace Wysg.Musm.Editor.Controls
 
             if (!AutoSuggestOnTyping || SnippetProvider is null || string.IsNullOrEmpty(e.Text)) return;
 
-            var doc = Editor.Document;
-            var caret = Editor.CaretOffset;
+    var doc = Editor.Document;
+  var caret = Editor.CaretOffset;
 
-            int start = caret;
-            while (start > 0 && char.IsLetter(doc.GetCharAt(start - 1))) start--;
-            int len = caret - start;
-            string word = len > 0 ? doc.GetText(start, len) : string.Empty;
+  int start = caret;
+     while (start > 0 && char.IsLetter(doc.GetCharAt(start - 1))) start--;
+        int len = caret - start;
+string word = len > 0 ? doc.GetText(start, len) : string.Empty;
 
-            if (start == _lastWordStart && string.Equals(word, _lastWordText, StringComparison.Ordinal))
-                return;
+        if (start == _lastWordStart && string.Equals(word, _lastWordText, StringComparison.Ordinal))
+            return;
 
-            _lastWordStart = start;
-            _lastWordText = word;
+   _lastWordStart = start;
+  _lastWordText = word;
 
-            if (word.Length == 0 || word.Length < MinCharsForSuggest) { CloseCompletionWindow(); return; }
+      if (word.Length == 0 || word.Length < MinCharsForSuggest) { CloseCompletionWindow(); return; }
 
-            var items = SnippetProvider.GetCompletions(Editor);
-            if (items is null || !items.Any()) { CloseCompletionWindow(); return; }
+        var items = SnippetProvider.GetCompletions(Editor);
+        if (items is null || !items.Any()) { CloseCompletionWindow(); return; }
 
-            if (_completionWindow == null)
-            {
-                _completionWindow = new MusmCompletionWindow(Editor);
-                _completionWindow.Closed += (_, __) => _completionWindow = null;
-                _completionWindow.Show();
-            }
-            _completionWindow.StartOffset = start;
+      if (_completionWindow == null)
+        {
+     _completionWindow = new MusmCompletionWindow(Editor);
+         _completionWindow.Closed += (_, __) => _completionWindow = null;
+            _completionWindow.Show();
+        }
+      _completionWindow.StartOffset = start;
 
-            var list = _completionWindow.CompletionList.CompletionData;
-            list.Clear();
-            foreach (var it in items) list.Add(it);
+var list = _completionWindow.CompletionList.CompletionData;
+        list.Clear();
 
-            _completionWindow.AdjustListBoxHeight();
+        // Adjust priorities BEFORE adding to list, then sort by priority (desc) and text (asc)
+        var itemsList = items.ToList();
+      foreach (var it in itemsList)
+        {
+    if (it is MusmCompletionData mcd)
+     {
+    mcd.AdjustPriorityForInput(word);
+       }
+}
 
-            // Default: select first item to match common UX; Down moves to second
-            _completionWindow.SelectExactOrNone(word);
+        // Sort by priority (descending) then by text (ascending) to ensure proper ordering
+ var sortedItems = itemsList
+   .OrderByDescending(it => it is MusmCompletionData mcd ? mcd.Priority : 0.0)
+            .ThenBy(it => it.Text, StringComparer.OrdinalIgnoreCase)
+         .ToList();
+
+        Debug.WriteLine($"[Popup] Adding {sortedItems.Count} sorted items to completion list");
+        if (sortedItems.Count <= 5)
+        {
+          foreach (var it in sortedItems)
+     {
+ var priority = it is MusmCompletionData mcd ? mcd.Priority : 0.0;
+        Debug.WriteLine($"  - '{it.Text}' priority={priority:F2}");
+         }
+        }
+
+        foreach (var it in sortedItems)
+   {
+        list.Add(it);
+        }
+
+ _completionWindow.AdjustListBoxHeight();
+
+        // Default: select first item to match common UX; Down moves to second
+        _completionWindow.SelectExactOrNone(word);
         }
 
         private void OnTextEntering(object? s, System.Windows.Input.TextCompositionEventArgs e)

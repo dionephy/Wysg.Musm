@@ -132,6 +132,10 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private string ApplyReportifyBlock(string input, bool isConclusion)
         {
+            // CRITICAL FIX: Trim input before any processing
+            // This ensures leading/trailing whitespace doesn't interfere with transformations
+            input = input?.Trim() ?? string.Empty;
+            
             if (string.IsNullOrWhiteSpace(input)) return string.Empty;
             EnsureReportifyConfig();
             var cfg = _reportifyConfig ?? new ReportifyConfig();

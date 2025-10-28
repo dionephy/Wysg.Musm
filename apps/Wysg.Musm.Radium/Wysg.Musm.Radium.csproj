@@ -63,6 +63,7 @@
     <ProjectReference Include="..\..\src\Wysg.Musm.Infrastructure\Wysg.Musm.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Wysg.Musm.Editor\Wysg.Musm.Editor.csproj" />
     <ProjectReference Include="..\..\src\Wysg.Musm.MFCUIA\Wysg.Musm.MFCUIA.csproj" />
+    <ProjectReference Include="..\..\src\Wysg.Musm.SnomedTools\Wysg.Musm.SnomedTools.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -96,6 +97,10 @@
     <Resource Include="Assets\Images\unlocked.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Behaviors\" />
   </ItemGroup>
 
 </Project>

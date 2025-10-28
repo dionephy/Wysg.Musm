@@ -1,0 +1,126 @@
+<Window x:Class="Wysg.Musm.SnomedTools.SettingsWindow"
+   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="SNOMED Tools - Settings" 
+  Height="500" Width="700"
+ WindowStartupLocation="CenterOwner"
+  Background="#1E1E1E">
+    <Window.Resources>
+ <SolidColorBrush x:Key="TextBrush" Color="#CCCCCC"/>
+        <SolidColorBrush x:Key="TextSecondary" Color="#858585"/>
+   <SolidColorBrush x:Key="ControlBg" Color="#252526"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#3F3F46"/>
+      
+     <Style TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+ </Style>
+        <Style TargetType="TextBox">
+       <Setter Property="Background" Value="{StaticResource ControlBg}"/>
+   <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+<Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    <Setter Property="Padding" Value="5"/>
+ <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+  <Style TargetType="Button">
+       <Setter Property="Background" Value="{StaticResource ControlBg}"/>
+     <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+       <Setter Property="Padding" Value="10,5"/>
+       <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+        <Style TargetType="GroupBox">
+    <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+       <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+ </Window.Resources>
+
+    <Grid Margin="20">
+  <Grid.RowDefinitions>
+   <RowDefinition Height="Auto"/>
+     <RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/>
+  <RowDefinition Height="*"/>
+<RowDefinition Height="Auto"/>
+  </Grid.RowDefinitions>
+
+ <!-- Header -->
+<TextBlock Grid.Row="0"
+       Text="Connection Settings"
+   FontSize="18"
+ FontWeight="Bold"
+  Margin="0,0,0,20"/>
+
+        <!-- Azure SQL Connection -->
+        <GroupBox Grid.Row="1" Header="Azure SQL Database" Padding="10" Margin="0,0,0,15">
+     <StackPanel>
+    <TextBlock Text="Connection String:" Margin="0,0,0,5"/>
+     <TextBlock Text="Example: Server=tcp:yourserver.database.windows.net,1433;Initial Catalog=musmdb;..."
+        FontSize="10"
+  Foreground="{StaticResource TextSecondary}"
+       Margin="0,0,0,5"/>
+      <TextBox Text="{Binding AzureSqlConnectionString, UpdateSourceTrigger=PropertyChanged}"
+    TextWrapping="Wrap"
+ MinHeight="60"
+      Margin="0,0,0,8"/>
+   <StackPanel Orientation="Horizontal">
+        <Button Content="Test Connection" 
+    Click="OnTestAzureSql"
+   Margin="0,0,8,0"/>
+         <TextBlock x:Name="txtAzureSqlStatus"
+      VerticalAlignment="Center"
+    Foreground="{StaticResource TextSecondary}"/>
+  </StackPanel>
+    </StackPanel>
+  </GroupBox>
+
+   <!-- Snowstorm API -->
+    <GroupBox Grid.Row="2" Header="SNOMED CT Snowstorm Server" Padding="10" Margin="0,0,0,15">
+       <StackPanel>
+       <TextBlock Text="Base URL:" Margin="0,0,0,5"/>
+<TextBlock Text="Example: https://snowstorm.ihtsdotools.org/snowstorm"
+  FontSize="10"
+  Foreground="{StaticResource TextSecondary}"
+     Margin="0,0,0,5"/>
+  <TextBox Text="{Binding SnowstormBaseUrl, UpdateSourceTrigger=PropertyChanged}"
+    Margin="0,0,0,8"/>
+  <StackPanel Orientation="Horizontal">
+     <Button Content="Test Connection" 
+      Click="OnTestSnowstorm"
+     Margin="0,0,8,0"/>
+<TextBlock x:Name="txtSnowstormStatus"
+       VerticalAlignment="Center"
+   Foreground="{StaticResource TextSecondary}"/>
+   </StackPanel>
+   </StackPanel>
+      </GroupBox>
+
+   <!-- Info Panel -->
+ <Border Grid.Row="3"
+      BorderBrush="{StaticResource BorderBrush}"
+       BorderThickness="1"
+    Padding="10"
+         Background="{StaticResource ControlBg}">
+     <StackPanel>
+  <TextBlock Text="Configuration Storage" FontWeight="Bold" Margin="0,0,0,10"/>
+     <TextBlock TextWrapping="Wrap"
+     Foreground="{StaticResource TextSecondary}">
+  <Run Text="Settings are saved to:"/>
+      <LineBreak/>
+      <Run x:Name="txtConfigPath" FontFamily="Consolas"/>
+    </TextBlock>
+   </StackPanel>
+    </Border>
+
+        <!-- Buttons -->
+ <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+<Button Content="Save" 
+      Click="OnSave"
+    MinWidth="80"
+Margin="0,0,8,0"/>
+<Button Content="Close" 
+ Click="OnClose"
+   MinWidth="80"/>
+ </StackPanel>
+    </Grid>
+</Window>

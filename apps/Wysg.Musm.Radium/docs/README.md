@@ -13,6 +13,7 @@
 
 ### Recent Major Features (2025-01-30)
 
+- **[FIX_2025-01-30_CompletionFilterTriggerTextOnly.md](FIX_2025-01-30_CompletionFilterTriggerTextOnly.md)** - Fixed completion window to filter only on trigger text, not description (e.g., "ngi" typed no longer matches "noaa → normal angio")
 - **[ENHANCEMENT_2025-01-30_AbortModulesConfirmationDialog.md](ENHANCEMENT_2025-01-30_AbortModulesConfirmationDialog.md)** - Abort modules now show confirmation dialogs instead of immediately aborting, allowing users to force continue procedures despite mismatches
 - **[ENHANCEMENT_2025-01-30_CurrentStudyHeaderProofreadVisualization.md](ENHANCEMENT_2025-01-30_CurrentStudyHeaderProofreadVisualization.md)** - Header editor now displays proofread versions of header components when Proofread toggle is ON
 - **[ENHANCEMENT_2025-01-29_EditComparisonWindow.md](ENHANCEMENT_2025-01-29_EditComparisonWindow.md)** - Edit Comparison window for managing previous studies in comparison field
@@ -119,6 +120,49 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 ---
 
 ## Recent Updates (2025-01-30)
+
+### Completion Window Filter - Trigger Text Only (2025-01-30)
+
+**What Changed:**
+- Completion window now filters hotkeys and snippets based on trigger/shortcut text only
+- Descriptions are no longer included in filter matching
+- Display still shows full "trigger → description" format for clarity
+
+**Why This Matters:**
+- **Accurate Filtering** - Typing "ngi" no longer shows "noaa → normal angio" (where "ngi" matched "angio" in description)
+- **Predictable Behavior** - Only triggers that start with typed prefix appear in list
+- **Consistent UX** - Matches modern IDE completion behavior (VS Code, IntelliJ, etc.)
+- **Reduced Noise** - Fewer false matches in completion dropdown
+
+**Example Fix:**
+```
+User types: "ngi"
+
+Before Fix:
+  ❌ "noaa → normal angio" appears (wrong - "ngi" matched description "angio")
+  ❌ "ct → CT angiogram" appears (wrong - "ngi" matched description "angiogram")
+  ✅ "ngi → some snippet" appears (correct - matches trigger)
+
+After Fix:
+  ✅ "ngi → some snippet" appears (correct - matches trigger)
+  ✅ "noaa → normal angio" correctly filtered out
+  ✅ "ct → CT angiogram" correctly filtered out
+```
+
+**Key Technical Details:**
+- `ICompletionData.Text` property (used for filtering) now contains trigger only
+- `ICompletionData.Content` property (used for display) still shows full "trigger → description"
+- `ICompletionData.Description` property (used for tooltip) shows detailed info
+- Separation of concerns: filter vs display vs tooltip
+
+**Key File Changes:**
+- `src\Wysg.Musm.Editor\Snippets\MusmCompletionData.cs` - Fixed Snippet() and Hotkey() factories
+
+**Documentation:**
+- See `FIX_2025-01-30_CompletionFilterTriggerTextOnly.md` for complete details
+- See `IMPLEMENTATION_SUMMARY_2025-01-30_CompletionFilterTriggerTextOnly.md` for technical summary
+
+---
 
 ### Abort Modules Confirmation Dialog (2025-01-30)
 
