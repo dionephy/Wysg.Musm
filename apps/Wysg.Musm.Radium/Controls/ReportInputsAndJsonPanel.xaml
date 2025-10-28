@@ -86,9 +86,9 @@
         <!-- Row 1: Study Remark (main column only) -->
         <StackPanel Grid.Row="1" Grid.Column="0">
             <TextBlock Text="Study Remark" Margin="4,0,0,4"/>
-            <TextBox Text="{Binding StudyRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
-        </StackPanel>
+                <TextBox x:Name="txtStudyRemark" Text="{Binding StudyRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Padding="4" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+            </StackPanel>
 
         <!-- Row 2: Chief Complaint Labels -->
         <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
@@ -121,8 +121,8 @@
         <!-- Row 4: Patient Remark (main column only) -->
         <StackPanel Grid.Row="4" Grid.Column="0">
             <TextBlock Text="Patient Remark" Margin="4,0,0,4"/>
-            <TextBox Text="{Binding PatientRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+      <TextBox x:Name="txtPatientRemark" Text="{Binding PatientRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+          Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
         </StackPanel>
 
         <!-- Row 5: Patient History Labels -->

@@ -121,6 +121,19 @@
         <local:LockEmojiConverter x:Key="LockEmojiConverter"/>
         <conv:BoolToBrushConverter x:Key="BoolToBrushConverter" TrueBrush="#FF5A5A" FalseBrush="#d0d0d0"/>
 
+        <!-- Global TextBox style to apply D2Coding monospace font -->
+        <Style TargetType="TextBox">
+            <Setter Property="FontFamily" Value="{StaticResource UiMonospaceFont}"/>
+            <Setter Property="FontSize" Value="14"/>
+       <Setter Property="Background" Value="{StaticResource Dark.Brush.Panel}"/>
+          <Setter Property="Foreground" Value="{StaticResource Dark.Brush.Foreground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Dark.Brush.Border}"/>
+         <Setter Property="BorderThickness" Value="1"/>
+       <Setter Property="Padding" Value="4,2"/>
+      <Setter Property="CaretBrush" Value="{StaticResource Dark.Brush.Foreground}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource Dark.Brush.Selection}"/>
+      </Style>
+
         <!--
         <Style TargetType="Button">
             <Setter Property="Background" Value="#2D2D30"/>

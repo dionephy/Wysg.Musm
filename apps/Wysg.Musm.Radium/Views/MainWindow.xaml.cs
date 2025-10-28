@@ -73,6 +73,18 @@ namespace Wysg.Musm.Radium.Views
 
             UpdateGridCenterSize();
             UpdateGridCenterPositioning();
+      
+            // Wire up Alt+Arrow navigation from ReportInputsAndJsonPanel to EditorFindings
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] Wiring up Alt+Arrow navigation");
+                gridTopChild.TargetEditor = gridCenter.EditorFindings;
+                gridSideTop.TargetEditor = gridCenter.EditorFindings;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] Alt+Arrow wiring EX: " + ex.Message);
+            }
             
             // Listen for focus request from ViewModel (e.g., after text sync disable)
             vm.PropertyChanged += OnViewModelPropertyChanged;
@@ -822,12 +834,12 @@ return i;
         }
 
         private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
-        {
-            while (current != null && current is not T)
-            {
-                current = System.Windows.Media.VisualTreeHelper.GetParent(current);
-  }
-      return current as T;
-        }
+      {
+     while (current != null && current is not T)
+       {
+ current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+            }
+ return current as T;
+}
     }
 }
