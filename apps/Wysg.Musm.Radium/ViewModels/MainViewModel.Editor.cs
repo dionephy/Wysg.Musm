@@ -39,6 +39,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 // Notify display properties since reportified state affects them
                 OnPropertyChanged(nameof(FindingsDisplay));
                 OnPropertyChanged(nameof(ConclusionDisplay));
+                OnPropertyChanged(nameof(HeaderDisplay)); // NEW: Also notify header display
                 
                 // Only apply transformations if value actually changed
                 if (actualChanged)
@@ -133,7 +134,10 @@ namespace Wysg.Musm.Radium.ViewModels
                 { 
                     Debug.WriteLine("[Editor] ChiefComplaint property changed, calling updates...");
                     SafeUpdateJson(); 
-                    SafeUpdateHeader(); 
+                    SafeUpdateHeader();
+                    // NEW: Notify computed display property
+                    OnPropertyChanged(nameof(ChiefComplaintDisplay));
+                    OnPropertyChanged(nameof(HeaderDisplay));
                 } 
             } 
         }
@@ -147,7 +151,10 @@ namespace Wysg.Musm.Radium.ViewModels
             { 
                 if (SetProperty(ref _chiefComplaintProofread, value ?? string.Empty)) 
                 {
-                    UpdateCurrentReportJson(); 
+                    UpdateCurrentReportJson();
+                    // NEW: Notify computed display properties
+                    OnPropertyChanged(nameof(ChiefComplaintDisplay));
+                    OnPropertyChanged(nameof(HeaderDisplay));
                 }
             } 
         }
@@ -160,7 +167,10 @@ namespace Wysg.Musm.Radium.ViewModels
             { 
                 if (SetProperty(ref _patientHistoryProofread, value ?? string.Empty)) 
                 {
-                    UpdateCurrentReportJson(); 
+                    UpdateCurrentReportJson();
+                    // NEW: Notify computed display properties
+                    OnPropertyChanged(nameof(PatientHistoryDisplay));
+                    OnPropertyChanged(nameof(HeaderDisplay));
                 }
             } 
         }
@@ -173,7 +183,10 @@ namespace Wysg.Musm.Radium.ViewModels
             { 
                 if (SetProperty(ref _studyTechniquesProofread, value ?? string.Empty)) 
                 {
-                    UpdateCurrentReportJson(); 
+                    UpdateCurrentReportJson();
+                    // NEW: Notify computed display properties
+                    OnPropertyChanged(nameof(StudyTechniquesDisplay));
+                    OnPropertyChanged(nameof(HeaderDisplay));
                 }
             } 
         }
@@ -186,7 +199,10 @@ namespace Wysg.Musm.Radium.ViewModels
             { 
                 if (SetProperty(ref _comparisonProofread, value ?? string.Empty)) 
                 {
-                    UpdateCurrentReportJson(); 
+                    UpdateCurrentReportJson();
+                    // NEW: Notify computed display properties
+                    OnPropertyChanged(nameof(ComparisonDisplay));
+                    OnPropertyChanged(nameof(HeaderDisplay));
                 }
             } 
         }
@@ -232,7 +248,10 @@ namespace Wysg.Musm.Radium.ViewModels
                 { 
                     Debug.WriteLine("[Editor] PatientHistory property changed, calling updates...");
                     SafeUpdateJson(); 
-                    SafeUpdateHeader(); 
+                    SafeUpdateHeader();
+                    // NEW: Notify computed display property
+                    OnPropertyChanged(nameof(PatientHistoryDisplay));
+                    OnPropertyChanged(nameof(HeaderDisplay));
                 } 
             } 
         }
@@ -248,7 +267,10 @@ namespace Wysg.Musm.Radium.ViewModels
                 { 
                     Debug.WriteLine("[Editor] StudyTechniques property changed, calling updates...");
                     SafeUpdateJson(); 
-                    SafeUpdateHeader(); 
+                    SafeUpdateHeader();
+                    // NEW: Notify computed display property
+                    OnPropertyChanged(nameof(StudyTechniquesDisplay));
+                    OnPropertyChanged(nameof(HeaderDisplay));
                 } 
             } 
         }
@@ -264,9 +286,132 @@ namespace Wysg.Musm.Radium.ViewModels
                 { 
                     Debug.WriteLine("[Editor] Comparison property changed, calling updates...");
                     SafeUpdateJson(); 
-                    SafeUpdateHeader(); 
+                    SafeUpdateHeader();
+                    // NEW: Notify computed display property
+                    OnPropertyChanged(nameof(ComparisonDisplay));
+                    OnPropertyChanged(nameof(HeaderDisplay));
                 } 
             } 
+        }
+
+        // NEW: Computed display properties for header components with proofread support
+        // These switch between raw and proofread versions based on ProofreadMode toggle
+        public string ChiefComplaintDisplay
+        {
+            get
+            {
+                if (ProofreadMode && !string.IsNullOrWhiteSpace(_chiefComplaintProofread))
+                {
+                    return ApplyProofreadPlaceholders(_chiefComplaintProofread);
+                }
+                return _chiefComplaint;
+            }
+        }
+
+        public string PatientHistoryDisplay
+        {
+            get
+            {
+                if (ProofreadMode && !string.IsNullOrWhiteSpace(_patientHistoryProofread))
+                {
+                    return ApplyProofreadPlaceholders(_patientHistoryProofread);
+                }
+                return _patientHistory;
+            }
+        }
+
+        public string StudyTechniquesDisplay
+        {
+            get
+            {
+                if (ProofreadMode && !string.IsNullOrWhiteSpace(_studyTechniquesProofread))
+                {
+                    return ApplyProofreadPlaceholders(_studyTechniquesProofread);
+                }
+                return _studyTechniques;
+            }
+        }
+
+        public string ComparisonDisplay
+        {
+            get
+            {
+                if (ProofreadMode && !string.IsNullOrWhiteSpace(_comparisonProofread))
+                {
+                    return ApplyProofreadPlaceholders(_comparisonProofread);
+                }
+                return _comparison;
+            }
+        }
+
+        // NEW: Computed HeaderDisplay property that formats header from component display properties
+        // This mirrors the logic in UpdateFormattedHeader but uses Display properties instead of raw fields
+        public string HeaderDisplay
+        {
+            get
+            {
+                var lines = new System.Collections.Generic.List<string>();
+                
+                // Use display properties (which consider ProofreadMode) instead of raw fields
+                var chiefComplaintDisplay = ChiefComplaintDisplay;
+                var patientHistoryDisplay = PatientHistoryDisplay;
+                var studyTechniquesDisplay = StudyTechniquesDisplay;
+                var comparisonDisplay = ComparisonDisplay;
+                
+                bool hasClinicalInfo = !string.IsNullOrWhiteSpace(chiefComplaintDisplay) || !string.IsNullOrWhiteSpace(patientHistoryDisplay);
+                bool hasTechniques = !string.IsNullOrWhiteSpace(studyTechniquesDisplay);
+                bool hasAnyHeaderContent = hasClinicalInfo || hasTechniques;
+                
+                // Clinical information logic
+                if (hasClinicalInfo)
+                {
+                    if (string.IsNullOrWhiteSpace(chiefComplaintDisplay) && !string.IsNullOrWhiteSpace(patientHistoryDisplay))
+                    {
+                        // Chief complaint is empty but history exists -> show "Clinical information: NA"
+                        lines.Add("Clinical information: NA");
+                    }
+                    else if (!string.IsNullOrWhiteSpace(chiefComplaintDisplay))
+                    {
+                        // Chief complaint exists -> show it as first line
+                        lines.Add($"Clinical information: {chiefComplaintDisplay}");
+                    }
+                    
+                    // Add patient history lines (each line prefixed with "- ")
+                    if (!string.IsNullOrWhiteSpace(patientHistoryDisplay))
+                    {
+                        var historyLines = patientHistoryDisplay.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var line in historyLines)
+                        {
+                            var trimmed = line.Trim();
+                            if (!string.IsNullOrWhiteSpace(trimmed))
+                            {
+                                lines.Add($"- {trimmed}");
+                            }
+                        }
+                    }
+                }
+                
+                // Techniques logic
+                if (hasTechniques)
+                {
+                    lines.Add($"Techniques: {studyTechniquesDisplay}");
+                }
+                
+                // Comparison logic
+                if (!string.IsNullOrWhiteSpace(comparisonDisplay))
+                {
+                    lines.Add($"Comparison: {comparisonDisplay}");
+                }
+                else if (hasAnyHeaderContent)
+                {
+                    // Comparison is empty but we have other header content -> show "Comparison: NA"
+                    lines.Add("Comparison: NA");
+                }
+                // else: if comparison is empty AND no other header content, don't show comparison line at all
+                
+                // Join and trim the result
+                return string.Join("\n", lines).Trim();
+            }
         }
 
         // NEW: Computed properties that consider BOTH Reportified and ProofreadMode
@@ -626,6 +771,14 @@ namespace Wysg.Musm.Radium.ViewModels
                 _comparisonProofread = newComparisonPf; OnPropertyChanged(nameof(ComparisonProofread));
                 _findingsProofread = newFindingsPf; OnPropertyChanged(nameof(FindingsProofread));
                 _conclusionProofread = newConclusionPf; OnPropertyChanged(nameof(ConclusionProofread));
+                
+                // NEW: Notify all computed display properties when JSON changes
+                OnPropertyChanged(nameof(ChiefComplaintDisplay));
+                OnPropertyChanged(nameof(PatientHistoryDisplay));
+                OnPropertyChanged(nameof(StudyTechniquesDisplay));
+                OnPropertyChanged(nameof(ComparisonDisplay));
+                OnPropertyChanged(nameof(HeaderDisplay));
+                
                 // Recompute HeaderText from component fields even during JSON updates
                 UpdateFormattedHeader();
                 

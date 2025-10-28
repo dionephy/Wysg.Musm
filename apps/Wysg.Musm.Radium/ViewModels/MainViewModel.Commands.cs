@@ -24,6 +24,7 @@ namespace Wysg.Musm.Radium.ViewModels
         public ICommand OpenStudynameMapCommand { get; private set; } = null!;
         public ICommand GenerateFieldCommand { get; private set; } = null!;
         public ICommand EditStudyTechniqueCommand { get; private set; } = null!;
+        public ICommand EditComparisonCommand { get; private set; } = null!;
 
         // UI mode toggles
         private bool _proofreadMode; 
@@ -34,9 +35,15 @@ namespace Wysg.Musm.Radium.ViewModels
             { 
                 if (SetProperty(ref _proofreadMode, value))
                 {
-                    // Notify computed display properties for editors (Findings and Conclusion only)
+                    // Notify computed display properties for editors (Findings, Conclusion, and Header components)
                     OnPropertyChanged(nameof(FindingsDisplay));
                     OnPropertyChanged(nameof(ConclusionDisplay));
+                    // NEW: Notify header component display properties and HeaderDisplay
+                    OnPropertyChanged(nameof(ChiefComplaintDisplay));
+                    OnPropertyChanged(nameof(PatientHistoryDisplay));
+                    OnPropertyChanged(nameof(StudyTechniquesDisplay));
+                    OnPropertyChanged(nameof(ComparisonDisplay));
+                    OnPropertyChanged(nameof(HeaderDisplay));
                 }
             } 
         }
@@ -111,6 +118,7 @@ namespace Wysg.Musm.Radium.ViewModels
             OpenStudynameMapCommand = new DelegateCommand(_ => Views.StudynameLoincWindow.Open());
             GenerateFieldCommand = new DelegateCommand(p => OnGenerateField(p));
             EditStudyTechniqueCommand = new DelegateCommand(_ => OnEditStudyTechnique(), _ => PatientLocked);
+            EditComparisonCommand = new DelegateCommand(_ => OnEditComparison(), _ => PatientLocked);
         }
 
         // ------------- Handlers -------------
@@ -349,6 +357,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     { 
                         PatientLocked = false; 
                         StudyOpened = false; 
+                        ProofreadMode = false;
                         Reportified = false;
                         SetStatus("Study unlocked (all toggles off)"); 
                     }
@@ -370,28 +379,86 @@ namespace Wysg.Musm.Radium.ViewModels
                         var matchResult = await _pacs.PatientNumberMatchAsync();
                         if (string.Equals(matchResult, "false", StringComparison.OrdinalIgnoreCase))
                         {
-                            // Get the actual patient numbers for logging
+                            // Get the actual patient numbers for display
                             var pacsPatientNumber = await _pacs.GetCurrentPatientNumberAsync();
                             var mainPatientNumber = PatientNumber;
-                            SetStatus($"Patient number mismatch - automation aborted (PACS: '{pacsPatientNumber}', Main: '{mainPatientNumber}')", true);
                             Debug.WriteLine($"[Automation][AbortIfPatientNumberNotMatch] MISMATCH - PACS: '{pacsPatientNumber}' Main: '{mainPatientNumber}'");
-                            return; // Abort the rest of the sequence
+                            
+                            // Show confirmation MessageBox on UI thread
+                            bool forceContinue = false;
+                            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                var result = System.Windows.MessageBox.Show(
+                                    $"Patient number mismatch detected!\n\n" +
+                                    $"PACS: {pacsPatientNumber}\n" +
+                                    $"Radium: {mainPatientNumber}\n\n" +
+                                    $"Do you want to force continue the procedure?",
+                                    "Patient Number Mismatch",
+                                    System.Windows.MessageBoxButton.YesNo,
+                                    System.Windows.MessageBoxImage.Warning);
+                                
+                                forceContinue = (result == System.Windows.MessageBoxResult.Yes);
+                            });
+                            
+                            if (!forceContinue)
+                            {
+                                SetStatus($"Patient number mismatch - automation aborted by user (PACS: '{pacsPatientNumber}', Main: '{mainPatientNumber}')", true);
+                                Debug.WriteLine($"[Automation][AbortIfPatientNumberNotMatch] User chose to ABORT");
+                                return; // Abort the rest of the sequence
+                            }
+                            else
+                            {
+                                SetStatus($"Patient number mismatch - user forced continue (PACS: '{pacsPatientNumber}', Main: '{mainPatientNumber}')");
+                                Debug.WriteLine($"[Automation][AbortIfPatientNumberNotMatch] User chose to FORCE CONTINUE");
+                            }
                         }
-                        SetStatus("Patient number match - continuing");
+                        else
+                        {
+                            SetStatus("Patient number match - continuing");
+                        }
                     }
                     else if (string.Equals(m, "AbortIfStudyDateTimeNotMatch", StringComparison.OrdinalIgnoreCase))
                     {
                         var matchResult = await _pacs.StudyDateTimeMatchAsync();
                         if (string.Equals(matchResult, "false", StringComparison.OrdinalIgnoreCase))
                         {
-                            // Get the actual study datetimes for logging
+                            // Get the actual study datetimes for display
                             var pacsStudyDateTime = await _pacs.GetCurrentStudyDateTimeAsync();
                             var mainStudyDateTime = StudyDateTime;
-                            SetStatus($"Study date/time mismatch - automation aborted (PACS: '{pacsStudyDateTime}', Main: '{mainStudyDateTime}')", true);
                             Debug.WriteLine($"[Automation][AbortIfStudyDateTimeNotMatch] MISMATCH - PACS: '{pacsStudyDateTime}' Main: '{mainStudyDateTime}'");
-                            return; // Abort the rest of the sequence
+                            
+                            // Show confirmation MessageBox on UI thread
+                            bool forceContinue = false;
+                            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                var result = System.Windows.MessageBox.Show(
+                                    $"Study date/time mismatch detected!\n\n" +
+                                    $"PACS: {pacsStudyDateTime}\n" +
+                                    $"Radium: {mainStudyDateTime}\n\n" +
+                                    $"Do you want to force continue the procedure?",
+                                    "Study DateTime Mismatch",
+                                    System.Windows.MessageBoxButton.YesNo,
+                                    System.Windows.MessageBoxImage.Warning);
+                                
+                                forceContinue = (result == System.Windows.MessageBoxResult.Yes);
+                            });
+                            
+                            if (!forceContinue)
+                            {
+                                SetStatus($"Study date/time mismatch - automation aborted by user (PACS: '{pacsStudyDateTime}', Main: '{mainStudyDateTime}')", true);
+                                Debug.WriteLine($"[Automation][AbortIfStudyDateTimeNotMatch] User chose to ABORT");
+                                return; // Abort the rest of the sequence
+                            }
+                            else
+                            {
+                                SetStatus($"Study date/time mismatch - user forced continue (PACS: '{pacsStudyDateTime}', Main: '{mainStudyDateTime}')");
+                                Debug.WriteLine($"[Automation][AbortIfStudyDateTimeNotMatch] User chose to FORCE CONTINUE");
+                            }
                         }
-                        SetStatus("Study date/time match - continuing");
+                        else
+                        {
+                            SetStatus("Study date/time match - continuing");
+                        }
                     }
                     else if (string.Equals(m, "GetUntilReportDateTime", StringComparison.OrdinalIgnoreCase))
                     {
@@ -411,7 +478,8 @@ namespace Wysg.Musm.Radium.ViewModels
                     else if (string.Equals(m, "ResultsListSetFocus", StringComparison.OrdinalIgnoreCase)) { await RunResultsListSetFocusAsync(); }
                     else if (string.Equals(m, "SendReport", StringComparison.OrdinalIgnoreCase)) { await RunSendReportAsync(); }
                     else if (string.Equals(m, "Reportify", StringComparison.OrdinalIgnoreCase)) 
-                    { 
+                    {
+                        ProofreadMode = true;
                         Debug.WriteLine("[Automation] Reportify module - START");
                         Debug.WriteLine($"[Automation] Reportify module - Current Reportified value BEFORE: {Reportified}");
                         Reportified = true;
@@ -1044,6 +1112,53 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 Debug.WriteLine($"[EditStudyTechnique] Error: {ex.Message}");
                 SetStatus("Failed to open study technique editor", true);
+            }
+        }
+
+        private void OnEditComparison()
+        {
+            try
+            {
+                Debug.WriteLine("[EditComparison] Opening Edit Comparison window");
+                
+                // Check if we have patient info and previous studies
+                if (string.IsNullOrWhiteSpace(PatientNumber))
+                {
+                    SetStatus("No patient loaded - cannot edit comparison", true);
+                    return;
+                }
+                
+                if (PreviousStudies.Count == 0)
+                {
+                    SetStatus("No previous studies available for this patient", true);
+                    return;
+                }
+                
+                // Open the Edit Comparison window and get the updated comparison string
+                var newComparison = Views.EditComparisonWindow.Open(
+                    PatientNumber,
+                    PatientName,
+                    PatientSex,
+                    PreviousStudies.ToList(),
+                    Comparison
+                );
+                
+                // Update comparison if user clicked OK
+                if (newComparison != null)
+                {
+                    Comparison = newComparison;
+                    SetStatus("Comparison updated");
+                    Debug.WriteLine($"[EditComparison] Updated comparison: '{newComparison}'");
+                }
+                else
+                {
+                    Debug.WriteLine("[EditComparison] User cancelled");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[EditComparison] Error: {ex.Message}");
+                SetStatus("Failed to open comparison editor", true);
             }
         }
 

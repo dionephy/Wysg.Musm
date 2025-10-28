@@ -1,6 +1,6 @@
 ﻿# Radium Documentation
 
-**Last Updated**: 2025-01-29
+**Last Updated**: 2025-01-30
 
 ---
 
@@ -11,8 +11,11 @@
 - **[Plan-active.md](Plan-active.md)** - Recent implementation plans  
 - **[Tasks.md](Tasks.md)** - Active and pending tasks
 
-### Recent Major Features (2025-01-29)
+### Recent Major Features (2025-01-30)
 
+- **[ENHANCEMENT_2025-01-30_AbortModulesConfirmationDialog.md](ENHANCEMENT_2025-01-30_AbortModulesConfirmationDialog.md)** - Abort modules now show confirmation dialogs instead of immediately aborting, allowing users to force continue procedures despite mismatches
+- **[ENHANCEMENT_2025-01-30_CurrentStudyHeaderProofreadVisualization.md](ENHANCEMENT_2025-01-30_CurrentStudyHeaderProofreadVisualization.md)** - Header editor now displays proofread versions of header components when Proofread toggle is ON
+- **[ENHANCEMENT_2025-01-29_EditComparisonWindow.md](ENHANCEMENT_2025-01-29_EditComparisonWindow.md)** - Edit Comparison window for managing previous studies in comparison field
 - **[DEPRECATION_2025-01-29_PostgresPhraseService.md](DEPRECATION_2025-01-29_PostgresPhraseService.md)** - Deprecated PostgreSQL PhraseService in favor of AzureSqlPhraseService
 - **[FIX_2025-01-29_CompletionWindowSingleCharacter.md](FIX_2025-01-29_CompletionWindowSingleCharacter.md)** - Fixed completion window not opening on single character input (changed MinCharsForSuggest from 2 to 1)
 - **[FIX_2025-01-29_GlobalPhraseCompletionFilter3WordFix.md](FIX_2025-01-29_GlobalPhraseCompletionFilter3WordFix.md)** - Fixed 3-word global phrases not appearing in completion window (increased limit to 4 words)
@@ -115,7 +118,131 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ---
 
-## Recent Updates (2025-01-29)
+## Recent Updates (2025-01-30)
+
+### Abort Modules Confirmation Dialog (2025-01-30)
+
+**What Changed:**
+- Abort modules now show confirmation dialogs instead of immediately aborting
+- Users can choose to continue or cancel the abort operation
+- Mismatched module parameters are highlighted in red
+- Default action button is determined by context (e.g., "Continue Anyway", "Abort", "Ignore", "Retry")
+
+**Why This Matters:**
+- **Prevents Accidental Aborts** - Users are less likely to accidentally abort long-running procedures
+- **Informed Decisions** - Users can see what will be aborted and why
+- **Flexible Recovery** - Users can quickly retry or ignore specific module failures
+- **Consistent UX** - Matches existing confirmation dialogs in other parts of the application
+
+**Example Behavior:**
+```
+1. User clicks "Abort" on a running module.
+2. Confirmation dialog appears:
+   ┌────────────────────────────┐
+   │ Abort Module Confirmation  │
+   │                            │
+   │ The following module will  │
+   │ be aborted:                │
+   │ - FetchPatientData         │
+   │ - GenerateReport           │
+   │                            │
+   │ There is a mismatch in the  │
+   │ expected parameters. Do you │
+   │ want to continue aborting? │
+   │                            │
+   │ [Abort]                   │
+   │ [Continue Anyway]         │
+   └────────────────────────────┘
+3. User reviews the information and clicks "Continue Anyway".
+4. The module aborts, and the remaining procedures continue.
+```
+
+**Key Technical Details:**
+- Added `AbortConfirmationDialog` component for consistent dialog appearance
+- Integrated dialog into `AbortModuleCommand` and `StopProcedureCommand`
+- Retained original command behavior as fallback (e.g., `x => true`)
+
+**Documentation:**
+- See `ENHANCEMENT_2025-01-30_AbortModulesConfirmationDialog.md` for complete details
+
+---
+
+### Current Study Header Proofread Visualization (2025-01-30)
+
+**What Changed:**
+- Header editor in current study now displays proofread versions when Proofread toggle is ON
+- Added computed display properties for all header components (ChiefComplaint, PatientHistory, StudyTechniques, Comparison)
+- Added `HeaderDisplay` property that formats header using proofread component values
+- Header editor binding switches between `HeaderText` (raw) and `HeaderDisplay` (proofread) based on toggle state
+
+**Why This Matters:**
+- **Consistent UX** - All report sections (header, findings, conclusion) now support proofread visualization
+- **Complete Review** - Users can review entire proofread report before sending (no blind spots)
+- **Placeholder Support** - Header proofread text includes `{DDx}`, `{arrow}`, `{bullet}` placeholder replacements
+- **Matches Previous Reports** - Mirrors the proofread pattern already working in Previous Reports panel
+
+**Example Behavior:**
+```
+Proofread Toggle OFF:
+  Header shows: "Clinical information: chest pain\n- History of hypertension\nTechniques: CT Chest\nComparison: NA"
+
+Proofread Toggle ON (with proofread fields populated):
+  Header shows: "Clinical information: Chest pain\n- History of hypertension, diabetes\nTechniques: CT Chest with IV contrast\nComparison: Previous CT 2024-12-15"
+  (Note: Proofread versions may have corrections, expansions, or formatting improvements)
+```
+
+**Key Technical Details:**
+- Each header component has a `*Display` property (e.g., `ChiefComplaintDisplay`)
+- Display properties return proofread version when available, otherwise raw version
+- `HeaderDisplay` computes formatted header using display properties instead of raw fields
+- Header editor remains read-only (no change to existing behavior)
+- Proofread values populated via automation or manual JSON editing
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Editor.cs` - Added display properties and HeaderDisplay
+- `apps\Wysg.Musm.Radium\Controls\CurrentReportEditorPanel.xaml` - Updated Header editor binding with DataTrigger
+- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Commands.cs` - Updated ProofreadMode to notify display properties
+
+**Documentation:**
+- See `ENHANCEMENT_2025-01-30_CurrentStudyHeaderProofreadVisualization.md` for complete details
+
+---
+
+### Previous Study Conclusion Editor Blank on AddPreviousStudy (2025-01-30)
+
+**What Changed:**
+- Fixed conclusion editor appearing blank after `AddPreviousStudy` module execution
+- Root cause: Binding initialization race condition where `ConclusionOut` was computed after binding read it
+- Solution: Call `UpdatePreviousReportJson()` before notifying editor property changes
+
+**Why This Matters:**
+- **Better UX** - Conclusion text appears immediately after adding previous study
+- **No Workaround Needed** - Users no longer need to switch tabs and return to see conclusion
+- **Consistent Behavior** - Matches findings editor behavior (both populate immediately)
+
+**Technical Details:**
+- `SelectedPreviousStudy` setter now calls `UpdatePreviousReportJson()` before `OnPropertyChanged(nameof(PreviousConclusionEditorText))`
+- This ensures split outputs (`ConclusionOut`, `FindingsOut`, `HeaderTemp`) are computed before WPF binding reads them
+- No breaking changes - all existing previous study functionality preserved
+- Minimal performance impact - method was already being called, just moved earlier
+
+**Example Fix:**
+```
+Before:
+  AddPreviousStudy → Select new tab → Notify bindings → Conclusion editor shows "" (ConclusionOut not computed yet)
+  User switches tabs → UpdatePreviousReportJson() called → Returns to tab → Conclusion appears
+
+After:
+  AddPreviousStudy → Select new tab → UpdatePreviousReportJson() → Notify bindings → Conclusion editor shows conclusion ✓
+```
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.PreviousStudies.cs` - Fixed `SelectedPreviousStudy` setter order
+
+**Documentation:**
+- See `FIX_2025-01-30_PreviousStudyConclusionBlankOnAdd.md` for complete details
+
+---
 
 ### Global Phrase Completion Filter - 3-Word Phrases Fix (2025-01-29)
 

@@ -1,0 +1,196 @@
+<Window x:Class="Wysg.Musm.Radium.Views.EditComparisonWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Wysg.Musm.Radium.ViewModels"
+        xmlns:local="clr-namespace:Wysg.Musm.Radium.Views"
+        Title="Edit Comparison" Height="600" Width="800"
+        WindowStyle="ToolWindow" ResizeMode="CanResize"
+        Background="#1E1E1E" Foreground="White"
+        WindowStartupLocation="CenterOwner">
+    
+    <Window.Resources>
+        <!-- Converters -->
+        <local:InvertedBooleanToVisibilityConverter x:Key="InvertedBooleanToVisibilityConverter"/>
+        
+        <!-- Dark theme styles -->
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2D2D30"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#094771"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#0E639C"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#0E639C"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1177BB"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#2D2D30"/>
+                    <Setter Property="Foreground" Value="#656565"/>
+                    <Setter Property="BorderBrush" Value="#3F3F46"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        
+        <Style TargetType="Label">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#1E1E1E"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="CaretBrush" Value="White"/>
+        </Style>
+    </Window.Resources>
+    
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Title -->
+        <TextBlock Grid.Row="0" Text="Edit Comparison Studies" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
+        
+        <!-- Main content area -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Available studies list -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <TextBlock Grid.Row="0" Text="Available Previous Studies" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                
+                <ListBox Grid.Row="1" ItemsSource="{Binding AvailableStudies}" SelectionMode="Single">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Grid.Column="0" Text="{Binding DisplayText}" VerticalAlignment="Center"/>
+                                
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0,0,0">
+                                    <!-- Add to comparison button -->
+                                    <Button Content="Add"
+                                            Command="{Binding DataContext.AddStudyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            Visibility="{Binding IsSelected, Converter={StaticResource InvertedBooleanToVisibilityConverter}}"
+                                            Padding="8,4" Margin="0,0,5,0"/>
+                                    
+                                    <!-- Map LOINC button (only shown if no map exists) -->
+                                    <Button Content="Map LOINC"
+                                            Command="{Binding DataContext.OpenStudynameMapCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            Visibility="{Binding HasLoincMap, Converter={StaticResource InvertedBooleanToVisibilityConverter}}"
+                                            Background="#D97706" BorderBrush="#D97706"
+                                            Padding="8,4" ToolTip="No LOINC map exists for this studyname - click to add mapping"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+            
+            <!-- Arrow between lists -->
+            <TextBlock Grid.Column="1" Text="?" FontSize="24" VerticalAlignment="Center" Margin="10,0"/>
+            
+            <!-- Selected studies for comparison -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <TextBlock Grid.Row="0" Text="Selected for Comparison" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                
+                <ListBox Grid.Row="1" ItemsSource="{Binding SelectedStudies}" SelectionMode="Single">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Grid.Column="0" Text="{Binding DisplayText}" VerticalAlignment="Center"/>
+                                
+                                <Button Grid.Column="1" Content="Remove"
+                                        Command="{Binding DataContext.RemoveStudyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}"
+                                        Background="#DC2626" BorderBrush="#DC2626"
+                                        Padding="8,4" Margin="10,0,0,0"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Grid>
+        
+        <!-- Comparison string preview -->
+        <Grid Grid.Row="2" Margin="0,10,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <TextBlock Grid.Row="0" Text="Comparison String Preview:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <TextBox Grid.Row="1" Text="{Binding ComparisonString}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="40" VerticalScrollBarVisibility="Auto"/>
+        </Grid>
+        
+        <!-- Info text -->
+        <TextBlock Grid.Row="3" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#9CA3AF" FontSize="11">
+            <Run Text="Info: Studies without LOINC maps show a 'Map LOINC' button. Click it to open the Studyname-LOINC mapping window."/>
+            <LineBreak/>
+            <Run Text="The comparison string will be updated when you close this window."/>
+        </TextBlock>
+        
+        <!-- Action buttons -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="OK" Click="OnOkClick" IsDefault="True" Width="80" Margin="0,0,10,0"/>
+            <Button Content="Cancel" Click="OnCancelClick" IsCancel="True" Width="80"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -103,6 +103,10 @@ namespace Wysg.Musm.Radium.ViewModels
                     HookPreviousStudy(old, value); 
                     EnsureSplitDefaultsIfNeeded(); 
                     
+                    // CRITICAL FIX: Call UpdatePreviousReportJson() BEFORE notifying editor properties
+                    // This ensures ConclusionOut and FindingsOut are computed before bindings try to read them
+                    UpdatePreviousReportJson();
+                    
                     // Notify all wrapper properties that depend on SelectedPreviousStudy
                     OnPropertyChanged(nameof(PreviousHeaderText)); 
                     OnPropertyChanged(nameof(PreviousHeaderAndFindingsText)); 
@@ -117,10 +121,9 @@ namespace Wysg.Musm.Radium.ViewModels
                     OnPropertyChanged(nameof(PreviousConclusionSplitView));
                     
                     // NEW: Notify computed editor properties for proofread support
+                    // These MUST be notified AFTER UpdatePreviousReportJson() completes
                     OnPropertyChanged(nameof(PreviousFindingsEditorText));
                     OnPropertyChanged(nameof(PreviousConclusionEditorText));
-                    
-                    UpdatePreviousReportJson(); 
                 } 
             } 
         }
