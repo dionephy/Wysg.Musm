@@ -4,8 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="SNOMED Cache Review - Background Fetching"
-        Width="1000" Height="750"
+        Title="SNOMED Cache Review - Background Fetching (3 Categories)"
+        Width="1200" Height="800"
         WindowStartupLocation="CenterOwner"
         Background="#1E1E1E">
 
@@ -30,11 +30,6 @@
             <Setter Property="Margin" Value="0,0,0,15"/>
         </Style>
         
-        <!-- Label Style -->
-        <Style TargetType="Label">
-            <Setter Property="Foreground" Value="{StaticResource Foreground}"/>
-        </Style>
-        
         <!-- TextBlock Style -->
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource Foreground}"/>
@@ -56,8 +51,8 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/> <!-- Background Controls & Status -->
             <RowDefinition Height="Auto"/> <!-- Statistics -->
-            <RowDefinition Height="*"/>    <!-- Current Candidate -->
-            <RowDefinition Height="Auto"/> <!-- Action Buttons -->
+            <RowDefinition Height="*"/>    <!-- Three Category Panels -->
+            <RowDefinition Height="Auto"/> <!-- Save All Button -->
             <RowDefinition Height="Auto"/> <!-- Status Bar -->
             <RowDefinition Height="Auto"/> <!-- Close Button -->
         </Grid.RowDefinitions>
@@ -116,10 +111,8 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Fetched Count -->
                     <StackPanel Grid.Column="0" Margin="5">
                         <TextBlock Text="Concepts Fetched" FontWeight="Bold" HorizontalAlignment="Center" FontSize="11"/>
                         <TextBlock Text="{Binding BackgroundFetchedCount}" 
@@ -129,7 +122,6 @@
                                    Margin="0,5,0,0"/>
                     </StackPanel>
 
-                    <!-- Cached Count -->
                     <StackPanel Grid.Column="1" Margin="5">
                         <TextBlock Text="New Cached" FontWeight="Bold" HorizontalAlignment="Center" FontSize="11"/>
                         <TextBlock Text="{Binding BackgroundCachedCount}" 
@@ -139,7 +131,6 @@
                                    Margin="0,5,0,0"/>
                     </StackPanel>
 
-                    <!-- Skipped Count -->
                     <StackPanel Grid.Column="2" Margin="5">
                         <TextBlock Text="Skipped (Existing)" FontWeight="Bold" HorizontalAlignment="Center" FontSize="11"/>
                         <TextBlock Text="{Binding BackgroundSkippedCount}" 
@@ -149,7 +140,6 @@
                                    Margin="0,5,0,0"/>
                     </StackPanel>
 
-                    <!-- Current Page -->
                     <StackPanel Grid.Column="3" Margin="5">
                         <TextBlock Text="Current Page" FontWeight="Bold" HorizontalAlignment="Center" FontSize="11"/>
                         <TextBlock Text="{Binding BackgroundCurrentPage}" 
@@ -158,42 +148,11 @@
                                    HorizontalAlignment="Center"
                                    Margin="0,5,0,0"/>
                     </StackPanel>
-
-                    <!-- Running Indicator -->
-                    <StackPanel Grid.Column="4" VerticalAlignment="Center" Margin="15,0,0,0">
-                        <Border Background="{StaticResource SuccessColor}" 
-                                CornerRadius="10" 
-                                Width="20" Height="20"
-                                ToolTip="Background fetching is active">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsBackgroundRunning}" Value="False">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                        </Border>
-                        <TextBlock Text="Running" FontSize="9" Margin="0,3,0,0" HorizontalAlignment="Center">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsBackgroundRunning}" Value="False">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
                 </Grid>
 
                 <!-- Info Text -->
                 <TextBlock Grid.Row="2"
-                           Text="Fetcher only caches NEW terms not already in database. Duplicates are automatically skipped."
+                           Text="Fetcher only caches NEW terms not already in Azure SQL. Duplicates are automatically skipped."
                            Foreground="{StaticResource ForegroundMuted}"
                            FontStyle="Italic"
                            TextWrapping="Wrap"
@@ -249,118 +208,247 @@
             </Grid>
         </GroupBox>
 
-        <!-- Current Candidate Display -->
-        <GroupBox Grid.Row="2" Header="Current Candidate">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <!-- Term -->
-                <StackPanel Grid.Row="0" Margin="0,0,0,15">
-                    <TextBlock Text="Term (Synonym):" FontWeight="Bold" Margin="0,0,0,5"/>
-                    <TextBlock Text="{Binding CurrentCandidate.TermText}" 
-                               FontSize="24"
-                               Foreground="{StaticResource PrimaryColor}"
-                               TextWrapping="Wrap"/>
-                </StackPanel>
-
-                <!-- Concept Info -->
-                <StackPanel Grid.Row="1" Margin="0,0,0,15">
-                    <TextBlock Text="Concept:" FontWeight="Bold" Margin="0,0,0,5"/>
-                    <TextBlock FontSize="14" TextWrapping="Wrap">
-                        <Run Text="[" Foreground="{StaticResource ForegroundMuted}"/>
-                        <Run Text="{Binding CurrentCandidate.ConceptIdStr}" Foreground="{StaticResource InfoColor}"/>
-                        <Run Text="] " Foreground="{StaticResource ForegroundMuted}"/>
-                        <Run Text="{Binding CurrentCandidate.ConceptFsn}"/>
-                    </TextBlock>
-                </StackPanel>
-
-                <!-- Metadata -->
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
-                    <Border Background="{StaticResource ControlBackground}" 
-                            BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="3"
-                            Padding="8,4"
-                            Margin="0,0,10,0">
-                        <TextBlock>
-                            <Run Text="Word Count: " FontWeight="Bold"/>
-                            <Run Text="{Binding CurrentCandidate.WordCount}"/>
-                        </TextBlock>
-                    </Border>
-                    
-                    <Border Background="{StaticResource ControlBackground}" 
-                            BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="3"
-                            Padding="8,4">
-                        <TextBlock>
-                            <Run Text="Cached: " FontWeight="Bold"/>
-                            <Run Text="{Binding CurrentCandidate.CachedAt, StringFormat='{}{0:g}'}"/>
-                        </TextBlock>
-                    </Border>
-                </StackPanel>
-
-                <!-- Empty State -->
-                <StackPanel Grid.Row="3" 
-                            VerticalAlignment="Center" 
-                            HorizontalAlignment="Center"
-                            Visibility="{Binding CurrentCandidate, Converter={StaticResource NullToVisibilityConverter}}">
-                    <TextBlock Text="No pending candidates" 
-                               FontSize="18"
-                               Foreground="{StaticResource ForegroundMuted}"
-                               HorizontalAlignment="Center"/>
-                    <TextBlock Text="Background fetcher will cache new items automatically" 
-                               FontSize="12"
-                               Foreground="{StaticResource ForegroundMuted}"
-                               HorizontalAlignment="Center"
-                               Margin="0,5,0,0"/>
-                </StackPanel>
-            </Grid>
-        </GroupBox>
-
-        <!-- Action Buttons -->
-        <Grid Grid.Row="3" Margin="0,10">
+        <!-- Three Category Panels -->
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0" 
-                    Content="Accept (Save Later)"
-                    Command="{Binding AcceptCommand}"
-                    Background="{StaticResource SuccessColor}"
-                    Foreground="White"
-                    FontSize="16"
-                    FontWeight="Bold"
-                    Height="50"
-                    Margin="0,0,5,0"/>
+            <!-- Organism Panel -->
+            <Border Grid.Column="0" 
+                    BorderBrush="#4CAF50"
+                    BorderThickness="2"
+                    Background="{StaticResource ControlBackground}"
+                    Margin="0,0,5,0"
+                    Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-            <Button Grid.Column="1"
-                    Content="Reject (Ignore)"
-                    Command="{Binding RejectCommand}"
-                    Background="{StaticResource WarningColor}"
-                    Foreground="White"
-                    FontSize="16"
-                    FontWeight="Bold"
-                    Height="50"
-                    Margin="5,0"/>
+                    <TextBlock Grid.Row="0" 
+                               Text="ORGANISM" 
+                               FontWeight="Bold" 
+                               FontSize="16"
+                               Foreground="#4CAF50"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,15"/>
 
-            <Button Grid.Column="2"
-                    Content="Save All Accepted to DB"
-                    Command="{Binding SaveAllAcceptedCommand}"
-                    Background="{StaticResource InfoColor}"
-                    Foreground="White"
-                    FontSize="16"
-                    FontWeight="Bold"
-                    Height="50"
-                    Margin="5,0,0,0"/>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <StackPanel Margin="0,0,0,10">
+                                <TextBlock Text="Term:" FontWeight="Bold" FontSize="10" Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding CurrentOrganismCandidate.TermText}" 
+                                           FontSize="18"
+                                           Foreground="#4CAF50"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                            
+                            <StackPanel>
+                                <TextBlock Text="Concept:" FontWeight="Bold" FontSize="10" Margin="0,0,0,5"/>
+                                <TextBlock FontSize="12" TextWrapping="Wrap">
+                                    <Run Text="["/>
+                                    <Run Text="{Binding CurrentOrganismCandidate.ConceptIdStr}" Foreground="{StaticResource InfoColor}"/>
+                                    <Run Text="]"/>
+                                    <LineBreak/>
+                                    <Run Text="{Binding CurrentOrganismCandidate.ConceptFsn}" FontSize="11"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Grid Grid.Row="2" Margin="0,15,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <Button Grid.Column="0" 
+                                Content="Accept"
+                                Command="{Binding AcceptOrganismCommand}"
+                                Background="{StaticResource SuccessColor}"
+                                Foreground="White"
+                                FontWeight="Bold"
+                                FontSize="14"
+                                Height="40"
+                                Margin="0,0,5,0"/>
+                        
+                        <Button Grid.Column="1"
+                                Content="Reject"
+                                Command="{Binding RejectOrganismCommand}"
+                                Background="{StaticResource WarningColor}"
+                                Foreground="White"
+                                FontWeight="Bold"
+                                FontSize="14"
+                                Height="40"
+                                Margin="5,0,0,0"/>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Substance Panel -->
+            <Border Grid.Column="1" 
+                    BorderBrush="#2196F3"
+                    BorderThickness="2"
+                    Background="{StaticResource ControlBackground}"
+                    Margin="5,0"
+                    Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" 
+                               Text="SUBSTANCE" 
+                               FontWeight="Bold" 
+                               FontSize="16"
+                               Foreground="#2196F3"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,15"/>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <StackPanel Margin="0,0,0,10">
+                                <TextBlock Text="Term:" FontWeight="Bold" FontSize="10" Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding CurrentSubstanceCandidate.TermText}" 
+                                           FontSize="18"
+                                           Foreground="#2196F3"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                            
+                            <StackPanel>
+                                <TextBlock Text="Concept:" FontWeight="Bold" FontSize="10" Margin="0,0,0,5"/>
+                                <TextBlock FontSize="12" TextWrapping="Wrap">
+                                    <Run Text="["/>
+                                    <Run Text="{Binding CurrentSubstanceCandidate.ConceptIdStr}" Foreground="{StaticResource InfoColor}"/>
+                                    <Run Text="]"/>
+                                    <LineBreak/>
+                                    <Run Text="{Binding CurrentSubstanceCandidate.ConceptFsn}" FontSize="11"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Grid Grid.Row="2" Margin="0,15,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <Button Grid.Column="0" 
+                                Content="Accept"
+                                Command="{Binding AcceptSubstanceCommand}"
+                                Background="{StaticResource SuccessColor}"
+                                Foreground="White"
+                                FontWeight="Bold"
+                                FontSize="14"
+                                Height="40"
+                                Margin="0,0,5,0"/>
+                        
+                        <Button Grid.Column="1"
+                                Content="Reject"
+                                Command="{Binding RejectSubstanceCommand}"
+                                Background="{StaticResource WarningColor}"
+                                Foreground="White"
+                                FontWeight="Bold"
+                                FontSize="14"
+                                Height="40"
+                                Margin="5,0,0,0"/>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Other Panel -->
+            <Border Grid.Column="2" 
+                    BorderBrush="#FF9800"
+                    BorderThickness="2"
+                    Background="{StaticResource ControlBackground}"
+                    Margin="5,0,0,0"
+                    Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" 
+                               Text="OTHER" 
+                               FontWeight="Bold" 
+                               FontSize="16"
+                               Foreground="#FF9800"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,15"/>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <StackPanel Margin="0,0,0,10">
+                                <TextBlock Text="Term:" FontWeight="Bold" FontSize="10" Margin="0,0,0,5"/>
+                                <TextBlock Text="{Binding CurrentOtherCandidate.TermText}" 
+                                           FontSize="18"
+                                           Foreground="#FF9800"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                            
+                            <StackPanel>
+                                <TextBlock Text="Concept:" FontWeight="Bold" FontSize="10" Margin="0,0,0,5"/>
+                                <TextBlock FontSize="12" TextWrapping="Wrap">
+                                    <Run Text="["/>
+                                    <Run Text="{Binding CurrentOtherCandidate.ConceptIdStr}" Foreground="{StaticResource InfoColor}"/>
+                                    <Run Text="]"/>
+                                    <LineBreak/>
+                                    <Run Text="{Binding CurrentOtherCandidate.ConceptFsn}" FontSize="11"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Grid Grid.Row="2" Margin="0,15,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <Button Grid.Column="0" 
+                                Content="Accept"
+                                Command="{Binding AcceptOtherCommand}"
+                                Background="{StaticResource SuccessColor}"
+                                Foreground="White"
+                                FontWeight="Bold"
+                                FontSize="14"
+                                Height="40"
+                                Margin="0,0,5,0"/>
+                        
+                        <Button Grid.Column="1"
+                                Content="Reject"
+                                Command="{Binding RejectOtherCommand}"
+                                Background="{StaticResource WarningColor}"
+                                Foreground="White"
+                                FontWeight="Bold"
+                                FontSize="14"
+                                Height="40"
+                                Margin="5,0,0,0"/>
+                    </Grid>
+                </Grid>
+            </Border>
         </Grid>
+
+        <!-- Save All Button -->
+        <Button Grid.Row="3"
+                Content="Save All Accepted to Database"
+                Command="{Binding SaveAllAcceptedCommand}"
+                Background="{StaticResource InfoColor}"
+                Foreground="White"
+                FontSize="16"
+                FontWeight="Bold"
+                Height="50"
+                Margin="0,10"/>
 
         <!-- Status Bar -->
         <Border Grid.Row="4" 

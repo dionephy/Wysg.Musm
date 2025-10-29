@@ -14,6 +14,7 @@ namespace Wysg.Musm.SnomedTools.ViewModels
     /// <summary>
     /// ViewModel for reviewing cached SNOMED candidates with background fetching.
     /// Allows user to accept (save) or reject (ignore) cached synonyms.
+    /// Separates candidates into three categories: Organism, Substance, and Others.
     /// </summary>
     public sealed class CacheReviewViewModel : INotifyPropertyChanged, IDisposable
     {
@@ -29,7 +30,12 @@ namespace Wysg.Musm.SnomedTools.ViewModels
         private int _acceptedCount;
         private int _rejectedCount;
         private int _savedCount;
-        private CachedCandidate? _currentCandidate;
+        
+        // Three separate current candidates
+        private CachedCandidate? _currentOrganismCandidate;
+        private CachedCandidate? _currentSubstanceCandidate;
+        private CachedCandidate? _currentOtherCandidate;
+        
         private int _backgroundFetchedCount;
         private int _backgroundCachedCount;
         private int _backgroundSkippedCount;
@@ -48,9 +54,7 @@ namespace Wysg.Musm.SnomedTools.ViewModels
                 {
                     _isBusy = value;
                     OnPropertyChanged();
-                    ((AsyncRelayCommand)AcceptCommand).NotifyCanExecuteChanged();
-                    ((AsyncRelayCommand)RejectCommand).NotifyCanExecuteChanged();
-                    ((AsyncRelayCommand)SaveAllAcceptedCommand).NotifyCanExecuteChanged();
+                    UpdateCommandStates();
                 }
             }
         }
@@ -134,14 +138,40 @@ namespace Wysg.Musm.SnomedTools.ViewModels
             }
         }
 
-        public CachedCandidate? CurrentCandidate
+        public CachedCandidate? CurrentOrganismCandidate
         {
-            get => _currentCandidate;
+            get => _currentOrganismCandidate;
             private set
             {
-                if (_currentCandidate != value)
+                if (_currentOrganismCandidate != value)
                 {
-                    _currentCandidate = value;
+                    _currentOrganismCandidate = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public CachedCandidate? CurrentSubstanceCandidate
+        {
+            get => _currentSubstanceCandidate;
+            private set
+            {
+                if (_currentSubstanceCandidate != value)
+                {
+                    _currentSubstanceCandidate = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public CachedCandidate? CurrentOtherCandidate
+        {
+            get => _currentOtherCandidate;
+            private set
+            {
+                if (_currentOtherCandidate != value)
+                {
+                    _currentOtherCandidate = value;
                     OnPropertyChanged();
                 }
             }
@@ -215,8 +245,19 @@ namespace Wysg.Musm.SnomedTools.ViewModels
         }
 
         public IAsyncRelayCommand RefreshCommand { get; }
-        public IAsyncRelayCommand AcceptCommand { get; }
-        public IAsyncRelayCommand RejectCommand { get; }
+        
+        // Organism commands
+        public IAsyncRelayCommand AcceptOrganismCommand { get; }
+        public IAsyncRelayCommand RejectOrganismCommand { get; }
+        
+        // Substance commands
+        public IAsyncRelayCommand AcceptSubstanceCommand { get; }
+        public IAsyncRelayCommand RejectSubstanceCommand { get; }
+        
+        // Other commands
+        public IAsyncRelayCommand AcceptOtherCommand { get; }
+        public IAsyncRelayCommand RejectOtherCommand { get; }
+        
         public IAsyncRelayCommand SaveAllAcceptedCommand { get; }
         public IRelayCommand StartFetchCommand { get; }
         public IRelayCommand PauseFetchCommand { get; }
@@ -235,8 +276,25 @@ namespace Wysg.Musm.SnomedTools.ViewModels
             _dispatcher = Dispatcher.CurrentDispatcher;
 
             RefreshCommand = new AsyncRelayCommand(RefreshAsync);
-            AcceptCommand = new AsyncRelayCommand(AcceptCurrentAsync, () => !IsBusy && CurrentCandidate != null);
-            RejectCommand = new AsyncRelayCommand(RejectCurrentAsync, () => !IsBusy && CurrentCandidate != null);
+            
+            // Organism commands
+            AcceptOrganismCommand = new AsyncRelayCommand(() => AcceptCandidateAsync(CurrentOrganismCandidate, CandidateCategory.Organism), 
+                () => !IsBusy && CurrentOrganismCandidate != null);
+            RejectOrganismCommand = new AsyncRelayCommand(() => RejectCandidateAsync(CurrentOrganismCandidate, CandidateCategory.Organism), 
+                () => !IsBusy && CurrentOrganismCandidate != null);
+            
+            // Substance commands
+            AcceptSubstanceCommand = new AsyncRelayCommand(() => AcceptCandidateAsync(CurrentSubstanceCandidate, CandidateCategory.Substance), 
+                () => !IsBusy && CurrentSubstanceCandidate != null);
+            RejectSubstanceCommand = new AsyncRelayCommand(() => RejectCandidateAsync(CurrentSubstanceCandidate, CandidateCategory.Substance), 
+                () => !IsBusy && CurrentSubstanceCandidate != null);
+            
+            // Other commands
+            AcceptOtherCommand = new AsyncRelayCommand(() => AcceptCandidateAsync(CurrentOtherCandidate, CandidateCategory.Other), 
+                () => !IsBusy && CurrentOtherCandidate != null);
+            RejectOtherCommand = new AsyncRelayCommand(() => RejectCandidateAsync(CurrentOtherCandidate, CandidateCategory.Other), 
+                () => !IsBusy && CurrentOtherCandidate != null);
+            
             SaveAllAcceptedCommand = new AsyncRelayCommand(SaveAllAcceptedAsync, () => !IsBusy);
             StartFetchCommand = new RelayCommand(StartFetch, () => !IsBackgroundRunning);
             PauseFetchCommand = new RelayCommand(PauseFetch, () => IsBackgroundRunning);
@@ -254,6 +312,49 @@ namespace Wysg.Musm.SnomedTools.ViewModels
 
             // Load initial data
             _ = RefreshAsync();
+        }
+
+        private enum CandidateCategory
+        {
+            Organism,
+            Substance,
+            Other
+        }
+
+        private CandidateCategory GetCandidateCategory(CachedCandidate candidate)
+        {
+            var semanticTag = ExtractSemanticTag(candidate.ConceptFsn);
+            
+            if (semanticTag != null)
+            {
+                if (semanticTag.IndexOf("organism", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return CandidateCategory.Organism;
+                if (semanticTag.IndexOf("substance", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return CandidateCategory.Substance;
+            }
+            
+            return CandidateCategory.Other;
+        }
+
+        private static string? ExtractSemanticTag(string? fsn)
+        {
+            if (string.IsNullOrWhiteSpace(fsn)) return null;
+            var lastOpenParen = fsn.LastIndexOf('(');
+            var lastCloseParen = fsn.LastIndexOf(')');
+            if (lastOpenParen >= 0 && lastCloseParen > lastOpenParen)
+                return fsn.Substring(lastOpenParen + 1, lastCloseParen - lastOpenParen - 1).Trim();
+            return null;
+        }
+
+        private void UpdateCommandStates()
+        {
+            ((AsyncRelayCommand)AcceptOrganismCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)RejectOrganismCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)AcceptSubstanceCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)RejectSubstanceCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)AcceptOtherCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)RejectOtherCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)SaveAllAcceptedCommand).NotifyCanExecuteChanged();
         }
 
         private void StartFetch()
@@ -296,11 +397,12 @@ namespace Wysg.Musm.SnomedTools.ViewModels
                 // Refresh pending count when new candidates arrive
                 PendingCount = await _cacheService.GetPendingCountAsync().ConfigureAwait(false);
                 
-                // If pending count increased AND there's no current candidate, auto-refresh to show it
-                if (PendingCount > previousPendingCount && CurrentCandidate == null)
+                // If pending count increased AND there's an empty slot, auto-refresh to show it
+                if (PendingCount > previousPendingCount && 
+                    (CurrentOrganismCandidate == null || CurrentSubstanceCandidate == null || CurrentOtherCandidate == null))
                 {
-                    Debug.WriteLine("[CacheReviewViewModel] New candidate cached and no current candidate - auto-refreshing");
-                    await LoadNextCandidateAsync().ConfigureAwait(false);
+                    Debug.WriteLine("[CacheReviewViewModel] New candidate cached and empty slots available - auto-refreshing");
+                    await LoadNextCandidatesAsync().ConfigureAwait(false);
                 }
             });
         }
@@ -322,7 +424,9 @@ namespace Wysg.Musm.SnomedTools.ViewModels
                 }
 
                 PendingCount = PendingCandidates.Count;
-                CurrentCandidate = PendingCandidates.FirstOrDefault();
+
+                // Separate into three categories
+                await LoadNextCandidatesAsync().ConfigureAwait(false);
 
                 // Update statistics
                 var accepted = await _cacheService.GetAcceptedCandidatesAsync().ConfigureAwait(false);
@@ -330,8 +434,7 @@ namespace Wysg.Musm.SnomedTools.ViewModels
 
                 StatusMessage = $"Loaded {PendingCount} pending candidates";
                 
-                ((AsyncRelayCommand)AcceptCommand).NotifyCanExecuteChanged();
-                ((AsyncRelayCommand)RejectCommand).NotifyCanExecuteChanged();
+                UpdateCommandStates();
             }
             catch (Exception ex)
             {
@@ -344,7 +447,7 @@ namespace Wysg.Musm.SnomedTools.ViewModels
             }
         }
 
-        private async Task LoadNextCandidateAsync()
+        private async Task LoadNextCandidatesAsync()
         {
             // Load fresh pending candidates
             var pending = await _cacheService.GetPendingCandidatesAsync(100).ConfigureAwait(false);
@@ -356,22 +459,34 @@ namespace Wysg.Musm.SnomedTools.ViewModels
             }
 
             PendingCount = PendingCandidates.Count;
-            CurrentCandidate = PendingCandidates.FirstOrDefault();
+
+            // Separate candidates into three categories
+            var organisms = PendingCandidates.Where(c => GetCandidateCategory(c) == CandidateCategory.Organism).ToList();
+            var substances = PendingCandidates.Where(c => GetCandidateCategory(c) == CandidateCategory.Substance).ToList();
+            var others = PendingCandidates.Where(c => GetCandidateCategory(c) == CandidateCategory.Other).ToList();
+
+            // Set current candidates for each category (only if currently null)
+            if (CurrentOrganismCandidate == null)
+                CurrentOrganismCandidate = organisms.FirstOrDefault();
             
-            ((AsyncRelayCommand)AcceptCommand).NotifyCanExecuteChanged();
-            ((AsyncRelayCommand)RejectCommand).NotifyCanExecuteChanged();
+            if (CurrentSubstanceCandidate == null)
+                CurrentSubstanceCandidate = substances.FirstOrDefault();
+            
+            if (CurrentOtherCandidate == null)
+                CurrentOtherCandidate = others.FirstOrDefault();
+            
+            UpdateCommandStates();
         }
 
-        private async Task AcceptCurrentAsync()
+        private async Task AcceptCandidateAsync(CachedCandidate? candidate, CandidateCategory category)
         {
-            if (CurrentCandidate == null)
+            if (candidate == null)
                 return;
 
             try
             {
                 IsBusy = true;
-                var candidate = CurrentCandidate;
-                StatusMessage = $"Accepting '{candidate.TermText}'...";
+                StatusMessage = $"Accepting '{candidate.TermText}' ({category})...";
 
                 // Mark as accepted
                 await _cacheService.MarkAcceptedAsync(candidate.Id).ConfigureAwait(false);
@@ -381,10 +496,10 @@ namespace Wysg.Musm.SnomedTools.ViewModels
                 PendingCandidates.Remove(candidate);
                 PendingCount = PendingCandidates.Count;
 
-                StatusMessage = $"Accepted '{candidate.TermText}' (ready to save)";
+                StatusMessage = $"Accepted '{candidate.TermText}' ({category}) - ready to save";
                 
-                // Auto-refresh to show next candidate
-                await LoadNextCandidateAsync().ConfigureAwait(false);
+                // Load next candidate for this category
+                await LoadNextCandidateForCategoryAsync(category).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -397,16 +512,15 @@ namespace Wysg.Musm.SnomedTools.ViewModels
             }
         }
 
-        private async Task RejectCurrentAsync()
+        private async Task RejectCandidateAsync(CachedCandidate? candidate, CandidateCategory category)
         {
-            if (CurrentCandidate == null)
+            if (candidate == null)
                 return;
 
             try
             {
                 IsBusy = true;
-                var candidate = CurrentCandidate;
-                StatusMessage = $"Rejecting '{candidate.TermText}'...";
+                StatusMessage = $"Rejecting '{candidate.TermText}' ({category})...";
 
                 // Mark as rejected
                 await _cacheService.MarkRejectedAsync(candidate.Id).ConfigureAwait(false);
@@ -416,10 +530,10 @@ namespace Wysg.Musm.SnomedTools.ViewModels
                 PendingCandidates.Remove(candidate);
                 PendingCount = PendingCandidates.Count;
 
-                StatusMessage = $"Rejected '{candidate.TermText}'";
+                StatusMessage = $"Rejected '{candidate.TermText}' ({category})";
                 
-                // Auto-refresh to show next candidate
-                await LoadNextCandidateAsync().ConfigureAwait(false);
+                // Load next candidate for this category
+                await LoadNextCandidateForCategoryAsync(category).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -430,6 +544,36 @@ namespace Wysg.Musm.SnomedTools.ViewModels
             {
                 IsBusy = false;
             }
+        }
+
+        private async Task LoadNextCandidateForCategoryAsync(CandidateCategory category)
+        {
+            // Reload pending candidates
+            var pending = await _cacheService.GetPendingCandidatesAsync(100).ConfigureAwait(false);
+            
+            PendingCandidates.Clear();
+            foreach (var candidate in pending)
+            {
+                PendingCandidates.Add(candidate);
+            }
+
+            PendingCount = PendingCandidates.Count;
+
+            // Find next candidate for the specific category
+            switch (category)
+            {
+                case CandidateCategory.Organism:
+                    CurrentOrganismCandidate = PendingCandidates.FirstOrDefault(c => GetCandidateCategory(c) == CandidateCategory.Organism);
+                    break;
+                case CandidateCategory.Substance:
+                    CurrentSubstanceCandidate = PendingCandidates.FirstOrDefault(c => GetCandidateCategory(c) == CandidateCategory.Substance);
+                    break;
+                case CandidateCategory.Other:
+                    CurrentOtherCandidate = PendingCandidates.FirstOrDefault(c => GetCandidateCategory(c) == CandidateCategory.Other);
+                    break;
+            }
+            
+            UpdateCommandStates();
         }
 
         private async Task SaveAllAcceptedAsync()
@@ -443,7 +587,10 @@ namespace Wysg.Musm.SnomedTools.ViewModels
                 
                 if (accepted.Count == 0)
                 {
-                    StatusMessage = "No accepted candidates to save";
+                    await _dispatcher.InvokeAsync(() =>
+                    {
+                        StatusMessage = "No accepted candidates to save";
+                    });
                     return;
                 }
 
@@ -484,7 +631,12 @@ namespace Wysg.Musm.SnomedTools.ViewModels
                         await _cacheService.MarkSavedAsync(candidate.Id).ConfigureAwait(false);
                         
                         savedThisRound++;
-                        SavedCount++;
+                        
+                        // Update UI counter on dispatcher thread
+                        await _dispatcher.InvokeAsync(() =>
+                        {
+                            SavedCount++;
+                        });
                     }
                     catch (Exception ex)
                     {
@@ -492,17 +644,27 @@ namespace Wysg.Musm.SnomedTools.ViewModels
                     }
                 }
 
-                AcceptedCount = 0; // All accepted have been processed
-                StatusMessage = $"Successfully saved {savedThisRound} candidates to database";
+                // Update UI on dispatcher thread
+                await _dispatcher.InvokeAsync(() =>
+                {
+                    AcceptedCount = 0; // All accepted have been processed
+                    StatusMessage = $"Successfully saved {savedThisRound} candidates to database";
+                });
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error saving candidates: {ex.Message}";
+                await _dispatcher.InvokeAsync(() =>
+                {
+                    StatusMessage = $"Error saving candidates: {ex.Message}";
+                });
                 Debug.WriteLine($"[CacheReviewViewModel] Error saving all: {ex}");
             }
             finally
             {
-                IsBusy = false;
+                await _dispatcher.InvokeAsync(() =>
+                {
+                    IsBusy = false;
+                });
             }
         }
 
