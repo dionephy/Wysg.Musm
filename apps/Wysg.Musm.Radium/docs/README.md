@@ -112,6 +112,67 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ## Recent Updates (2025-02-02)
 
+### Remove Previous Report Proofread Fields (2025-02-02)
+
+**What Changed:**
+- Removed Chief Complaint (PR), Patient History (PR), Study Techniques (PR), and Comparison (PR) textboxes and buttons from the Previous Report panel
+- Removed associated dependency properties and logic from PreviousReportTextAndJsonPanel control
+- Removed bindings from MainWindow.xaml instances
+- Kept Findings (PR) and Conclusion (PR) fields intact
+
+**Why This Matters:**
+- **Simplified UI** - Previous Report panel now focuses only on core report content (findings and conclusion)
+- **Reduced Clutter** - Removed 8 rows of UI elements (4 label rows + 4 textbox rows) that were rarely used
+- **Cleaner Code** - Removed unused dependency properties and bindings
+- **Better Focus** - Users can concentrate on the main report content without distraction
+
+**What Was Removed:**
+```
+Previous Report Panel:
+  ❌ Chief Complaint label + textbox + auto/generate buttons
+  ❌ Patient History label + textbox + auto/generate buttons
+  ❌ Study Techniques label + textbox + auto/generate buttons
+  ❌ Comparison label + textbox + auto/generate buttons
+
+Proofread Column:
+  ❌ Chief Complaint (PR) label + textbox + auto/generate buttons
+  ❌ Patient History (PR) label + textbox + auto/generate buttons
+  ❌ Study Techniques (PR) label + textbox + auto/generate buttons
+  ❌ Comparison (PR) label + textbox + auto/generate buttons
+```
+
+**What Remains:**
+```
+Previous Report Panel (Column 0):
+  ✅ Previous Header and Findings textbox + split buttons
+  ✅ Final Conclusion textbox + split buttons
+  ✅ Header (temp) textbox
+  ✅ Findings (split) textbox
+  ✅ Conclusion (split) textbox
+
+Proofread Column (Column 2):
+  ✅ Findings (PR) textbox + auto/generate buttons
+  ✅ Conclusion (PR) textbox + auto/generate buttons
+```
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\Controls\PreviousReportTextAndJsonPanel.xaml` - Removed rows 9-16 (8 rows for 4 fields)
+- `apps\Wysg.Musm.Radium\Controls\PreviousReportTextAndJsonPanel.xaml.cs` - Removed 8 dependency properties
+- `apps\Wysg.Musm.Radium\Views\MainWindow.xaml` - Removed bindings from 2 control instances
+
+**Grid Layout Changes:**
+- Total rows reduced from 21 to 13 (removed 8 rows)
+- GridSplitter RowSpan updated from 21 to 13
+- JSON TextBox RowSpan updated from 21 to 13
+
+**Build Status:**
+- ✅ Build successful with no errors
+
+**Documentation:**
+- Updated README.md with cumulative change entry
+
+---
+
 ### Previous Report Selector - Automatic Population (2025-02-02)
 
 **What Changed:**
@@ -600,8 +661,7 @@ Tab Behavior:
   User checks: r (right), then Tab
   Before: "right, left, or bilateral" ❌ All items
   After:  "right" ✅ Only checked item
-```
-```
+
 User presses Tab without checking
   Before: "right, left, or bilateral" ❌ All items
   After:  "right" ✅ First option (conservative)

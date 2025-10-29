@@ -51,84 +51,45 @@ namespace Wysg.Musm.Radium.Controls
             set => SetValue(JsonTextProperty, value);
         }
 
-        // Editable fields for previous report metadata
-        public static readonly DependencyProperty ChiefComplaintProperty =
-            DependencyProperty.Register(
-                nameof(ChiefComplaint), typeof(string), typeof(PreviousReportTextAndJsonPanel),
-                new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
-        public string ChiefComplaint { get => (string)GetValue(ChiefComplaintProperty); set => SetValue(ChiefComplaintProperty, value); }
-
-        public static readonly DependencyProperty PatientHistoryProperty =
-            DependencyProperty.Register(
-                nameof(PatientHistory), typeof(string), typeof(PreviousReportTextAndJsonPanel),
-                new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
-        public string PatientHistory { get => (string)GetValue(PatientHistoryProperty); set => SetValue(PatientHistoryProperty, value); }
-
-        public static readonly DependencyProperty StudyTechniquesProperty =
-            DependencyProperty.Register(
-                nameof(StudyTechniques), typeof(string), typeof(PreviousReportTextAndJsonPanel),
-                new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
-        public string StudyTechniques { get => (string)GetValue(StudyTechniquesProperty); set => SetValue(StudyTechniquesProperty, value); }
-
-        public static readonly DependencyProperty ComparisonProperty =
-            DependencyProperty.Register(
-                nameof(Comparison), typeof(string), typeof(PreviousReportTextAndJsonPanel),
-                new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
-        public string Comparison { get => (string)GetValue(ComparisonProperty); set => SetValue(ComparisonProperty, value); }
-
         // Split outputs and header temp
         public static readonly DependencyProperty HeaderTempProperty =
             DependencyProperty.Register(
-                nameof(HeaderTemp), typeof(string), typeof(PreviousReportTextAndJsonPanel),
+                nameof(HeaderTemp),
+                typeof(string),
+                typeof(PreviousReportTextAndJsonPanel),
                 new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
         public string HeaderTemp { get => (string)GetValue(HeaderTempProperty); set => SetValue(HeaderTempProperty, value); }
 
         public static readonly DependencyProperty SplitFindingsProperty =
             DependencyProperty.Register(
-                nameof(SplitFindings), typeof(string), typeof(PreviousReportTextAndJsonPanel),
+                nameof(SplitFindings),
+                typeof(string),
+                typeof(PreviousReportTextAndJsonPanel),
                 new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
         public string SplitFindings { get => (string)GetValue(SplitFindingsProperty); set => SetValue(SplitFindingsProperty, value); }
 
         public static readonly DependencyProperty SplitConclusionProperty =
             DependencyProperty.Register(
-                nameof(SplitConclusion), typeof(string), typeof(PreviousReportTextAndJsonPanel),
+                nameof(SplitConclusion),
+                typeof(string),
+                typeof(PreviousReportTextAndJsonPanel),
                 new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
         public string SplitConclusion { get => (string)GetValue(SplitConclusionProperty); set => SetValue(SplitConclusionProperty, value); }
 
         // Proofread fields
-        public static readonly DependencyProperty ChiefComplaintProofreadProperty =
-            DependencyProperty.Register(
-                nameof(ChiefComplaintProofread), typeof(string), typeof(PreviousReportTextAndJsonPanel),
-                new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
-        public string ChiefComplaintProofread { get => (string)GetValue(ChiefComplaintProofreadProperty); set => SetValue(ChiefComplaintProofreadProperty, value); }
-
-        public static readonly DependencyProperty PatientHistoryProofreadProperty =
-            DependencyProperty.Register(
-                nameof(PatientHistoryProofread), typeof(string), typeof(PreviousReportTextAndJsonPanel),
-                new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
-        public string PatientHistoryProofread { get => (string)GetValue(PatientHistoryProofreadProperty); set => SetValue(PatientHistoryProofreadProperty, value); }
-
-        public static readonly DependencyProperty StudyTechniquesProofreadProperty =
-            DependencyProperty.Register(
-                nameof(StudyTechniquesProofread), typeof(string), typeof(PreviousReportTextAndJsonPanel),
-                new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
-        public string StudyTechniquesProofread { get => (string)GetValue(StudyTechniquesProofreadProperty); set => SetValue(StudyTechniquesProofreadProperty, value); }
-
-        public static readonly DependencyProperty ComparisonProofreadProperty =
-            DependencyProperty.Register(
-                nameof(ComparisonProofread), typeof(string), typeof(PreviousReportTextAndJsonPanel),
-                new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
-        public string ComparisonProofread { get => (string)GetValue(ComparisonProofreadProperty); set => SetValue(ComparisonProofreadProperty, value); }
-
         public static readonly DependencyProperty FindingsProofreadProperty =
             DependencyProperty.Register(
-                nameof(FindingsProofread), typeof(string), typeof(PreviousReportTextAndJsonPanel),
+                nameof(FindingsProofread),
+                typeof(string),
+                typeof(PreviousReportTextAndJsonPanel),
                 new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
         public string FindingsProofread { get => (string)GetValue(FindingsProofreadProperty); set => SetValue(FindingsProofreadProperty, value); }
 
         public static readonly DependencyProperty ConclusionProofreadProperty =
             DependencyProperty.Register(
-                nameof(ConclusionProofread), typeof(string), typeof(PreviousReportTextAndJsonPanel),
+                nameof(ConclusionProofread),
+                typeof(string),
+                typeof(PreviousReportTextAndJsonPanel),
                 new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
         public string ConclusionProofread { get => (string)GetValue(ConclusionProofreadProperty); set => SetValue(ConclusionProofreadProperty, value); }
 

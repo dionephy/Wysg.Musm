@@ -318,18 +318,14 @@
                 <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
 
                 <rad:PreviousReportTextAndJsonPanel x:Name="gridSideBottom" Grid.Row="2"
-                    HeaderAndFindingsText="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    FinalConclusionText="{Binding PreviousFinalConclusionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    JsonText="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    HeaderTemp="{Binding PreviousHeaderTemp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    SplitFindings="{Binding PreviousSplitFindings, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    SplitConclusion="{Binding PreviousSplitConclusion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    ChiefComplaintProofread="{Binding SelectedPreviousStudy.ChiefComplaintProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    PatientHistoryProofread="{Binding SelectedPreviousStudy.PatientHistoryProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    StudyTechniquesProofread="{Binding SelectedPreviousStudy.StudyTechniquesProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    ComparisonProofread="{Binding SelectedPreviousStudy.ComparisonProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    FindingsProofread="{Binding SelectedPreviousStudy.FindingsProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    ConclusionProofread="{Binding SelectedPreviousStudy.ConclusionProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+         HeaderAndFindingsText="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+    FinalConclusionText="{Binding PreviousFinalConclusionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+        JsonText="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+HeaderTemp="{Binding PreviousHeaderTemp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+     SplitFindings="{Binding PreviousSplitFindings, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+     SplitConclusion="{Binding PreviousSplitConclusion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+     FindingsProofread="{Binding SelectedPreviousStudy.FindingsProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+        ConclusionProofread="{Binding SelectedPreviousStudy.ConclusionProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
 
                 <rad:StatusPanel x:Name="gridStatusLandscape" Grid.Row="3" Margin="0,2,0,0">
@@ -354,18 +350,14 @@
             
             
             <rad:PreviousReportTextAndJsonPanel x:Name="gridBottomControl"
-                HeaderAndFindingsText="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                FinalConclusionText="{Binding PreviousFinalConclusionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                JsonText="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Reverse="True"
-                HeaderTemp="{Binding PreviousHeaderTemp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                SplitFindings="{Binding PreviousSplitFindings, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                SplitConclusion="{Binding PreviousSplitConclusion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                ChiefComplaintProofread="{Binding SelectedPreviousStudy.ChiefComplaintProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                PatientHistoryProofread="{Binding SelectedPreviousStudy.PatientHistoryProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                StudyTechniquesProofread="{Binding SelectedPreviousStudy.StudyTechniquesProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                ComparisonProofread="{Binding SelectedPreviousStudy.ComparisonProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                FindingsProofread="{Binding SelectedPreviousStudy.FindingsProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                ConclusionProofread="{Binding SelectedPreviousStudy.ConclusionProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+     HeaderAndFindingsText="{Binding PreviousHeaderAndFindingsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+FinalConclusionText="{Binding PreviousFinalConclusionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+  JsonText="{Binding PreviousReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Reverse="True"
+      HeaderTemp="{Binding PreviousHeaderTemp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+   SplitFindings="{Binding PreviousSplitFindings, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+SplitConclusion="{Binding PreviousSplitConclusion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+        FindingsProofread="{Binding SelectedPreviousStudy.FindingsProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+ ConclusionProofread="{Binding SelectedPreviousStudy.ConclusionProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
             
         </Grid>
