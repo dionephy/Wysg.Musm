@@ -301,7 +301,8 @@ public static class SnippetInputHandler
                         }
                     }
                     
-                    var output = FormatJoin(texts, cur.Joiner);
+                    // Apply bilateral logic if enabled
+                    var output = FormatJoin(texts, cur.Joiner, cur.Bilateral);
                     AcceptOptionAndComplete(output);
                     e.Handled = true;
                     return;
@@ -329,7 +330,7 @@ public static class SnippetInputHandler
                 }
             }
 
-            if (e.Key is Key.Enter)
+            if (e.Key == Key.Enter)
             {
                 // SPECIAL HANDLING FOR MODE 2 CURRENT PLACEHOLDER:
                 // If current placeholder is mode 2, accept its checked items before ending
@@ -344,8 +345,8 @@ public static class SnippetInputHandler
                         texts = cur.Options.Select(o => o.Text).ToList();
                     }
                     
-                    // Replace current placeholder with checked items
-                    var output = FormatJoin(texts, cur.Joiner);
+                    // Replace current placeholder with checked items (with bilateral logic if enabled)
+                    var output = FormatJoin(texts, cur.Joiner, cur.Bilateral);
                     ReplaceSelection(area, output);
                     MarkCurrentCompleted();
                 }
@@ -415,7 +416,8 @@ public static class SnippetInputHandler
                 else if (ph.Mode == 2)
                 {
                     var all = ph.Options.Select(o => o.Text).ToList();
-                    replacement = FormatJoin(all, ph.Joiner);
+                    // Apply bilateral logic if enabled for mode 2 fallback
+                    replacement = FormatJoin(all, ph.Joiner, ph.Bilateral);
                 }
                 else if (ph.Mode == 3)
                 {
@@ -563,15 +565,23 @@ public static class SnippetInputHandler
         }
     }
 
-    private static string FormatJoin(IReadOnlyList<string> items, string? joiner)
+    private static string FormatJoin(IReadOnlyList<string> items, string? joiner, bool bilateral = false)
     {
         if (items == null || items.Count == 0) return string.Empty;
         if (items.Count == 1) return items[0];
+        
+        // Apply bilateral logic if enabled
+     if (bilateral)
+        {
+            var combined = LateralityCombiner.Combine(items);
+         return combined;
+   }
+        
         string conj = (string.Equals(joiner, "or", StringComparison.OrdinalIgnoreCase)) ? "or"
-                    : (string.Equals(joiner, "and", StringComparison.OrdinalIgnoreCase)) ? "and"
-                    : "and"; // default
+       : (string.Equals(joiner, "and", StringComparison.OrdinalIgnoreCase)) ? "and"
+             : "and"; // default
         if (items.Count == 2) return string.Join($" {conj} ", items);
-        // Oxford comma style: a, b, and c
+  // Oxford comma style: a, b, and c
         var head = string.Join(", ", items.Take(items.Count - 1));
         return $"{head}, {conj} {items[^1]}";
     }
