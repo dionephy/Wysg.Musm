@@ -1,6 +1,6 @@
 ﻿# Radium Documentation
 
-**Last Updated**: 2025-01-30
+**Last Updated**: 2025-01-31
 
 ---
 
@@ -11,22 +11,12 @@
 - **[Plan-active.md](Plan-active.md)** - Recent implementation plans  
 - **[Tasks.md](Tasks.md)** - Active and pending tasks
 
-### Recent Major Features (2025-01-30)
+### Recent Major Features (2025-01-31)
 
+- **[FIX_2025-01-31_GetCurrentEditorOperationsActualText.md](FIX_2025-01-31_GetCurrentEditorOperationsActualText.md)** - Fixed GetCurrent* operations to return actual editor text instead of bound property values (now returns proofread/reportified text when toggles are ON)
 - **[FIX_2025-01-30_CompletionFilterTriggerTextOnly.md](FIX_2025-01-30_CompletionFilterTriggerTextOnly.md)** - Fixed completion window to filter only on trigger text, not description (e.g., "ngi" typed no longer matches "noaa → normal angio")
 - **[ENHANCEMENT_2025-01-30_AbortModulesConfirmationDialog.md](ENHANCEMENT_2025-01-30_AbortModulesConfirmationDialog.md)** - Abort modules now show confirmation dialogs instead of immediately aborting, allowing users to force continue procedures despite mismatches
 - **[ENHANCEMENT_2025-01-30_CurrentStudyHeaderProofreadVisualization.md](ENHANCEMENT_2025-01-30_CurrentStudyHeaderProofreadVisualization.md)** - Header editor now displays proofread versions of header components when Proofread toggle is ON
-- **[ENHANCEMENT_2025-01-29_EditComparisonWindow.md](ENHANCEMENT_2025-01-29_EditComparisonWindow.md)** - Edit Comparison window for managing previous studies in comparison field
-- **[DEPRECATION_2025-01-29_PostgresPhraseService.md](DEPRECATION_2025-01-29_PostgresPhraseService.md)** - Deprecated PostgreSQL PhraseService in favor of AzureSqlPhraseService
-- **[FIX_2025-01-29_CompletionWindowSingleCharacter.md](FIX_2025-01-29_CompletionWindowSingleCharacter.md)** - Fixed completion window not opening on single character input (changed MinCharsForSuggest from 2 to 1)
-- **[FIX_2025-01-29_GlobalPhraseCompletionFilter3WordFix.md](FIX_2025-01-29_GlobalPhraseCompletionFilter3WordFix.md)** - Fixed 3-word global phrases not appearing in completion window (increased limit to 4 words)
-- **[FIX_2025-01-29_GlobalPhraseHighlightingFilter.md](FIX_2025-01-29_GlobalPhraseHighlightingFilter.md)** - Fixed global phrases >3 words not highlighting in editor
-- **[IMPLEMENTATION_SUMMARY_2025-01-29_GlobalPhraseHighlightingFilter.md](IMPLEMENTATION_SUMMARY_2025-01-29_GlobalPhraseHighlightingFilter.md)** - Technical summary of phrase highlighting fix
-- **[ENHANCEMENT_2025-01-29_GetTextOCR_Top40Pixels.md](ENHANCEMENT_2025-01-29_GetTextOCR_Top40Pixels.md)** - GetTextOCR operation now captures only top 40 pixels for improved performance and accuracy
-- **[ENHANCEMENT_2025-01-29_MappedStudynamesListbox.md](ENHANCEMENT_2025-01-29_MappedStudynamesListbox.md)** - Added mapped studynames quick copy feature to StudynameLoincWindow
-- **[IMPLEMENTATION_SUMMARY_2025-01-29_ClearJSONOnNewStudy.md](IMPLEMENTATION_SUMMARY_2025-01-29_ClearJSONOnNewStudy.md)** - Clear JSON components and toggles on NewStudy
-- **[SNOMED_INTEGRATION_COMPLETE.md](SNOMED_INTEGRATION_COMPLETE.md)** - Complete SNOMED CT integration status
-- **[SNOMED_BROWSER_FEATURE_SUMMARY.md](SNOMED_BROWSER_FEATURE_SUMMARY.md)** - SNOMED Browser feature specification
 
 ### For Historical Reference
 - **[archive/](archive/)** - Organized by quarter and feature domain
@@ -119,7 +109,51 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ---
 
-## Recent Updates (2025-01-30)
+## Recent Updates (2025-01-31)
+
+### GetCurrent* Operations Now Return Actual Editor Text (2025-01-31)
+
+**What Changed:**
+- `GetCurrentHeader`, `GetCurrentFindings`, and `GetCurrentConclusion` operations now read actual editor text instead of bound ViewModel properties
+- Operations now correctly return proofread text when Proofread toggle is ON
+- Operations now correctly return reportified text when Reportified toggle is ON
+
+**Why This Matters:**
+- **Accurate Data Capture** - Automation modules now get exactly what radiologists see on screen
+- **Proofread Support** - SendReport and other operations send the proofread versions when enabled
+- **Reportified Support** - Operations capture formatted text (capitalization, periods, numbering)
+- **WYSIWYG Automation** - What You See Is What You Get - no more mismatches
+
+**Example Behavior:**
+```
+Before Fix:
+  User sees (Proofread ON): "Chest pain, shortness of breath"
+  GetCurrentHeader returns: "chest pain" (raw unproofread) ❌ MISMATCH
+
+After Fix:
+  User sees (Proofread ON): "Chest pain, shortness of breath"
+  GetCurrentHeader returns: "Chest pain, shortness of breath" ✅ MATCH
+```
+
+**Technical Implementation:**
+```csharp
+// OLD (WRONG):
+result = mainVM.HeaderText ?? string.Empty;
+
+// NEW (CORRECT):
+var gridCenter = mainWindow.FindName("gridCenter") as Controls.CenterEditingArea;
+var editorHeader = gridCenter.EditorHeader;
+var musmEditor = editorHeader.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
+result = musmEditor.Text ?? string.Empty;
+```
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\Services\OperationExecutor.MainViewModelOps.cs` - Updated all three Get methods
+
+**Documentation:**
+- See `FIX_2025-01-31_GetCurrentEditorOperationsActualText.md` for complete details
+
+---
 
 ### Completion Window Filter - Trigger Text Only (2025-01-30)
 
@@ -503,8 +537,9 @@ Tab Behavior:
   User checks: r (right), then Tab
   Before: "right, left, or bilateral" ❌ All items
   After:  "right" ✅ Only checked item
-  
-  User presses Tab without checking
+```
+```
+User presses Tab without checking
   Before: "right, left, or bilateral" ❌ All items
   After:  "right" ✅ First option (conservative)
 
