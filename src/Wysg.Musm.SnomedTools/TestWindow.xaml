@@ -82,6 +82,14 @@ Click="OnOpenWordCountImporter"
    Margin="0,0,0,15"
 ToolTip="Opens the Word Count Importer window"/>
 
+<Button Content="Cache Review with Background Fetching"
+Click="OnOpenCacheReview"
+ Padding="20,10"
+         MinWidth="300"
+       FontSize="14"
+   Margin="0,0,0,15"
+ToolTip="Opens the Cache Review window with continuous background fetching"/>
+
       <TextBlock Text="Additional test windows can be added here as needed."
        Foreground="{StaticResource BrushTextSecondary}"
 HorizontalAlignment="Center"
