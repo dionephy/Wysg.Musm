@@ -52,53 +52,110 @@ namespace Wysg.Musm.Radium.Views
 
         private async void OnLoaded(object sender, RoutedEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine("[MainWindow] OnLoaded START");
-            TryEnableDarkTitleBar();
+System.Diagnostics.Debug.WriteLine("[MainWindow] OnLoaded START");
+          TryEnableDarkTitleBar();
 
             _pacs ??= new PacsService();
 
             // Show current user email (optional: bind in VM/UI instead)
-            try { var _ = ((App)Application.Current).Services.GetRequiredService<IAuthStorage>(); } catch { }
+   try { var _ = ((App)Application.Current).Services.GetRequiredService<IAuthStorage>(); } catch { }
 
-            if (DataContext is not MainViewModel vm) return;
+    if (DataContext is not MainViewModel vm) return;
             
-            // PACS profiles are now managed via Settings -> PACS and ITenantContext.CurrentPacsKey.
+     // PACS profiles are now managed via Settings -> PACS and ITenantContext.CurrentPacsKey.
             // Do not initialize legacy local profiles here.
             
-            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Header"); InitEditor(vm, gridCenter.EditorHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Header: " + ex); throw; }
+      try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Header"); InitEditor(vm, gridCenter.EditorHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Header: " + ex); throw; }
             try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Findings"); InitEditor(vm, gridCenter.EditorFindings); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Findings: " + ex); throw; }
             try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor Conclusion"); InitEditor(vm, gridCenter.EditorConclusion); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor Conclusion: " + ex); throw; }
-            try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor PrevHeader"); InitEditor(vm, gridCenter.EditorPreviousHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor PrevHeader: " + ex); throw; }
+ try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor PrevHeader"); InitEditor(vm, gridCenter.EditorPreviousHeader); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor PrevHeader: " + ex); throw; }
             try { System.Diagnostics.Debug.WriteLine("[MainWindow] InitEditor PrevFindings"); InitEditor(vm, gridCenter.EditorPreviousFindings); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[MainWindow][EX] InitEditor PrevFindings: " + ex); throw; }
 
-            UpdateGridCenterSize();
-            UpdateGridCenterPositioning();
+   UpdateGridCenterSize();
+        UpdateGridCenterPositioning();
       
             // Wire up Alt+Arrow navigation from ReportInputsAndJsonPanel to EditorFindings
             try
+   {
+         System.Diagnostics.Debug.WriteLine("[MainWindow] Wiring up Alt+Arrow navigation");
+     gridTopChild.TargetEditor = gridCenter.EditorFindings;
+   gridSideTop.TargetEditor = gridCenter.EditorFindings;
+       
+    // Inject orientation detection function into CenterEditingArea
+   gridCenter.IsLandscapeMode = () => ActualWidth >= ActualHeight;
+        
+         // Inject Patient History textbox getter
+      gridCenter.GetPatientHistoryTextBox = () =>
+    {
+                bool isLandscape = ActualWidth >= ActualHeight;
+         TextBox? txtPatientHistory = null;
+         
+  System.Diagnostics.Debug.WriteLine($"[MainWindow] GetPatientHistoryTextBox called:");
+            System.Diagnostics.Debug.WriteLine($"  - Window dimensions: {ActualWidth}x{ActualHeight}");
+       System.Diagnostics.Debug.WriteLine($"  - isLandscape: {isLandscape}");
+     System.Diagnostics.Debug.WriteLine($"  - gridSide.ActualWidth: {gridSide?.ActualWidth ?? -1}");
+            System.Diagnostics.Debug.WriteLine($"  - gridTop.ActualHeight: {gridTop?.ActualHeight ?? -1}");
+  
+if (isLandscape)
+ {
+           // Landscape: gridSide should be visible, look in gridSideTop
+ // Check if gridSide is actually the active panel by checking its visibility/position
+                if (gridSide != null && gridSide.ActualWidth > 0)
+        {
+   System.Diagnostics.Debug.WriteLine($"  - Landscape: Checking gridSideTop (ActualWidth={gridSide.ActualWidth})");
+          txtPatientHistory = gridSideTop?.FindName("txtPatientHistory") as TextBox;
+            System.Diagnostics.Debug.WriteLine($"  - gridSideTop.FindName result: {txtPatientHistory != null}");
+       if (txtPatientHistory != null)
+                    {
+    System.Diagnostics.Debug.WriteLine($"  - Found in gridSideTop: IsVisible={txtPatientHistory.IsVisible}, ActualWidth={txtPatientHistory.ActualWidth}");
+       }
+                }
+                else
+                {
+   System.Diagnostics.Debug.WriteLine($"  - Landscape mode but gridSide.ActualWidth={gridSide?.ActualWidth ?? 0} (not active)");
+       }
+       }
+      else
             {
-                System.Diagnostics.Debug.WriteLine("[MainWindow] Wiring up Alt+Arrow navigation");
-                gridTopChild.TargetEditor = gridCenter.EditorFindings;
-                gridSideTop.TargetEditor = gridCenter.EditorFindings;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("[MainWindow] Alt+Arrow wiring EX: " + ex.Message);
+           // Portrait: gridTop should be visible, look in gridTopChild
+       if (gridTop != null && gridTop.ActualHeight > 0)
+      {
+  System.Diagnostics.Debug.WriteLine($"  - Portrait: Checking gridTopChild (ActualHeight={gridTop.ActualHeight})");
+        txtPatientHistory = gridTopChild?.FindName("txtPatientHistory") as TextBox;
+      System.Diagnostics.Debug.WriteLine($"  - gridTopChild.FindName result: {txtPatientHistory != null}");
+   if (txtPatientHistory != null)
+          {
+             System.Diagnostics.Debug.WriteLine($"  - Found in gridTopChild: IsVisible={txtPatientHistory.IsVisible}, ActualWidth={txtPatientHistory.ActualWidth}");
+               }
+           }
+                else
+      {
+        System.Diagnostics.Debug.WriteLine($"  - Portrait mode but gridTop.ActualHeight={gridTop?.ActualHeight ?? 0} (not active)");
+      }
             }
             
-            // Listen for focus request from ViewModel (e.g., after text sync disable)
-            vm.PropertyChanged += OnViewModelPropertyChanged;
+            System.Diagnostics.Debug.WriteLine($"  - Final result: {(txtPatientHistory != null ? "FOUND" : "NULL")}");
+        return txtPatientHistory;
+        };
+   }
+        catch (Exception ex)
+            {
+  System.Diagnostics.Debug.WriteLine("[MainWindow] Alt+Arrow wiring EX: " + ex.Message);
+            }
             
-            // NEW: Listen for Study Remark focus request from ViewModel (e.g., after SetCurrentInMainScreen completes)
+   // Listen for focus request from ViewModel (e.g., after text sync disable)
+ vm.PropertyChanged += OnViewModelPropertyChanged;
+        
+   // NEW: Listen for Study Remark focus request from ViewModel (e.g., after SetCurrentInMainScreen completes)
             vm.RequestFocusStudyRemark += OnRequestFocusStudyRemark;
             
-            try
-            {
-                await vm.LoadPhrasesAsync();
-            }
+    try
+    {
+    await vm.LoadPhrasesAsync();
+  }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("[MainWindow] LoadPhrasesAsync EX: " + ex.Message);
+    System.Diagnostics.Debug.WriteLine("[MainWindow] LoadPhrasesAsync EX: " + ex.Message);
             }
 
             System.Diagnostics.Debug.WriteLine("[MainWindow] OnLoaded COMPLETE");

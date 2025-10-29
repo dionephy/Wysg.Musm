@@ -120,11 +120,42 @@ var list = _completionWindow.CompletionList.CompletionData;
         {
             int caret = Editor.CaretOffset;
             int sel = _completionWindow?.CompletionList?.ListBox?.SelectedIndex ?? -2;
-            int startOff = _completionWindow?.StartOffset ?? -1;
+int startOff = _completionWindow?.StartOffset ?? -1;
             int endOff = _completionWindow?.EndOffset ?? -1;
-            Debug.WriteLine($"[Popup] PKD key={e.Key} popup={( _completionWindow!=null)} sel={sel} caret={caret} range=[{startOff},{endOff}]");
+         Debug.WriteLine($"[Popup] PKD key={e.Key} popup={( _completionWindow!=null)} sel={sel} caret={caret} range=[{startOff},{endOff}]");
 
-            if (ServerGhosts.HasItems && (e.Key is Key.Back or Key.Delete or Key.Enter or Key.Return))
+   // ==================================================================================
+       // SPECIAL: Allow Alt+Arrow keys to pass through for editor-level navigation
+     // ==================================================================================
+        //
+       // RATIONALE:
+       // Alt+Up/Down/Left/Right are used for editor-to-editor and editor-to-textbox
+        // navigation in the application (e.g., Alt+Up from EditorFindings to Patient History).
+    //
+      // Without this passthrough logic, the completion window would consume these events
+        // for its own navigation (Up/Down to select items), preventing the application-level
+ // navigation from working.
+      //
+        // IMPLEMENTATION:
+     // We detect Alt+Arrow combinations and return early WITHOUT setting e.Handled=true.
+     // This allows the event to continue bubbling to other handlers that implement
+   // the navigation logic (e.g., CenterEditingArea.SetupOrientationAwareUpNavigation).
+     //
+   // NOTE:
+        // Regular Up/Down (without Alt) are still handled by the completion window for
+     // item selection, maintaining expected autocomplete behavior.
+    //
+        // ==================================================================================
+    if (e.KeyboardDevice.Modifiers == ModifierKeys.Alt && 
+   (e.Key == Key.Up || e.Key == Key.Down || e.Key == Key.Left || e.Key == Key.Right ||
+          e.SystemKey == Key.Up || e.SystemKey == Key.Down || e.SystemKey == Key.Left || e.SystemKey == Key.Right))
+  {
+            Debug.WriteLine($"[Popup] Alt+Arrow detected - passing through for editor navigation");
+        // Do NOT handle the event - let it bubble to editor navigation handlers
+     return;
+  }
+
+  if (ServerGhosts.HasItems && (e.Key is Key.Back or Key.Delete or Key.Enter or Key.Return))
                 ClearServerGhosts();
 
             // Commit completion on Enter when popup is open and an item is selected (cancel raw newline)
