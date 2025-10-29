@@ -57,14 +57,12 @@ namespace Wysg.Musm.LlmDataBuilder
 
                 txtRecordCount.Text = $"Records: {_records.Count}";
                 UpdateStatus($"Loaded {_records.Count} record(s)");
+                AddMessage($"Data loaded successfully. Found {_records.Count} record(s).");
             }
             catch (Exception ex)
             {
                 UpdateStatus($"Error loading data: {ex.Message}", isError: true);
-                MessageBox.Show($"Failed to load data:\n\n{ex.Message}", 
-                    "Load Error", 
-                    MessageBoxButton.OK, 
-                    MessageBoxImage.Error);
+                AddMessage($"Failed to load data: {ex.Message}", isError: true);
             }
         }
 
@@ -85,14 +83,12 @@ namespace Wysg.Musm.LlmDataBuilder
                 File.WriteAllText(dataPath, jsonOutput);
                 
                 UpdateStatus("Data saved successfully");
+                AddMessage($"Data saved successfully. {records.Count} record(s) written to disk.");
             }
             catch (Exception ex)
             {
                 UpdateStatus($"Error saving data: {ex.Message}", isError: true);
-                MessageBox.Show($"Failed to save data:\n\n{ex.Message}", 
-                    "Save Error", 
-                    MessageBoxButton.OK, 
-                    MessageBoxImage.Error);
+                AddMessage($"Failed to save data: {ex.Message}", isError: true);
             }
         }
 
@@ -102,6 +98,25 @@ namespace Wysg.Musm.LlmDataBuilder
             txtStatus.Foreground = isError ? 
                 new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(244, 135, 113)) : 
                 new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(204, 204, 204));
+        }
+
+        private void AddMessage(string message, bool isError = false)
+        {
+            var timestamp = DateTime.Now.ToString("HH:mm:ss");
+            var prefix = isError ? "ERROR" : "INFO";
+            var newMessage = $"[{timestamp}] {prefix}: {message}";
+            
+            if (string.IsNullOrEmpty(txtMessages.Text))
+            {
+                txtMessages.Text = newMessage;
+            }
+            else
+            {
+                txtMessages.Text += Environment.NewLine + newMessage;
+            }
+       
+            // Auto-scroll to bottom
+            txtMessages.ScrollToEnd();
         }
 
         private void ChkAlwaysOnTop_Checked(object sender, RoutedEventArgs e)
@@ -138,6 +153,7 @@ namespace Wysg.Musm.LlmDataBuilder
 
         private void BtnRefresh_Click(object sender, RoutedEventArgs e)
         {
+            AddMessage("Refreshing data from disk...");
             LoadData();
         }
 
@@ -166,27 +182,23 @@ namespace Wysg.Musm.LlmDataBuilder
                         File.WriteAllText(saveFileDialog.FileName, jsonOutput);
                         
                         UpdateStatus($"Record #{selectedRecord.Index} exported successfully");
-                        MessageBox.Show($"Record exported to:\n{saveFileDialog.FileName}", 
-                            "Export Success", 
-                            MessageBoxButton.OK, 
-                            MessageBoxImage.Information);
+                        AddMessage($"Record #{selectedRecord.Index} exported to: {saveFileDialog.FileName}");
+                    }
+                    else
+                    {
+                        AddMessage("Export cancelled by user.");
                     }
                 }
                 catch (Exception ex)
                 {
                     UpdateStatus($"Error exporting record: {ex.Message}", isError: true);
-                    MessageBox.Show($"Failed to export record:\n\n{ex.Message}", 
-                        "Export Error", 
-                        MessageBoxButton.OK, 
-                        MessageBoxImage.Error);
+                    AddMessage($"Failed to export record: {ex.Message}", isError: true);
                 }
             }
             else
             {
-                MessageBox.Show("Please select a record to export.", 
-                    "No Selection", 
-                    MessageBoxButton.OK, 
-                    MessageBoxImage.Warning);
+                UpdateStatus("No record selected", isError: true);
+                AddMessage("Export failed: Please select a record to export.", isError: true);
             }
         }
 
@@ -194,51 +206,40 @@ namespace Wysg.Musm.LlmDataBuilder
         {
             if (dgRecords.SelectedItem is LlmDataRecordViewModel selectedRecord)
             {
-                var result = MessageBox.Show(
-                    $"Are you sure you want to delete record #{selectedRecord.Index}?\n\n" +
-                    $"Input: {selectedRecord.Input.Substring(0, Math.Min(50, selectedRecord.Input.Length))}...",
-                    "Confirm Delete",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
-
-                if (result == MessageBoxResult.Yes)
+                try
                 {
-                    try
+                    var inputPreview = selectedRecord.Input.Substring(0, Math.Min(50, selectedRecord.Input.Length));
+                    AddMessage($"Deleting record #{selectedRecord.Index}: {inputPreview}...");
+       
+                    _records.Remove(selectedRecord);
+                    
+                    // Re-index remaining records
+                    for (int i = 0; i < _records.Count; i++)
                     {
-                        _records.Remove(selectedRecord);
-                        
-                        // Re-index remaining records
-                        for (int i = 0; i < _records.Count; i++)
-                        {
-                            _records[i].Index = i + 1;
-                        }
-                        
-                        SaveData();
-                        txtRecordCount.Text = $"Records: {_records.Count}";
-                        UpdateStatus($"Record deleted. Total records: {_records.Count}");
-                        
-                        // Clear detail panel
-                        txtDetailInput.Clear();
-                        txtDetailOutput.Clear();
-                        txtDetailProtoOutput.Clear();
-                        txtDetailPromptNumbers.Clear();
+                        _records[i].Index = i + 1;
                     }
-                    catch (Exception ex)
-                    {
-                        UpdateStatus($"Error deleting record: {ex.Message}", isError: true);
-                        MessageBox.Show($"Failed to delete record:\n\n{ex.Message}", 
-                            "Delete Error", 
-                            MessageBoxButton.OK, 
-                            MessageBoxImage.Error);
-                    }
+ 
+                    SaveData();
+                    txtRecordCount.Text = $"Records: {_records.Count}";
+                    UpdateStatus($"Record deleted. Total records: {_records.Count}");
+                    AddMessage($"Record deleted successfully. Remaining records: {_records.Count}");
+        
+                    // Clear detail panel
+                    txtDetailInput.Clear();
+                    txtDetailOutput.Clear();
+                    txtDetailProtoOutput.Clear();
+                    txtDetailPromptNumbers.Clear();
+                }
+                catch (Exception ex)
+                {
+                    UpdateStatus($"Error deleting record: {ex.Message}", isError: true);
+                    AddMessage($"Failed to delete record: {ex.Message}", isError: true);
                 }
             }
             else
             {
-                MessageBox.Show("Please select a record to delete.", 
-                    "No Selection", 
-                    MessageBoxButton.OK, 
-                    MessageBoxImage.Warning);
+                UpdateStatus("No record selected", isError: true);
+                AddMessage("Delete failed: Please select a record to delete.", isError: true);
             }
         }
 
@@ -260,28 +261,28 @@ namespace Wysg.Musm.LlmDataBuilder
         public List<string> AppliedPromptNumbers { get; set; } = new List<string>();
         
         public string AppliedPromptNumbersDisplay => 
-            AppliedPromptNumbers.Count > 0 
-                ? string.Join(", ", AppliedPromptNumbers) 
-                : "-";
+       AppliedPromptNumbers.Count > 0 
+         ? string.Join(", ", AppliedPromptNumbers) 
+      : "-";
 
         public LlmDataRecordViewModel(LlmDataRecord record, int index)
         {
-            Index = index;
-            Input = record.Input;
-            Output = record.Output;
-            ProtoOutput = record.ProtoOutput;
+    Index = index;
+   Input = record.Input;
+       Output = record.Output;
+    ProtoOutput = record.ProtoOutput;
             AppliedPromptNumbers = record.AppliedPromptNumbers ?? new List<string>();
         }
 
         public LlmDataRecord ToRecord()
-        {
-            return new LlmDataRecord
-            {
-                Input = Input,
-                Output = Output,
-                ProtoOutput = ProtoOutput,
-                AppliedPromptNumbers = AppliedPromptNumbers
-            };
-        }
+   {
+     return new LlmDataRecord
+       {
+    Input = Input,
+          Output = Output,
+      ProtoOutput = ProtoOutput,
+          AppliedPromptNumbers = AppliedPromptNumbers
+ };
+    }
     }
 }

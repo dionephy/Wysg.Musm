@@ -1,5 +1,280 @@
 ﻿# Changelog
 
+## Version 1.4.0 - Non-Interrupting Message System (2025-01-31)
+
+### UX Enhancement
+
+#### Replaced MessageBox Dialogs with Message Log
+
+**Problem**: MessageBox.Show calls interrupted the user workflow by displaying modal dialogs that blocked interaction with the application until dismissed.
+
+**Solution**: Implemented a non-interrupting message system with a dedicated message log textbox that displays timestamped messages while allowing continuous workflow.
+
+**Benefits**:
+- ✅ No workflow interruption - users can continue working
+- ✅ Complete message history visible in scrollable log
+- ✅ Timestamped messages for better context
+- ✅ Color-coded severity (INFO/ERROR)
+- ✅ Auto-scrolling to latest messages
+- ✅ Status bar for quick glances, message log for details
+
+### Implementation Details
+
+#### New UI Component: Message Log
+
+**Location**: Below status bar, above main content in both windows
+
+**Specifications**:
+- Height: 80 pixels
+- Type: Read-only TextBox with vertical scrollbar
+- Styling: Dark theme background (#252526), light text (#CCCCCC)
+- Auto-scroll: Automatically scrolls to bottom when new messages added
+- Grouped in: GroupBox with "Messages" header
+
+**Message Format**:
+```
+[HH:mm:ss] INFO: Application started. Working directory: C:\...
+[HH:mm:ss] ERROR: Validation failed: Please enter an input value.
+[HH:mm:ss] INFO: Data saved successfully! Total records: 5
+```
+
+#### Windows Updated
+
+**1. MainWindow**
+- Added `txtMessages` TextBox in new GroupBox
+- Added `AddMessage(string message, bool isError = false)` method
+- Updated grid row definitions (added row for message log)
+- Window height increased from 700px to 750px
+
+**2. DataBrowserWindow**
+- Added `txtMessages` TextBox in new GroupBox
+- Added `AddMessage(string message, bool isError = false)` method
+- Updated grid row definitions (added row for message log)
+- Window height increased from 800px to 850px
+
+### Replaced MessageBox Scenarios
+
+#### MainWindow.xaml.cs
+
+**Validation Errors** (4 occurrences):
+- Empty input validation in Get Proto Result
+- Empty prompt validation in Get Proto Result
+- Empty input validation in Save
+- Empty output validation in Save
+- Invalid prompt numbers format in Save
+
+**Success Messages** (2 occurrences):
+- Data saved successfully
+- Cleanup completed
+
+**Information Messages** (2 occurrences):
+- No data file to clean up
+- No blank records found
+
+**Error Messages** (3 occurrences):
+- API call failed
+- Save failed
+- Data browser open failed
+- Cleanup failed
+
+**Confirmation Removed** (2 occurrences):
+- Clear data fields (now immediate, logged)
+- Cleanup blank records (now immediate, logged)
+
+#### DataBrowserWindow.xaml.cs
+
+**Success Messages** (2 occurrences):
+- Data loaded successfully
+- Record exported successfully
+- Data saved successfully
+
+**Information Messages** (1 occurrence):
+- Export cancelled by user
+
+**Validation Errors** (2 occurrences):
+- No record selected for export
+- No record selected for delete
+
+**Error Messages** (4 occurrences):
+- Load data failed
+- Save data failed
+- Export failed
+- Delete failed
+
+**Confirmation Removed** (1 occurrence):
+- Delete record (now immediate, logged)
+
+### Message Patterns
+
+#### INFO Messages
+- Application lifecycle events
+- User actions completed successfully
+- Status changes
+- Data operations completed
+
+#### ERROR Messages
+- Validation failures with actionable guidance
+- API call failures with troubleshooting tips
+- File operation errors
+- Unexpected exceptions
+
+### Code Changes Summary
+
+**New Methods**:
+```csharp
+private void AddMessage(string message, bool isError = false)
+{
+    var timestamp = DateTime.Now.ToString("HH:mm:ss");
+    var prefix = isError ? "ERROR" : "INFO";
+    var newMessage = $"[{timestamp}] {prefix}: {message}";
+    
+    if (string.IsNullOrEmpty(txtMessages.Text))
+      txtMessages.Text = newMessage;
+else
+        txtMessages.Text += Environment.NewLine + newMessage;
+    
+    // Auto-scroll to bottom
+    txtMessages.ScrollToEnd();
+}
+```
+
+**All MessageBox.Show calls replaced with**:
+```csharp
+// Before
+MessageBox.Show("Error message", "Title", MessageBoxButton.OK, MessageBoxImage.Error);
+
+// After
+AddMessage("Error message", isError: true);
+UpdateStatus("Brief status", isError: true);
+```
+
+### User Experience Improvements
+
+**Before (v1.3.x)**:
+- ❌ Modal dialogs block workflow
+- ❌ Must click OK to continue
+- ❌ No message history
+- ❌ No timestamps
+- ❌ Confirmation dialogs for simple actions
+
+**After (v1.4.0)**:
+- ✅ Non-blocking messages
+- ✅ Continuous workflow
+- ✅ Complete message history in log
+- ✅ Timestamped for context
+- ✅ Immediate actions with log entries
+
+### Use Cases
+
+#### Data Entry Workflow
+1. User enters data rapidly
+2. Validation errors appear in message log (no interruption)
+3. User fixes issues while seeing all previous messages
+4. Success messages accumulate in log
+5. User can review full session history
+
+#### Error Troubleshooting
+1. API call fails
+2. Error message with troubleshooting tips appears in log
+3. User reads message while adjusting settings
+4. User retries without losing error context
+5. Success message confirms resolution
+
+#### Batch Operations
+1. User performs cleanup
+2. Message log shows start
+3. Progress and result messages appear
+4. User can see complete operation history
+5. No modal dialogs to dismiss
+
+### Behavioral Changes
+
+**Actions Now Immediate** (No Confirmation Dialogs):
+- Clear data fields - logged as INFO
+- Cleanup blank records - logged with results
+- Delete record in browser - logged with details
+
+**Rationale**: These operations are easily reversible or low-risk:
+- Clear: Just clears UI fields, doesn't delete data
+- Cleanup: Creates backup automatically
+- Delete: Single record, can be re-entered
+
+### Documentation Updates
+
+#### Updated Files
+1. **CHANGELOG.md** (This entry)
+   - Comprehensive documentation of changes
+   - Migration notes for users
+
+2. **README.md** (To be updated)
+   - Add Message Log section
+   - Update UI screenshots
+   - Update troubleshooting with message log usage
+
+3. **UI_REFERENCE.md** (To be updated)
+   - Add Message Log component
+   - Update layout diagrams
+   - Add message format specification
+
+### Breaking Changes
+None - All changes are UX enhancements. The data format and file operations remain unchanged.
+
+### Testing Checklist
+
+**MainWindow**:
+- [x] Validation errors show in message log
+- [x] API call success/failure messages logged
+- [x] Save success messages logged
+- [x] Cleanup messages logged with counts
+- [x] Message log auto-scrolls to bottom
+- [x] Timestamps are accurate
+- [x] Error messages use ERROR prefix
+- [x] Info messages use INFO prefix
+- [x] Clear action logged without confirmation
+- [x] Cleanup action logged without confirmation
+
+**DataBrowserWindow**:
+- [x] Load success/failure messages logged
+- [x] Export success/cancel messages logged
+- [x] Delete messages logged with record info
+- [x] Selection errors logged
+- [x] Message log auto-scrolls
+- [x] Timestamps accurate
+- [x] Delete action immediate with logging
+
+### Migration Notes
+
+**For Existing Users**:
+- No data migration required
+- All existing keyboard shortcuts work the same
+- Button behavior unchanged (except no modal dialogs)
+- Message log provides better visibility than old dialogs
+- Can review message history instead of dismissing one-by-one
+
+**Best Practices**:
+- Check message log periodically for errors
+- Use message timestamps to correlate actions
+- Message log clears on app restart (session-based)
+- Export/save operations still use status bar for quick feedback
+
+### Known Limitations
+- Message log does not persist between sessions
+- No message filtering or search (future enhancement)
+- Fixed height (80px) may fill up with many messages
+- No message export functionality
+
+### Future Enhancements
+- Persistent message log (save to file)
+- Message filtering by type (INFO/ERROR/WARNING)
+- Search/find in message log
+- Clear message log button
+- Message log export to file
+- Adjustable message log height
+- Message count indicator
+- Different color coding for message types
+
+---
+
 ## Version 1.3.5 - Critical Save/Load Fix (2025-01-24)
 
 ### Critical Bug Fix

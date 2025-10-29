@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Wysg.Musm.LlmDataBuilder"
         mc:Ignorable="d"
-        Title="Data Browser" Height="800" Width="1400"
+        Title="Data Browser" Height="850" Width="1400"
         WindowStartupLocation="CenterScreen"
         Background="#1E1E1E">
     <Window.Resources>
@@ -121,6 +121,7 @@
     <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -161,8 +162,25 @@
             </Grid>
         </Border>
 
+        <!-- Message Log -->
+        <GroupBox Grid.Row="1" 
+                  Header="Messages" 
+                  Margin="0,10,0,10"
+                  Foreground="{StaticResource TextBrush}"
+                  BorderBrush="{StaticResource BorderBrush}">
+            <TextBox x:Name="txtMessages"
+                     Height="80"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     Background="{StaticResource SurfaceBrush}"
+                     Foreground="{StaticResource TextBrush}"
+                     BorderThickness="0"
+                     Padding="5"/>
+        </GroupBox>
+
         <!-- DataGrid -->
-        <DataGrid Grid.Row="1" 
+        <DataGrid Grid.Row="2" 
                   x:Name="dgRecords"
                   SelectionChanged="DgRecords_SelectionChanged"
                   Margin="0,10">
@@ -176,7 +194,7 @@
         </DataGrid>
 
         <!-- Detail Panel -->
-        <Expander Grid.Row="2" 
+        <Expander Grid.Row="3" 
                   Header="Record Details" 
                   IsExpanded="False"
                   Margin="0,10"
@@ -229,7 +247,7 @@
         </Expander>
 
         <!-- Action Buttons -->
-        <StackPanel Grid.Row="3" 
+        <StackPanel Grid.Row="4" 
                     Orientation="Horizontal" 
                     HorizontalAlignment="Right" 
                     Margin="0,15,0,0">

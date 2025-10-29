@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Wysg.Musm.LlmDataBuilder"
         mc:Ignorable="d"
-        Title="LLM Data Builder" Height="700" Width="1000"
+        Title="LLM Data Builder" Height="750" Width="1000"
         WindowStartupLocation="CenterScreen"
         Background="#1E1E1E">
     <Window.Resources>
@@ -84,12 +84,65 @@
     <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+        <!-- Status Bar -->
+        <Border Grid.Row="0" 
+                Background="{StaticResource SurfaceBrush}" 
+                BorderBrush="{StaticResource BorderBrush}" 
+                BorderThickness="0,0,0,1" 
+                Padding="10" 
+                Margin="-15,-15,-15,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="0">
+                    <TextBlock x:Name="txtStatus" 
+                               Text="Ready" 
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextBrush}"/>
+                    <TextBlock x:Name="txtRecordCount" 
+                               Text="Records: 0" 
+                               FontSize="11" 
+                               Foreground="{StaticResource TextSecondaryBrush}" 
+                               Margin="0,3,0,0"/>
+                </StackPanel>
+                
+                <CheckBox Grid.Column="1" 
+                          x:Name="chkAlwaysOnTop"
+                          Content="Always on Top"
+                          VerticalAlignment="Center"
+                          Checked="ChkAlwaysOnTop_Checked"
+                          Unchecked="ChkAlwaysOnTop_Unchecked"
+                          Foreground="{StaticResource TextBrush}"/>
+            </Grid>
+        </Border>
+
+        <!-- Message Log -->
+        <GroupBox Grid.Row="1" 
+                  Header="Messages" 
+                  Margin="0,10,0,10"
+                  Foreground="{StaticResource TextBrush}"
+                  BorderBrush="{StaticResource BorderBrush}">
+            <TextBox x:Name="txtMessages"
+                     Height="80"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     Background="{StaticResource SurfaceBrush}"
+                     Foreground="{StaticResource TextBrush}"
+                     BorderThickness="0"
+                     Padding="5"/>
+        </GroupBox>
+
         <!-- Main Content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -132,7 +185,7 @@
         </ScrollViewer>
 
         <!-- Bottom Action Buttons -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
             <Button x:Name="btnBrowseData" 
                     Content="Browse Data" 
                     Click="BtnBrowseData_Click"
@@ -155,40 +208,5 @@
                     Click="BtnClear_Click"
                     BorderBrush="{StaticResource ErrorBrush}"/>
         </StackPanel>
-
-        <!-- Status Bar -->
-        <Border Grid.Row="0" 
-                Background="{StaticResource SurfaceBrush}" 
-                BorderBrush="{StaticResource BorderBrush}" 
-                BorderThickness="0,0,0,1" 
-                Padding="10" 
-                Margin="-15,-15,-15,10">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                
-                <StackPanel Grid.Column="0">
-                    <TextBlock x:Name="txtStatus" 
-                               Text="Ready" 
-                               FontWeight="SemiBold"
-                               Foreground="{StaticResource TextBrush}"/>
-                    <TextBlock x:Name="txtRecordCount" 
-                               Text="Records: 0" 
-                               FontSize="11" 
-                               Foreground="{StaticResource TextSecondaryBrush}" 
-                               Margin="0,3,0,0"/>
-                </StackPanel>
-                
-                <CheckBox Grid.Column="1" 
-                          x:Name="chkAlwaysOnTop"
-                          Content="Always on Top"
-                          VerticalAlignment="Center"
-                          Checked="ChkAlwaysOnTop_Checked"
-                          Unchecked="ChkAlwaysOnTop_Unchecked"
-                          Foreground="{StaticResource TextBrush}"/>
-            </Grid>
-        </Border>
     </Grid>
 </Window>
