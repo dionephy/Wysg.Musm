@@ -66,7 +66,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wynolab.Musm.A.Native", "le
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wynolab.Musm.A.Editor", "legacy\Wynolab.Musm.A.Editor\Wynolab.Musm.A.Editor.csproj", "{79657B98-0A95-1FD6-F7F6-90EFE4FFD2F4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wysg.Musm.LlmDataBuilder", "Wysg.Musm.LlmDataBuilder\Wysg.Musm.LlmDataBuilder.csproj", "{0C9A7926-8EF9-4956-83CF-530390549644}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wysg.Musm.LlmDataBuilder", "apps\Wysg.Musm.LlmDataBuilder\Wysg.Musm.LlmDataBuilder.csproj", "{0C9A7926-8EF9-4956-83CF-530390549644}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wysg.Musm.SnomedTools", "src\Wysg.Musm.SnomedTools\Wysg.Musm.SnomedTools.csproj", "{47558A0E-651F-4E19-A438-A9258A9BF7BC}"
 EndProject
