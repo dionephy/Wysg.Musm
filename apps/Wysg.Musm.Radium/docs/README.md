@@ -1,6 +1,6 @@
 ﻿# Radium Documentation
 
-**Last Updated**: 2025-01-31
+**Last Updated**: 2025-02-02
 
 ---
 
@@ -11,8 +11,9 @@
 - **[Plan-active.md](Plan-active.md)** - Recent implementation plans  
 - **[Tasks.md](Tasks.md)** - Active and pending tasks
 
-### Recent Major Features (2025-01-31)
+### Recent Major Features (2025-02-02)
 
+- **[ENHANCEMENT_2025-02-02_PreviousReportSelector.md](ENHANCEMENT_2025-02-02_PreviousReportSelector.md)** - Previous report selector ComboBox now auto-populates with all reports for selected study, with most recent report selected by default
 - **[FIX_2025-01-31_GetCurrentEditorOperationsActualText.md](FIX_2025-01-31_GetCurrentEditorOperationsActualText.md)** - Fixed GetCurrent* operations to return actual editor text instead of bound property values (now returns proofread/reportified text when toggles are ON)
 - **[FIX_2025-01-30_CompletionFilterTriggerTextOnly.md](FIX_2025-01-30_CompletionFilterTriggerTextOnly.md)** - Fixed completion window to filter only on trigger text, not description (e.g., "ngi" typed no longer matches "noaa → normal angio")
 - **[ENHANCEMENT_2025-01-30_AbortModulesConfirmationDialog.md](ENHANCEMENT_2025-01-30_AbortModulesConfirmationDialog.md)** - Abort modules now show confirmation dialogs instead of immediately aborting, allowing users to force continue procedures despite mismatches
@@ -109,7 +110,69 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ---
 
-## Recent Updates (2025-01-31)
+## Recent Updates (2025-02-02)
+
+### Previous Report Selector - Automatic Population (2025-02-02)
+
+**What Changed:**
+- Previous report selector ComboBox (`cboPrevReport`) now automatically populates with all available reports when a previous study tab is selected
+- Most recent report (by `report_datetime`) is automatically selected as the default
+- Removed dummy ComboBoxItem and simplified XAML binding
+- Clean, direct binding to `SelectedPreviousStudy.Reports` collection
+
+**Why This Matters:**
+- **Automatic Population** - No manual intervention required to see available reports
+- **Smart Default Selection** - Most recent report shown immediately for quick review
+- **Version Control** - Easy access to all report versions (preliminary, final, addendum)
+- **Cleaner Code** - Removed `CompositeCollection` hack and dummy items
+
+**Example Behavior:**
+```
+User selects "CT Chest 2025-01-15" tab
+  ↓
+ComboBox populates with:
+  • CT Chest (2025-01-15 10:30:00) - 2025-01-15 14:30:00 by Dr. Smith  ← Auto-selected (most recent)
+  • CT Chest (2025-01-15 10:30:00) - 2025-01-15 11:45:00 by Dr. Jones
+  • CT Chest (2025-01-15 10:30:00) - (no report dt) by Resident
+  ↓
+Editors populate with Dr. Smith's report (most recent)
+  ↓
+User can select Dr. Jones' report from dropdown to compare versions
+```
+
+**Report Display Format:**
+```
+{Studyname} ({StudyDateTime}) - {ReportDateTime} by {CreatedBy}
+
+Examples:
+  MRI Brain (2025-01-20 14:30:00) - 2025-01-20 16:45:00 by Dr. Wilson
+  CT Abdomen (2025-01-18 09:15:00) - (no report dt) by Dr. Lee
+```
+
+**Key Technical Details:**
+- Reports ordered by `report_datetime DESC NULLS LAST` in database query
+- `PreviousReportChoice.Display` property formats the dropdown text
+- `SelectedPreviousStudy.SelectedReport` drives which report content is shown
+- Two-way binding allows user to change selection and updates editors immediately
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\Controls\PreviousReportEditorPanel.xaml` - Simplified ComboBox binding
+
+**Implementation Already in Place:**
+- `MainViewModel.PreviousStudies.cs` - Tab and report selection management
+- `MainViewModel.PreviousStudiesLoader.cs` - Database loading with proper sorting
+- `RadStudyRepository.cs` - Report query with `ORDER BY report_datetime DESC`
+
+**Documentation:**
+- See `ENHANCEMENT_2025-02-02_PreviousReportSelector.md` for complete feature details
+- See `IMPLEMENTATION_SUMMARY_2025-02-02_PreviousReportSelector.md` for technical implementation
+
+**Benefits:**
+- **User Experience** - Instant access to report history, no extra clicks
+- **Code Quality** - Clean XAML, standard WPF patterns, maintainable
+- **Workflow Efficiency** - Faster navigation, default selection, easy version comparison
+
+---
 
 ### GetCurrent* Operations Now Return Actual Editor Text (2025-01-31)
 
