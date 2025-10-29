@@ -69,16 +69,23 @@ namespace Wysg.Musm.Radium.Controls
             {
                 var line = lines[i];
                 
+                // Detect completion lines (containing "completed successfully" or starting with checkmark)
+                bool isCompletionLine = line.IndexOf("completed successfully", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                        line.TrimStart().StartsWith("?", System.StringComparison.Ordinal);
+                
                 // Detect error lines (containing "error", "failed", "exception", etc.)
-                bool isErrorLine = line.IndexOf("error", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                   line.IndexOf("failed", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                   line.IndexOf("exception", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                   line.IndexOf("validation failed", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                bool isErrorLine = !isCompletionLine && (
+                    line.IndexOf("error", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    line.IndexOf("failed", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    line.IndexOf("exception", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    line.IndexOf("validation failed", System.StringComparison.OrdinalIgnoreCase) >= 0);
 
+                // Choose color: green for completion, red for error, default gray otherwise
                 var run = new Run(line)
                 {
-                    Foreground = isErrorLine ? new SolidColorBrush(Color.FromRgb(0xFF, 0x5A, 0x5A)) : 
-                                               new SolidColorBrush(Color.FromRgb(0xD0, 0xD0, 0xD0))
+                    Foreground = isCompletionLine ? new SolidColorBrush(Color.FromRgb(0x90, 0xEE, 0x90)) :  // Light green
+                                 isErrorLine ? new SolidColorBrush(Color.FromRgb(0xFF, 0x5A, 0x5A)) :       // Red
+                                               new SolidColorBrush(Color.FromRgb(0xD0, 0xD0, 0xD0))        // Default gray
                 };
                 para.Inlines.Add(run);
                 

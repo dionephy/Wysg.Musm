@@ -130,7 +130,7 @@ namespace Wysg.Musm.Radium.ViewModels
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length > 0)
             {
-                _ = RunModulesSequentially(modules);
+                _ = RunModulesSequentially(modules, "Send Report Preview");
             }
             else
             {
@@ -144,7 +144,7 @@ namespace Wysg.Musm.Radium.ViewModels
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length > 0)
             {
-                _ = RunModulesSequentially(modules);
+                _ = RunModulesSequentially(modules, "Send Report");
             }
             else
             {
@@ -347,7 +347,7 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         // Execute modules sequentially to preserve user-defined order
-        private async Task RunModulesSequentially(string[] modules)
+        private async Task RunModulesSequentially(string[] modules, string sequenceName = "automation")
         {
             foreach (var m in modules)
             {
@@ -515,6 +515,9 @@ namespace Wysg.Musm.Radium.ViewModels
                     return; // ABORT entire sequence on any exception (including GetUntilReportDateTime failure)
                 }
             }
+            
+            // NEW: Append green completion message after all modules succeed
+            SetStatus($"? {sequenceName} completed successfully", isError: false);
         }
 
         private async Task RunOpenStudyAsync()
@@ -879,7 +882,7 @@ namespace Wysg.Musm.Radium.ViewModels
             var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.AddStudySequence);
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
-            _ = RunModulesSequentially(modules);
+            _ = RunModulesSequentially(modules, "Add Study");
         }
 
         private void OnRunTestAutomation()
@@ -891,7 +894,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 SetStatus("No Test sequence configured", true);
                 return;
             }
-            _ = RunModulesSequentially(modules);
+            _ = RunModulesSequentially(modules, "Test");
         }
 
         private void OnNewStudy()
@@ -899,34 +902,50 @@ namespace Wysg.Musm.Radium.ViewModels
             var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.NewStudySequence);
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
-            _ = RunModulesSequentially(modules);
+            _ = RunModulesSequentially(modules, "New Study");
         }
 
         // Executes configured modules for OpenStudy shortcut depending on lock/opened state
         public void RunOpenStudyShortcut()
         {
             string seqRaw;
-            if (!PatientLocked) seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenNew);
-            else if (!StudyOpened) seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenAdd);
-            else seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenAfterOpen);
+            string sequenceName;
+            if (!PatientLocked) 
+            {
+                seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenNew);
+                sequenceName = "Shortcut: Open study (new)";
+            }
+            else if (!StudyOpened) 
+            {
+                seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenAdd);
+                sequenceName = "Shortcut: Open study (add)";
+            }
+            else 
+            {
+                seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenAfterOpen);
+                sequenceName = "Shortcut: Open study (after open)";
+            }
 
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
-            _ = RunModulesSequentially(modules);
+            _ = RunModulesSequentially(modules, sequenceName);
         }
 
         // Executes configured modules for SendReport shortcut depending on Reportified state
         public void RunSendReportShortcut()
         {
             string seqRaw;
+            string sequenceName;
             if (Reportified)
             {
                 seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutSendReportReportified);
+                sequenceName = "Shortcut: Send report (reportified)";
                 Debug.WriteLine("[SendReportShortcut] Reportified=true, using ShortcutSendReportReportified sequence");
             }
             else
             {
                 seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutSendReportPreview);
+                sequenceName = "Shortcut: Send report (preview)";
                 Debug.WriteLine("[SendReportShortcut] Reportified=false, using ShortcutSendReportPreview sequence");
             }
 
@@ -936,7 +955,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 SetStatus("No Send Report shortcut sequence configured", true);
                 return;
             }
-            _ = RunModulesSequentially(modules);
+            _ = RunModulesSequentially(modules, sequenceName);
         }
 
         private async Task RunAddPreviousStudyModuleAsync()
