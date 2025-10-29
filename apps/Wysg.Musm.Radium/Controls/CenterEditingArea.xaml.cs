@@ -63,8 +63,13 @@ namespace Wysg.Musm.Radium.Controls
 
     // Current <-> Previous horizontal navigation
             System.Diagnostics.Debug.WriteLine("[CenterEditingArea] Setting up horizontal navigation");
- SetupEditorPair(EditorFindings, EditorPreviousFindings, Key.Right, Key.Left, copyText: false);
-        SetupOneWayEditor(EditorPreviousHeader, EditorFindings, Key.Left, copyText: true);
+          // Alt+Right from EditorFindings -> EditorPreviousFindings (no copy, just navigate)
+            SetupOneWayEditor(EditorFindings, EditorPreviousFindings, Key.Right, copyText: false);
+        // Alt+Left from EditorPreviousFindings -> EditorFindings (WITH copy to bring content back)
+     SetupOneWayEditor(EditorPreviousFindings, EditorFindings, Key.Left, copyText: true);
+      // Alt+Left from EditorPreviousHeader -> EditorFindings (with copy)
+     SetupOneWayEditor(EditorPreviousHeader, EditorFindings, Key.Left, copyText: true);
+// Alt+Left from EditorPreviousConclusion -> EditorFindings (with copy)
             SetupOneWayEditor(EditorPreviousConclusion, EditorFindings, Key.Left, copyText: true);
       
       // Previous report vertical navigation (no copy)
