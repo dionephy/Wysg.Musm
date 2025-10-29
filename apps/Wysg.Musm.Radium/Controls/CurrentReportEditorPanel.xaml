@@ -30,6 +30,7 @@
                 <Button Content="Send Report Preview" Command="{Binding SendReportPreviewCommand}" Margin="2,2,0,2"/>
                 <Button Content="Send Report" Command="{Binding SendReportCommand}" Margin="2,2,0,2"/>
                 <Button Content="Extract Phrases" Click="OnExtractPhrasesClick" Margin="2,2,0,2"/>
+                <Button Content="Save Preorder" Command="{Binding SavePreorderCommand}" Margin="2,2,0,2"/>
                 <Button Content="Test" Command="{Binding TestNewStudyProcedureCommand}" Margin="2,2,0,2"/>
                 <ToggleButton Content="Proofread" Margin="4,2,0,2" 
                               Style="{StaticResource DarkToggleButtonStyle}" 

@@ -25,6 +25,7 @@ namespace Wysg.Musm.Radium.ViewModels
         public ICommand GenerateFieldCommand { get; private set; } = null!;
         public ICommand EditStudyTechniqueCommand { get; private set; } = null!;
         public ICommand EditComparisonCommand { get; private set; } = null!;
+        public ICommand SavePreorderCommand { get; private set; } = null!;
 
         // UI mode toggles
         private bool _proofreadMode; 
@@ -119,6 +120,7 @@ namespace Wysg.Musm.Radium.ViewModels
             GenerateFieldCommand = new DelegateCommand(p => OnGenerateField(p));
             EditStudyTechniqueCommand = new DelegateCommand(_ => OnEditStudyTechnique(), _ => PatientLocked);
             EditComparisonCommand = new DelegateCommand(_ => OnEditComparison(), _ => PatientLocked);
+            SavePreorderCommand = new DelegateCommand(_ => OnSavePreorder());
         }
 
         // ------------- Handlers -------------
@@ -1159,6 +1161,37 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 Debug.WriteLine($"[EditComparison] Error: {ex.Message}");
                 SetStatus("Failed to open comparison editor", true);
+            }
+        }
+
+        private void OnSavePreorder()
+        {
+            try
+            {
+                Debug.WriteLine("[SavePreorder] Saving current findings to findings_preorder JSON field");
+                
+                // Get the raw findings text (unreportified)
+                var findingsText = RawFindingsText;
+                
+                if (string.IsNullOrWhiteSpace(findingsText))
+                {
+                    SetStatus("No findings text available to save as preorder", true);
+                    Debug.WriteLine("[SavePreorder] Findings text is empty");
+                    return;
+                }
+                
+                Debug.WriteLine($"[SavePreorder] Captured findings text: length={findingsText.Length} chars");
+                
+                // Save to FindingsPreorder property (which will trigger JSON update)
+                FindingsPreorder = findingsText;
+                
+                SetStatus($"Pre-order findings saved ({findingsText.Length} chars)");
+                Debug.WriteLine("[SavePreorder] Successfully saved to FindingsPreorder property");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SavePreorder] Error: {ex.Message}");
+                SetStatus("Save preorder operation failed", true);
             }
         }
 

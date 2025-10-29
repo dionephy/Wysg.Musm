@@ -122,6 +122,21 @@ namespace Wysg.Musm.Radium.ViewModels
         // NEW: Radiologist name captured via GetReportedReport module
         private string _reportRadiologist = string.Empty; public string ReportRadiologist { get => _reportRadiologist; set { if (SetProperty(ref _reportRadiologist, value ?? string.Empty)) UpdateCurrentReportJson(); } }
 
+        // NEW: Findings preorder (saved via Save Preorder button)
+        private string _findingsPreorder = string.Empty; 
+        public string FindingsPreorder 
+        { 
+            get => _findingsPreorder; 
+            set 
+            { 
+                if (SetProperty(ref _findingsPreorder, value ?? string.Empty))
+                {
+                    Debug.WriteLine($"[Editor] FindingsPreorder updated: length={value?.Length ?? 0}");
+                    UpdateCurrentReportJson(); 
+                }
+            } 
+        }
+
         // Header fields for real-time formatting
         private string _chiefComplaint = string.Empty; 
         public string ChiefComplaint 
@@ -695,6 +710,9 @@ namespace Wysg.Musm.Radium.ViewModels
                     findings = _reportified ? _rawFindings : (FindingsText ?? string.Empty),
                     conclusion = _reportified ? _rawConclusion : (ConclusionText ?? string.Empty),
                     
+                    // Preorder findings (saved via Save Preorder button)
+                    findings_preorder = _findingsPreorder,
+                    
                     // Metadata and other fields
                     study_remark = _studyRemark,
                     patient_remark = _patientRemark,
@@ -740,6 +758,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 string newComparison = root.TryGetProperty("comparison", out var compEl) ? (compEl.GetString() ?? string.Empty) : string.Empty;
                 string newPatientRemark = root.TryGetProperty("patient_remark", out var pEl) ? (pEl.GetString() ?? string.Empty) : string.Empty;
                 string newReportRadiologist = root.TryGetProperty("report_radiologist", out var rrEl) ? (rrEl.GetString() ?? string.Empty) : string.Empty;
+                string newFindingsPreorder = root.TryGetProperty("findings_preorder", out var fpoEl) ? (fpoEl.GetString() ?? string.Empty) : string.Empty;
                 string newChiefComplaintPf = root.TryGetProperty("chief_complaint_proofread", out var ccpEl) ? (ccpEl.GetString() ?? string.Empty) : string.Empty;
                 string newPatientHistoryPf = root.TryGetProperty("patient_history_proofread", out var phpEl) ? (phpEl.GetString() ?? string.Empty) : string.Empty;
                 string newStudyTechniquesPf = root.TryGetProperty("study_techniques_proofread", out var stpEl) ? (stpEl.GetString() ?? string.Empty) : string.Empty;
@@ -759,6 +778,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 StudyRemark = newStudyRemark; // round-trippable
                 PatientRemark = newPatientRemark; // now round-trippable as well
                 ReportRadiologist = newReportRadiologist; // round-trippable
+                _findingsPreorder = newFindingsPreorder; OnPropertyChanged(nameof(FindingsPreorder)); // round-trippable
                 // Update header component fields
                 _chiefComplaint = newChiefComplaint; OnPropertyChanged(nameof(ChiefComplaint));
                 _patientHistory = newPatientHistory; OnPropertyChanged(nameof(PatientHistory));
