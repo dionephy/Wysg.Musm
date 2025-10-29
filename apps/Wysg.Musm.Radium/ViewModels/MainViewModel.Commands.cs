@@ -632,6 +632,11 @@ namespace Wysg.Musm.Radium.ViewModels
                 await _pacs.SetCurrentStudyInMainScreenAsync();
                 await _pacs.SetPreviousStudyInSubScreenAsync();
                 SetStatus("Screen layout set: current study in main, previous study in sub");
+                
+                // NEW: Request focus on Study Remark textbox in top grid after screen layout is complete
+                // Small delay to allow PACS UI to settle before focusing our textbox
+                await Task.Delay(150);
+                RequestFocusStudyRemark?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {

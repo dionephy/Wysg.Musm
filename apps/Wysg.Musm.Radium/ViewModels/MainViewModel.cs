@@ -108,6 +108,9 @@ namespace Wysg.Musm.Radium.ViewModels
         // Property to communicate focus request to UI (MainWindow listens to property change)
         public bool RequestFocusFindings { get; private set; }
         
+        // NEW: Event to communicate focus request for Study Remark textbox (after SetCurrentInMainScreen completes)
+        public event EventHandler? RequestFocusStudyRemark;
+        
         // Property to communicate caret offset adjustment to EditorFindings
         private int _findingsCaretOffsetAdjustment;
         public int FindingsCaretOffsetAdjustment

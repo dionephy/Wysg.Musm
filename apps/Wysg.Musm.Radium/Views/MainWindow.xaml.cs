@@ -89,6 +89,9 @@ namespace Wysg.Musm.Radium.Views
             // Listen for focus request from ViewModel (e.g., after text sync disable)
             vm.PropertyChanged += OnViewModelPropertyChanged;
             
+            // NEW: Listen for Study Remark focus request from ViewModel (e.g., after SetCurrentInMainScreen completes)
+            vm.RequestFocusStudyRemark += OnRequestFocusStudyRemark;
+            
             try
             {
                 await vm.LoadPhrasesAsync();
@@ -154,6 +157,61 @@ namespace Wysg.Musm.Radium.Views
                 
                 System.Diagnostics.Debug.WriteLine("[MainWindow] Focus operation completed");
             }
+        }
+        
+        private async void OnRequestFocusStudyRemark(object? sender, EventArgs e)
+        {
+            // Focus Study Remark textbox when ViewModel requests it (after SetCurrentInMainScreen completes)
+            System.Diagnostics.Debug.WriteLine("[MainWindow] Focus request received - focusing Study Remark textbox");
+            
+            // Small delay to ensure UI has finished updating before focusing
+            await Task.Delay(50);
+            
+            // Activate this window first to ensure it's in foreground
+            if (!this.IsActive)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] Window not active - calling Activate()");
+                this.Activate();
+            }
+            
+            // Find the Study Remark textbox in the top grid (gridTopChild or gridSideTop depending on orientation)
+            // The ReportInputsAndJsonPanel is used in both locations, so we need to find the active one
+            System.Windows.Controls.TextBox? txtStudyRemark = null;
+            
+            try
+            {
+                // Try to find txtStudyRemark from gridTopChild (portrait orientation)
+                if (gridTopChild != null && gridTopChild.Visibility == Visibility.Visible)
+                {
+                    txtStudyRemark = gridTopChild.FindName("txtStudyRemark") as System.Windows.Controls.TextBox;
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] Found txtStudyRemark in gridTopChild: {txtStudyRemark != null}");
+                }
+                
+                // If not found in gridTopChild, try gridSideTop (landscape orientation)
+                if (txtStudyRemark == null && gridSideTop != null && gridSideTop.Visibility == Visibility.Visible)
+                {
+                    txtStudyRemark = gridSideTop.FindName("txtStudyRemark") as System.Windows.Controls.TextBox;
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] Found txtStudyRemark in gridSideTop: {txtStudyRemark != null}");
+                }
+                
+                // Focus the textbox if found
+                if (txtStudyRemark != null)
+                {
+                    txtStudyRemark.Focus();
+                    txtStudyRemark.CaretIndex = txtStudyRemark.Text?.Length ?? 0; // Move caret to end
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] Focused Study Remark textbox, caret at end (length={txtStudyRemark.Text?.Length ?? 0})");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[MainWindow] Study Remark textbox not found in either panel");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] Error focusing Study Remark textbox: {ex.Message}");
+            }
+            
+            System.Diagnostics.Debug.WriteLine("[MainWindow] Focus Study Remark operation completed");
         }
 
         private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
