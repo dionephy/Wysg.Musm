@@ -113,10 +113,10 @@ namespace Wysg.Musm.Editor.Completion
                     ScrollViewer.SetHorizontalScrollBarVisibility(lb, ScrollBarVisibility.Disabled);
                     ScrollViewer.SetVerticalScrollBarVisibility(lb, ScrollBarVisibility.Auto);
 
-                    // Item template: just the Text (truncate long)
+                    // Item template: bind to Content to show "{trigger} → {description}" for snippets
                     var dt = new DataTemplate();
                     var f = new FrameworkElementFactory(typeof(TextBlock));
-                    f.SetBinding(TextBlock.TextProperty, new Binding("Text"));
+                    f.SetBinding(TextBlock.TextProperty, new Binding("Content")); // ✅ Changed from "Text" to "Content"
                     f.SetValue(TextBlock.MarginProperty, new Thickness(0));
                     f.SetValue(TextBlock.PaddingProperty, new Thickness(0));
                     f.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
