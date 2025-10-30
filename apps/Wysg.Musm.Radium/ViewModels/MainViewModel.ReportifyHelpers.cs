@@ -30,6 +30,8 @@ namespace Wysg.Musm.Radium.ViewModels
             public bool NumberConclusionLinesOnOneParagraph { get; init; } = false;
             // NEW: Capitalize first letter after bullet or conclusion number
             public bool CapitalizeAfterBulletOrNumber { get; init; } = false;
+            // NEW: Consider arrow/bullet as continuation of previous line (not a new numbered sentence)
+            public bool ConsiderArrowBulletContinuation { get; init; } = false;
             public string Arrow { get; init; } = "-->";
             public string ConclusionNumbering { get; init; } = "1."; // seed only; we auto increment
             public string DetailingPrefix { get; init; } = "-";
@@ -89,9 +91,10 @@ namespace Wysg.Musm.Radium.ViewModels
                     CollapseWhitespace = B("collapse_whitespace", true),
                     NumberConclusionParagraphs = B("number_conclusion_paragraphs", true),
                     IndentContinuationLines = B("indent_continuation_lines", true),
-                    // NEW: Parse the two new settings
+                    // NEW: Parse the three new settings
                     NumberConclusionLinesOnOneParagraph = B("number_conclusion_lines_on_one_paragraph", false),
                     CapitalizeAfterBulletOrNumber = B("capitalize_after_bullet_or_number", false),
+                    ConsiderArrowBulletContinuation = B("consider_arrow_bullet_continuation", false),
                     Arrow = Def("arrow", "-->"),
                     ConclusionNumbering = Def("conclusion_numbering", "1."),
                     DetailingPrefix = Def("detailing_prefix", "-")
@@ -283,6 +286,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     // LINE MODE: Number each line as a separate point, remove all blank lines
                     // ONLY applies when there's a single paragraph (no blank line separators)
+                    // NEW: With ConsiderArrowBulletContinuation, lines starting with arrow/bullet are continuations
                     var linesList = input.Split('\n');
                     var resultLines = new List<string>();
                     int num = 1;
@@ -297,10 +301,22 @@ namespace Wysg.Musm.Radium.ViewModels
                             continue; // Don't add blank lines at all in line mode
                         }
                         
+                        // NEW: Check if line starts with arrow or bullet (after trimming)
+                        bool startsWithArrow = cfg.ConsiderArrowBulletContinuation && 
+                                               (trimmed.StartsWith(cfg.Arrow + " ") || trimmed.StartsWith(" " + cfg.Arrow + " "));
+                        bool startsWithBullet = cfg.ConsiderArrowBulletContinuation && 
+                                                (trimmed.StartsWith(cfg.DetailingPrefix + " ") || trimmed.StartsWith(" " + cfg.DetailingPrefix + " "));
+                        bool isContinuation = startsWithArrow || startsWithBullet;
+                        
                         // Check if this line already has a number (from manual entry)
                         bool hasNumber = RxNumbered.IsMatch(trimmed);
                         
-                        if (hasNumber)
+                        if (isContinuation && resultLines.Count > 0)
+                        {
+                            // This is a continuation line (arrow/bullet) - indent it under previous numbered line
+                            resultLines.Add($"   {trimmed}");
+                        }
+                        else if (hasNumber)
                         {
                             // Line already numbered - renumber for consistency
                             var match = RxNumbered.Match(trimmed);
@@ -310,7 +326,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         }
                         else
                         {
-                            // Line not numbered - add number
+                            // Line not numbered and not a continuation - add number
                             resultLines.Add($"{num}. {trimmed}");
                             num++;
                         }

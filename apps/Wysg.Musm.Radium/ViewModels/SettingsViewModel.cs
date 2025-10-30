@@ -83,6 +83,8 @@ namespace Wysg.Musm.Radium.ViewModels
         private bool _numberConclusionLinesOnOneParagraph = false; public bool NumberConclusionLinesOnOneParagraph { get => _numberConclusionLinesOnOneParagraph; set { if (SetProperty(ref _numberConclusionLinesOnOneParagraph, value)) UpdateReportifyJson(); } }
         // NEW: Capitalize first letter after bullet or conclusion number
         private bool _capitalizeAfterBulletOrNumber = false; public bool CapitalizeAfterBulletOrNumber { get => _capitalizeAfterBulletOrNumber; set { if (SetProperty(ref _capitalizeAfterBulletOrNumber, value)) UpdateReportifyJson(); } }
+        // NEW: Consider arrow/bullet as continuation of previous line (not a new numbered sentence)
+        private bool _considerArrowBulletContinuation = false; public bool ConsiderArrowBulletContinuation { get => _considerArrowBulletContinuation; set { if (SetProperty(ref _considerArrowBulletContinuation, value)) UpdateReportifyJson(); } }
         // Removed: PreserveKnownTokens (deprecated)
 
         private string _defaultArrow = "-->"; public string DefaultArrow { get => _defaultArrow; set { if (SetProperty(ref _defaultArrow, value)) UpdateReportifyJson(); } }
@@ -211,6 +213,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 // NEW: Load the new settings
                 NumberConclusionLinesOnOneParagraph = GetBool("number_conclusion_lines_on_one_paragraph", NumberConclusionLinesOnOneParagraph);
                 CapitalizeAfterBulletOrNumber = GetBool("capitalize_after_bullet_or_number", CapitalizeAfterBulletOrNumber);
+                ConsiderArrowBulletContinuation = GetBool("consider_arrow_bullet_continuation", ConsiderArrowBulletContinuation);
                 // Deprecated: ignore preserve_known_tokens from stored JSON
                 DefaultArrow = GetDef("arrow", DefaultArrow);
                 DefaultConclusionNumbering = GetDef("conclusion_numbering", DefaultConclusionNumbering);
@@ -351,6 +354,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 // NEW: Include the new settings
                 number_conclusion_lines_on_one_paragraph = NumberConclusionLinesOnOneParagraph,
                 capitalize_after_bullet_or_number = CapitalizeAfterBulletOrNumber,
+                consider_arrow_bullet_continuation = ConsiderArrowBulletContinuation,
                 defaults = new
                 {
                     arrow = DefaultArrow,

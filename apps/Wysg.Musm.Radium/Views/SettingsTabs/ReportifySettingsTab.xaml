@@ -97,6 +97,9 @@
                             <CheckBox Content="On one paragraph, number each line" IsChecked="{Binding NumberConclusionLinesOnOneParagraph}"/>
                             <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="number_conclusion_lines_on_one_paragraph"/>
                         </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="40,0,0,0">
+                            <CheckBox Content="Consider arrow and bullet continuation of line" IsChecked="{Binding ConsiderArrowBulletContinuation}"/>
+                        </StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <CheckBox Content="Indent continuation lines" IsChecked="{Binding IndentContinuationLines}"/>
                             <Button Content="Hint" Command="{Binding ShowReportifySampleCommand}" CommandParameter="indent_continuation_lines"/>
