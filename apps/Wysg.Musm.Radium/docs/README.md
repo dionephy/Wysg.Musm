@@ -13,6 +13,7 @@
 
 ### Recent Major Features (2025-02-02)
 
+- **[MAINTENANCE_2025-02-02_DebugLogCleanup.md](MAINTENANCE_2025-02-02_DebugLogCleanup.md)** - Removed excessive debug logging from editor hot paths to improve input responsiveness (Performance improvement)
 - **[ENHANCEMENT_2025-02-02_PreviousReportSelector.md](ENHANCEMENT_2025-02-02_PreviousReportSelector.md)** - Previous report selector ComboBox now auto-populates with all reports for selected study, with most recent report selected by default
 - **[FIX_2025-01-31_GetCurrentEditorOperationsActualText.md](FIX_2025-01-31_GetCurrentEditorOperationsActualText.md)** - Fixed GetCurrent* operations to return actual editor text instead of bound property values (now returns proofread/reportified text when toggles are ON)
 - **[FIX_2025-01-30_CompletionFilterTriggerTextOnly.md](FIX_2025-01-30_CompletionFilterTriggerTextOnly.md)** - Fixed completion window to filter only on trigger text, not description (e.g., "ngi" typed no longer matches "noaa → normal angio")

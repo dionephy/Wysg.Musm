@@ -23,8 +23,6 @@ namespace Wysg.Musm.Radium.ViewModels
             get => _reportified; 
             set 
             { 
-                Debug.WriteLine($"[Editor.Reportified] Setter called: old={_reportified}, new={value}"); 
-                
                 // CRITICAL FIX: Always raise PropertyChanged event first to ensure UI synchronization
                 // This is essential for automation modules that set Reportified=true
                 bool actualChanged = (_reportified != value);
@@ -34,7 +32,6 @@ namespace Wysg.Musm.Radium.ViewModels
                 
                 // Always notify, even if value didn't change (ensures UI syncs after automation)
                 OnPropertyChanged(nameof(Reportified));
-                Debug.WriteLine($"[Editor.Reportified] PropertyChanged raised, _reportified is now={_reportified}");
                 
                 // Notify display properties since reportified state affects them
                 OnPropertyChanged(nameof(FindingsDisplay));
@@ -46,10 +43,6 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     ToggleReportified(value);
                 }
-                else
-                {
-                    Debug.WriteLine($"[Editor.Reportified] Value didn't change, skipping transformation");
-                }
             } 
         }
 
@@ -60,10 +53,8 @@ namespace Wysg.Musm.Radium.ViewModels
             get => _studyRemark; 
             set 
             { 
-                Debug.WriteLine($"[Editor] StudyRemark setter called: old length={_studyRemark?.Length ?? 0}, new length={value?.Length ?? 0}");
                 if (SetProperty(ref _studyRemark, value ?? string.Empty)) 
                 {
-                    Debug.WriteLine($"[Editor] StudyRemark property changed, value='{_studyRemark}'");
                     UpdateCurrentReportJson(); 
                 }
             } 
@@ -75,19 +66,9 @@ namespace Wysg.Musm.Radium.ViewModels
             get => _patientRemark; 
             set 
             { 
-                Debug.WriteLine($"[Editor] PatientRemark setter called: old length={_patientRemark?.Length ?? 0}, new length={value?.Length ?? 0}");
-                Debug.WriteLine($"[Editor] PatientRemark new value first 100 chars: '{(value?.Length > 100 ? value.Substring(0, 100) : value ?? "(null)")}'");
-                
                 if (SetProperty(ref _patientRemark, value ?? string.Empty)) 
                 {
-                    Debug.WriteLine($"[Editor] PatientRemark property changed successfully!");
-                    Debug.WriteLine($"[Editor] PatientRemark backing field now has length={_patientRemark.Length}");
-                    Debug.WriteLine($"[Editor] PatientRemark first line: '{(_patientRemark.Contains('\n') ? _patientRemark.Substring(0, _patientRemark.IndexOf('\n')) : _patientRemark)}'");
                     UpdateCurrentReportJson(); 
-                }
-                else
-                {
-                    Debug.WriteLine($"[Editor] PatientRemark SetProperty returned false (value unchanged)");
                 }
             } 
         }
@@ -131,7 +112,6 @@ namespace Wysg.Musm.Radium.ViewModels
             { 
                 if (SetProperty(ref _findingsPreorder, value ?? string.Empty))
                 {
-                    Debug.WriteLine($"[Editor] FindingsPreorder updated: length={value?.Length ?? 0}");
                     UpdateCurrentReportJson(); 
                 }
             } 
@@ -144,10 +124,8 @@ namespace Wysg.Musm.Radium.ViewModels
             get => _chiefComplaint; 
             set 
             { 
-                Debug.WriteLine($"[Editor] ChiefComplaint setter called with value: {value?.Length ?? 0} chars");
                 if (SetProperty(ref _chiefComplaint, value ?? string.Empty)) 
                 { 
-                    Debug.WriteLine("[Editor] ChiefComplaint property changed, calling updates...");
                     SafeUpdateJson(); 
                     SafeUpdateHeader();
                     // NEW: Notify computed display property
@@ -258,10 +236,8 @@ namespace Wysg.Musm.Radium.ViewModels
             get => _patientHistory; 
             set 
             { 
-                Debug.WriteLine($"[Editor] PatientHistory setter called with value: {value?.Length ?? 0} chars");
                 if (SetProperty(ref _patientHistory, value ?? string.Empty)) 
                 { 
-                    Debug.WriteLine("[Editor] PatientHistory property changed, calling updates...");
                     SafeUpdateJson(); 
                     SafeUpdateHeader();
                     // NEW: Notify computed display property
@@ -277,10 +253,8 @@ namespace Wysg.Musm.Radium.ViewModels
             get => _studyTechniques; 
             set 
             { 
-                Debug.WriteLine($"[Editor] StudyTechniques setter called with value: {value?.Length ?? 0} chars");
                 if (SetProperty(ref _studyTechniques, value ?? string.Empty)) 
                 { 
-                    Debug.WriteLine("[Editor] StudyTechniques property changed, calling updates...");
                     SafeUpdateJson(); 
                     SafeUpdateHeader();
                     // NEW: Notify computed display property
@@ -296,10 +270,8 @@ namespace Wysg.Musm.Radium.ViewModels
             get => _comparison; 
             set 
             { 
-                Debug.WriteLine($"[Editor] Comparison setter called with value: {value?.Length ?? 0} chars");
                 if (SetProperty(ref _comparison, value ?? string.Empty)) 
                 { 
-                    Debug.WriteLine("[Editor] Comparison property changed, calling updates...");
                     SafeUpdateJson(); 
                     SafeUpdateHeader();
                     // NEW: Notify computed display property
@@ -444,28 +416,24 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     var proofreadWithPlaceholders = ApplyProofreadPlaceholders(_findingsProofread);
                     result = ApplyReportifyBlock(proofreadWithPlaceholders, false);
-                    Debug.WriteLine($"[FindingsDisplay] BOTH ON, returning reportified(proofread+placeholders) length={result?.Length ?? 0}");
                 }
                 // PRIORITY 2: Only Reportified is ON
                 // Show reportified version of RAW text
                 else if (_reportified)
                 {
                     result = _findingsText; // This already contains the reportified version of raw text
-                    Debug.WriteLine($"[FindingsDisplay] Reportified=true only, returning _findingsText length={result?.Length ?? 0}");
                 }
                 // PRIORITY 3: Only ProofreadMode is ON
                 // Show proofread text with placeholders as-is (not reportified)
                 else if (ProofreadMode && !string.IsNullOrWhiteSpace(_findingsProofread))
                 {
                     result = ApplyProofreadPlaceholders(_findingsProofread);
-                    Debug.WriteLine($"[FindingsDisplay] ProofreadMode=true only, returning _findingsProofread+placeholders length={result?.Length ?? 0}");
                 }
                 // PRIORITY 4: Both OFF
                 // Show raw text
                 else
                 {
                     result = _findingsText;
-                    Debug.WriteLine($"[FindingsDisplay] Both OFF, returning _findingsText length={result?.Length ?? 0}");
                 }
                 return result;
             }
@@ -483,28 +451,24 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     var proofreadWithPlaceholders = ApplyProofreadPlaceholders(_conclusionProofread);
                     result = ApplyReportifyConclusion(proofreadWithPlaceholders);
-                    Debug.WriteLine($"[ConclusionDisplay] BOTH ON, returning reportified(proofread+placeholders) length={result?.Length ?? 0}");
                 }
                 // PRIORITY 2: Only Reportified is ON
                 // Show reportified version of RAW text
                 else if (_reportified)
                 {
                     result = _conclusionText; // This already contains the reportified version of raw text
-                    Debug.WriteLine($"[ConclusionDisplay] Reportified=true only, returning _conclusionText length={result?.Length ?? 0}");
                 }
                 // PRIORITY 3: Only ProofreadMode is ON
                 // Show proofread text with placeholders as-is (not reportified)
                 else if (ProofreadMode && !string.IsNullOrWhiteSpace(_conclusionProofread))
                 {
                     result = ApplyProofreadPlaceholders(_conclusionProofread);
-                    Debug.WriteLine($"[ConclusionDisplay] ProofreadMode=true only, returning _conclusionProofread+placeholders length={result?.Length ?? 0}");
                 }
                 // PRIORITY 4: Both OFF
                 // Show raw text
                 else
                 {
                     result = _conclusionText;
-                    Debug.WriteLine($"[ConclusionDisplay] Both OFF, returning _conclusionText length={result?.Length ?? 0}");
                 }
                 return result;
             }
@@ -515,8 +479,6 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private void ToggleReportified(bool value)
         {
-            Debug.WriteLine($"[Editor.ToggleReportified] START: applying transformations for reportified={value}");
-            
             if (value)
             {
                 CaptureRawIfNeeded();
@@ -538,8 +500,6 @@ namespace Wysg.Musm.Radium.ViewModels
             // CRITICAL FIX: Notify the raw editable properties so top grid textboxes update
             OnPropertyChanged(nameof(RawFindingsTextEditable));
             OnPropertyChanged(nameof(RawConclusionTextEditable));
-            
-            Debug.WriteLine($"[Editor.ToggleReportified] END: transformations applied");
         }
         private void CaptureRawIfNeeded()
         {
@@ -961,41 +921,19 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
         
-        // Safe wrappers that check initialization state
+        // Safe wrappers that check initialization state (removed excessive logging)
         private void SafeUpdateJson()
         {
-            if (!_isInitialized)
-            {
-                Debug.WriteLine("[Editor] SafeUpdateJson: Skipped (not initialized)");
-                return;
-            }
-            try 
-            { 
-                Debug.WriteLine("[Editor] SafeUpdateJson: Executing UpdateCurrentReportJson");
-                UpdateCurrentReportJson(); 
-            } 
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Editor] SafeUpdateJson EXCEPTION: {ex.GetType().Name} - {ex.Message}");
-            }
+            if (!_isInitialized) return;
+            try { UpdateCurrentReportJson(); } 
+            catch { }
         }
 
         private void SafeUpdateHeader()
         {
-            if (!_isInitialized)
-            {
-                Debug.WriteLine("[Editor] SafeUpdateHeader: Skipped (not initialized)");
-                return;
-            }
-            try 
-            { 
-                Debug.WriteLine("[Editor] SafeUpdateHeader: Executing UpdateFormattedHeader");
-                UpdateFormattedHeader(); 
-            } 
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Editor] SafeUpdateHeader EXCEPTION: {ex.GetType().Name} - {ex.Message}");
-            }
+            if (!_isInitialized) return;
+            try { UpdateFormattedHeader(); } 
+            catch { }
         }
 
         // Real-time header formatting based on component fields

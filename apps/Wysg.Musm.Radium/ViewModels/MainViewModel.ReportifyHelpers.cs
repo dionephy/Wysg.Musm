@@ -46,9 +46,7 @@ namespace Wysg.Musm.Radium.ViewModels
             // This ensures settings changes are applied immediately
             if (json != _reportifyConfigJsonApplied || _reportifyConfig == null)
             {
-                Debug.WriteLine($"[ReportifyConfig] Reloading - JSON changed or config null");
-                Debug.WriteLine($"[ReportifyConfig] Old JSON length: {_reportifyConfigJsonApplied?.Length ?? 0}");
-                Debug.WriteLine($"[ReportifyConfig] New JSON length: {json?.Length ?? 0}");
+                // Config needs update
             }
             else
             {
@@ -58,7 +56,6 @@ namespace Wysg.Musm.Radium.ViewModels
             
             if (json == null)
             {
-                Debug.WriteLine("[ReportifyConfig] JSON is null, using defaults");
                 _reportifyConfig = new ReportifyConfig();
                 _reportifyConfigJsonApplied = null;
                 return;
@@ -101,13 +98,6 @@ namespace Wysg.Musm.Radium.ViewModels
                 };
                 
                 _reportifyConfigJsonApplied = json;
-                
-                // Debug log loaded settings
-                Debug.WriteLine($"[ReportifyConfig] Loaded settings:");
-                Debug.WriteLine($"[ReportifyConfig]   SpaceBeforeArrows: {_reportifyConfig.SpaceBeforeArrows}");
-                Debug.WriteLine($"[ReportifyConfig]   SpaceAfterArrows: {_reportifyConfig.SpaceAfterArrows}");
-                Debug.WriteLine($"[ReportifyConfig]   SpaceBeforeBullets: {_reportifyConfig.SpaceBeforeBullets}");
-                Debug.WriteLine($"[ReportifyConfig]   SpaceAfterBullets: {_reportifyConfig.SpaceAfterBullets}");
             }
             catch (Exception ex)
             {
@@ -289,9 +279,6 @@ namespace Wysg.Musm.Radium.ViewModels
                 var hasMulipleParagraphs = input.Contains("\n\n");
                 var effectiveLineMode = cfg.NumberConclusionLinesOnOneParagraph && !hasMulipleParagraphs;
                 
-                Debug.WriteLine($"[Reportify] Conclusion numbering mode: LineMode={cfg.NumberConclusionLinesOnOneParagraph}, HasMultipleParagraphs={hasMulipleParagraphs}, EffectiveMode={(effectiveLineMode ? "LINE" : "PARAGRAPH")}");
-                Debug.WriteLine($"[Reportify] Input before numbering (length={input.Length}):\n{input}");
-                
                 if (effectiveLineMode)
                 {
                     // LINE MODE: Number each line as a separate point, remove all blank lines
@@ -299,8 +286,6 @@ namespace Wysg.Musm.Radium.ViewModels
                     var linesList = input.Split('\n');
                     var resultLines = new List<string>();
                     int num = 1;
-                    
-                    Debug.WriteLine($"[Reportify] LINE MODE: Split into {linesList.Length} lines");
                     
                     foreach (var line in linesList)
                     {
@@ -332,7 +317,6 @@ namespace Wysg.Musm.Radium.ViewModels
                     }
                     
                     input = string.Join("\n", resultLines);
-                    Debug.WriteLine($"[Reportify] LINE MODE result: {resultLines.Count} numbered lines");
                 }
                 else
                 {
@@ -343,19 +327,14 @@ namespace Wysg.Musm.Radium.ViewModels
                     int num = 1;
                     var resultParas = new List<string>();
                     
-                    Debug.WriteLine($"[Reportify] PARAGRAPH MODE: Split into {paras.Length} paragraphs");
-                    
                     for (int pIdx = 0; pIdx < paras.Length; pIdx++)
                     {
                         var para = paras[pIdx];
                         var trimmed = para.Trim();
                         
-                        Debug.WriteLine($"[Reportify] Para {pIdx + 1}: '{trimmed.Substring(0, Math.Min(30, trimmed.Length))}...' (length={trimmed.Length})");
-                        
                         // Empty paragraph (blank line) - skip it
                         if (string.IsNullOrWhiteSpace(trimmed))
                         {
-                            Debug.WriteLine($"[Reportify] Para {pIdx + 1}: SKIPPED (blank)");
                             continue;
                         }
                         
@@ -363,14 +342,10 @@ namespace Wysg.Musm.Radium.ViewModels
                         var paraLines = trimmed.Split('\n');
                         var formattedLines = new List<string>();
                         
-                        Debug.WriteLine($"[Reportify] Para {pIdx + 1}: Contains {paraLines.Length} lines");
-                        
                         for (int i = 0; i < paraLines.Length; i++)
                         {
                             var line = paraLines[i].Trim();
                             if (string.IsNullOrWhiteSpace(line)) continue;
-                            
-                            Debug.WriteLine($"[Reportify] Para {pIdx + 1}, Line {i + 1}: '{line.Substring(0, Math.Min(20, line.Length))}'");
                             
                             if (i == 0)
                             {
@@ -382,13 +357,11 @@ namespace Wysg.Musm.Radium.ViewModels
                                     line = line.Substring(match.Length);
                                 }
                                 formattedLines.Add($"{num}. {line}");
-                                Debug.WriteLine($"[Reportify] Para {pIdx + 1}, Line {i + 1}: NUMBERED as {num}");
                             }
                             else
                             {
                                 // Continuation lines get indented (preserve any leading spaces from arrows/bullets)
                                 formattedLines.Add($"   {line}");
-                                Debug.WriteLine($"[Reportify] Para {pIdx + 1}, Line {i + 1}: INDENTED");
                             }
                         }
                         
@@ -401,10 +374,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     
                     // Join with double newlines to preserve paragraph separation
                     input = string.Join("\n\n", resultParas);
-                    Debug.WriteLine($"[Reportify] PARAGRAPH MODE result: {resultParas.Count} numbered paragraphs");
                 }
-                
-                Debug.WriteLine($"[Reportify] Output after numbering (length={input.Length}):\n{input}");
             }
 
             return input;
