@@ -386,9 +386,9 @@ public sealed class UiBookmarks
         catch { return (IntPtr.Zero, null); }
     }
 
-    // FIX: Reduced retry count to minimize wasted delays (was 2, now 1 = max 1 retry)
-    private const int StepRetryCount = 1; // total attempts per step = 1 + StepRetryCount
-    private const int StepRetryDelayMs = 150;
+    // FIX: Reduced retry count to minimize wasted delays (single attempt only, no retries)
+    private const int StepRetryCount = 0; // total attempts per step = 1 + StepRetryCount
+    private const int StepRetryDelayMs = 50; // reduced from 150ms for faster failure
 
     // Core walker used by ResolvePath / TryResolveWithTrace / ResolveBookmark
     private static (AutomationElement? final, List<AutomationElement> path) Walk(AutomationElement start, Bookmark b, List<Node> nodes, StringBuilder? trace)
@@ -523,16 +523,30 @@ public sealed class UiBookmarks
                     queryTimeMs += attemptSw.ElapsedMilliseconds;
                     trace?.AppendLine($"Step {i}: Attempt {attempt + 1}/{StepRetryCount + 1} - Find failed after {attemptSw.ElapsedMilliseconds} ms: {ex.Message}");
                     
-                    // FIX: Detect "method not supported" error and skip retries
-                    if (ex.Message != null && (ex.Message.Contains("not supported", StringComparison.OrdinalIgnoreCase) ||
-                                               ex.Message.Contains("not implemented", StringComparison.OrdinalIgnoreCase)))
+                    // FIX: Detect PropertyNotSupportedException and "method not supported" errors
+                    // IMPORTANT: Only skip fallbacks at step 0 (process doesn't exist scenario)
+                    // For child steps (i > 0), we still want to try manual walker as element may exist
+                    if (ex is FlaUI.Core.Exceptions.PropertyNotSupportedException ||
+                        (ex.Message != null && (ex.Message.Contains("not supported", StringComparison.OrdinalIgnoreCase) ||
+                                                 ex.Message.Contains("not implemented", StringComparison.OrdinalIgnoreCase))))
                     {
-                        trace?.AppendLine($"Step {i}: Detected 'not supported' error, skipping remaining retries and using manual walker");
-                        skipRetries = true;
+                        if (i == 0)
+                        {
+                            // At root level - likely process doesn't exist, skip everything
+                            trace?.AppendLine($"Step {i}: Detected unsupported property/method error at root level, skipping retries and fallbacks");
+                            skipRetries = true;
+                        }
+                        else
+                        {
+                            // At child level - method not supported but element may exist, try manual walker
+                            trace?.AppendLine($"Step {i}: Detected unsupported property/method error, will skip retries but try manual walker");
+                            skipRetries = true;
+                            // Don't set skipFallbacks - let manual walker run for child steps
+                        }
                     }
-                    
-                    // VS sometimes throws on Children at root; fallback to descendant scan once
-                    if (i == 0)
+    
+                    // VS sometimes throws on Children at root; fallback to descendant scan once (only if not permanent error)
+                    if (i == 0 && !skipRetries)
                     {
                         try
                         {
@@ -541,9 +555,9 @@ public sealed class UiBookmarks
                         }
                         catch { }
                     }
-                    
-                    // FIX: Break early if we detected a permanent error
-                    if (skipRetries)
+    
+                    // FIX: Break early if we detected a permanent error at root level
+                    if (skipRetries && i == 0)
                         break;
                 }
 
@@ -565,16 +579,23 @@ public sealed class UiBookmarks
 
             if (matches.Length == 0)
             {
-                // Manual walk (Raw then Control)
-                matches = ManualFindMatches(current, node, node.Scope, automation, preferRaw: true);
-                if (matches.Length == 0)
+                // FIX: Skip expensive fallbacks only if permanent error at ROOT level (i=0)
+                // For child steps, always try manual walker even with PropertyNotSupportedException
+                bool skipFallbacks = (i == 0 && skipRetries);
+                
+                // Manual walk (Raw then Control) - only skip if root-level permanent error
+                if (!skipFallbacks)
                 {
-                    var ctrl = ManualFindMatches(current, node, node.Scope, automation, preferRaw: false);
-                    if (ctrl.Length > 0) matches = ctrl;
+                    matches = ManualFindMatches(current, node, node.Scope, automation, preferRaw: true);
+                    if (matches.Length == 0)
+                    {
+                        var ctrl = ManualFindMatches(current, node, node.Scope, automation, preferRaw: false);
+                        if (ctrl.Length > 0) matches = ctrl;
+                    }
                 }
 
-                // Relax ControlType if requested
-                if (matches.Length == 0 && node.UseControlTypeId)
+                // Relax ControlType if requested - only if not root-level permanent error
+                if (matches.Length == 0 && !skipFallbacks && node.UseControlTypeId)
                 {
                     var relaxed = CloneWithoutControlType(node);
                     var relaxedCond = BuildAndCondition(relaxed, cf);
@@ -663,7 +684,16 @@ public sealed class UiBookmarks
             {
                 sw.Stop();
                 sb.AppendLine($"Attach to '{b.ProcessName}' failed: {ex.Message} ({sw.ElapsedMilliseconds} ms)");
-            }
+                System.Diagnostics.Debug.WriteLine($"Attach to '{b.ProcessName}' failed: {ex.Message} ({sw.ElapsedMilliseconds} ms)");
+      
+      // FIX: Early exit when process doesn't exist - skip all fallback strategies
+        if (ex.Message != null && ex.Message.Contains("Unable to find process", StringComparison.OrdinalIgnoreCase))
+ {
+sb.AppendLine("Process not found - skipping all fallback root discovery strategies");
+            attachInfo = sb.ToString().TrimEnd();
+      return Array.Empty<AutomationElement>();
+   }
+    }
 
             var desktop = automation.GetDesktop();
             var typeCond = cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window)
@@ -687,6 +717,13 @@ public sealed class UiBookmarks
                         for (int i = 1; i < pids.Count; i++) pidCond = pidCond.Or(cf.ByProcessId(pids[i]));
                         roots = desktop.FindAllChildren(pidCond.And(typeCond));
                         sb.AppendLine($"By name roots: {roots.Length}");
+                    }
+                    else
+                    {
+                        // FIX: No process found by name - skip expensive desktop-wide scan
+                        sb.AppendLine("No process found by name - skipping desktop-wide root scan");
+                        attachInfo = sb.ToString().TrimEnd();
+                        return Array.Empty<AutomationElement>();
                     }
                 }
                 catch (Exception ex) { sb.AppendLine("Name roots failed: " + ex.Message); }
