@@ -47,19 +47,20 @@
     
     <!-- True Grid-Based Row Layout for Previous Reports -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid>
-            <Grid.ColumnDefinitions>
-               <ColumnDefinition Width="1*" MinWidth="200"/>
-    <ColumnDefinition Width="2"/>
-          <ColumnDefinition Width="1*" MinWidth="200"/>
-     <ColumnDefinition Width="2"/>
-                <ColumnDefinition Width="1*" MinWidth="200"/>
-            </Grid.ColumnDefinitions>
+        <Border BorderBrush="#3F3F46" BorderThickness="3" CornerRadius="2">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                   <ColumnDefinition Width="1*" MinWidth="200"/>
+        <ColumnDefinition Width="2"/>
+              <ColumnDefinition Width="1*" MinWidth="200"/>
+                    <ColumnDefinition Width="2"/>
+                    <ColumnDefinition Width="1*" MinWidth="200"/>
+                </Grid.ColumnDefinitions>
             
        <Grid.RowDefinitions>
       <!-- Row 0: Headers -->
           <RowDefinition Height="Auto"/>
-          <!-- Row 1: Header and Findings / Proofread header section -->
+            <!-- Row 1: Header and Findings / Proofread header section -->
       <RowDefinition Height="Auto"/>
     <!-- Row 2: Header and Findings textboxes -->
          <RowDefinition Height="Auto"/>
@@ -88,9 +89,26 @@
 
             <!-- Row 0: Column Headers -->
             <TextBlock Grid.Row="0" Grid.Column="0" Text="Previous Report" FontWeight="Bold" Margin="6,0,0,8"/>
- <TextBlock Grid.Row="0" Grid.Column="2" Text="Proofread" FontWeight="Bold" Margin="6,0,0,8"/>
-
-    <TextBlock Grid.Row="1" Grid.Column="0" Text="Previous Header and Findings" Margin="6,0,0,2"/>
+            
+            <!-- Proofread column header with toggle button - using Grid layout -->
+            <Grid Grid.Row="0" Grid.Column="2" Margin="6,0,6,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Proofread" FontWeight="Bold"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <ToggleButton x:Name="btnToggleJson" Content="&#9654;" Width="24" Height="24" FontSize="10" Padding="2"
+                                  Style="{StaticResource DarkToggleButtonStyle}"
+                                  IsChecked="{Binding IsJsonCollapsed, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, Converter={StaticResource InverseBooleanConverter}}"
+                                  ToolTip="Toggle JSON panel visibility"/>
+                    <TextBlock Text="JSON" FontWeight="Bold" VerticalAlignment="Center" Margin="4,0,0,0" FontSize="10"/>
+                </StackPanel>
+            </Grid>
+ 
+            <!-- Row 1: Header and Findings / Proofread header section -->
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Previous Header and Findings" Margin="6,0,0,2"/>
             
       <!-- Row 2: Header and Findings Textboxes -->
             <TextBox x:Name="txtHeaderAndFindings" Grid.Row="2" Grid.Column="0"
@@ -204,7 +222,7 @@
 
          <!-- GridSplitters -->
         <GridSplitter Grid.Row="0" Grid.RowSpan="13" Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
-     <GridSplitter Grid.Row="0" Grid.RowSpan="13" Grid.Column="3" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+     <GridSplitter x:Name="JsonSplitter" Grid.Row="0" Grid.RowSpan="13" Grid.Column="3" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
 
             <!-- Column 4: JSON (spans all rows) -->
     <TextBox x:Name="txtJson" Grid.Row="0" Grid.RowSpan="13" Grid.Column="4" 
@@ -212,5 +230,6 @@
       Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" 
     AcceptsReturn="True" VerticalAlignment="Stretch"/>
       </Grid>
+        </Border>
     </ScrollViewer>
 </UserControl>

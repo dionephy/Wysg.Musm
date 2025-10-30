@@ -14,6 +14,8 @@ namespace Wysg.Musm.Radium.Controls
             {
                 ApplyReverse(Reverse);
                 SetupAltArrowNavigation();
+                // Apply default collapsed state after control is loaded
+                UpdateJsonColumnVisibility(IsJsonCollapsed);
             };
         }
 
@@ -26,7 +28,46 @@ namespace Wysg.Musm.Radium.Controls
             set => SetValue(ReverseProperty, value);
         }
 
-        // Dependency property for the target EditorControl (EditorFindings from CurrentReportEditorPanel)
+        // NEW: IsJsonCollapsed dependency property with default value true
+        public static readonly DependencyProperty IsJsonCollapsedProperty =
+            DependencyProperty.Register(nameof(IsJsonCollapsed), typeof(bool), typeof(ReportInputsAndJsonPanel), 
+                new PropertyMetadata(true, OnIsJsonCollapsedChanged));
+
+        public bool IsJsonCollapsed
+        {
+            get => (bool)GetValue(IsJsonCollapsedProperty);
+            set => SetValue(IsJsonCollapsedProperty, value);
+        }
+
+        private static void OnIsJsonCollapsedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is ReportInputsAndJsonPanel self && e.NewValue is bool collapsed)
+            {
+                self.UpdateJsonColumnVisibility(collapsed);
+            }
+        }
+
+        private void UpdateJsonColumnVisibility(bool collapsed)
+        {
+            if (JsonSplitter == null || txtCurrentJson == null || btnToggleJson == null)
+                return;
+
+            if (collapsed)
+            {
+                // Collapsed: just hide the TextBox and splitter, leave column structure intact
+                JsonSplitter.Visibility = Visibility.Collapsed;
+                txtCurrentJson.Visibility = Visibility.Collapsed;
+                btnToggleJson.Content = "\u25B6"; // Right arrow (expand)
+            }
+            else
+            {
+                // Expanded: show the TextBox and splitter
+                JsonSplitter.Visibility = Visibility.Visible;
+                txtCurrentJson.Visibility = Visibility.Visible;
+                btnToggleJson.Content = "\u25C0"; // Left arrow (collapse)
+            }
+        }
+
         public static readonly DependencyProperty TargetEditorProperty =
   DependencyProperty.Register(nameof(TargetEditor), typeof(EditorControl), typeof(ReportInputsAndJsonPanel), 
          new PropertyMetadata(null, OnTargetEditorChanged));

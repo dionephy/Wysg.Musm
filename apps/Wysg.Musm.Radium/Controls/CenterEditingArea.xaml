@@ -7,26 +7,28 @@
              mc:Ignorable="d" 
              d:DesignHeight="700" d:DesignWidth="1000"
              Background="#181818">
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="2"/>
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+    <Border BorderBrush="#3F3F46" BorderThickness="3" CornerRadius="2">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="2"/>
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-        <!-- Left: Current report editing panel -->
-        <rad:CurrentReportEditorPanel x:Name="CurrentReportPanel" 
-                                      Grid.Column="0" 
-                                      ExtractPhrasesClick="OnExtractPhrasesClick"/>
+            <!-- Left: Current report editing panel -->
+            <rad:CurrentReportEditorPanel x:Name="CurrentReportPanel" 
+                                          Grid.Column="0" 
+                                          ExtractPhrasesClick="OnExtractPhrasesClick"/>
 
-        <!-- Vertical splitter -->
-        <GridSplitter Grid.Column="1" 
-                      HorizontalAlignment="Stretch" 
-                      Width="2" 
-                      Background="#2D2D30"/>
+            <!-- Vertical splitter -->
+            <GridSplitter Grid.Column="1" 
+                          HorizontalAlignment="Stretch" 
+                          Width="2" 
+                          Background="#2D2D30"/>
 
-        <!-- Right: Previous report editing panel -->
-        <rad:PreviousReportEditorPanel x:Name="PreviousReportPanel" 
-                                       Grid.Column="2"/>
-    </Grid>
+            <!-- Right: Previous report editing panel -->
+            <rad:PreviousReportEditorPanel x:Name="PreviousReportPanel" 
+                                           Grid.Column="2"/>
+        </Grid>
+    </Border>
 </UserControl>

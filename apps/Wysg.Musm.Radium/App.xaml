@@ -29,6 +29,9 @@
             
             <!-- Reusable visibility converter (shared) -->
             <conv:CountToVisibilityConverter x:Key="CountToVisibilityConverter" Minimum="2"/>
+            
+            <!-- Reusable boolean inverter converter -->
+            <conv:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
 
             <ResourceDictionary.MergedDictionaries>
                 <!-- Global dark theme palette and control styles -->

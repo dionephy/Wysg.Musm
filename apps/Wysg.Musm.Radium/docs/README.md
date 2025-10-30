@@ -13,6 +13,7 @@
 
 ### Recent Major Features (2025-02-02)
 
+- **[ENHANCEMENT_2025-02-02_CollapsibleJsonPanels.md](ENHANCEMENT_2025-02-02_CollapsibleJsonPanels.md)** - Made JSON panels in ReportInputsAndJsonPanel and PreviousReportTextAndJsonPanel collapsible with toggle button, default to collapsed state for better screen space utilization
 - **[PERFORMANCE_2025-02-02_AddPreviousStudyEarlyExit.md](PERFORMANCE_2025-02-02_AddPreviousStudyEarlyExit.md)** - Optimized duplicate study detection in AddPreviousStudy from 5.3s to <400ms (93% faster) by moving duplicate check before unnecessary metadata fetches
 - **[ENHANCEMENT_2025-02-02_PacsModuleTimingLogs.md](ENHANCEMENT_2025-02-02_PacsModuleTimingLogs.md)** - Added execution time measurement to PACS module logs (e.g., "END: GetSelectedStudynameFromRelatedStudies (543 ms)") for performance monitoring and debugging
 - **[PERFORMANCE_2025-02-02_AddPreviousStudyRetryReduction.md](PERFORMANCE_2025-02-02_AddPreviousStudyRetryReduction.md)** - Reduced excessive retries in AddPreviousStudy module from 20 attempts (~2.8s) to 4-5 attempts (~1.0s max), improving performance by 65-85%
@@ -116,6 +117,73 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 ---
 
 ## Recent Updates (2025-02-02)
+
+### Collapsible JSON Panels (2025-02-02)
+
+**What Changed:**
+- Added collapse/expand toggle button to JSON columns in both ReportInputsAndJsonPanel and PreviousReportTextAndJsonPanel
+- JSON panels now default to collapsed state (hidden) to maximize editing space
+- Toggle button shows ▶ when collapsed (click to expand) and ◀ when expanded (click to collapse)
+- Column width dynamically changes between 0 (collapsed) and 1* MinWidth 200 (expanded)
+- GridSplitter visibility synchronized with collapsed state
+
+**Why This Matters:**
+- **More Editing Space** - Default collapsed state provides maximum room for text fields (60% more horizontal space)
+- **User Control** - Easy one-click access to JSON view when needed
+- **Visual Clarity** - Reduces clutter for normal editing workflow (JSON is reference data, not primary input)
+- **Consistent UX** - Both JSON panels (current and previous reports) behave identically
+
+**Example Behavior:**
+```
+Default State (Collapsed):
+  ┌──────────────────────────────────────┐
+  │ Main Input  │ Proofread  │ [▶ JSON]  │
+  │             │            │           │
+  │ [Text...]   │ [Text...]  │           │
+  │             │            │           │
+  └──────────────────────────────────────┘
+  JSON column: 0px width, completely hidden
+
+After Clicking Toggle (Expanded):
+  ┌─────────────────────────────────────────────────┐
+  │ Main Input  │ Proofread  │ [◀ JSON] │ {       }│
+  │             │            │          │ "field" │
+  │ [Text...]   │ [Text...]  │          │ ...     │
+  │             │            │          │ }       │
+  └─────────────────────────────────────────────────┘
+  JSON column: 200px minimum, star-sized, splitter visible
+```
+
+**Key Technical Details:**
+- New dependency property: `IsJsonCollapsed` (bool, default: `true`)
+- Binding: Toggle button uses `InverseBooleanConverter` (expanded = IsChecked = true)
+- Column structure changed from 5 columns to support splitter visibility:
+  - Column 0: Main input (1* MinWidth 200)
+  - Column 1: GridSplitter (2px)
+  - Column 2: Proofread (1* MinWidth 200)
+  - Column 3: JSON GridSplitter (0 when collapsed, 2px when expanded)
+  - Column 4: JSON TextBox (0 when collapsed, 1* MinWidth 200 when expanded)
+- Unicode characters: ▶ (`\u25B6` / `&#9654;`) and ◀ (`\u25C0` / `&#9664;`)
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\App.xaml` - Registered InverseBooleanConverter
+- `apps\Wysg.Musm.Radium\Controls\ReportInputsAndJsonPanel.xaml` - Added toggle button and column structure
+- `apps\Wysg.Musm.Radium\Controls\ReportInputsAndJsonPanel.xaml.cs` - Added IsJsonCollapsed property and UpdateJsonColumnVisibility method
+- `apps\Wysg.Musm.Radium\Controls\PreviousReportTextAndJsonPanel.xaml` - Added toggle button and column structure
+- `apps\Wysg.Musm.Radium\Controls\PreviousReportTextAndJsonPanel.xaml.cs` - Added IsJsonCollapsed property and UpdateJsonColumnVisibility method
+
+**Documentation:**
+- See `ENHANCEMENT_2025-02-02_CollapsibleJsonPanels.md` for complete feature specification
+- See `IMPLEMENTATION_SUMMARY_2025-02-02_CollapsibleJsonPanels.md` for detailed technical implementation
+
+**Benefits:**
+- **Space Efficiency** - Default collapsed state optimizes screen real estate for editing
+- **Flexibility** - Users can expand JSON when needed for debugging or manual editing
+- **Consistency** - Identical behavior in both current and previous report panels
+- **Performance** - No performance impact (visibility change is instant)
+- **Compatibility** - Works with existing features (Reverse layout, Alt+Arrow navigation, Proofread toggle)
+
+---
 
 ### Remove Previous Report Proofread Fields (2025-02-02)
 
