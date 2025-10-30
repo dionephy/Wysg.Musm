@@ -198,283 +198,258 @@ namespace Wysg.Musm.Editor.Completion
             {
                 Height = desiredWindowHeight;
             }
-
-            Debug.WriteLine($"[CW] AdjustListBoxHeight count={count} visible={visible} itemH={itemHeight:F1} listH={listHeight:F1} winH={Height:F1}");
         }
 
         private void OnListSelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             if (_handlingSelectionChange) return;
-            Debug.WriteLine($"[CW] SelectionChanged: added={e.AddedItems?.Count}, removed={e.RemovedItems?.Count}, permit={_allowSelectionOnce}");
             if (_allowSelectionOnce)
             {
                 _allowSelectionOnce = false;
-                Debug.WriteLine("[CW] Selection allowed (consumed permit)");
                 return;
             }
             if (CompletionList?.ListBox is { } lb && (lb.IsFocused || lb.IsKeyboardFocusWithin))
-            {
-                Debug.WriteLine("[CW] Selection allowed (keyboard focus)");
-                return;
-            }
+        {
+         return;
+      }
             if (IsFocused || CompletionList?.IsFocused == true)
             {
-                Debug.WriteLine("[CW] Selection allowed (window focused)");
-                return;
-            }
-            if (CompletionList?.ListBox is { } clb && clb.SelectedIndex == -1)
+ return;
+     }
+       if (CompletionList?.ListBox is { } clb && clb.SelectedIndex == -1)
             {
-                Debug.WriteLine("[CW] Selection cleared programmatically, allowing");
-                return;
-            }
+    return;
+  }
             if (e.AddedItems?.Count > 0)
+     {
+       return;
+      }
+     if (CompletionList?.ListBox is { } clearListBox && clearListBox.SelectedIndex != -1)
             {
-                Debug.WriteLine("[CW] New selection added (allow)");
-                return;
-            }
-            if (CompletionList?.ListBox is { } clearListBox && clearListBox.SelectedIndex != -1)
-            {
-                Debug.WriteLine("[CW] clear selection (guard)");
-                _handlingSelectionChange = true;
-                try { clearListBox.SelectedIndex = -1; }
-                finally { _handlingSelectionChange = false; }
+      _handlingSelectionChange = true;
+         try { clearListBox.SelectedIndex = -1; }
+     finally { _handlingSelectionChange = false; }
             }
         }
 
-        private void OnListPreviewKeyDown(object? sender, KeyEventArgs e)
+ private void OnListPreviewKeyDown(object? sender, KeyEventArgs e)
         {
-            if (CompletionList?.ListBox is null) return;
+    if (CompletionList?.ListBox is null) return;
 
             if (e.Key == Key.Down)
             {
                 e.Handled = true;
-                var lb = CompletionList.ListBox;
-                int count = lb.Items.Count;
-                if (count == 0) return;
-                int idx = lb.SelectedIndex;
+       var lb = CompletionList.ListBox;
+     int count = lb.Items.Count;
+   if (count == 0) return;
+      int idx = lb.SelectedIndex;
                 if (idx < 0) idx = -1; // first Down selects index 0
-                int newIdx = Math.Min(idx + 1, count - 1);
-                _allowSelectionOnce = true;
-                lb.SelectedIndex = newIdx;
-                lb.ScrollIntoView(lb.SelectedItem);
+        int newIdx = Math.Min(idx + 1, count - 1);
+    _allowSelectionOnce = true;
+       lb.SelectedIndex = newIdx;
+            lb.ScrollIntoView(lb.SelectedItem);
                 return;
             }
             if (e.Key == Key.Up)
-            {
-                e.Handled = true;
-                var lb = CompletionList.ListBox;
-                int count = lb.Items.Count;
-                if (count == 0) return;
-                int idx = lb.SelectedIndex;
-                if (idx < 0) idx = count; // first Up selects last index
-                int newIdx = Math.Max(idx - 1, 0);
-                _allowSelectionOnce = true;
-                lb.SelectedIndex = newIdx;
-                lb.ScrollIntoView(lb.SelectedItem);
-                return;
+       {
+          e.Handled = true;
+       var lb = CompletionList.ListBox;
+     int count = lb.Items.Count;
+      if (count == 0) return;
+  int idx = lb.SelectedIndex;
+       if (idx < 0) idx = count; // first Up selects last index
+  int newIdx = Math.Max(idx - 1, 0);
+       _allowSelectionOnce = true;
+          lb.SelectedIndex = newIdx;
+ lb.ScrollIntoView(lb.SelectedItem);
+  return;
             }
 
-            Debug.WriteLine($"[CW] PKD key={e.Key} sel={CompletionList?.ListBox?.SelectedIndex}");
-
-            if (e.Key is Key.Enter or Key.Return)
-            {
-                if (CompletionList.ListBox.SelectedIndex == -1)
-                {
-                    Debug.WriteLine("[CW] ENTER no selection → close + newline");
-                    e.Handled = true;
-                    Close();
-                    var off = _editor.CaretOffset;
-                    var nl = Environment.NewLine;
-                    _editor.Document.Insert(off, nl);
-                    _editor.CaretOffset = off + nl.Length;
+        if (e.Key is Key.Enter or Key.Return)
+     {
+     if (CompletionList.ListBox.SelectedIndex == -1)
+     {
+          e.Handled = true;
+       Close();
+  var off = _editor.CaretOffset;
+     var nl = Environment.NewLine;
+          _editor.Document.Insert(off, nl);
+ _editor.CaretOffset = off + nl.Length;
                 }
-                else
-                {
-                    e.Handled = true;
-                    CompletionList.RequestInsertion(e);
-                }
-                return;
-            }
+      else
+       {
+ e.Handled = true;
+        CompletionList.RequestInsertion(e);
+           }
+          return;
+}
             if (e.Key == Key.Space)
-            {
+       {
                 // Cancel space so it does not insert into the document; treat like Enter if selection exists
-                e.Handled = true;
-                if (CompletionList.ListBox.SelectedIndex >= 0)
-                {
-                    // Request insertion, then append a space at caret
-                    CompletionList.RequestInsertion(e);
-                    try
-                    {
-                        var off = _editor.CaretOffset;
-                        _editor.Document.Insert(off, " ");
-                        _editor.CaretOffset = off + 1;
-                    }
-                    catch { }
-                }
-                return;
-            }
-            if (e.Key == Key.Home)
+          e.Handled = true;
+ if (CompletionList.ListBox.SelectedIndex >= 0)
             {
-                Debug.WriteLine("[CW] HOME (list) → move caret only");
-                e.Handled = true;
-                var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
+    // Request insertion, then append a space at caret
+        CompletionList.RequestInsertion(e);
+     try
+     {
+     var off = _editor.CaretOffset;
+      _editor.Document.Insert(off, " ");
+_editor.CaretOffset = off + 1;
+           }
+      catch { }
+     }
+     return;
+   }
+     if (e.Key == Key.Home)
+     {
+     e.Handled = true;
+         var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
                 _editor.CaretOffset = line.Offset;
-                if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
-                _editor.TextArea.Focus();
-                return;
-            }
+           if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
+       _editor.TextArea.Focus();
+           return;
+       }
             if (e.Key == Key.End)
-            {
-                Debug.WriteLine("[CW] END (list) → move caret only");
-                e.Handled = true;
-                var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
-                _editor.CaretOffset = line.EndOffset;
-                if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
-                _editor.TextArea.Focus();
-                return;
+          {
+        e.Handled = true;
+         var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
+       _editor.CaretOffset = line.EndOffset;
+          if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
+    _editor.TextArea.Focus();
+ return;
             }
         }
 
-        private void OnListKeyDown(object? sender, KeyEventArgs e)
-        {
+    private void OnListKeyDown(object? sender, KeyEventArgs e)
+ {
             // Safety: ensure ListBox doesn't process Home/End even if Preview was bypassed
             if (e.Key == Key.Home)
             {
-                Debug.WriteLine("[CW] HOME (list KeyDown) suppress selection");
-                e.Handled = true;
-                var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
-                _editor.CaretOffset = line.Offset;
-                if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
+          e.Handled = true;
+         var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
+      _editor.CaretOffset = line.Offset;
+    if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
                 _editor.TextArea.Focus();
             }
-            else if (e.Key == Key.End)
-            {
-                Debug.WriteLine("[CW] END (list KeyDown) suppress selection");
-                e.Handled = true;
-                var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
-                _editor.CaretOffset = line.EndOffset;
-                if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
-                _editor.TextArea.Focus();
-            }
+     else if (e.Key == Key.End)
+          {
+      e.Handled = true;
+      var line = _editor.Document.GetLineByOffset(_editor.CaretOffset);
+       _editor.CaretOffset = line.EndOffset;
+ if (_editor.CaretOffset < StartOffset || _editor.CaretOffset > EndOffset) Close();
+       _editor.TextArea.Focus();
+      }
         }
 
-        private void OnCaretPositionChanged(object? sender, EventArgs e)
-        {
+     private void OnCaretPositionChanged(object? sender, EventArgs e)
+ {
             int caret = TextArea.Caret.Offset;
-            Debug.WriteLine($"[CW] CaretChanged caret={caret} range=[{StartOffset},{EndOffset}]");
-            if (caret < StartOffset || caret > EndOffset)
-            {
-                Debug.WriteLine("[CW] Caret outside → close");
+   if (caret < StartOffset || caret > EndOffset)
+   {
                 if (CloseAutomatically) Close();
-                return;
+      return;
             }
-            var (word, ok) = TryGetWordAtCaret();
-            Debug.WriteLine($"[CW] word='{word}' ok={ok}");
-            if (!ok || string.IsNullOrEmpty(word))
+    var (word, ok) = TryGetWordAtCaret();
+        if (!ok || string.IsNullOrEmpty(word))
             {
-                Debug.WriteLine("[CW] empty word → close");
-                if (CloseAutomatically) Close();
-            }
-        }
+    if (CloseAutomatically) Close();
+          }
+      }
 
         private (string word, bool ok) TryGetWordAtCaret()
-        {
-            var doc = _editor.Document;
+      {
+    var doc = _editor.Document;
             if (doc is null) return (string.Empty, false);
-            int caret = _editor.CaretOffset;
+int caret = _editor.CaretOffset;
             var line = doc.GetLineByOffset(caret);
             string lineText = doc.GetText(line);
-            int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
-            var (startLocal, endLocal) = WordBoundaryHelper.ComputeWordSpan(lineText, local);
-            if (endLocal <= startLocal) return (string.Empty, true);
+   int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
+     var (startLocal, endLocal) = WordBoundaryHelper.ComputeWordSpan(lineText, local);
+         if (endLocal <= startLocal) return (string.Empty, true);
             var word = lineText.Substring(startLocal, endLocal - startLocal);
-            return (word, true);
+      return (word, true);
         }
 
         /// <summary>Compute StartOffset/EndOffset from the word around caret.</summary>
         public void ComputeReplaceRegionFromCaret()
         {
-            var doc = _editor.Document;
-            int caret = _editor.CaretOffset;
+      var doc = _editor.Document;
+    int caret = _editor.CaretOffset;
 
-            var line = doc.GetLineByOffset(caret);
-            string lineText = doc.GetText(line);
+        var line = doc.GetLineByOffset(caret);
+       string lineText = doc.GetText(line);
             int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
 
-            var (startLocal, endLocal) = WordBoundaryHelper.ComputeWordSpan(lineText, local);
-            StartOffset = line.Offset + startLocal;
+    var (startLocal, endLocal) = WordBoundaryHelper.ComputeWordSpan(lineText, local);
+  StartOffset = line.Offset + startLocal;
             EndOffset = line.Offset + endLocal;
-            Debug.WriteLine($"[CW] ComputeReplaceRegion Start={StartOffset} End={EndOffset}");
         }
 
         /// <summary>One-liner to show a completion window for current word.</summary>
         public static MusmCompletionWindow ShowForCurrentWord(TextEditor editor, IEnumerable<ICompletionData> items)
         {
-            var w = new MusmCompletionWindow(editor);
-            var target = w.CompletionList.CompletionData;
-            foreach (var item in items) target.Add(item);
+     var w = new MusmCompletionWindow(editor);
+  var target = w.CompletionList.CompletionData;
+         foreach (var item in items) target.Add(item);
             w.ComputeReplaceRegionFromCaret();
-            w.Show();
+     w.Show();
             // Auto-select first item by default (new behavior FR-264)
-            w.EnsureFirstItemSelected();
-            Debug.WriteLine("[CW] ShowForCurrentWord opened");
+   w.EnsureFirstItemSelected();
             return w;
         }
 
         /// <summary>
-        /// Select the first item by default to keep navigation predictable; do not auto-select exact matches.
-        /// </summary>
-        public void SelectExactOrNone(string word)
-        {
-            if (CompletionList?.ListBox is null) return;
-            var lb = CompletionList.ListBox;
-            if (lb.Items.Count == 0) return;
-            if (lb.SelectedIndex == -1)
+    /// Select the first item by default to keep navigation predictable; do not auto-select exact matches.
+     /// </summary>
+ public void SelectExactOrNone(string word)
+      {
+     if (CompletionList?.ListBox is null) return;
+ var lb = CompletionList.ListBox;
+          if (lb.Items.Count == 0) return;
+  if (lb.SelectedIndex == -1)
             {
-                _allowSelectionOnce = true;
-                lb.SelectedIndex = 0;
-                lb.ScrollIntoView(lb.SelectedItem);
-                Debug.WriteLine("[CW] Default-selected first item (no exact-match auto select)");
-            }
-            AdjustListBoxHeight();
+           _allowSelectionOnce = true;
+     lb.SelectedIndex = 0;
+       lb.ScrollIntoView(lb.SelectedItem);
+      }
+      AdjustListBoxHeight();
         }
 
         public void EnsureFirstItemSelected()
         {
-            if (CompletionList?.ListBox is not { } lb) return;
+   if (CompletionList?.ListBox is not { } lb) return;
             if (lb.Items.Count == 0) return;
-            if (lb.SelectedIndex == -1)
+      if (lb.SelectedIndex == -1)
             {
-                _allowSelectionOnce = true;
-                lb.SelectedIndex = 0;
-                lb.ScrollIntoView(lb.SelectedItem);
-                Debug.WriteLine("[CW] Auto-selected first completion item (FR-264)");
-            }
-        }
+     _allowSelectionOnce = true;
+          lb.SelectedIndex = 0;
+      lb.ScrollIntoView(lb.SelectedItem);
+  }
+   }
 
-        /// <summary>
+    /// <summary>
         /// Allow one selection change (e.g., caused by Up/Down).
-        /// </summary>
-        public void AllowSelectionByKeyboardOnce() => _allowSelectionOnce = true;
+  /// </summary>
+     public void AllowSelectionByKeyboardOnce() => _allowSelectionOnce = true;
 
         /// <summary>
         /// Update the ListBox selection without triggering the guard logic.
-        /// </summary>
-        public void SetSelectionSilently(int index)
+     /// </summary>
+   public void SetSelectionSilently(int index)
         {
-            if (CompletionList?.ListBox is not { } lb) return;
-            Debug.WriteLine($"[CW] SetSelectionSilently: index={index}, current={lb.SelectedIndex}");
-            _handlingSelectionChange = true;
-            try
-            {
-                if (index >= 0 && index < lb.Items.Count)
-                {
-                    lb.SelectedIndex = index;
-                    lb.ScrollIntoView(lb.SelectedItem);
-                }
-                else lb.SelectedIndex = -1;
-            }
-            finally { _handlingSelectionChange = false; }
-        }
+       if (CompletionList?.ListBox is not { } lb) return;
+     _handlingSelectionChange = true;
+ try
+          {
+    if (index >= 0 && index < lb.Items.Count)
+   {
+     lb.SelectedIndex = index;
+        lb.ScrollIntoView(lb.SelectedItem);
+  }
+     else lb.SelectedIndex = -1;
+    }
+         finally { _handlingSelectionChange = false; }
+    }
     }
 }

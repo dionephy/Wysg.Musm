@@ -47,11 +47,11 @@ public sealed class PhraseHighlightRenderer : IBackgroundRenderer, IDisposable
         
         // SNOMED semantic tag colors (matching SettingsWindow.xaml colors)
         _bodyStructureBrush = new SolidColorBrush(Color.FromRgb(0x90, 0xEE, 0x90)); // Light Green
-        _findingBrush = new SolidColorBrush(Color.FromRgb(0xAD, 0xD8, 0xE6)); // Light Blue
+        _findingBrush = new SolidColorBrush(Color.FromRgb(0xAD, 0xD8, 0xE6)); // Light Blue (unused)
         _disorderBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xB3, 0xB3)); // Light Red/Pink
         _procedureBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0x99)); // Light Yellow
-        _observableEntityBrush = new SolidColorBrush(Color.FromRgb(0xE0, 0xC4, 0xFF)); // Light Purple
-        _substanceBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xD5, 0x80)); // Light Orange
+        _observableEntityBrush = new SolidColorBrush(Color.FromRgb(0xE0, 0xC4, 0xFF)); // Light Purple (unused)
+        _substanceBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xD5, 0x80)); // Light Orange (unused)
         
         _existingPhraseBrush.Freeze();
         _missingPhraseBrush.Freeze();
@@ -135,15 +135,17 @@ public sealed class PhraseHighlightRenderer : IBackgroundRenderer, IDisposable
     {
         if (string.IsNullOrWhiteSpace(semanticTag))
             return _existingPhraseBrush;
-            
+         
         return semanticTag.ToLowerInvariant() switch
         {
             "body structure" => _bodyStructureBrush,
-            "finding" => _findingBrush,
-            "disorder" => _disorderBrush,
-            "procedure" => _procedureBrush,
-            "observable entity" => _observableEntityBrush,
-            "substance" => _substanceBrush,
+            "intended site" => _bodyStructureBrush, // Same as body structure: light green
+            "finding" => _disorderBrush, // Light pink (same as disorder)
+            "morphologic abnormality" => _disorderBrush, // Light pink (same as disorder)
+            "disorder" => _disorderBrush, // Light pink
+            "procedure" => _procedureBrush, // Light yellow
+            "observable entity" => _existingPhraseBrush, // Default gray
+            "substance" => _existingPhraseBrush, // Default gray
             _ => _existingPhraseBrush
         };
     }
@@ -159,77 +161,89 @@ public sealed class PhraseHighlightRenderer : IBackgroundRenderer, IDisposable
     private static List<PhraseMatch> FindPhraseMatches(string text, HashSet<string> phraseSet)
     {
         var matches = new List<PhraseMatch>();
-        if (string.IsNullOrEmpty(text)) return matches;
+    if (string.IsNullOrEmpty(text)) return matches;
         
-        int i = 0;
+    int i = 0;
         while (i < text.Length)
         {
             // Skip whitespace
             if (char.IsWhiteSpace(text[i]))
             {
-                i++;
-                continue;
+      i++;
+     continue;
+}
+  
+   // Skip standalone punctuation that's not part of a word
+            if (char.IsPunctuation(text[i]))
+    {
+ i++;
+    continue;
             }
-            
-            // Find word boundaries
+          
+            // Find word boundaries (include hyphens as part of words for phrases like "COVID-19")
             int wordStart = i;
-            while (i < text.Length && !char.IsWhiteSpace(text[i]) && !char.IsPunctuation(text[i]))
-            {
-                i++;
-            }
-            
-            if (i > wordStart)
-            {
-                int wordLength = i - wordStart;
-                var word = text.Substring(wordStart, wordLength);
-                
-                // Check if this word (or phrase starting with this word) exists in snapshot
-                bool exists = phraseSet.Contains(word);
-                
-                // Try to match longer phrases by looking ahead
-                int longestMatch = wordLength;
-                bool longestExists = exists;
-                
-                // Look ahead for multi-word phrases (up to 5 words)
-                for (int ahead = 1; ahead <= 4 && i < text.Length; ahead++)
-                {
-                    // Skip whitespace
-                    int tempI = i;
-                    while (tempI < text.Length && char.IsWhiteSpace(text[tempI]))
-                        tempI++;
-                    
-                    if (tempI >= text.Length) break;
-                    
-                    // Find next word
-                    int nextWordStart = tempI;
-                    while (tempI < text.Length && !char.IsWhiteSpace(text[tempI]) && !char.IsPunctuation(text[tempI]))
-                        tempI++;
-                    
-                    if (tempI <= nextWordStart) break;
-                    
-                    int phraseLength = tempI - wordStart;
-                    var phrase = text.Substring(wordStart, phraseLength);
-                    
-                    if (phraseSet.Contains(phrase))
-                    {
-                        longestMatch = phraseLength;
-                        longestExists = true;
-                        i = tempI; // Advance to end of matched phrase
-                    }
-                }
-                
-                var matchedText = text.Substring(wordStart, longestMatch);
+            while (i < text.Length && !char.IsWhiteSpace(text[i]) && (char.IsLetterOrDigit(text[i]) || text[i] == '-'))
+    {
+        i++;
+     }
+     
+      if (i > wordStart)
+     {
+        int wordLength = i - wordStart;
+        var word = text.Substring(wordStart, wordLength);
+     
+     // Check if this word (or phrase starting with this word) exists in snapshot
+    bool exists = phraseSet.Contains(word);
+          
+        // Try to match longer phrases by looking ahead
+      int longestMatch = wordLength;
+      bool longestExists = exists;
+    
+           // Look ahead for multi-word phrases (up to 5 words)
+       for (int ahead = 1; ahead <= 4 && i < text.Length; ahead++)
+    {
+               // Skip whitespace
+  int tempI = i;
+      while (tempI < text.Length && char.IsWhiteSpace(text[tempI]))
+     tempI++;
+       
+         if (tempI >= text.Length) break;
+        
+             // Skip punctuation before next word
+             if (char.IsPunctuation(text[tempI]))
+             break;
+  
+         // Find next word (include hyphens)
+       int nextWordStart = tempI;
+          while (tempI < text.Length && !char.IsWhiteSpace(text[tempI]) && (char.IsLetterOrDigit(text[tempI]) || text[tempI] == '-'))
+         tempI++;
+
+        if (tempI <= nextWordStart) break;
+           
+      int phraseLength = tempI - wordStart;
+         var phrase = text.Substring(wordStart, phraseLength);
+     
+ if (phraseSet.Contains(phrase))
+        {
+        longestMatch = phraseLength;
+  longestExists = true;
+        i = tempI; // Advance to end of matched phrase
+        }
+         }
+  
+   var matchedText = text.Substring(wordStart, longestMatch);
+      
                 matches.Add(new PhraseMatch
-                {
-                    Offset = wordStart,
-                    Length = longestMatch,
-                    ExistsInSnapshot = longestExists,
-                    PhraseText = matchedText
-                });
+      {
+  Offset = wordStart,
+                Length = longestMatch,
+   ExistsInSnapshot = longestExists,
+         PhraseText = matchedText
+     });
             }
         }
-        
-        return matches;
+ 
+return matches;
     }
 
     private void OnVisualLinesChanged(object? s, EventArgs e) => _view.InvalidateLayer(KnownLayer.Background);
@@ -240,3 +254,4 @@ public sealed class PhraseHighlightRenderer : IBackgroundRenderer, IDisposable
         _view.VisualLinesChanged -= OnVisualLinesChanged;
     }
 }
+

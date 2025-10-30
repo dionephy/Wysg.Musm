@@ -181,6 +181,7 @@ namespace Wysg.Musm.Editor.Controls
         private MusmCompletionWindow? _completionWindow;     // used by Popup partial
         private MultiLineGhostRenderer? _ghostRenderer;      // ghost renderer
         private PhraseColorizer? _phraseColorizer; // phrase foreground colorizer
+        // private PhraseHighlightRenderer? _phraseHighlightRenderer; // phrase background highlighter (DISABLED - using foreground only)
 
         // ===== Idle event for VM =====
         public event EventHandler? IdleElapsed;
@@ -260,13 +261,12 @@ namespace Wysg.Musm.Editor.Controls
 
             Editor.TextArea.PreviewMouseLeftButtonDown += (s,e) => {
                 _mouseDownSelecting = true; _suppressHighlight = false; // allow native selection highlight start
-                System.Diagnostics.Debug.WriteLine($"[SelDiag] MouseDown caret={Editor.CaretOffset}");
             };
-            Editor.TextArea.PreviewMouseLeftButtonUp += (s,e) => {
-                _mouseDownSelecting = false; System.Diagnostics.Debug.WriteLine($"[SelDiag] MouseUp caret={Editor.CaretOffset}");
-                // resume timers
-                if (!ShouldPauseSuggestions()) { RestartDebounce(); RestartIdle(); }
-            };
+       Editor.TextArea.PreviewMouseLeftButtonUp += (s,e) => {
+    _mouseDownSelecting = false;
+      // resume timers
+         if (!ShouldPauseSuggestions()) { RestartDebounce(); RestartIdle(); }
+ };
         }
 
         private static void OnDebounceMsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -329,32 +329,25 @@ namespace Wysg.Musm.Editor.Controls
 
         private void OnSelectionChanged(object? s, EventArgs e)
         {
-            try
-            {
-                var sel = Editor.TextArea?.Selection;
-                if (sel != null && !sel.IsEmpty && sel.SurroundingSegment != null)
-                {
-                    _suppressHighlight = true; _lastWordStart = -1;
-                    var seg = sel.SurroundingSegment;
-                    bool reverse = Editor.CaretOffset == seg.Offset; // caret at start => reverse drag
-                    System.Diagnostics.Debug.WriteLine($"[SelDiag] UPDATE seg=[{seg.Offset},{seg.EndOffset}) len={seg.Length} caret={Editor.CaretOffset} reverse={reverse}");
-                }
-                else if (sel != null && sel.IsEmpty)
-                {
-                    if (!_mouseDownSelecting)
-                        _suppressHighlight = false;
-                    System.Diagnostics.Debug.WriteLine($"[SelDiag] EMPTY caret={Editor.CaretOffset}");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[SelDiag] EX {ex.Message}");
-            }
+        try
+          {
+   var sel = Editor.TextArea?.Selection;
+   if (sel != null && !sel.IsEmpty && sel.SurroundingSegment != null)
+           {
+       _suppressHighlight = true; _lastWordStart = -1;
+  }
+           else if (sel != null && sel.IsEmpty)
+       {
+  if (!_mouseDownSelecting)
+    _suppressHighlight = false;
+    }
+   }
+     catch { }
 
-            if (_mouseDownSelecting) return; // do not restart timers mid-drag
-            if (ShouldPauseSuggestions()) { _debounce.Stop(); _idleTimer.Stop(); }
-            else { RestartDebounce(); RestartIdle(); }
-        }
+  if (_mouseDownSelecting) return; // do not restart timers mid-drag
+       if (ShouldPauseSuggestions()) { _debounce.Stop(); _idleTimer.Stop(); }
+      else { RestartDebounce(); RestartIdle(); }
+     }
 
         private void OnScrollOffsetChanged(object? s, EventArgs e)
         {

@@ -50,164 +50,89 @@ namespace Wysg.Musm.Radium.Controls
 
         private void SetupEditorNavigation()
         {
-      System.Diagnostics.Debug.WriteLine("[CenterEditingArea] ===== SetupEditorNavigation START =====");
-  
   // Current report vertical navigation
-     // IMPORTANT: Only setup Alt+Down here, Alt+Up is handled separately for orientation-aware navigation
-            System.Diagnostics.Debug.WriteLine("[CenterEditingArea] Setting up EditorFindings -> EditorConclusion (Alt+Down)");
-    SetupOneWayEditor(EditorFindings, EditorConclusion, Key.Down, copyText: true);
-   
-        // Alt+Up from EditorConclusion -> EditorFindings
-            System.Diagnostics.Debug.WriteLine("[CenterEditingArea] Setting up EditorConclusion -> EditorFindings (Alt+Up)");
-  SetupOneWayEditor(EditorConclusion, EditorFindings, Key.Up, copyText: true);
+            // IMPORTANT: Only setup Alt+Down here, Alt+Up is handled separately for orientation-aware navigation
+      SetupOneWayEditor(EditorFindings, EditorConclusion, Key.Down, copyText: true);
+  
+            // Alt+Up from EditorConclusion -> EditorFindings
+            SetupOneWayEditor(EditorConclusion, EditorFindings, Key.Up, copyText: true);
 
-    // Current <-> Previous horizontal navigation
-            System.Diagnostics.Debug.WriteLine("[CenterEditingArea] Setting up horizontal navigation");
-          // Alt+Right from EditorFindings -> EditorPreviousFindings (no copy, just navigate)
-            SetupOneWayEditor(EditorFindings, EditorPreviousFindings, Key.Right, copyText: false);
-        // Alt+Left from EditorPreviousFindings -> EditorFindings (WITH copy to bring content back)
-     SetupOneWayEditor(EditorPreviousFindings, EditorFindings, Key.Left, copyText: true);
-      // Alt+Left from EditorPreviousHeader -> EditorFindings (with copy)
+       // Current <-> Previous horizontal navigation
+            // Alt+Right from EditorFindings -> EditorPreviousFindings (no copy, just navigate)
+  SetupOneWayEditor(EditorFindings, EditorPreviousFindings, Key.Right, copyText: false);
+   // Alt+Left from EditorPreviousFindings -> EditorFindings (WITH copy to bring content back)
+            SetupOneWayEditor(EditorPreviousFindings, EditorFindings, Key.Left, copyText: true);
+            // Alt+Left from EditorPreviousHeader -> EditorFindings (with copy)
      SetupOneWayEditor(EditorPreviousHeader, EditorFindings, Key.Left, copyText: true);
-// Alt+Left from EditorPreviousConclusion -> EditorFindings (with copy)
-            SetupOneWayEditor(EditorPreviousConclusion, EditorFindings, Key.Left, copyText: true);
-      
-      // Previous report vertical navigation (no copy)
-     System.Diagnostics.Debug.WriteLine("[CenterEditingArea] Setting up previous report vertical navigation");
-            SetupOneWayEditor(EditorPreviousHeader, EditorPreviousFindings, Key.Down, copyText: false);
-   SetupOneWayEditor(EditorPreviousFindings, EditorPreviousHeader, Key.Up, copyText: false);
-         SetupOneWayEditor(EditorPreviousFindings, EditorPreviousConclusion, Key.Down, copyText: false);
-       SetupOneWayEditor(EditorPreviousConclusion, EditorPreviousFindings, Key.Up, copyText: false);
-        
-      // SPECIAL: EditorFindings Alt+Up - orientation-aware navigation
-// This MUST be setup AFTER the above to ensure it's attached last and gets priority
-       System.Diagnostics.Debug.WriteLine("[CenterEditingArea] Setting up orientation-aware Alt+Up for EditorFindings");
-SetupOrientationAwareUpNavigation();
-      
-   System.Diagnostics.Debug.WriteLine("[CenterEditingArea] ===== SetupEditorNavigation COMPLETE =====");
+ // Alt+Left from EditorPreviousConclusion -> EditorFindings (with copy)
+     SetupOneWayEditor(EditorPreviousConclusion, EditorFindings, Key.Left, copyText: true);
+       
+            // Previous report vertical navigation (no copy)
+  SetupOneWayEditor(EditorPreviousHeader, EditorPreviousFindings, Key.Down, copyText: false);
+            SetupOneWayEditor(EditorPreviousFindings, EditorPreviousHeader, Key.Up, copyText: false);
+   SetupOneWayEditor(EditorPreviousFindings, EditorPreviousConclusion, Key.Down, copyText: false);
+   SetupOneWayEditor(EditorPreviousConclusion, EditorPreviousFindings, Key.Up, copyText: false);
+  
+// SPECIAL: EditorFindings Alt+Up - orientation-aware navigation
+        // This MUST be setup AFTER the above to ensure it's attached last and gets priority
+     SetupOrientationAwareUpNavigation();
         }
 
         private void SetupOrientationAwareUpNavigation()
-   {
-     // This replaces the bidirectional SetupEditorPair for EditorFindings <-> EditorConclusion Alt+Up
-   // The Alt+Down from EditorFindings -> EditorConclusion is already handled above
- // We need to override Alt+Up from EditorFinings to be orientation-aware
-       
-            System.Diagnostics.Debug.WriteLine("[CenterEditingArea] SetupOrientationAwareUpNavigation called");
+        {
+            // This replaces the bidirectional SetupEditorPair for EditorFindings <-> EditorConclusion Alt+Up
+    // The Alt+Down from EditorFindings -> EditorConclusion is already handled above
+            // We need to override Alt+Up from EditorFinings to be orientation-aware
       
-var findingsEditor = EditorFindings.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
-  if (findingsEditor == null)
-       {
-           System.Diagnostics.Debug.WriteLine($"[CenterEditingArea] ERROR: Could not find Editor in EditorFindings for orientation-aware navigation");
- return;
-     }
- 
-     System.Diagnostics.Debug.WriteLine($"[CenterEditingArea] Found findingsEditor, attaching PreviewKeyDown handler to TextArea with AddHandler");
+     var findingsEditor = EditorFindings.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
+            if (findingsEditor == null) return;
 
-   // ==================================================================================
-        // FIX EXPLANATION: Why AddHandler with handledEventsToo=true is CRITICAL
-        // ==================================================================================
-  //
-        // PROBLEM:
-        // The Popup handler in EditorControl.View.cs uses:
-        //   Editor.TextArea.AddHandler(UIElement.PreviewKeyDownEvent, 
-        //    new KeyEventHandler(OnTextAreaPreviewKeyDown), 
-        //          handledEventsToo: true)
-        //
-        // This means it sees ALL PreviewKeyDown events, even if already marked as handled.
-        //
-        // We initially tried using regular event subscription (+=):
-        //   findingsEditor.TextArea.PreviewKeyDown += (s, e) => { ... }
-     //
-        // But this ONLY receives events that have NOT been marked as handled.
-        //
-   // THE ROOT CAUSE:
-        // When Alt+Up is pressed, multiple handlers process it:
-    //   1. Popup handler (with handledEventsToo=true) - detects Alt+Arrow, passes through
-        //   2. AvalonEdit's built-in navigation - marks event as handled (for text navigation)
-        //   3. Our handler (with +=) - NEVER SEES IT because event is already handled!
-        //
-        // THE SOLUTION:
-      // Use AddHandler with handledEventsToo=true to ensure our handler sees the Alt+Up
-        // event even if AvalonEdit or other handlers have already marked it as handled.
-        //
-        // This matches the pattern used by EditorControl.Popup.cs and ensures we receive
-      // ALL keyboard events at the TextArea level, allowing us to intercept Alt+Up before
-   // default navigation behavior takes over.
-        //
-     // ADDITIONAL CONTEXT:
-        // - We attach to TextArea.PreviewKeyDown (not Editor.PreviewKeyDown) to match
-        //   where the Popup handler is attached, ensuring consistent event handling order
-        // - The Popup handler passes through Alt+Arrow by returning early without e.Handled=true
- // - We then catch Alt+Up and execute our orientation-aware navigation logic
-        // - Finally we set e.Handled=true to prevent default Up arrow navigation
-        //
-    // ==================================================================================
+            // Use AddHandler with handledEventsToo=true to ensure our handler sees the Alt+Up
+            // event even if AvalonEdit or other handlers have already marked it as handled
    findingsEditor.TextArea.AddHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler((s, e) =>
-   {
-     System.Diagnostics.Debug.WriteLine($"[CenterEditingArea] TextArea.PreviewKeyDown: Key={e.Key}, SystemKey={e.SystemKey}, Modifiers={e.KeyboardDevice.Modifiers}, Handled={e.Handled}");
-   
-   var actualKey = e.Key == Key.System ? e.SystemKey : e.Key;
-  
- System.Diagnostics.Debug.WriteLine($"[CenterEditingArea] actualKey={actualKey}, checking for Alt+Up");
-      
+      {
+             var actualKey = e.Key == Key.System ? e.SystemKey : e.Key;
+          
     // Check ONLY for Alt+Up combination (ignore standalone modifier keys)
-   // We need BOTH Alt modifier AND Up key in the SAME event
-      if (e.KeyboardDevice.Modifiers == ModifierKeys.Alt && actualKey == Key.Up)
-  {
-  System.Diagnostics.Debug.WriteLine($"[CenterEditingArea] ALT+UP DETECTED! Calling HandleOrientationAwareUpNavigation");
-      HandleOrientationAwareUpNavigation();
-      e.Handled = true;
-     System.Diagnostics.Debug.WriteLine($"[CenterEditingArea] Event marked as handled");
-}
-        }), handledEventsToo: true); // CRITICAL: true ensures we see events even if already handled by AvalonEdit
-   
-        System.Diagnostics.Debug.WriteLine("[CenterEditingArea] PreviewKeyDown handler attached successfully to TextArea with AddHandler(handledEventsToo=true)");
- }
+    if (e.KeyboardDevice.Modifiers == ModifierKeys.Alt && actualKey == Key.Up)
+      {
+        HandleOrientationAwareUpNavigation();
+         e.Handled = true;
+          }
+ }), handledEventsToo: true);
+        }
 
-        private void HandleOrientationAwareUpNavigation()
-        {
-     // Check orientation via injected function
-            bool isLandscape = IsLandscapeMode?.Invoke() ?? false;
-      
-  System.Diagnostics.Debug.WriteLine($"[CenterEditingArea] HandleOrientationAwareUpNavigation:");
-   System.Diagnostics.Debug.WriteLine($"  - isLandscape: {isLandscape}");
-      
-       if (isLandscape)
+      private void HandleOrientationAwareUpNavigation()
   {
-       // Landscape mode: Navigate to Patient History textbox in gridSideTop
-        var txtPatientHistory = GetPatientHistoryTextBox?.Invoke();
-      System.Diagnostics.Debug.WriteLine($"  - Landscape branch: txtPatientHistory={txtPatientHistory != null}");
-  if (txtPatientHistory != null)
-        {
-      System.Diagnostics.Debug.WriteLine($"  - Focusing Patient History (landscape)");
-    txtPatientHistory.Focus();
- txtPatientHistory.CaretIndex = txtPatientHistory.Text?.Length ?? 0;
-       }
-       else
-     {
-         System.Diagnostics.Debug.WriteLine($"  - Patient History textbox not found, falling back to EditorConclusion");
-       // Fallback to EditorConclusion if Patient History not available
-   HandleEditorNavigation(EditorFindings, EditorConclusion, copyText: true);
-  }
+          // Check orientation via injected function
+       bool isLandscape = IsLandscapeMode?.Invoke() ?? false;
+            
+        if (isLandscape)
+      {
+    // Landscape mode: Navigate to Patient History textbox in gridSideTop
+   var txtPatientHistory = GetPatientHistoryTextBox?.Invoke();
+        if (txtPatientHistory != null)
+                {
+     txtPatientHistory.Focus();
+        txtPatientHistory.CaretIndex = txtPatientHistory.Text?.Length ?? 0;
+        }
+                else
+              {
+        // Fallback to EditorConclusion if Patient History not available
+          HandleEditorNavigation(EditorFindings, EditorConclusion, copyText: true);
+    }
        }
    else
-   {
-   // Portrait mode: Navigate to Patient History textbox (should be available via GetPatientHistoryTextBox)
-       var txtPatientHistory = GetPatientHistoryTextBox?.Invoke();
- System.Diagnostics.Debug.WriteLine($"  - Portrait branch: txtPatientHistory={txtPatientHistory != null}");
-      if (txtPatientHistory != null)
- {
-       System.Diagnostics.Debug.WriteLine($"  - Focusing Patient History (portrait)");
-  txtPatientHistory.Focus();
-         txtPatientHistory.CaretIndex = txtPatientHistory.Text?.Length ?? 0;
-      }
-  else
           {
-         System.Diagnostics.Debug.WriteLine($"  - Patient History textbox not found");
- }
-}
-        }
+          // Portrait mode: Navigate to Patient History textbox
+  var txtPatientHistory = GetPatientHistoryTextBox?.Invoke();
+  if (txtPatientHistory != null)
+                {
+           txtPatientHistory.Focus();
+              txtPatientHistory.CaretIndex = txtPatientHistory.Text?.Length ?? 0;
+            }
+  }
+    }
 
    private void SetupEditorPair(EditorControl source, EditorControl target, Key sourceKey, Key targetKey, bool copyText)
         {
@@ -215,26 +140,22 @@ var findingsEditor = EditorFindings.FindName("Editor") as ICSharpCode.AvalonEdit
 SetupOneWayEditor(target, source, targetKey, copyText);
         }
 
-    private void SetupOneWayEditor(EditorControl source, EditorControl target, Key key, bool copyText)
+  private void SetupOneWayEditor(EditorControl source, EditorControl target, Key key, bool copyText)
         {
-   // Find the underlying MusmEditor (AvalonEdit TextEditor)
+         // Find the underlying MusmEditor (AvalonEdit TextEditor)
             var sourceEditor = source.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
-  if (sourceEditor == null)
-        {
-           System.Diagnostics.Debug.WriteLine($"[CenterEditingArea] Could not find Editor in source control");
-     return;
-            }
+       if (sourceEditor == null) return;
 
-     sourceEditor.PreviewKeyDown += (s, e) =>
-   {
-      var actualKey = e.Key == Key.System ? e.SystemKey : e.Key;
-                
- if (e.KeyboardDevice.Modifiers == ModifierKeys.Alt && actualKey == key)
-     {
-      HandleEditorNavigation(source, target, copyText);
-        e.Handled = true;
-       }
-     };
+            sourceEditor.PreviewKeyDown += (s, e) =>
+  {
+                var actualKey = e.Key == Key.System ? e.SystemKey : e.Key;
+     
+  if (e.KeyboardDevice.Modifiers == ModifierKeys.Alt && actualKey == key)
+       {
+       HandleEditorNavigation(source, target, copyText);
+                 e.Handled = true;
+    }
+            };
         }
 
      private void HandleEditorNavigation(EditorControl source, EditorControl target, bool copyText)

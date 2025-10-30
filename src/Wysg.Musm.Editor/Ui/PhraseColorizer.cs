@@ -63,11 +63,11 @@ namespace Wysg.Musm.Editor.Ui
 
             // SNOMED semantic tag colors (matching SettingsWindow.xaml colors)
             _bodyStructureBrush = new SolidColorBrush(Color.FromRgb(0x90, 0xEE, 0x90)); // Light Green
-            _findingBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0x99)); // Light Yellow - CHANGED: finding now yellow
+            _findingBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0x99)); // Light Yellow (unused - finding now uses disorder color)
             _disorderBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xB3, 0xB3)); // Light Red/Pink
-            _procedureBrush = new SolidColorBrush(Color.FromRgb(0xAD, 0xD8, 0xE6)); // Light Cyan/Blue - CHANGED: procedure now cyan
-            _observableEntityBrush = new SolidColorBrush(Color.FromRgb(0xE0, 0xC4, 0xFF)); // Light Purple
-            _substanceBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xD5, 0x80)); // Light Orange
+            _procedureBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0x99)); // Light Yellow
+            _observableEntityBrush = new SolidColorBrush(Color.FromRgb(0xE0, 0xC4, 0xFF)); // Light Purple (unused)
+            _substanceBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xD5, 0x80)); // Light Orange (unused)
 
             // Freeze only brushes we created locally
             if (_existingBrush is SolidColorBrush eb && !eb.IsFrozen && eb.Color == Color.FromRgb(0xA0, 0xA0, 0xA0))
@@ -110,15 +110,10 @@ namespace Wysg.Musm.Editor.Ui
                 if (m.ExistsInSnapshot && semanticTags != null && semanticTags.TryGetValue(m.PhraseText, out var semanticTag))
                 {
                     brush = GetBrushForSemanticTag(semanticTag);
-                    System.Diagnostics.Debug.WriteLine($"[PhraseColor] '{m.PhraseText}' ¡æ semantic tag: '{semanticTag}' ¡æ brush type: {brush.GetType().Name}");
                 }
                 else
                 {
                     brush = m.ExistsInSnapshot ? _existingBrush : _missingBrush;
-                    if (m.ExistsInSnapshot && semanticTags != null)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[PhraseColor] '{m.PhraseText}' in snapshot but no semantic tag found (tags count: {semanticTags.Count})");
-                    }
                 }
                 
                 ChangeLinePart(segStart, segEnd, (el) =>
@@ -132,18 +127,19 @@ namespace Wysg.Musm.Editor.Ui
         {
             if (string.IsNullOrWhiteSpace(semanticTag))
                 return _existingBrush;
-                
-            return semanticTag.ToLowerInvariant() switch
-            {
-                "body structure" => _bodyStructureBrush,
-                "finding" => _findingBrush,
-                "morphologic abnormality" => _findingBrush, // Same as finding: light yellow
-                "disorder" => _disorderBrush,
-                "procedure" => _procedureBrush,
-                "observable entity" => _observableEntityBrush,
-                "substance" => _substanceBrush,
-                _ => _existingBrush
-            };
+    
+          return semanticTag.ToLowerInvariant() switch
+      {
+      "body structure" => _bodyStructureBrush, // Light green
+   "intended site" => _bodyStructureBrush, // Light green (same as body structure)
+  "finding" => _disorderBrush, // Light pink (same as disorder)
+    "morphologic abnormality" => _disorderBrush, // Light pink (same as disorder)
+    "disorder" => _disorderBrush, // Light pink
+  "procedure" => _procedureBrush, // Light yellow
+   "observable entity" => _existingBrush, // Default gray
+      "substance" => _existingBrush, // Default gray
+         _ => _existingBrush
+       };
         }
 
         private readonly struct PhraseMatch
@@ -163,10 +159,16 @@ namespace Wysg.Musm.Editor.Ui
             int i = 0;
             while (i < text.Length)
             {
+                // Skip whitespace
                 if (char.IsWhiteSpace(text, i)) { i++; continue; }
+                
+                // Skip standalone punctuation
+                if (char.IsPunctuation(text[i])) { i++; continue; }
 
+                // Find word boundaries (include hyphens as part of words for phrases like "COVID-19")
                 int wordStart = i;
-                while (i < text.Length && !char.IsWhiteSpace(text, i) && !char.IsPunctuation(text[i])) i++;
+                while (i < text.Length && !char.IsWhiteSpace(text, i) && (char.IsLetterOrDigit(text, i) || text[i] == '-'))
+                    i++;
 
                 if (i <= wordStart) { i++; continue; }
 
@@ -180,23 +182,29 @@ namespace Wysg.Musm.Editor.Ui
                     // Skip whitespace
                     while (scanPos < text.Length && char.IsWhiteSpace(text, scanPos)) scanPos++;
                     if (scanPos >= text.Length) break;
+            
+                    // Skip punctuation before next word
+          if (char.IsPunctuation(text[scanPos])) break;
 
-                    int nextStart = scanPos;
-                    while (scanPos < text.Length && !char.IsWhiteSpace(text, scanPos) && !char.IsPunctuation(text[scanPos])) scanPos++;
-                    if (scanPos <= nextStart) break;
+       // Find next word (include hyphens)
+ int nextStart = scanPos;
+      while (scanPos < text.Length && !char.IsWhiteSpace(text, scanPos) && (char.IsLetterOrDigit(text, scanPos) || text[scanPos] == '-'))
+scanPos++;
+        
+          if (scanPos <= nextStart) break;
 
-                    int phraseLen = scanPos - wordStart;
-                    var phrase = text.Substring(wordStart, phraseLen);
-                    if (set.Contains(phrase))
-                    {
-                        bestLen = phraseLen;
-                        bestExists = true;
-                        i = scanPos; // advance to end of phrase
-                    }
-                }
+         int phraseLen = scanPos - wordStart;
+    var phrase = text.Substring(wordStart, phraseLen);
+       if (set.Contains(phrase))
+         {
+       bestLen = phraseLen;
+    bestExists = true;
+            i = scanPos; // advance to end of phrase
+  }
+     }
 
-                var matchedText = text.Substring(wordStart, bestLen);
-                yield return new PhraseMatch(wordStart, bestLen, bestExists, matchedText);
+    var matchedText = text.Substring(wordStart, bestLen);
+ yield return new PhraseMatch(wordStart, bestLen, bestExists, matchedText);
             }
         }
     }

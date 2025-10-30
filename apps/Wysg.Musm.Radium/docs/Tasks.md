@@ -662,3 +662,26 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [ ] V458 Double-click combination with techniques having null prefix/suffix → verify techniques load correctly
 - [ ] V459 Verify Save button enables after loading techniques from All Combinations
 - [ ] V460 Load techniques from All Combinations, modify list (add/remove), then save → verify new combination created
+
+## New (2025-02-02 – COVID-19 Hyphen Fix in Phrase Highlighting)
+- [X] T1240 Fix phrase tokenizer to treat hyphens as valid word characters (FR-COVID19-Hyphen-001)
+- [X] T1241 Update FindPhraseMatches to include hyphens in word boundary detection (FR-COVID19-Hyphen-002)
+- [X] T1242 Add separate punctuation skip logic excluding hyphens (FR-COVID19-Hyphen-003)
+- [X] T1243 Apply hyphen handling to multi-word phrase lookahead logic (FR-COVID19-Hyphen-004)
+- [X] T1244 Update phrase-highlighting-usage.md with hyphenated word support section (FR-COVID19-Hyphen-005)
+- [X] T1245 Create BUGFIX_2025-02-02_COVID19-Hyphen.md documentation (FR-COVID19-Hyphen-006)
+- [X] T1246 Update Tasks.md with T1240-T1250 and V470-V480 entries (this file, cumulative)
+- [X] T1247 Verify build passes with no compilation errors
+
+## Verification (COVID-19 Hyphen Fix)
+- [ ] V470 Type "COVID-19" with phrase in database → verify gray/SNOMED color highlighting (not red)
+- [ ] V471 Type "covid-19" lowercase → verify case-insensitive match works with hyphen
+- [ ] V472 Type "T-cell lymphoma" → verify multi-word phrase with hyphen matches
+- [ ] V473 Type "follow-up examination" → verify phrase matching works
+- [ ] V474 Type "non-small-cell lung cancer" → verify 4-word phrase with multiple hyphens matches
+- [ ] V475 Type "post-operative" → verify single hyphenated word matches
+- [ ] V476 Type "COVID - 19" with spaces around hyphen → verify two separate tokens (no match)
+- [ ] V477 Type "pneumonia." → verify period treated as delimiter, not part of word
+- [ ] V478 Type "COVID-19." → verify "COVID-19" matches, period ignored
+- [ ] V479 Add "COVID-19" to global phrases → verify highlighting updates in real-time
+- [ ] V480 Performance test: type 100+ lines with mixed hyphens → verify no lag

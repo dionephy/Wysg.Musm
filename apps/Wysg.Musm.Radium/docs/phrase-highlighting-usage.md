@@ -84,10 +84,19 @@ The highlighter automatically detects multi-word phrases (up to 5 words). For ex
 - "no evidence of" (3 words)
 - "no significant abnormality detected" (4 words)
 
+### Hyphenated Word Support (FR-COVID19-Hyphen)
+The highlighter correctly handles hyphenated words and phrases:
+- "COVID-19" is treated as a single word
+- "non-small-cell" is treated as a single word
+- Hyphens within words are included in the match
+
+**Technical Implementation**: The word tokenizer treats hyphens as valid word characters (like letters and digits) instead of punctuation delimiters. This ensures phrases like "COVID-19" match correctly against the phrase database.
+
 ### Case-Insensitive Matching
 Phrase matching is case-insensitive for better user experience:
 - "Unremarkable" matches "unremarkable" in the snapshot
 - "No Evidence" matches "no evidence" in the snapshot
+- "COVID-19" matches "covid-19" in the snapshot
 
 ### Real-Time Updates
 When the phrase snapshot changes (e.g., after adding new phrases), the highlighting updates automatically without needing to refresh the editor.
