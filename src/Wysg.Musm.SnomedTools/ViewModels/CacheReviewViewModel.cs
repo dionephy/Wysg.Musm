@@ -12,9 +12,44 @@ using Wysg.Musm.SnomedTools.Abstractions;
 namespace Wysg.Musm.SnomedTools.ViewModels
 {
     /// <summary>
+    /// Wrapper for CachedCandidate with selection support.
+    /// </summary>
+    public sealed class SelectableCachedCandidate : INotifyPropertyChanged
+    {
+        private bool _isSelected;
+
+        public CachedCandidate Candidate { get; }
+
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public SelectableCachedCandidate(CachedCandidate candidate)
+        {
+            Candidate = candidate;
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
+    /// <summary>
     /// ViewModel for reviewing cached SNOMED candidates with background fetching.
     /// Allows user to accept (save) or reject (ignore) cached synonyms.
-    /// Separates candidates into three categories: Organism, Substance, and Others.
+    /// Shows lists of candidates by category with multi-select for bulk operations.
     /// </summary>
     public sealed class CacheReviewViewModel : INotifyPropertyChanged, IDisposable
     {
@@ -31,11 +66,6 @@ namespace Wysg.Musm.SnomedTools.ViewModels
         private int _rejectedCount;
         private int _savedCount;
         
-        // Three separate current candidates
-        private CachedCandidate? _currentOrganismCandidate;
-        private CachedCandidate? _currentSubstanceCandidate;
-        private CachedCandidate? _currentOtherCandidate;
-        
         private int _backgroundFetchedCount;
         private int _backgroundCachedCount;
         private int _backgroundSkippedCount;
@@ -43,7 +73,10 @@ namespace Wysg.Musm.SnomedTools.ViewModels
         private bool _isBackgroundRunning;
         private int _targetWordCount = 1;
 
-        public ObservableCollection<CachedCandidate> PendingCandidates { get; } = new();
+        // Three observable collections for each category
+        public ObservableCollection<SelectableCachedCandidate> OrganismCandidates { get; } = new();
+        public ObservableCollection<SelectableCachedCandidate> SubstanceCandidates { get; } = new();
+        public ObservableCollection<SelectableCachedCandidate> OtherCandidates { get; } = new();
 
         public bool IsBusy
         {
@@ -138,45 +171,6 @@ namespace Wysg.Musm.SnomedTools.ViewModels
             }
         }
 
-        public CachedCandidate? CurrentOrganismCandidate
-        {
-            get => _currentOrganismCandidate;
-            private set
-            {
-                if (_currentOrganismCandidate != value)
-                {
-                    _currentOrganismCandidate = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public CachedCandidate? CurrentSubstanceCandidate
-        {
-            get => _currentSubstanceCandidate;
-            private set
-            {
-                if (_currentSubstanceCandidate != value)
-                {
-                    _currentSubstanceCandidate = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public CachedCandidate? CurrentOtherCandidate
-        {
-            get => _currentOtherCandidate;
-            private set
-            {
-                if (_currentOtherCandidate != value)
-                {
-                    _currentOtherCandidate = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
         public int BackgroundFetchedCount
         {
             get => _backgroundFetchedCount;
@@ -246,17 +240,21 @@ namespace Wysg.Musm.SnomedTools.ViewModels
 
         public IAsyncRelayCommand RefreshCommand { get; }
         
-        // Organism commands
-        public IAsyncRelayCommand AcceptOrganismCommand { get; }
-        public IAsyncRelayCommand RejectOrganismCommand { get; }
+        // Bulk operation commands
+        public IAsyncRelayCommand AcceptSelectedOrganismsCommand { get; }
+        public IAsyncRelayCommand RejectSelectedOrganismsCommand { get; }
+        public IAsyncRelayCommand AcceptSelectedSubstancesCommand { get; }
+        public IAsyncRelayCommand RejectSelectedSubstancesCommand { get; }
+        public IAsyncRelayCommand AcceptSelectedOthersCommand { get; }
+        public IAsyncRelayCommand RejectSelectedOthersCommand { get; }
         
-        // Substance commands
-        public IAsyncRelayCommand AcceptSubstanceCommand { get; }
-        public IAsyncRelayCommand RejectSubstanceCommand { get; }
-        
-        // Other commands
-        public IAsyncRelayCommand AcceptOtherCommand { get; }
-        public IAsyncRelayCommand RejectOtherCommand { get; }
+        // Select all commands
+        public IRelayCommand SelectAllOrganismsCommand { get; }
+        public IRelayCommand DeselectAllOrganismsCommand { get; }
+        public IRelayCommand SelectAllSubstancesCommand { get; }
+        public IRelayCommand DeselectAllSubstancesCommand { get; }
+        public IRelayCommand SelectAllOthersCommand { get; }
+        public IRelayCommand DeselectAllOthersCommand { get; }
         
         public IAsyncRelayCommand SaveAllAcceptedCommand { get; }
         public IRelayCommand StartFetchCommand { get; }
@@ -277,23 +275,29 @@ namespace Wysg.Musm.SnomedTools.ViewModels
 
             RefreshCommand = new AsyncRelayCommand(RefreshAsync);
             
-            // Organism commands
-            AcceptOrganismCommand = new AsyncRelayCommand(() => AcceptCandidateAsync(CurrentOrganismCandidate, CandidateCategory.Organism), 
-                () => !IsBusy && CurrentOrganismCandidate != null);
-            RejectOrganismCommand = new AsyncRelayCommand(() => RejectCandidateAsync(CurrentOrganismCandidate, CandidateCategory.Organism), 
-                () => !IsBusy && CurrentOrganismCandidate != null);
+            // Bulk operations
+            AcceptSelectedOrganismsCommand = new AsyncRelayCommand(() => AcceptSelectedAsync(OrganismCandidates), 
+                () => !IsBusy && OrganismCandidates.Any(c => c.IsSelected));
+            RejectSelectedOrganismsCommand = new AsyncRelayCommand(() => RejectSelectedAsync(OrganismCandidates), 
+                () => !IsBusy && OrganismCandidates.Any(c => c.IsSelected));
             
-            // Substance commands
-            AcceptSubstanceCommand = new AsyncRelayCommand(() => AcceptCandidateAsync(CurrentSubstanceCandidate, CandidateCategory.Substance), 
-                () => !IsBusy && CurrentSubstanceCandidate != null);
-            RejectSubstanceCommand = new AsyncRelayCommand(() => RejectCandidateAsync(CurrentSubstanceCandidate, CandidateCategory.Substance), 
-                () => !IsBusy && CurrentSubstanceCandidate != null);
+            AcceptSelectedSubstancesCommand = new AsyncRelayCommand(() => AcceptSelectedAsync(SubstanceCandidates), 
+                () => !IsBusy && SubstanceCandidates.Any(c => c.IsSelected));
+            RejectSelectedSubstancesCommand = new AsyncRelayCommand(() => RejectSelectedAsync(SubstanceCandidates), 
+                () => !IsBusy && SubstanceCandidates.Any(c => c.IsSelected));
             
-            // Other commands
-            AcceptOtherCommand = new AsyncRelayCommand(() => AcceptCandidateAsync(CurrentOtherCandidate, CandidateCategory.Other), 
-                () => !IsBusy && CurrentOtherCandidate != null);
-            RejectOtherCommand = new AsyncRelayCommand(() => RejectCandidateAsync(CurrentOtherCandidate, CandidateCategory.Other), 
-                () => !IsBusy && CurrentOtherCandidate != null);
+            AcceptSelectedOthersCommand = new AsyncRelayCommand(() => AcceptSelectedAsync(OtherCandidates), 
+                () => !IsBusy && OtherCandidates.Any(c => c.IsSelected));
+            RejectSelectedOthersCommand = new AsyncRelayCommand(() => RejectSelectedAsync(OtherCandidates), 
+                () => !IsBusy && OtherCandidates.Any(c => c.IsSelected));
+            
+            // Select all commands
+            SelectAllOrganismsCommand = new RelayCommand(() => SelectAll(OrganismCandidates));
+            DeselectAllOrganismsCommand = new RelayCommand(() => DeselectAll(OrganismCandidates));
+            SelectAllSubstancesCommand = new RelayCommand(() => SelectAll(SubstanceCandidates));
+            DeselectAllSubstancesCommand = new RelayCommand(() => DeselectAll(SubstanceCandidates));
+            SelectAllOthersCommand = new RelayCommand(() => SelectAll(OtherCandidates));
+            DeselectAllOthersCommand = new RelayCommand(() => DeselectAll(OtherCandidates));
             
             SaveAllAcceptedCommand = new AsyncRelayCommand(SaveAllAcceptedAsync, () => !IsBusy);
             StartFetchCommand = new RelayCommand(StartFetch, () => !IsBackgroundRunning);
@@ -346,14 +350,35 @@ namespace Wysg.Musm.SnomedTools.ViewModels
             return null;
         }
 
+        private void SelectAll(ObservableCollection<SelectableCachedCandidate> collection)
+        {
+            foreach (var item in collection)
+                item.IsSelected = true;
+            UpdateCommandStates();
+        }
+
+        private void DeselectAll(ObservableCollection<SelectableCachedCandidate> collection)
+        {
+            foreach (var item in collection)
+                item.IsSelected = false;
+            UpdateCommandStates();
+        }
+
         private void UpdateCommandStates()
         {
-            ((AsyncRelayCommand)AcceptOrganismCommand).NotifyCanExecuteChanged();
-            ((AsyncRelayCommand)RejectOrganismCommand).NotifyCanExecuteChanged();
-            ((AsyncRelayCommand)AcceptSubstanceCommand).NotifyCanExecuteChanged();
-            ((AsyncRelayCommand)RejectSubstanceCommand).NotifyCanExecuteChanged();
-            ((AsyncRelayCommand)AcceptOtherCommand).NotifyCanExecuteChanged();
-            ((AsyncRelayCommand)RejectOtherCommand).NotifyCanExecuteChanged();
+            // Ensure we're on the UI thread
+            if (!_dispatcher.CheckAccess())
+            {
+                _dispatcher.InvokeAsync(() => UpdateCommandStates());
+                return;
+            }
+
+            ((AsyncRelayCommand)AcceptSelectedOrganismsCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)RejectSelectedOrganismsCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)AcceptSelectedSubstancesCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)RejectSelectedSubstancesCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)AcceptSelectedOthersCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)RejectSelectedOthersCommand).NotifyCanExecuteChanged();
             ((AsyncRelayCommand)SaveAllAcceptedCommand).NotifyCanExecuteChanged();
         }
 
@@ -397,12 +422,11 @@ namespace Wysg.Musm.SnomedTools.ViewModels
                 // Refresh pending count when new candidates arrive
                 PendingCount = await _cacheService.GetPendingCountAsync().ConfigureAwait(false);
                 
-                // If pending count increased AND there's an empty slot, auto-refresh to show it
-                if (PendingCount > previousPendingCount && 
-                    (CurrentOrganismCandidate == null || CurrentSubstanceCandidate == null || CurrentOtherCandidate == null))
+                // If pending count increased, refresh lists
+                if (PendingCount > previousPendingCount)
                 {
-                    Debug.WriteLine("[CacheReviewViewModel] New candidate cached and empty slots available - auto-refreshing");
-                    await LoadNextCandidatesAsync().ConfigureAwait(false);
+                    Debug.WriteLine("[CacheReviewViewModel] New candidates cached - refreshing lists");
+                    await RefreshListsAsync().ConfigureAwait(false);
                 }
             });
         }
@@ -414,19 +438,7 @@ namespace Wysg.Musm.SnomedTools.ViewModels
                 IsBusy = true;
                 StatusMessage = "Loading pending candidates...";
 
-                // Load pending candidates
-                var pending = await _cacheService.GetPendingCandidatesAsync(100).ConfigureAwait(false);
-                
-                PendingCandidates.Clear();
-                foreach (var candidate in pending)
-                {
-                    PendingCandidates.Add(candidate);
-                }
-
-                PendingCount = PendingCandidates.Count;
-
-                // Separate into three categories
-                await LoadNextCandidatesAsync().ConfigureAwait(false);
+                await RefreshListsAsync().ConfigureAwait(false);
 
                 // Update statistics
                 var accepted = await _cacheService.GetAcceptedCandidatesAsync().ConfigureAwait(false);
@@ -447,63 +459,99 @@ namespace Wysg.Musm.SnomedTools.ViewModels
             }
         }
 
-        private async Task LoadNextCandidatesAsync()
+        private async Task RefreshListsAsync()
         {
-            // Load fresh pending candidates
+            // Load all pending candidates (on background thread - OK)
             var pending = await _cacheService.GetPendingCandidatesAsync(100).ConfigureAwait(false);
             
-            PendingCandidates.Clear();
-            foreach (var candidate in pending)
+            PendingCount = pending.Count;
+
+            // Categorize candidates (on background thread - OK)
+            var organisms = pending.Where(c => GetCandidateCategory(c) == CandidateCategory.Organism).ToList();
+            var substances = pending.Where(c => GetCandidateCategory(c) == CandidateCategory.Substance).ToList();
+            var others = pending.Where(c => GetCandidateCategory(c) == CandidateCategory.Other).ToList();
+
+            // ALL collection updates MUST happen on UI thread
+            await _dispatcher.InvokeAsync(() =>
             {
-                PendingCandidates.Add(candidate);
-            }
+                // Unsubscribe from old items before clearing
+                foreach (var item in OrganismCandidates)
+                    item.PropertyChanged -= OnSelectablePropertyChanged;
+                foreach (var item in SubstanceCandidates)
+                    item.PropertyChanged -= OnSelectablePropertyChanged;
+                foreach (var item in OtherCandidates)
+                    item.PropertyChanged -= OnSelectablePropertyChanged;
 
-            PendingCount = PendingCandidates.Count;
+                OrganismCandidates.Clear();
+                foreach (var candidate in organisms)
+                {
+                    var selectable = new SelectableCachedCandidate(candidate);
+                    selectable.PropertyChanged += OnSelectablePropertyChanged;
+                    OrganismCandidates.Add(selectable);
+                }
 
-            // Separate candidates into three categories
-            var organisms = PendingCandidates.Where(c => GetCandidateCategory(c) == CandidateCategory.Organism).ToList();
-            var substances = PendingCandidates.Where(c => GetCandidateCategory(c) == CandidateCategory.Substance).ToList();
-            var others = PendingCandidates.Where(c => GetCandidateCategory(c) == CandidateCategory.Other).ToList();
+                SubstanceCandidates.Clear();
+                foreach (var candidate in substances)
+                {
+                    var selectable = new SelectableCachedCandidate(candidate);
+                    selectable.PropertyChanged += OnSelectablePropertyChanged;
+                    SubstanceCandidates.Add(selectable);
+                }
 
-            // Set current candidates for each category (only if currently null)
-            if (CurrentOrganismCandidate == null)
-                CurrentOrganismCandidate = organisms.FirstOrDefault();
-            
-            if (CurrentSubstanceCandidate == null)
-                CurrentSubstanceCandidate = substances.FirstOrDefault();
-            
-            if (CurrentOtherCandidate == null)
-                CurrentOtherCandidate = others.FirstOrDefault();
-            
-            UpdateCommandStates();
+                OtherCandidates.Clear();
+                foreach (var candidate in others)
+                {
+                    var selectable = new SelectableCachedCandidate(candidate);
+                    selectable.PropertyChanged += OnSelectablePropertyChanged;
+                    OtherCandidates.Add(selectable);
+                }
+
+                // Update command states (now guaranteed to be on UI thread)
+                UpdateCommandStates();
+            });
         }
 
-        private async Task AcceptCandidateAsync(CachedCandidate? candidate, CandidateCategory category)
+        private void OnSelectablePropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (candidate == null)
+            if (e.PropertyName == nameof(SelectableCachedCandidate.IsSelected))
+            {
+                UpdateCommandStates();
+            }
+        }
+
+        private async Task AcceptSelectedAsync(ObservableCollection<SelectableCachedCandidate> collection)
+        {
+            var selected = collection.Where(c => c.IsSelected).ToList();
+            
+            if (selected.Count == 0)
                 return;
 
             try
             {
                 IsBusy = true;
-                StatusMessage = $"Accepting '{candidate.TermText}' ({category})...";
+                StatusMessage = $"Accepting {selected.Count} candidates...";
 
-                // Mark as accepted
-                await _cacheService.MarkAcceptedAsync(candidate.Id).ConfigureAwait(false);
-                AcceptedCount++;
+                foreach (var item in selected)
+                {
+                    await _cacheService.MarkAcceptedAsync(item.Candidate.Id).ConfigureAwait(false);
+                    AcceptedCount++;
+                }
 
-                // Remove from pending list
-                PendingCandidates.Remove(candidate);
-                PendingCount = PendingCandidates.Count;
+                // Remove from collection
+                await _dispatcher.InvokeAsync(() =>
+                {
+                    foreach (var item in selected)
+                    {
+                        collection.Remove(item);
+                    }
+                });
 
-                StatusMessage = $"Accepted '{candidate.TermText}' ({category}) - ready to save";
-                
-                // Load next candidate for this category
-                await LoadNextCandidateForCategoryAsync(category).ConfigureAwait(false);
+                PendingCount = await _cacheService.GetPendingCountAsync().ConfigureAwait(false);
+                StatusMessage = $"Accepted {selected.Count} candidates (ready to save)";
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error accepting candidate: {ex.Message}";
+                StatusMessage = $"Error accepting candidates: {ex.Message}";
                 Debug.WriteLine($"[CacheReviewViewModel] Error accepting: {ex}");
             }
             finally
@@ -512,68 +560,45 @@ namespace Wysg.Musm.SnomedTools.ViewModels
             }
         }
 
-        private async Task RejectCandidateAsync(CachedCandidate? candidate, CandidateCategory category)
+        private async Task RejectSelectedAsync(ObservableCollection<SelectableCachedCandidate> collection)
         {
-            if (candidate == null)
+            var selected = collection.Where(c => c.IsSelected).ToList();
+            
+            if (selected.Count == 0)
                 return;
 
             try
             {
                 IsBusy = true;
-                StatusMessage = $"Rejecting '{candidate.TermText}' ({category})...";
+                StatusMessage = $"Rejecting {selected.Count} candidates...";
 
-                // Mark as rejected
-                await _cacheService.MarkRejectedAsync(candidate.Id).ConfigureAwait(false);
-                RejectedCount++;
+                foreach (var item in selected)
+                {
+                    await _cacheService.MarkRejectedAsync(item.Candidate.Id).ConfigureAwait(false);
+                    RejectedCount++;
+                }
 
-                // Remove from pending list
-                PendingCandidates.Remove(candidate);
-                PendingCount = PendingCandidates.Count;
+                // Remove from collection
+                await _dispatcher.InvokeAsync(() =>
+                {
+                    foreach (var item in selected)
+                    {
+                        collection.Remove(item);
+                    }
+                });
 
-                StatusMessage = $"Rejected '{candidate.TermText}' ({category})";
-                
-                // Load next candidate for this category
-                await LoadNextCandidateForCategoryAsync(category).ConfigureAwait(false);
+                PendingCount = await _cacheService.GetPendingCountAsync().ConfigureAwait(false);
+                StatusMessage = $"Rejected {selected.Count} candidates";
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error rejecting candidate: {ex.Message}";
+                StatusMessage = $"Error rejecting candidates: {ex.Message}";
                 Debug.WriteLine($"[CacheReviewViewModel] Error rejecting: {ex}");
             }
             finally
             {
                 IsBusy = false;
             }
-        }
-
-        private async Task LoadNextCandidateForCategoryAsync(CandidateCategory category)
-        {
-            // Reload pending candidates
-            var pending = await _cacheService.GetPendingCandidatesAsync(100).ConfigureAwait(false);
-            
-            PendingCandidates.Clear();
-            foreach (var candidate in pending)
-            {
-                PendingCandidates.Add(candidate);
-            }
-
-            PendingCount = PendingCandidates.Count;
-
-            // Find next candidate for the specific category
-            switch (category)
-            {
-                case CandidateCategory.Organism:
-                    CurrentOrganismCandidate = PendingCandidates.FirstOrDefault(c => GetCandidateCategory(c) == CandidateCategory.Organism);
-                    break;
-                case CandidateCategory.Substance:
-                    CurrentSubstanceCandidate = PendingCandidates.FirstOrDefault(c => GetCandidateCategory(c) == CandidateCategory.Substance);
-                    break;
-                case CandidateCategory.Other:
-                    CurrentOtherCandidate = PendingCandidates.FirstOrDefault(c => GetCandidateCategory(c) == CandidateCategory.Other);
-                    break;
-            }
-            
-            UpdateCommandStates();
         }
 
         private async Task SaveAllAcceptedAsync()
@@ -703,6 +728,14 @@ namespace Wysg.Musm.SnomedTools.ViewModels
                 _backgroundFetcher.ProgressUpdated -= OnBackgroundProgressUpdated;
                 _backgroundFetcher.CandidateCached -= OnCandidateCached;
             }
+            
+            // Unsubscribe from selectable items
+            foreach (var item in OrganismCandidates)
+                item.PropertyChanged -= OnSelectablePropertyChanged;
+            foreach (var item in SubstanceCandidates)
+                item.PropertyChanged -= OnSelectablePropertyChanged;
+            foreach (var item in OtherCandidates)
+                item.PropertyChanged -= OnSelectablePropertyChanged;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
 using Wysg.Musm.SnomedTools.ViewModels;
 
@@ -18,6 +19,43 @@ namespace Wysg.Musm.SnomedTools.Views
 
             // Cleanup when window closes
             Closing += OnWindowClosing;
+            
+            // Subscribe to ListBox SelectionChanged events to sync with ViewModel
+            Loaded += OnWindowLoaded;
+        }
+
+        private void OnWindowLoaded(object sender, RoutedEventArgs e)
+        {
+            // Find the three ListBoxes and wire up selection sync
+            var organismListBox = this.FindName("OrganismListBox") as ListBox;
+            var substanceListBox = this.FindName("SubstanceListBox") as ListBox;
+            var otherListBox = this.FindName("OtherListBox") as ListBox;
+
+            if (organismListBox != null)
+                organismListBox.SelectionChanged += OnListBoxSelectionChanged;
+            if (substanceListBox != null)
+                substanceListBox.SelectionChanged += OnListBoxSelectionChanged;
+            if (otherListBox != null)
+                otherListBox.SelectionChanged += OnListBoxSelectionChanged;
+        }
+
+        private void OnListBoxSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is not ListBox listBox) return;
+
+            // Sync ViewModel IsSelected with ListBox selection
+            // When user selects items via click/shift+click, update ViewModel
+            foreach (var item in e.AddedItems)
+            {
+                if (item is SelectableCachedCandidate candidate)
+                    candidate.IsSelected = true;
+            }
+
+            foreach (var item in e.RemovedItems)
+            {
+                if (item is SelectableCachedCandidate candidate)
+                    candidate.IsSelected = false;
+            }
         }
 
         private void OnCloseClick(object sender, RoutedEventArgs e)
