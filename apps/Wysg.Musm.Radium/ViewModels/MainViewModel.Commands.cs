@@ -960,60 +960,125 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private async Task RunAddPreviousStudyModuleAsync()
         {
+            var sw = Stopwatch.StartNew(); // Start timing
+            Debug.WriteLine("[AddPreviousStudyModule] ===== START =====");
+            
             try
             {
                 // 1) Ensure PACS current patient equals application's current patient number
                 var pacsCurrent = await _pacs.GetCurrentPatientNumberAsync();
                 string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : Regex.Replace(s, "[^A-Za-z0-9]", "").ToUpperInvariant();
-                if (Normalize(pacsCurrent) != Normalize(PatientNumber)) { SetStatus("Patient mismatch cannot add", true); return; }
+                if (Normalize(pacsCurrent) != Normalize(PatientNumber)) 
+                { 
+                    sw.Stop();
+                    Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Patient mismatch ===== ({sw.ElapsedMilliseconds} ms)");
+                    SetStatus("Patient mismatch cannot add", true); 
+                    return; 
+                }
 
                 // Optional: also verify selected related study belongs to same patient
                 var relatedSelected = await _pacs.GetSelectedIdFromRelatedStudiesAsync();
                 if (!string.IsNullOrWhiteSpace(relatedSelected) && Normalize(relatedSelected) != Normalize(PatientNumber))
-                { SetStatus("Related study not for current patient", true); return; }
+                { 
+                    sw.Stop();
+                    Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Related study patient mismatch ===== ({sw.ElapsedMilliseconds} ms)");
+                    SetStatus("Related study not for current patient", true); 
+                    return; 
+                }
 
-                // 2) Fetch metadata from related studies list
+                // 2) Fetch ONLY studyname and datetime first (for early duplicate detection)
                 var studyName = await _pacs.GetSelectedStudynameFromRelatedStudiesAsync();
                 var dtStr = await _pacs.GetSelectedStudyDateTimeFromRelatedStudiesAsync();
-                var radiologist = await _pacs.GetSelectedRadiologistFromRelatedStudiesAsync();
-                var reportDateStr = await _pacs.GetSelectedReportDateTimeFromRelatedStudiesAsync();
 
                 // Abort when studyname/datetime missing
                 if (string.IsNullOrWhiteSpace(studyName) || string.IsNullOrWhiteSpace(dtStr))
-                { SetStatus("Related study is incomplete (name/datetime)", true); return; }
+                { 
+                    sw.Stop();
+                    Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Missing metadata ===== ({sw.ElapsedMilliseconds} ms)");
+                    SetStatus("Related study is incomplete (name/datetime)", true); 
+                    return; 
+                }
 
                 // Parse datetimes
-                if (!DateTime.TryParse(dtStr, out var studyDt)) { SetStatus("Related study datetime invalid", true); return; }
-                DateTime? reportDt = DateTime.TryParse(reportDateStr, out var rdt) ? rdt : null;
+                if (!DateTime.TryParse(dtStr, out var studyDt)) 
+                { 
+                    sw.Stop();
+                    Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Invalid datetime ===== ({sw.ElapsedMilliseconds} ms)");
+                    SetStatus("Related study datetime invalid", true); 
+                    return; 
+                }
 
-                // Abort when same as current study
+                // EARLY EXIT: Check if same as current study (before fetching radiologist/reportDate)
                 if (DateTime.TryParse(StudyDateTime, out var currentDt))
                 {
                     if (string.Equals(studyName?.Trim(), StudyName?.Trim(), StringComparison.OrdinalIgnoreCase) && studyDt == currentDt)
-                    { SetStatus("Same as current study; skipping add", true); return; }
+                    { 
+                        sw.Stop();
+                        Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Same as current study (early exit) ===== ({sw.ElapsedMilliseconds} ms)");
+                        SetStatus("Same as current study; skipping add", true); 
+                        return; 
+                    }
                 }
 
-                // 3) Check if ReportText is visible to determine which getters to use
+                // 3) Fetch remaining metadata (only if not duplicate)
+                var radiologist = await _pacs.GetSelectedRadiologistFromRelatedStudiesAsync();
+                var reportDateStr = await _pacs.GetSelectedReportDateTimeFromRelatedStudiesAsync();
+                DateTime? reportDt = DateTime.TryParse(reportDateStr, out var rdt) ? rdt : null;
+
+                // 4) Check if ReportText is visible to determine which getters to use
                 var reportTextVisible = await _pacs.ReportTextIsVisibleAsync();
                 bool useReportText = string.Equals(reportTextVisible, "true", StringComparison.OrdinalIgnoreCase);
 
-                // 4) Fetch findings/conclusion based on ReportText visibility with new fallback logic
+                // 5) Fetch findings/conclusion with REDUCED retry logic (max 2 attempts per getter)
                 string findings = string.Empty, conclusion = string.Empty;
+                
+                // Helper function to fetch with reduced retries (max 2 attempts)
+                async Task<string> FetchWithReducedRetries(Func<Task<string?>> getter, string getterName)
+                {
+                    const int maxAttempts = 2;
+                    const int delayMs = 200;
+                    
+                    for (int attempt = 1; attempt <= maxAttempts; attempt++)
+                    {
+                        try
+                        {
+                            if (attempt > 1) await Task.Delay(delayMs);
+                            var result = await getter();
+                            if (!string.IsNullOrWhiteSpace(result))
+                            {
+                                Debug.WriteLine($"[AddPreviousStudy][{getterName}] SUCCESS on attempt {attempt}");
+                                return result;
+                            }
+                            Debug.WriteLine($"[AddPreviousStudy][{getterName}] Attempt {attempt} returned empty");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[AddPreviousStudy][{getterName}] Attempt {attempt} exception: {ex.Message}");
+                            if (attempt == maxAttempts) break;
+                        }
+                    }
+                    Debug.WriteLine($"[AddPreviousStudy][{getterName}] FAILED after {maxAttempts} attempts");
+                    return string.Empty;
+                }
                 
                 if (useReportText)
                 {
                     // ReportText is visible: try primary getters first
-                    var f1Task = _pacs.GetCurrentFindingsAsync();
-                    var c1Task = _pacs.GetCurrentConclusionAsync();
+                    Debug.WriteLine("[AddPreviousStudy] ReportText visible - trying primary getters");
+                    
+                    var f1Task = FetchWithReducedRetries(_pacs.GetCurrentFindingsAsync, "GetCurrentFindings");
+                    var c1Task = FetchWithReducedRetries(_pacs.GetCurrentConclusionAsync, "GetCurrentConclusion");
                     await Task.WhenAll(f1Task, c1Task);
                     
-                    string f1 = f1Task.Result ?? string.Empty;
-                    string c1 = c1Task.Result ?? string.Empty;
+                    string f1 = f1Task.Result;
+                    string c1 = c1Task.Result;
                     
-                    // NEW LOGIC: If BOTH findings and conclusion are blank, try alternate getters
+                    // NEW LOGIC: If BOTH findings and conclusion are blank, try alternate getters ONCE
                     if (string.IsNullOrWhiteSpace(f1) && string.IsNullOrWhiteSpace(c1))
                     {
-                        SetStatus("ReportText visible - primary getters returned blank, trying alternates");
+                        Debug.WriteLine("[AddPreviousStudy] Primary getters returned blank, trying alternates ONCE");
+                        
+                        // Single attempt on alternates (no retry loop)
                         var f2Task = _pacs.GetCurrentFindings2Async();
                         var c2Task = _pacs.GetCurrentConclusion2Async();
                         await Task.WhenAll(f2Task, c2Task);
@@ -1025,31 +1090,46 @@ namespace Wysg.Musm.Radium.ViewModels
                         string PickLonger(string? a, string? b) => (b?.Length ?? 0) > (a?.Length ?? 0) ? (b ?? string.Empty) : (a ?? string.Empty);
                         findings = PickLonger(f1, f2);
                         conclusion = PickLonger(c1, c2);
-                        SetStatus("ReportText visible - used primary + alternate getters (fallback)");
+                        SetStatus($"ReportText visible - used primary + alternate getters (findings={findings.Length}ch, conclusion={conclusion.Length}ch)");
                     }
                     else
                     {
                         // At least one primary getter returned content - use primary results
                         findings = f1;
                         conclusion = c1;
-                        SetStatus("ReportText visible - using primary getters");
+                        SetStatus($"ReportText visible - using primary getters (findings={findings.Length}ch, conclusion={conclusion.Length}ch)");
                     }
                 }
                 else
                 {
-                    // ReportText is not visible: use alternate getters only
-                    var f2Task = _pacs.GetCurrentFindings2Async();
-                    var c2Task = _pacs.GetCurrentConclusion2Async();
+                    // ReportText is not visible: use alternate getters only (with reduced retries)
+                    Debug.WriteLine("[AddPreviousStudy] ReportText not visible - using alternate getters");
+                    
+                    var f2Task = FetchWithReducedRetries(_pacs.GetCurrentFindings2Async, "GetCurrentFindings2");
+                    var c2Task = FetchWithReducedRetries(_pacs.GetCurrentConclusion2Async, "GetCurrentConclusion2");
                     await Task.WhenAll(f2Task, c2Task);
-                    findings = f2Task.Result ?? string.Empty;
-                    conclusion = c2Task.Result ?? string.Empty;
-                    SetStatus("ReportText not visible - using alternate getters");
+                    
+                    findings = f2Task.Result;
+                    conclusion = c2Task.Result;
+                    SetStatus($"ReportText not visible - using alternate getters (findings={findings.Length}ch, conclusion={conclusion.Length}ch)");
                 }
 
-                // 5) Persist as previous study via existing repo methods
-                if (_studyRepo == null) return;
+                // 6) Persist as previous study via existing repo methods
+                if (_studyRepo == null) 
+                {
+                    sw.Stop();
+                    Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Repository unavailable ===== ({sw.ElapsedMilliseconds} ms)");
+                    return;
+                }
+                
                 var studyId = await _studyRepo.EnsureStudyAsync(PatientNumber, PatientName, PatientSex, null, studyName, studyDt);
-                if (studyId == null) { SetStatus("Study save failed", true); return; }
+                if (studyId == null) 
+                { 
+                    sw.Stop();
+                    Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Study save failed ===== ({sw.ElapsedMilliseconds} ms)");
+                    SetStatus("Study save failed", true); 
+                    return; 
+                }
 
                 var reportObj = new { header_and_findings = findings, final_conclusion = conclusion };
                 string json = JsonSerializer.Serialize(reportObj);
@@ -1097,10 +1177,14 @@ namespace Wysg.Musm.Radium.ViewModels
                     // Don't fail the entire operation if comparison append fails
                 }
                 
+                sw.Stop();
+                Debug.WriteLine($"[AddPreviousStudyModule] ===== END: SUCCESS ===== ({sw.ElapsedMilliseconds} ms)");
                 SetStatus("Previous study added");
             }
             catch (Exception ex)
             {
+                sw.Stop();
+                Debug.WriteLine($"[AddPreviousStudyModule] ===== EXCEPTION ===== ({sw.ElapsedMilliseconds} ms)");
                 Debug.WriteLine("[AddPreviousStudyModule] error: " + ex.Message);
                 SetStatus("Add previous study module failed", true);
             }

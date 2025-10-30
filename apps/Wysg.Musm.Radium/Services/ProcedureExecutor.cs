@@ -25,18 +25,21 @@ namespace Wysg.Musm.Radium.Services
         /// </summary>
         public static Task<string?> ExecuteAsync(string methodTag) => Task.Run(() => 
         {
+            var sw = Stopwatch.StartNew(); // Start timing
             Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] ===== START: {methodTag} =====");
             try
             {
                 var result = ExecuteInternal(methodTag);
-                Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] ===== END: {methodTag} =====");
+                sw.Stop(); // Stop timing
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] ===== END: {methodTag} ===== ({sw.ElapsedMilliseconds} ms)");
                 Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] Final result: '{result}'");
                 Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] Result length: {result?.Length ?? 0} characters");
                 return result;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] ===== EXCEPTION in {methodTag} =====");
+                sw.Stop(); // Stop timing even on exception
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] ===== EXCEPTION in {methodTag} ===== ({sw.ElapsedMilliseconds} ms)");
                 Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] Exception: {ex.GetType().Name} - {ex.Message}");
                 Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] StackTrace: {ex.StackTrace}");
                 throw;

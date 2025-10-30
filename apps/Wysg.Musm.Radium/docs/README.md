@@ -13,6 +13,9 @@
 
 ### Recent Major Features (2025-02-02)
 
+- **[PERFORMANCE_2025-02-02_AddPreviousStudyEarlyExit.md](PERFORMANCE_2025-02-02_AddPreviousStudyEarlyExit.md)** - Optimized duplicate study detection in AddPreviousStudy from 5.3s to <400ms (93% faster) by moving duplicate check before unnecessary metadata fetches
+- **[ENHANCEMENT_2025-02-02_PacsModuleTimingLogs.md](ENHANCEMENT_2025-02-02_PacsModuleTimingLogs.md)** - Added execution time measurement to PACS module logs (e.g., "END: GetSelectedStudynameFromRelatedStudies (543 ms)") for performance monitoring and debugging
+- **[PERFORMANCE_2025-02-02_AddPreviousStudyRetryReduction.md](PERFORMANCE_2025-02-02_AddPreviousStudyRetryReduction.md)** - Reduced excessive retries in AddPreviousStudy module from 20 attempts (~2.8s) to 4-5 attempts (~1.0s max), improving performance by 65-85%
 - **[ENHANCEMENT_2025-02-02_ConsiderArrowBulletContinuation.md](ENHANCEMENT_2025-02-02_ConsiderArrowBulletContinuation.md)** - New reportify option to treat arrows/bullets as continuations of previous numbered line (hierarchical formatting support)
 - **[MAINTENANCE_2025-02-02_DebugLogCleanup.md](MAINTENANCE_2025-02-02_DebugLogCleanup.md)** - Removed excessive debug logging from editor hot paths to improve input responsiveness (Performance improvement)
 - **[ENHANCEMENT_2025-02-02_PreviousReportSelector.md](ENHANCEMENT_2025-02-02_PreviousReportSelector.md)** - Previous report selector ComboBox now auto-populates with all reports for selected study, with most recent report selected by default
