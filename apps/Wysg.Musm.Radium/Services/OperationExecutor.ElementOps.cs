@@ -18,28 +18,45 @@ namespace Wysg.Musm.Radium.Services
         private static (string preview, string? value) ExecuteGetText(AutomationElement? el)
         {
             if (el == null) { return ("(no element)", null); }
+            
             try
             {
-                var name = el.Name;
-                var val = el.Patterns.Value.PatternOrDefault?.Value ?? string.Empty;
-                var legacy = el.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty;
+                // Each property access wrapped individually to prevent exception propagation delays
+                string name = string.Empty;
+                try { name = el.Name ?? string.Empty; } catch { }
+                
+                string val = string.Empty;
+                try { val = el.Patterns.Value.PatternOrDefault?.Value ?? string.Empty; } catch { }
+                
+                string legacy = string.Empty;
+                try { legacy = el.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty; } catch { }
+                
                 var raw = !string.IsNullOrEmpty(val) ? val : (!string.IsNullOrEmpty(name) ? name : legacy);
                 var valueToStore = NormalizeKoreanMojibake(raw);
                 return (valueToStore ?? "(null)", valueToStore);
             }
-            catch { return ("(error)", null); }
+            catch 
+            { 
+                return ("(error)", null); 
+            }
         }
 
         private static (string preview, string? value) ExecuteGetName(AutomationElement? el)
         {
             if (el == null) { return ("(no element)", null); }
+            
             try
             {
-                var raw = el.Name;
+                string raw = string.Empty;
+                try { raw = el.Name ?? string.Empty; } catch { }
+                
                 var valueToStore = NormalizeKoreanMojibake(raw);
                 return (string.IsNullOrEmpty(valueToStore) ? "(empty)" : valueToStore, valueToStore);
             }
-            catch { return ("(error)", null); }
+            catch 
+            { 
+                return ("(error)", null); 
+            }
         }
 
         private static (string preview, string? value) ExecuteGetTextOCR(AutomationElement? el)

@@ -43,20 +43,28 @@ namespace Wysg.Musm.Radium.Services
             }
         }
 
-        private static async Task<string?> ExecWithRetry(string tag, int attempts = 5, int delayMs = 140)
+        private static async Task<string?> ExecWithRetry(string tag, int attempts = 1, int delayMs = 140)
         {
             System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] Starting {tag} with {attempts} attempts");
             for (int i = 0; i < attempts; i++)
             {
                 System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] {tag} attempt {i + 1}/{attempts}");
-                var val = await ExecCustom(tag);
-                if (!string.IsNullOrWhiteSpace(val)) 
+                try
                 {
+                    var val = await ExecCustom(tag);
                     System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] {tag} SUCCESS on attempt {i + 1}: '{val}'");
-                    return val;
+                    System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] {tag} result length: {val?.Length ?? 0} characters");
+                    return val; // Return immediately - empty results are valid
                 }
-                System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] {tag} attempt {i + 1} returned empty, retrying...");
-                await Task.Delay(delayMs + i * 40);
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] {tag} attempt {i + 1} EXCEPTION: {ex.Message}");
+                    if (i < attempts - 1)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] {tag} will retry after {delayMs}ms...");
+                        await Task.Delay(delayMs + i * 40);
+                    }
+                }
             }
             System.Diagnostics.Debug.WriteLine($"[PacsService][ExecWithRetry] {tag} FAILED after {attempts} attempts");
             return null;

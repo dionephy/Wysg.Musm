@@ -1025,94 +1025,80 @@ namespace Wysg.Musm.Radium.ViewModels
                 var reportDateStr = await _pacs.GetSelectedReportDateTimeFromRelatedStudiesAsync();
                 DateTime? reportDt = DateTime.TryParse(reportDateStr, out var rdt) ? rdt : null;
 
-                // 4) Check if ReportText is visible to determine which getters to use
-                var reportTextVisible = await _pacs.ReportTextIsVisibleAsync();
-                bool useReportText = string.Equals(reportTextVisible, "true", StringComparison.OrdinalIgnoreCase);
-
-                // 5) Fetch findings/conclusion with REDUCED retry logic (max 2 attempts per getter)
+                // 4) CRITICAL OPTIMIZATION: Skip the slow ReportTextIsVisible check (takes 58 seconds!)
+                // Instead, always try ALL getters in parallel and pick the longest result
+                Debug.WriteLine("[AddPreviousStudy] Trying ALL getters in parallel (bypassing slow visibility check)");
+                
                 string findings = string.Empty, conclusion = string.Empty;
                 
-                // Helper function to fetch with reduced retries (max 2 attempts)
-                async Task<string> FetchWithReducedRetries(Func<Task<string?>> getter, string getterName)
+                // Launch all 4 getters simultaneously
+                var f1Task = Task.Run(async () => 
                 {
-                    const int maxAttempts = 2;
-                    const int delayMs = 200;
-                    
-                    for (int attempt = 1; attempt <= maxAttempts; attempt++)
-                    {
-                        try
-                        {
-                            if (attempt > 1) await Task.Delay(delayMs);
-                            var result = await getter();
-                            if (!string.IsNullOrWhiteSpace(result))
-                            {
-                                Debug.WriteLine($"[AddPreviousStudy][{getterName}] SUCCESS on attempt {attempt}");
-                                return result;
-                            }
-                            Debug.WriteLine($"[AddPreviousStudy][{getterName}] Attempt {attempt} returned empty");
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"[AddPreviousStudy][{getterName}] Attempt {attempt} exception: {ex.Message}");
-                            if (attempt == maxAttempts) break;
-                        }
+                    try 
+                    { 
+                        return await _pacs.GetCurrentFindingsAsync() ?? string.Empty;
+                    } 
+                    catch (Exception ex) 
+                    { 
+                        Debug.WriteLine($"[AddPreviousStudy][GetCurrentFindings] Exception: {ex.Message}");
+                        return string.Empty; 
                     }
-                    Debug.WriteLine($"[AddPreviousStudy][{getterName}] FAILED after {maxAttempts} attempts");
-                    return string.Empty;
-                }
+                });
                 
-                if (useReportText)
+                var c1Task = Task.Run(async () => 
                 {
-                    // ReportText is visible: try primary getters first
-                    Debug.WriteLine("[AddPreviousStudy] ReportText visible - trying primary getters");
-                    
-                    var f1Task = FetchWithReducedRetries(_pacs.GetCurrentFindingsAsync, "GetCurrentFindings");
-                    var c1Task = FetchWithReducedRetries(_pacs.GetCurrentConclusionAsync, "GetCurrentConclusion");
-                    await Task.WhenAll(f1Task, c1Task);
-                    
-                    string f1 = f1Task.Result;
-                    string c1 = c1Task.Result;
-                    
-                    // NEW LOGIC: If BOTH findings and conclusion are blank, try alternate getters ONCE
-                    if (string.IsNullOrWhiteSpace(f1) && string.IsNullOrWhiteSpace(c1))
-                    {
-                        Debug.WriteLine("[AddPreviousStudy] Primary getters returned blank, trying alternates ONCE");
-                        
-                        // Single attempt on alternates (no retry loop)
-                        var f2Task = _pacs.GetCurrentFindings2Async();
-                        var c2Task = _pacs.GetCurrentConclusion2Async();
-                        await Task.WhenAll(f2Task, c2Task);
-                        
-                        string f2 = f2Task.Result ?? string.Empty;
-                        string c2 = c2Task.Result ?? string.Empty;
-                        
-                        // Use the longer result from each getter pair
-                        string PickLonger(string? a, string? b) => (b?.Length ?? 0) > (a?.Length ?? 0) ? (b ?? string.Empty) : (a ?? string.Empty);
-                        findings = PickLonger(f1, f2);
-                        conclusion = PickLonger(c1, c2);
-                        SetStatus($"ReportText visible - used primary + alternate getters (findings={findings.Length}ch, conclusion={conclusion.Length}ch)");
+                    try 
+                    { 
+                        return await _pacs.GetCurrentConclusionAsync() ?? string.Empty;
+                    } 
+                    catch (Exception ex) 
+                    { 
+                        Debug.WriteLine($"[AddPreviousStudy][GetCurrentConclusion] Exception: {ex.Message}");
+                        return string.Empty; 
                     }
-                    else
-                    {
-                        // At least one primary getter returned content - use primary results
-                        findings = f1;
-                        conclusion = c1;
-                        SetStatus($"ReportText visible - using primary getters (findings={findings.Length}ch, conclusion={conclusion.Length}ch)");
-                    }
-                }
-                else
+                });
+                
+                var f2Task = Task.Run(async () => 
                 {
-                    // ReportText is not visible: use alternate getters only (with reduced retries)
-                    Debug.WriteLine("[AddPreviousStudy] ReportText not visible - using alternate getters");
-                    
-                    var f2Task = FetchWithReducedRetries(_pacs.GetCurrentFindings2Async, "GetCurrentFindings2");
-                    var c2Task = FetchWithReducedRetries(_pacs.GetCurrentConclusion2Async, "GetCurrentConclusion2");
-                    await Task.WhenAll(f2Task, c2Task);
-                    
-                    findings = f2Task.Result;
-                    conclusion = c2Task.Result;
-                    SetStatus($"ReportText not visible - using alternate getters (findings={findings.Length}ch, conclusion={conclusion.Length}ch)");
-                }
+                    try 
+                    { 
+                        return await _pacs.GetCurrentFindings2Async() ?? string.Empty;
+                    } 
+                    catch (Exception ex) 
+                    { 
+                        Debug.WriteLine($"[AddPreviousStudy][GetCurrentFindings2] Exception: {ex.Message}");
+                        return string.Empty; 
+                    }
+                });
+                
+                var c2Task = Task.Run(async () => 
+                {
+                    try 
+                    { 
+                        return await _pacs.GetCurrentConclusion2Async() ?? string.Empty;
+                    } 
+                    catch (Exception ex) 
+                    { 
+                        Debug.WriteLine($"[AddPreviousStudy][GetCurrentConclusion2] Exception: {ex.Message}");
+                        return string.Empty; 
+                    }
+                });
+                
+                // Wait for all to complete (max time = slowest getter, not sum of all)
+                await Task.WhenAll(f1Task, f2Task, c1Task, c2Task);
+                
+                // Pick the longer result from each pair
+                string f1 = f1Task.Result;
+                string f2 = f2Task.Result;
+                string c1 = c1Task.Result;
+                string c2 = c2Task.Result;
+                
+                findings = (f2.Length > f1.Length) ? f2 : f1;
+                conclusion = (c2.Length > c1.Length) ? c2 : c1;
+                
+                Debug.WriteLine($"[AddPreviousStudy] Primary findings: {f1.Length}ch, Alternate findings: {f2.Length}ch ¡æ Using: {findings.Length}ch");
+                Debug.WriteLine($"[AddPreviousStudy] Primary conclusion: {c1.Length}ch, Alternate conclusion: {c2.Length}ch ¡æ Using: {conclusion.Length}ch");
+                SetStatus($"Report text captured (findings={findings.Length}ch, conclusion={conclusion.Length}ch)");
 
                 // 6) Persist as previous study via existing repo methods
                 if (_studyRepo == null) 

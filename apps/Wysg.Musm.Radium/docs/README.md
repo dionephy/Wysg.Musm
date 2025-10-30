@@ -13,6 +13,7 @@
 
 ### Recent Major Features (2025-02-02)
 
+- **[PERFORMANCE_2025-02-02_AddPreviousStudyAggressiveRetryReduction.md](PERFORMANCE_2025-02-02_AddPreviousStudyAggressiveRetryReduction.md)** - Further optimized AddPreviousStudy retry logic: reduced primary getters from 2 to 1 attempt with 100ms delay (down from 200ms), optimized alternate getters with 50ms stabilization delay, fixes 52-second pathological case, now completes in <400ms worst-case
 - **[ENHANCEMENT_2025-02-02_CollapsibleJsonPanels.md](ENHANCEMENT_2025-02-02_CollapsibleJsonPanels.md)** - Made JSON panels in ReportInputsAndJsonPanel and PreviousReportTextAndJsonPanel collapsible with toggle button, default to collapsed state for better screen space utilization
 - **[PERFORMANCE_2025-02-02_AddPreviousStudyEarlyExit.md](PERFORMANCE_2025-02-02_AddPreviousStudyEarlyExit.md)** - Optimized duplicate study detection in AddPreviousStudy from 5.3s to <400ms (93% faster) by moving duplicate check before unnecessary metadata fetches
 - **[ENHANCEMENT_2025-02-02_PacsModuleTimingLogs.md](ENHANCEMENT_2025-02-02_PacsModuleTimingLogs.md)** - Added execution time measurement to PACS module logs (e.g., "END: GetSelectedStudynameFromRelatedStudies (543 ms)") for performance monitoring and debugging
