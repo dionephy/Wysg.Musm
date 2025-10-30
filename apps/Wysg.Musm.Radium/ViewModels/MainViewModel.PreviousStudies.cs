@@ -95,7 +95,32 @@ namespace Wysg.Musm.Radium.ViewModels
             get => _selectedPreviousStudy; 
             set 
             { 
-                var old = _selectedPreviousStudy; 
+                var old = _selectedPreviousStudy;
+                
+                // CRITICAL FIX: Save JSON changes of the OLD tab before switching
+                // This ensures splitting and other JSON edits are not lost when toggling between studies
+                if (old != null && old != value)
+                {
+                    Debug.WriteLine($"[Prev] Saving JSON changes for outgoing tab: {old.Title}");
+                    
+                    // Apply current JSON text to the old tab before switching away
+                    // This captures any manual edits made in the JSON editor
+                    if (!string.IsNullOrWhiteSpace(_previousReportJson) && _previousReportJson != "{}")
+                    {
+                        try
+                        {
+                            // Parse and apply JSON to the old tab's properties
+                            // This is the reverse of UpdatePreviousReportJson - it reads from JSON and updates the model
+                            ApplyJsonToPrevious(_previousReportJson);
+                            Debug.WriteLine($"[Prev] JSON saved successfully for: {old.Title}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[Prev] Error saving JSON for outgoing tab: {ex.Message}");
+                        }
+                    }
+                }
+                
                 if (SetProperty(ref _selectedPreviousStudy, value)) 
                 { 
                     Debug.WriteLine($"[Prev] SelectedPreviousStudy set -> {(value==null?"<null>":value.Title)}"); 

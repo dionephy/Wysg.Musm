@@ -118,6 +118,69 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ## Recent Updates (2025-02-02)
 
+### Previous Study JSON Save on Tab Switch (2025-02-02)
+
+**What Changed:**
+- Switching between previous study tabs now automatically saves JSON changes made in the previous tab
+- JSON edits (including splitting and manual field changes) are preserved when toggling studies
+- No user action required - happens automatically on tab switch
+
+**Why This Matters:**
+- **No Data Loss** - Splitting ranges and other JSON edits are automatically persisted when changing tabs
+- **Better UX** - Users can freely switch between studies without worrying about losing their work
+- **Workflow Efficiency** - Eliminates need to manually save JSON before switching tabs
+- **Consistency** - Matches expected behavior from other modern applications
+
+**Example Behavior:**
+```
+User is viewing Study A with manual splitting applied:
+  - Findings split at position 150
+  - Conclusion split at position 50
+  - JSON edited manually for header_temp
+
+User clicks Study B tab (toggle button / invoke tab):
+  1. Study A's current JSON state is saved to its tab object
+  2. Study B's JSON is loaded and displayed
+  3. User can now edit Study B
+
+User clicks back to Study A tab:
+  - Study A's JSON shows the saved splits and edits (preserved!)
+  - No data loss occurred
+```
+
+**Before This Fix:**
+```
+User switches from Study A to Study B:
+  ❌ Study A's JSON changes lost (splits reset to defaults)
+  ❌ Manual JSON edits discarded
+  ❌ User must remember to avoid switching tabs while editing
+```
+
+**After This Fix:**
+```
+User switches from Study A to Study B:
+  ✅ Study A's JSON changes saved automatically
+  ✅ Manual JSON edits preserved
+  ✅ User can freely switch tabs without data loss
+```
+
+**Key Technical Details:**
+- `SelectedPreviousStudy` setter enhanced with save logic
+- Calls `ApplyJsonToPrevious()` on outgoing tab before switching
+- JSON parse/apply happens synchronously to ensure atomicity
+- Error handling preserves tab switch even if JSON save fails
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.PreviousStudies.cs` - Enhanced SelectedPreviousStudy setter with pre-switch save logic
+
+**Benefits:**
+- **User Confidence** - Users can experiment with splitting without fear of data loss
+- **Workflow Freedom** - No need to complete all edits before switching tabs
+- **Reliability** - Automatic saves prevent accidental data loss
+- **Consistency** - Behavior matches user expectations from other apps
+
+---
+
 ### Collapsible JSON Panels (2025-02-02)
 
 **What Changed:**
