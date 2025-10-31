@@ -586,11 +586,10 @@ namespace Wysg.Musm.Radium.ViewModels
             var tab = SelectedPreviousStudy;
             try
             {
-                object obj;
                 if (tab == null)
                 {
                     // No selected tab yet: use cache fields so txtPrevJson mirrors user typing
-                    obj = new
+                    var obj = new
                     {
                         header_temp = _prevHeaderTempCache,
                         header_and_findings = _prevHeaderAndFindingsCache,
@@ -610,10 +609,52 @@ namespace Wysg.Musm.Radium.ViewModels
                         findings_proofread = _prevFindingsProofreadCache,
                         conclusion_proofread = _prevConclusionProofreadCache
                     };
+                    var json = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true });
+                    _updatingPrevFromEditors = true;
+                    PreviousReportJson = json;
+                    OnPropertyChanged(nameof(PreviousReportJson));
                     Debug.WriteLine($"[PrevJson] Update (cache only) htLen={_prevHeaderTempCache?.Length} hfLen={_prevHeaderAndFindingsCache?.Length} fcLen={_prevFinalConclusionCache?.Length}");
                 }
                 else
                 {
+                    // Use raw JSON from database as base
+                    string baseJson = tab.RawJson;
+                    
+                    // If no raw JSON available, create minimal structure
+                    if (string.IsNullOrWhiteSpace(baseJson) || baseJson == "{}")
+                    {
+                        baseJson = JsonSerializer.Serialize(new
+                        {
+                            header_and_findings = tab.Findings ?? string.Empty,
+                            final_conclusion = tab.Conclusion ?? string.Empty
+                        }, new JsonSerializerOptions { WriteIndented = true });
+                    }
+                    
+                    // Parse the raw JSON
+                    using var doc = JsonDocument.Parse(baseJson);
+                    using var stream = new System.IO.MemoryStream();
+                    using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
+                    
+                    writer.WriteStartObject();
+                    
+                    // Fields to exclude from copy (will be rewritten with computed values)
+                    var excludedFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        "PrevReport",     // Will rebuild this
+                        "header_temp",    // Will rewrite with computed split value
+                        "findings",       // Will rewrite with computed split value
+                        "conclusion"      // Will rewrite with computed split value
+                    };
+                    
+                    // Copy all existing properties from raw JSON (except excluded fields)
+                    foreach (var prop in doc.RootElement.EnumerateObject())
+                    {
+                        if (excludedFields.Contains(prop.Name)) continue;
+                        
+                        // Write the property as-is
+                        prop.WriteTo(writer);
+                    }
+                    
                     // Ensure defaults and compute split outputs
                     EnsureSplitDefaultsIfNeeded();
                     string hf = tab.Findings ?? string.Empty;
@@ -626,50 +667,45 @@ namespace Wysg.Musm.Radium.ViewModels
                     int fcTo = Clamp(tab.FcHeaderTo ?? 0, 0, fc.Length);
                     int fcFFrom = Clamp(tab.FcFindingsFrom ?? 0, 0, fc.Length);
                     int fcFTo = Clamp(tab.FcFindingsTo ?? 0, 0, fc.Length);
+                    
                     string splitHeader = (Sub(hf, 0, hfFrom).Trim() + Environment.NewLine + Sub(fc, 0, fcFrom).Trim()).Trim();
                     string splitFindings = (Sub(hf, hfTo, hfCFrom - hfTo).Trim() + Environment.NewLine + Sub(fc, fcTo, fcFFrom - fcTo).Trim()).Trim();
                     string splitConclusion = (Sub(hf, hfCTo, hf.Length - hfCTo).Trim() + Environment.NewLine + Sub(fc, fcFTo, fc.Length - fcFTo).Trim()).Trim();
+                    
+                    // Update tab split outputs
                     if (tab.HeaderTemp != splitHeader) tab.HeaderTemp = splitHeader;
                     if (tab.FindingsOut != splitFindings) tab.FindingsOut = splitFindings;
                     if (tab.ConclusionOut != splitConclusion) tab.ConclusionOut = splitConclusion;
-
-                    obj = new
-                    {
-                        header_temp = tab.HeaderTemp ?? string.Empty,
-                        header_and_findings = tab.Findings ?? string.Empty,
-                        final_conclusion = tab.Conclusion ?? string.Empty,
-                        findings = tab.FindingsOut ?? string.Empty,
-                        conclusion = tab.ConclusionOut ?? string.Empty,
-                        study_remark = tab.StudyRemark,
-                        patient_remark = tab.PatientRemark,
-                        chief_complaint = tab.ChiefComplaint,
-                        patient_history = tab.PatientHistory,
-                        study_techniques = tab.StudyTechniques,
-                        comparison = tab.Comparison,
-                        chief_complaint_proofread = tab.ChiefComplaintProofread,
-                        patient_history_proofread = tab.PatientHistoryProofread,
-                        study_techniques_proofread = tab.StudyTechniquesProofread,
-                        comparison_proofread = tab.ComparisonProofread,
-                        findings_proofread = tab.FindingsProofread,
-                        conclusion_proofread = tab.ConclusionProofread,
-                        PrevReport = new
-                        {
-                            header_and_findings_header_splitter_from = tab.HfHeaderFrom,
-                            header_and_findings_header_splitter_to = tab.HfHeaderTo,
-                            header_and_findings_conclusion_splitter_from = tab.HfConclusionFrom,
-                            header_and_findings_conclusion_splitter_to = tab.HfConclusionTo,
-                            final_conclusion_header_splitter_from = tab.FcHeaderFrom,
-                            final_conclusion_header_splitter_to = tab.FcHeaderTo,
-                            final_conclusion_findings_splitter_from = tab.FcFindingsFrom,
-                            final_conclusion_findings_splitter_to = tab.FcFindingsTo
-                        }
-                    };
-                    Debug.WriteLine($"[PrevJson] Update (tab) htLen={tab.HeaderTemp?.Length} hfLen={tab.Findings?.Length} fcLen={tab.Conclusion?.Length}");
+                    
+                    // Write the computed split output fields (these replace any existing values from DB)
+                    writer.WriteString("header_temp", tab.HeaderTemp ?? string.Empty);
+                    writer.WriteString("findings", tab.FindingsOut ?? string.Empty);
+                    writer.WriteString("conclusion", tab.ConclusionOut ?? string.Empty);
+                    
+                    // Add PrevReport section with split ranges
+                    writer.WritePropertyName("PrevReport");
+                    writer.WriteStartObject();
+                    writer.WriteNumber("header_and_findings_header_splitter_from", tab.HfHeaderFrom ?? 0);
+                    writer.WriteNumber("header_and_findings_header_splitter_to", tab.HfHeaderTo ?? 0);
+                    writer.WriteNumber("header_and_findings_conclusion_splitter_from", tab.HfConclusionFrom ?? hf.Length);
+                    writer.WriteNumber("header_and_findings_conclusion_splitter_to", tab.HfConclusionTo ?? hf.Length);
+                    writer.WriteNumber("final_conclusion_header_splitter_from", tab.FcHeaderFrom ?? 0);
+                    writer.WriteNumber("final_conclusion_header_splitter_to", tab.FcHeaderTo ?? 0);
+                    writer.WriteNumber("final_conclusion_findings_splitter_from", tab.FcFindingsFrom ?? 0);
+                    writer.WriteNumber("final_conclusion_findings_splitter_to", tab.FcFindingsTo ?? 0);
+                    writer.WriteEndObject();
+                    
+                    writer.WriteEndObject();
+                    writer.Flush();
+                    
+                    var jsonBytes = stream.ToArray();
+                    var json = System.Text.Encoding.UTF8.GetString(jsonBytes);
+                    
+                    _updatingPrevFromEditors = true;
+                    PreviousReportJson = json;
+                    OnPropertyChanged(nameof(PreviousReportJson));
+                    Debug.WriteLine($"[PrevJson] Update (tab, from raw DB JSON) htLen={tab.HeaderTemp?.Length} hfLen={tab.Findings?.Length} fcLen={tab.Conclusion?.Length}");
                 }
-                var json = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true });
-                _updatingPrevFromEditors = true;
-                PreviousReportJson = json;
-                OnPropertyChanged(nameof(PreviousReportJson));
             }
             catch (Exception ex) { Debug.WriteLine("[PrevJson] Update error: " + ex.Message); }
             finally { _updatingPrevFromEditors = false; }

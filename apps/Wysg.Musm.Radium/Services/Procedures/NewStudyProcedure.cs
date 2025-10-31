@@ -11,10 +11,29 @@ namespace Wysg.Musm.Radium.Services.Procedures
         {
             if (vm == null) return;
             
-            // FIRST: Clear all JSON components and toggle off Proofread and Reportified
-            Debug.WriteLine("[NewStudyProcedure] Clearing JSON components and toggling off Proofread/Reportified");
+            // FIRST: Empty ALL JSON fields for current and previous reports
+            Debug.WriteLine("[NewStudyProcedure] Emptying ALL JSON fields (current and previous reports)");
             
-            // Clear current report JSON components (proofread fields)
+            // ========== CURRENT REPORT JSON - EMPTY ALL FIELDS ==========
+            // Reported report fields (read-only, from GetReportedReport)
+            vm.ReportedHeaderAndFindings = string.Empty;
+            vm.ReportedFinalConclusion = string.Empty;
+            vm.ReportRadiologist = string.Empty;
+            
+            // Current editable report fields (bound to Findings/Conclusion editors)
+            // Note: FindingsText and ConclusionText will be cleared later by the existing code
+            
+            // Preorder findings
+            vm.FindingsPreorder = string.Empty;
+            
+            // Metadata fields
+            vm.StudyRemark = string.Empty;
+            vm.PatientRemark = string.Empty;
+            
+            // Header component fields (will be cleared by existing code below)
+            // ChiefComplaint, PatientHistory, StudyTechniques, Comparison
+            
+            // Current report proofread fields
             vm.ChiefComplaintProofread = string.Empty;
             vm.PatientHistoryProofread = string.Empty;
             vm.StudyTechniquesProofread = string.Empty;
@@ -22,25 +41,56 @@ namespace Wysg.Musm.Radium.Services.Procedures
             vm.FindingsProofread = string.Empty;
             vm.ConclusionProofread = string.Empty;
             
-            // Clear previous report JSON components (if any previous study is selected)
-            if (vm.SelectedPreviousStudy != null)
+            // ========== PREVIOUS REPORT JSON - EMPTY ALL FIELDS ==========
+            // Clear for EVERY previous study tab (not just selected one)
+            foreach (var prevTab in vm.PreviousStudies)
             {
-                vm.SelectedPreviousStudy.ChiefComplaintProofread = string.Empty;
-                vm.SelectedPreviousStudy.PatientHistoryProofread = string.Empty;
-                vm.SelectedPreviousStudy.StudyTechniquesProofread = string.Empty;
-                vm.SelectedPreviousStudy.ComparisonProofread = string.Empty;
-                vm.SelectedPreviousStudy.FindingsProofread = string.Empty;
-                vm.SelectedPreviousStudy.ConclusionProofread = string.Empty;
+                // Original report text fields
+                prevTab.Header = string.Empty;
+                prevTab.Findings = string.Empty;
+                prevTab.Conclusion = string.Empty;
+                prevTab.OriginalFindings = string.Empty;
+                prevTab.OriginalConclusion = string.Empty;
+                
+                // Split output fields (root JSON)
+                prevTab.HeaderTemp = string.Empty;
+                prevTab.FindingsOut = string.Empty;
+                prevTab.ConclusionOut = string.Empty;
+                
+                // Metadata fields
+                prevTab.ChiefComplaint = string.Empty;
+                prevTab.PatientHistory = string.Empty;
+                prevTab.StudyTechniques = string.Empty;
+                prevTab.Comparison = string.Empty;
+                prevTab.StudyRemark = string.Empty;
+                prevTab.PatientRemark = string.Empty;
+                
+                // Proofread fields
+                prevTab.ChiefComplaintProofread = string.Empty;
+                prevTab.PatientHistoryProofread = string.Empty;
+                prevTab.StudyTechniquesProofread = string.Empty;
+                prevTab.ComparisonProofread = string.Empty;
+                prevTab.FindingsProofread = string.Empty;
+                prevTab.ConclusionProofread = string.Empty;
+                
+                // Split range fields (nullable int)
+                prevTab.HfHeaderFrom = null;
+                prevTab.HfHeaderTo = null;
+                prevTab.HfConclusionFrom = null;
+                prevTab.HfConclusionTo = null;
+                prevTab.FcHeaderFrom = null;
+                prevTab.FcHeaderTo = null;
+                prevTab.FcFindingsFrom = null;
+                prevTab.FcFindingsTo = null;
             }
             
-            // Toggle off Proofread (current)
+            // Toggle off Proofread (current only - previous proofread toggle is NOT touched)
             vm.ProofreadMode = false;
-            //vm.PreviousProofreadMode = false;
             
             // Toggle off Reportified (current only - previous doesn't have this toggle anymore)
             vm.Reportified = false;
             
-            Debug.WriteLine("[NewStudyProcedure] Cleared all JSON components and toggled off Proofread/Reportified");
+            Debug.WriteLine("[NewStudyProcedure] Emptied all JSON fields and toggled off Proofread/Reportified (current only)");
             
             // Continue with existing NewStudy logic
             vm.PreviousStudies.Clear();
@@ -72,7 +122,7 @@ namespace Wysg.Musm.Radium.Services.Procedures
             }
             catch (Exception ex) { Debug.WriteLine("[NewStudyProcedure] autofill techniques error: " + ex.Message); }
 
-            vm.SetStatusInternal("New study initialized (unlocked, all toggles off, JSON cleared)");
+            vm.SetStatusInternal("New study initialized (unlocked, current toggles off, all JSON emptied)");
         }
     }
 }

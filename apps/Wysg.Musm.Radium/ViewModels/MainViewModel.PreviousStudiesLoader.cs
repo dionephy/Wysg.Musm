@@ -23,66 +23,127 @@ namespace Wysg.Musm.Radium.ViewModels
                 var groups = rows.GroupBy(r => new { r.StudyId, r.StudyDateTime, r.Studyname });
                 foreach (var g in groups.OrderByDescending(g => g.Key.StudyDateTime))
                 {
-                    string modality = ExtractModality(g.Key.Studyname); // Extract modality from Studyname, not StudyName
+                    string modality = ExtractModality(g.Key.Studyname);
                     if (PreviousStudies.Any(t => t.StudyDateTime == g.Key.StudyDateTime && string.Equals(t.Modality, modality, StringComparison.OrdinalIgnoreCase)))
-                        continue; // enforce uniqueness by datetime + modality
+                        continue;
                     var tab = new PreviousStudyTab
                     {
                         Id = Guid.NewGuid(),
                         StudyDateTime = g.Key.StudyDateTime,
                         Modality = modality,
-                        Title = $"{modality} {g.Key.StudyDateTime:yyyy-MM-dd}" // Changed format: "{Modality} {Date}" instead of "{Date} {Modality}"
+                        Title = $"{modality} {g.Key.StudyDateTime:yyyy-MM-dd}"
                     };
                     foreach (var row in g.OrderByDescending(r => r.ReportDateTime))
                     {
-                        string findings = string.Empty; string conclusion = string.Empty; string headerFind = string.Empty;
-                        string createdBy = string.Empty; // Read from JSON instead of database column
+                        // Variables to hold database fields
+                        string headerFind = string.Empty;  // Original header_and_findings from PACS
+                        string finalConclusion = string.Empty;  // Original final_conclusion from PACS
+                        string createdBy = string.Empty;
+                        
+                        // Extended fields from JSON
+                        string studyRemark = string.Empty;
+                        string patientRemark = string.Empty;
+                        string chiefComplaint = string.Empty;
+                        string patientHistory = string.Empty;
+                        string studyTechniques = string.Empty;
+                        string comparison = string.Empty;
+                        
+                        // Proofread fields from JSON
+                        string chiefComplaintProofread = string.Empty;
+                        string patientHistoryProofread = string.Empty;
+                        string studyTechniquesProofread = string.Empty;
+                        string comparisonProofread = string.Empty;
+                        string findingsProofread = string.Empty;
+                        string conclusionProofread = string.Empty;
+                        
                         try
                         {
                             using var doc = JsonDocument.Parse(row.ReportJson);
                             var root = doc.RootElement;
-                            if (root.TryGetProperty("header_and_findings", out var hf)) headerFind = hf.GetString() ?? string.Empty;
-                            if (root.TryGetProperty("findings", out var ff)) findings = ff.GetString() ?? headerFind; else findings = headerFind;
+                            
+                            // Read ORIGINAL fields from database (not computed split outputs)
+                            if (root.TryGetProperty("header_and_findings", out var hf)) 
+                                headerFind = hf.GetString() ?? string.Empty;
 
                             // Prefer new mapping: root.final_conclusion
                             if (root.TryGetProperty("final_conclusion", out var fc))
                             {
-                                conclusion = fc.GetString() ?? string.Empty;
+                                finalConclusion = fc.GetString() ?? string.Empty;
                             }
                             else if (root.TryGetProperty("conclusion", out var cc))
                             {
-                                // Legacy mapping used root.conclusion as the main conclusion
-                                conclusion = cc.GetString() ?? string.Empty;
+                                // Legacy: try root.conclusion
+                                finalConclusion = cc.GetString() ?? string.Empty;
                             }
                             else if (root.TryGetProperty("PrevReport", out var pr) && pr.ValueKind == JsonValueKind.Object)
                             {
-                                // Back-compat: some older payloads may have nested PrevReport.final_conclusion
-                                if (pr.TryGetProperty("final_conclusion", out var pfc)) conclusion = pfc.GetString() ?? string.Empty;
-                                else if (pr.TryGetProperty("conclusion", out var pcc)) conclusion = pcc.GetString() ?? string.Empty;
+                                // Back-compat: nested PrevReport fields
+                                if (pr.TryGetProperty("final_conclusion", out var pfc)) finalConclusion = pfc.GetString() ?? string.Empty;
+                                else if (pr.TryGetProperty("conclusion", out var pcc)) finalConclusion = pcc.GetString() ?? string.Empty;
                             }
                             
                             // Read radiologist from JSON
                             if (root.TryGetProperty("report_radiologist", out var rr)) createdBy = rr.GetString() ?? string.Empty;
+                            
+                            // Read extended metadata fields
+                            if (root.TryGetProperty("study_remark", out var sr)) studyRemark = sr.GetString() ?? string.Empty;
+                            if (root.TryGetProperty("patient_remark", out var pr2)) patientRemark = pr2.GetString() ?? string.Empty;
+                            if (root.TryGetProperty("chief_complaint", out var ccmp)) chiefComplaint = ccmp.GetString() ?? string.Empty;
+                            if (root.TryGetProperty("patient_history", out var ph)) patientHistory = ph.GetString() ?? string.Empty;
+                            if (root.TryGetProperty("study_techniques", out var st)) studyTechniques = st.GetString() ?? string.Empty;
+                            if (root.TryGetProperty("comparison", out var cmp)) comparison = cmp.GetString() ?? string.Empty;
+                            
+                            // Read proofread fields
+                            if (root.TryGetProperty("chief_complaint_proofread", out var ccpr)) chiefComplaintProofread = ccpr.GetString() ?? string.Empty;
+                            if (root.TryGetProperty("patient_history_proofread", out var phpr)) patientHistoryProofread = phpr.GetString() ?? string.Empty;
+                            if (root.TryGetProperty("study_techniques_proofread", out var stpr)) studyTechniquesProofread = stpr.GetString() ?? string.Empty;
+                            if (root.TryGetProperty("comparison_proofread", out var cmppr)) comparisonProofread = cmppr.GetString() ?? string.Empty;
+                            if (root.TryGetProperty("findings_proofread", out var fpr)) findingsProofread = fpr.GetString() ?? string.Empty;
+                            if (root.TryGetProperty("conclusion_proofread", out var cnpr)) conclusionProofread = cnpr.GetString() ?? string.Empty;
                         }
                         catch (Exception ex) { Debug.WriteLine("[PrevLoad] JSON parse error: " + ex.Message); }
+                        
                         var choice = new PreviousReportChoice
                         {
                             ReportDateTime = row.ReportDateTime,
-                            CreatedBy = createdBy, // Now from JSON instead of database column
+                            CreatedBy = createdBy,
                             Studyname = row.Studyname,
-                            Findings = string.IsNullOrWhiteSpace(findings) ? headerFind : findings,
-                            Conclusion = conclusion,
+                            Findings = headerFind,  // Use original header_and_findings
+                            Conclusion = finalConclusion,  // Use original final_conclusion
                             _studyDateTime = row.StudyDateTime
                         };
                         tab.Reports.Add(choice);
+                        
+                        // If this is the first (most recent) report, populate tab fields from it
+                        if (tab.Reports.Count == 1)
+                        {
+                            // Populate extended fields in the tab
+                            tab.StudyRemark = studyRemark;
+                            tab.PatientRemark = patientRemark;
+                            tab.ChiefComplaint = chiefComplaint;
+                            tab.PatientHistory = patientHistory;
+                            tab.StudyTechniques = studyTechniques;
+                            tab.Comparison = comparison;
+                            
+                            // Populate proofread fields in the tab
+                            tab.ChiefComplaintProofread = chiefComplaintProofread;
+                            tab.PatientHistoryProofread = patientHistoryProofread;
+                            tab.StudyTechniquesProofread = studyTechniquesProofread;
+                            tab.ComparisonProofread = comparisonProofread;
+                            tab.FindingsProofread = findingsProofread;
+                            tab.ConclusionProofread = conclusionProofread;
+                            
+                            // Store the raw JSON for later use
+                            tab.RawJson = row.ReportJson;
+                        }
                     }
                     tab.SelectedReport = tab.Reports.FirstOrDefault();
                     if (tab.SelectedReport != null)
                     {
                         tab.OriginalFindings = tab.SelectedReport.Findings;
                         tab.OriginalConclusion = tab.SelectedReport.Conclusion;
-                        tab.Findings = tab.SelectedReport.Findings;
-                        tab.Conclusion = tab.SelectedReport.Conclusion;
+                        tab.Findings = tab.SelectedReport.Findings;  // This is now header_and_findings (original)
+                        tab.Conclusion = tab.SelectedReport.Conclusion;  // This is now final_conclusion (original)
                     }
                     PreviousStudies.Add(tab);
                 }
