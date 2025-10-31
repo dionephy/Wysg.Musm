@@ -663,6 +663,31 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [ ] V459 Verify Save button enables after loading techniques from All Combinations
 - [ ] V460 Load techniques from All Combinations, modify list (add/remove), then save → verify new combination created
 
+## New (2025-02-02 – Unicode Dash Normalization Fix)
+- [X] T1250 Investigate hyphen removal issue where "A2-A3" became "A22A3" in PACS (FR-HYPHEN-001)
+- [X] T1251 Identify root cause: Unicode dash characters (en-dash, em-dash, minus sign) not preserved (FR-HYPHEN-002)
+- [X] T1252 Add Unicode dash normalization at beginning of ApplyReportifyBlock() (FR-HYPHEN-003)
+- [X] T1253 Normalize en-dash (U+2013) to ASCII hyphen (U+002D) (FR-HYPHEN-004)
+- [X] T1254 Normalize em-dash (U+2014) to ASCII hyphen (U+002D) (FR-HYPHEN-005)
+- [X] T1255 Normalize minus sign (U+2212) to ASCII hyphen (U+002D) (FR-HYPHEN-006)
+- [X] T1256 Create FIX_2025-02-02_HyphenNormalization.md documentation (FR-HYPHEN-007)
+- [X] T1257 Create INVESTIGATION_2025-02-02_HyphenRemovalIssue.md analysis (FR-HYPHEN-008)
+- [X] T1258 Update README.md with Unicode dash normalization entry (FR-HYPHEN-009)
+- [X] T1259 Update Tasks.md with T1250-T1265 entries (this file, cumulative) (FR-HYPHEN-010)
+- [X] T1260 Verify build passes with no compilation errors (FR-HYPHEN-011)
+
+## Verification (Unicode Dash Normalization Fix)
+- [ ] V490 Type "A2–A3" with en-dash → verify normalizes to "A2-A3" with regular hyphen
+- [ ] V491 Type "A2—A3" with em-dash → verify normalizes to "A2-A3"
+- [ ] V492 Type "A2−A3" with minus sign → verify normalizes to "A2-A3"
+- [ ] V493 Copy "A2–A3" from Word → paste → verify normalizes correctly
+- [ ] V494 Copy "T1-weighted, T2-weighted" from PDF → paste → verify hyphens preserved
+- [ ] V495 Toggle Reportified ON with "A2–A3" → verify shows "A2-A3"
+- [ ] V496 Send report with "A2–A3" to PACS → verify PACS receives "A2-A3" not "A22A3"
+- [ ] V497 Type multiple dashes "T1–weighted, T2—weighted, 5−10" → verify all normalize to hyphens
+- [ ] V498 Type regular hyphen "A2-A3" → verify remains unchanged (no over-processing)
+- [ ] V499 Verify normalization works with Reportified OFF (dereportified text also goes through reportify on save)
+
 ## New (2025-02-02 – COVID-19 Hyphen Fix in Phrase Highlighting)
 - [X] T1240 Fix phrase tokenizer to treat hyphens as valid word characters (FR-COVID19-Hyphen-001)
 - [X] T1241 Update FindPhraseMatches to include hyphens in word boundary detection (FR-COVID19-Hyphen-002)

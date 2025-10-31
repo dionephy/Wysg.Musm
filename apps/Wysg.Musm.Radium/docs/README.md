@@ -123,6 +123,51 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ## Recent Updates (2025-02-02)
 
+### Unicode Dash Normalization Fix (2025-02-02)
+
+**What Changed:**
+- Added automatic normalization of Unicode dash characters (en-dash, em-dash, minus sign) to ASCII hyphens
+- Prevents character loss when sending reports to PACS
+- Fixes issue where "A2–A3" became "A22A3" due to dash character stripping
+
+**Why This Matters:**
+- **Clinical Accuracy** - Medical terminology like "A2-A3 segments" must be preserved exactly
+- **Copy-Paste Safety** - Users can now safely copy text from Word, PDF, or web sources
+- **Auto-Correct Protection** - Smart editors that convert hyphens to en-dashes no longer cause issues
+- **IME Compatibility** - Works correctly with international input methods
+
+**Example Behavior:**
+```
+User types or pastes: "A2–A3 segments" (en-dash from auto-correct)
+System normalizes to:  "A2-A3 segments" (regular hyphen)
+PACS receives:         "A2-A3 segments" ✓ Correct!
+```
+
+**Technical Implementation:**
+- Normalization occurs at the beginning of `ApplyReportifyBlock()` method
+- Converts three Unicode dash variants to ASCII hyphen (U+002D):
+  - En-dash (U+2013 `–`) → Hyphen
+  - Em-dash (U+2014 `—`) → Hyphen  
+  - Minus sign (U+2212 `−`) → Hyphen
+- Safe: Only affects dash characters, preserves all other Unicode
+- Transparent: No user action required, works automatically
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.ReportifyHelpers.cs` - Added Unicode dash normalization
+
+**Documentation:**
+- See `FIX_2025-02-02_HyphenNormalization.md` for complete technical details
+- See `INVESTIGATION_2025-02-02_HyphenRemovalIssue.md` for root cause analysis
+
+**Benefits:**
+- ✅ Prevents medical terminology corruption
+- ✅ Copy-paste from any source works correctly
+- ✅ Auto-correct protection
+- ✅ International input method compatibility
+- ✅ No user behavior change required
+
+---
+
 ### Previous Study JSON Save on Tab Switch (2025-02-02)
 
 **What Changed:**

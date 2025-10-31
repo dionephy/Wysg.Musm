@@ -130,6 +130,14 @@ namespace Wysg.Musm.Radium.ViewModels
             input = input?.Trim() ?? string.Empty;
             
             if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+            
+            // CRITICAL FIX: Normalize Unicode dashes to ASCII hyphens
+            // This prevents issues where en-dashes (?) or em-dashes (?) are stripped/mangled
+            // Common in medical terminology like "A2-A3 segments"
+            input = input.Replace('\u2013', '-'); // En-dash (?) ¡æ Hyphen (-)
+            input = input.Replace('\u2014', '-'); // Em-dash (?) ¡æ Hyphen (-)
+            input = input.Replace('\u2212', '-'); // Minus sign (?) ¡æ Hyphen (-)
+            
             EnsureReportifyConfig();
             var cfg = _reportifyConfig ?? new ReportifyConfig();
 
