@@ -389,6 +389,10 @@ public sealed class UiBookmarks
     // FIX: Reduced retry count to minimize wasted delays (single attempt only, no retries)
     private const int StepRetryCount = 0; // total attempts per step = 1 + StepRetryCount
     private const int StepRetryDelayMs = 50; // reduced from 150ms for faster failure
+    private const int ManualWalkCapChildren = 10000; // Cap for Children scope
+    private const int ManualWalkCapDescendants = 5000; // Cap for Descendants scope (reduced from 100k)
+    private const int ManualWalkTimeoutMs = 3000; // Max time for manual walker Descendants search
+    private const int FastFailThresholdMs = 150; // Query time threshold for fast-fail (increased from 100ms)
 
     // Core walker used by ResolvePath / TryResolveWithTrace / ResolveBookmark
     private static (AutomationElement? final, List<AutomationElement> path) Walk(AutomationElement start, Bookmark b, List<Node> nodes, StringBuilder? trace)
@@ -490,6 +494,7 @@ public sealed class UiBookmarks
             long queryTimeMs = 0;
             long retryDelayMs = 0;
             bool skipRetries = false; // FIX: Flag to skip retries on "not supported" errors
+            bool skipManualWalker = false; // FIX: Flag to skip expensive manual walker on Descendants
             
             // Attempt primary find with small retry/backoff for transient UIA failures
             for (int attempt = 0; attempt <= StepRetryCount; attempt++)
@@ -583,15 +588,27 @@ public sealed class UiBookmarks
                 // For child steps, always try manual walker even with PropertyNotSupportedException
                 bool skipFallbacks = (i == 0 && skipRetries);
                 
-                // Manual walk (Raw then Control) - only skip if root-level permanent error
-                if (!skipFallbacks)
+                // FIX: For Descendants scope, skip manual walker if query failed quickly (likely doesn't exist)
+                // Manual walker for Descendants is extremely expensive (can take 30+ seconds)
+                // Increased threshold from 100ms to 150ms to catch more fast-failure cases
+                if (!skipFallbacks && node.Scope == SearchScope.Descendants && queryTimeMs < FastFailThresholdMs)
                 {
-                    matches = ManualFindMatches(current, node, node.Scope, automation, preferRaw: true);
+                    trace?.AppendLine($"Step {i}: Skipping manual walker for Descendants (query failed quickly in {queryTimeMs}ms < {FastFailThresholdMs}ms, likely element doesn't exist)");
+                    skipManualWalker = true;
+                }
+                
+                // Manual walk (Raw then Control) - only skip if root-level permanent error or Descendants fast-fail
+                if (!skipFallbacks && !skipManualWalker)
+                {
+                    var manualSw = Stopwatch.StartNew();
+                    matches = ManualFindMatches(current, node, node.Scope, automation, preferRaw: true, trace: trace);
                     if (matches.Length == 0)
                     {
-                        var ctrl = ManualFindMatches(current, node, node.Scope, automation, preferRaw: false);
+                        var ctrl = ManualFindMatches(current, node, node.Scope, automation, preferRaw: false, trace: trace);
                         if (ctrl.Length > 0) matches = ctrl;
                     }
+                    manualSw.Stop();
+                    trace?.AppendLine($"Step {i}: Manual walker time: {manualSw.ElapsedMilliseconds} ms (found {matches.Length} matches)");
                 }
 
                 // Relax ControlType if requested - only if not root-level permanent error
@@ -867,7 +884,7 @@ sb.AppendLine("Process not found - skipping all fallback root discovery strategi
         Order = n.Order
     };
 
-    private static AutomationElement[] ManualFindMatches(AutomationElement current, Node node, SearchScope scope, UIA3Automation automation, bool preferRaw)
+    private static AutomationElement[] ManualFindMatches(AutomationElement current, Node node, SearchScope scope, UIA3Automation automation, bool preferRaw, StringBuilder? trace = null)
     {
         var list = new List<AutomationElement>();
         AutomationElement[] Walk(bool useRaw)
@@ -910,13 +927,29 @@ sb.AppendLine("Process not found - skipping all fallback root discovery strategi
                 {
                     var q = new Queue<AutomationElement>();
                     foreach (var c in ChildrenOf(current)) q.Enqueue(c);
-                    int visited = 0; const int cap = 100000;
+                    int visited = 0; 
+                    // FIX: Use scope-specific caps - Children 10k, Descendants 5k (down from 100k)
+                    int cap = scope == SearchScope.Children ? ManualWalkCapChildren : ManualWalkCapDescendants;
+                    
+                    // FIX: Add timeout protection for Descendants scope
+                    var timeoutSw = Stopwatch.StartNew();
                     while (q.Count > 0 && visited < cap)
                     {
+                        // FIX: Check timeout every 100 elements for Descendants scope
+                        if (scope == SearchScope.Descendants && visited % 100 == 0)
+                        {
+                            if (timeoutSw.ElapsedMilliseconds > ManualWalkTimeoutMs)
+                            {
+                                trace?.AppendLine($"    Manual walker timeout after {timeoutSw.ElapsedMilliseconds}ms (visited {visited} elements)");
+                                break;
+                            }
+                        }
+                        
                         var el = q.Dequeue(); visited++;
                         if (Match(el)) list.Add(el);
                         foreach (var c in ChildrenOf(el)) q.Enqueue(c);
                     }
+                    timeoutSw.Stop();
                 }
             }
             catch { }
