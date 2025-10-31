@@ -108,6 +108,7 @@ namespace Wysg.Musm.Radium.Services
         public Task<string?> GetCurrentPatientNumberAsync() => ExecWithRetry("GetCurrentPatientNumber");
         public Task<string?> GetCurrentStudyDateTimeAsync() => ExecWithRetry("GetCurrentStudyDateTime");
         public Task<string?> GetCurrentFindingsAsync() => ExecWithRetry("GetCurrentFindings");
+        public Task<string?> GetCurrentFindingsWaitAsync() => ExecWithRetry("GetCurrentFindingsWait");
         public Task<string?> GetCurrentConclusionAsync() => ExecWithRetry("GetCurrentConclusion");
         public Task<string?> GetCurrentFindings2Async() => ExecWithRetry("GetCurrentFindings2");
         public Task<string?> GetCurrentConclusion2Async() => ExecWithRetry("GetCurrentConclusion2");

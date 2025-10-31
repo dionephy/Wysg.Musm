@@ -13,6 +13,7 @@
 
 ### Recent Major Features (2025-02-02)
 
+- **[ENHANCEMENT_2025-02-02_SpyWindowUIEnhancements.md](ENHANCEMENT_2025-02-02_SpyWindowUIEnhancements.md)** - Added GetTextWait operation (waits up to 5 seconds for element visibility), GetCurrentFindingsWait PACS method, and changed "Map to:" label to "Bookmark:" for better clarity in Spy Window
 - **[PERFORMANCE_2025-02-02_UiBookmarksFastFail.md](PERFORMANCE_2025-02-02_UiBookmarksFastFail.md)** - Optimized UI bookmark resolution failure time from 30+ seconds to <3 seconds (90%+ faster) by implementing fast-fail heuristic with 150ms threshold (increased from 100ms to catch queries that take 106ms), reduce manual walker cap from 100k to 5k elements for Descendants scope, and add 3-second hard timeout for manual walker to prevent pathological 30-second hangs
 - **[PERFORMANCE_2025-02-02_AddPreviousStudyAggressiveRetryReduction.md](PERFORMANCE_2025-02-02_AddPreviousStudyAggressiveRetryReduction.md)** - Further optimized AddPreviousStudy retry logic: reduced primary getters from 2 to 1 attempt with 100ms delay (down from 200ms), optimized alternate getters with 50ms stabilization delay, fixes 52-second pathological case, now completes in <400ms worst-case
 - **[ENHANCEMENT_2025-02-02_CollapsibleJsonPanels.md](ENHANCEMENT_2025-02-02_CollapsibleJsonPanels.md)** - Made JSON panels in ReportInputsAndJsonPanel and PreviousReportTextAndJsonPanel collapsible with toggle button, default to collapsed state for better screen space utilization

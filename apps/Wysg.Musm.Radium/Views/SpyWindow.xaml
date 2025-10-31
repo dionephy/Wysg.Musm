@@ -36,7 +36,7 @@
             <TextBlock Text="Delay(ms):" VerticalAlignment="Center" Margin="8,0,4,0"/>
             <TextBox x:Name="txtDelay" Width="60" Text="1500" Style="{StaticResource DarkTextBox}"/>
             <Button Content="Pick" Margin="8,0,0,0" Click="OnPick" Style="{StaticResource SpyWindowButtonStyle}"/>
-            <TextBlock Text="Map to:" Margin="12,0,6,0" VerticalAlignment="Center"/>
+            <TextBlock Text="Bookmark:" Margin="12,0,6,0" VerticalAlignment="Center"/>
             <ComboBox x:Name="cmbKnown" Width="300" SelectionChanged="OnKnownSelectionChanged" SelectedValuePath="Tag"
                       Style="{StaticResource SpyWindowComboBoxStyle}" ItemsSource="{StaticResource KnownControlItems}"/>
             <Button Content="Map" Margin="6,0,0,0" Click="OnMapSelected" Style="{StaticResource SpyWindowButtonStyle}"/>

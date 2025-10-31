@@ -590,7 +590,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine("[Automation][GetReportedReport] Starting acquisition");
                 
                 // Execute GetCurrentFindings and GetCurrentConclusion from PACS
-                var findingsTask = _pacs.GetCurrentFindingsAsync();
+                var findingsTask = _pacs.GetCurrentFindingsWaitAsync();
                 var conclusionTask = _pacs.GetCurrentConclusionAsync();
                 
                 await Task.WhenAll(findingsTask, conclusionTask);

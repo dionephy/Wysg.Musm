@@ -41,6 +41,129 @@ namespace Wysg.Musm.Radium.Services
             }
         }
 
+        /// <summary>
+        /// GetTextWait: Attempts to resolve element and wait up to 5 seconds for it to become visible.
+        /// This is different from GetText which fails immediately if element is not found or not visible.
+        /// 
+        /// Implementation: This operation needs special handling in ProcedureExecutor to pass the
+        /// bookmark/element argument for retry resolution instead of using the standard pre-resolved element.
+        /// </summary>
+        private static (string preview, string? value) ExecuteGetTextWait(AutomationElement? el)
+        {
+            // Note: This implementation receives a pre-resolved element from OperationExecutor
+            // For the wait functionality to work properly, we need the element resolution to be
+            // part of the retry loop. See ExecuteGetTextWaitWithRetry for the proper implementation.
+            
+            if (el == null) { return ("(no element)", null); }
+            
+            try
+            {
+                // Wait up to 5 seconds for element to be visible
+                var maxWaitMs = 5000;
+                var intervalMs = 200;
+                var elapsedMs = 0;
+                
+                while (elapsedMs < maxWaitMs)
+                {
+                    // Check if element is visible
+                    try
+                    {
+                        var r = el.BoundingRectangle;
+                        if (r.Width > 0 && r.Height > 0)
+                        {
+                            // Element is visible, proceed with GetText
+                            Debug.WriteLine($"[GetTextWait] Element became visible after {elapsedMs}ms");
+                            return ExecuteGetText(el);
+                        }
+                    }
+                    catch
+                    {
+                        // Element might be stale or inaccessible, keep waiting
+                    }
+                    
+                    // Wait before next check
+                    System.Threading.Thread.Sleep(intervalMs);
+                    elapsedMs += intervalMs;
+                }
+                
+                // Timeout - element never became visible
+                Debug.WriteLine($"[GetTextWait] Timeout after {maxWaitMs}ms - element not visible");
+                return ("(timeout - not visible)", null);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[GetTextWait] Exception: {ex.Message}");
+                return ("(error)", null);
+            }
+        }
+
+        /// <summary>
+        /// GetTextWaitWithRetry: Specialized version that handles element resolution with retry.
+        /// This is called from OperationExecutor with a resolution function instead of a pre-resolved element.
+        /// </summary>
+        internal static (string preview, string? value) ExecuteGetTextWaitWithRetry(
+            Func<AutomationElement?> resolveElement)
+        {
+            var maxWaitMs = 5000;
+            var intervalMs = 200;
+            var elapsedMs = 0;
+            
+            Debug.WriteLine($"[GetTextWaitWithRetry] Starting retry loop (max {maxWaitMs}ms, interval {intervalMs}ms)");
+            
+            while (elapsedMs < maxWaitMs)
+            {
+                try
+                {
+                    // Attempt to resolve element
+                    Debug.WriteLine($"[GetTextWaitWithRetry] Attempt at {elapsedMs}ms - resolving element...");
+                    var el = resolveElement();
+                    
+                    if (el != null)
+                    {
+                        Debug.WriteLine($"[GetTextWaitWithRetry] Element resolved at {elapsedMs}ms");
+                        
+                        // Check if element is visible
+                        try
+                        {
+                            var r = el.BoundingRectangle;
+                            if (r.Width > 0 && r.Height > 0)
+                            {
+                                // Element is visible, get text
+                                Debug.WriteLine($"[GetTextWaitWithRetry] Element visible after {elapsedMs}ms, getting text");
+                                var result = ExecuteGetText(el);
+                                Debug.WriteLine($"[GetTextWaitWithRetry] SUCCESS: Got text '{result.value}' after {elapsedMs}ms");
+                                return result;
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"[GetTextWaitWithRetry] Element resolved but not visible (width={r.Width}, height={r.Height})");
+                            }
+                        }
+                        catch (Exception visEx)
+                        {
+                            Debug.WriteLine($"[GetTextWaitWithRetry] Element resolved but visibility check failed: {visEx.Message}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[GetTextWaitWithRetry] Element resolution returned null at {elapsedMs}ms");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[GetTextWaitWithRetry] Exception during resolution attempt at {elapsedMs}ms: {ex.Message}");
+                }
+                
+                // Wait before next attempt
+                System.Threading.Thread.Sleep(intervalMs);
+                elapsedMs += intervalMs;
+            }
+            
+            // Timeout - element never became visible
+            Debug.WriteLine($"[GetTextWaitWithRetry] TIMEOUT after {maxWaitMs}ms - element not found or not visible");
+            return ("(timeout - not visible)", null);
+        }
+
         private static (string preview, string? value) ExecuteGetName(AutomationElement? el)
         {
             if (el == null) { return ("(no element)", null); }

@@ -112,6 +112,9 @@ namespace Wysg.Musm.Radium.Services
                 // Element Operations
                 case "GetText":
                     return ExecuteGetText(resolveArg1Element());
+                case "GetTextWait":
+                    // Special handling: pass resolution function to allow retry
+                    return ExecuteGetTextWaitWithRetry(resolveArg1Element);
                 case "GetName":
                     return ExecuteGetName(resolveArg1Element());
                 case "GetTextOCR":

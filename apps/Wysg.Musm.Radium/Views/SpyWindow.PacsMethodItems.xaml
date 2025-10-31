@@ -28,6 +28,7 @@
         <ComboBoxItem Tag="GetCurrentStudyRemark">Get current study remark</ComboBoxItem>
         <ComboBoxItem Tag="GetCurrentPatientRemark">Get current patient remark</ComboBoxItem>
         <ComboBoxItem Tag="GetCurrentFindings">Get current findings</ComboBoxItem>
+        <ComboBoxItem Tag="GetCurrentFindingsWait">Get current findings wait</ComboBoxItem>
         <ComboBoxItem Tag="GetCurrentConclusion">Get current conclusion</ComboBoxItem>
         <ComboBoxItem Tag="GetCurrentFindings2">Get current findings 2</ComboBoxItem>
         <ComboBoxItem Tag="GetCurrentConclusion2">Get current conclusion 2</ComboBoxItem>
