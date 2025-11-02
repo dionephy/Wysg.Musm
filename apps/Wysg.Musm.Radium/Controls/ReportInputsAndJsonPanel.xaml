@@ -1,6 +1,7 @@
 <UserControl x:Class="Wysg.Musm.Radium.Controls.ReportInputsAndJsonPanel"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+          xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Wysg.Musm.Radium.Controls">
     <UserControl.Resources>
         <Style x:Key="DarkToggleButtonStyle" TargetType="ToggleButton">
             <Setter Property="Background" Value="#2D2D30"/>
@@ -50,31 +51,35 @@
                 </Grid.ColumnDefinitions>
                 
                 <Grid.RowDefinitions>
-                    <!-- Row 0: Headers -->
+                    <!-- Row0: Headers -->
                     <RowDefinition Height="Auto"/>
-                    <!-- Row 1: Study Remark -->
+                    <!-- Row1: Study Remark -->
                     <RowDefinition Height="Auto"/>
-                    <!-- Row 2: Chief Complaint label -->
+                    <!-- Row2: Chief Complaint label -->
                     <RowDefinition Height="Auto"/>
-                    <!-- Row 3: Chief Complaint textboxes -->
+                    <!-- Row3: Chief Complaint textboxes -->
                     <RowDefinition Height="Auto"/>
-                    <!-- Row 4: Patient Remark -->
+                    <!-- Row4: Patient Remark -->
                     <RowDefinition Height="Auto"/>
-                    <!-- Row 5: Patient History label -->
+                    <!-- Row5: Patient History label -->
                     <RowDefinition Height="Auto"/>
-                    <!-- Row 6: Patient History textboxes -->
+                    <!-- Row6: Patient History textboxes -->
                     <RowDefinition Height="Auto"/>
-                    <!-- Row 7: Findings label -->
+                    <!-- Row7: Findings label -->
                     <RowDefinition Height="Auto"/>
-                    <!-- Row 8: Findings textboxes -->
+                    <!-- Row8: Findings textboxes -->
                     <RowDefinition Height="Auto"/>
-                    <!-- Row 9: Conclusion label -->
+                    <!-- NEW Row9: Findings Diff Viewer (collapsible) -->
                     <RowDefinition Height="Auto"/>
-                    <!-- Row 10: Conclusion textboxes -->
+                    <!-- Row10: Conclusion label -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Row11: Conclusion textboxes -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- NEW Row12: Conclusion Diff Viewer (collapsible) -->
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Row 0: Column Headers with Edit Buttons -->
+                <!-- Row0: Column Headers with Edit Buttons -->
                 <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,8">
                     <TextBlock Text="Main Input" FontWeight="Bold" VerticalAlignment="Center"/>
                     <Button Content="Edit Study Technique" Margin="12,0,8,0"
@@ -100,14 +105,14 @@
                     </StackPanel>
                 </Grid>
 
-            <!-- Row 1: Study Remark (main column only) -->
+            <!-- Row1: Study Remark (main column only) -->
             <StackPanel Grid.Row="1" Grid.Column="0">
                 <TextBlock Text="Study Remark" Margin="4,0,0,4"/>
                     <TextBox x:Name="txtStudyRemark" Text="{Binding StudyRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          Padding="4" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
                 </StackPanel>
 
-            <!-- Row 2: Chief Complaint Labels -->
+            <!-- Row2: Chief Complaint Labels -->
             <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
                 <TextBlock Text="Chief Complaint" VerticalAlignment="Center"/>
                 <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
@@ -126,7 +131,7 @@
                         CommandParameter="chief_complaint_proofread"/>
             </StackPanel>
 
-            <!-- Row 3: Chief Complaint Textboxes (side-by-side, same row = perfect Y alignment) -->
+            <!-- Row3: Chief Complaint Textboxes (side-by-side, same row = perfect Y alignment) -->
             <TextBox x:Name="txtChiefComplaint" Grid.Row="3" Grid.Column="0"
                      Text="{Binding ChiefComplaint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
@@ -135,14 +140,14 @@
                      Text="{Binding ChiefComplaintProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
-            <!-- Row 4: Patient Remark (main column only) -->
+            <!-- Row4: Patient Remark (main column only) -->
             <StackPanel Grid.Row="4" Grid.Column="0">
                 <TextBlock Text="Patient Remark" Margin="4,0,0,4"/>
           <TextBox x:Name="txtPatientRemark" Text="{Binding PatientRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
               Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
             </StackPanel>
 
-            <!-- Row 5: Patient History Labels -->
+            <!-- Row5: Patient History Labels -->
             <StackPanel Grid.Row="5" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
                 <TextBlock Text="Patient History" VerticalAlignment="Center"/>
                 <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
@@ -161,7 +166,7 @@
                         CommandParameter="patient_history_proofread"/>
             </StackPanel>
 
-            <!-- Row 6: Patient History Textboxes (side-by-side, same row = perfect Y alignment) -->
+            <!-- Row6: Patient History Textboxes (side-by-side, same row = perfect Y alignment) -->
             <TextBox x:Name="txtPatientHistory" Grid.Row="6" Grid.Column="0"
                      Text="{Binding PatientHistory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
@@ -170,66 +175,136 @@
                      Text="{Binding PatientHistoryProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
-            <!-- Row 7: Findings Labels -->
+            <!-- Row7: Findings Labels -->
             <TextBlock Grid.Row="7" Grid.Column="0" Text="Findings" Margin="4,0,0,4"/>
             
             <StackPanel Grid.Row="7" Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,4">
-                <TextBlock Text="Findings (PR)" VerticalAlignment="Center" FontSize="11"/>
-                <ToggleButton Content="auto" Margin="6,0,0,0" Width="42" FontSize="10" Style="{StaticResource DarkToggleButtonStyle}"
-                              IsChecked="{Binding AutoFindingsProofread, Mode=TwoWay}"/>
-                <Button Content="gen" Margin="3,0,0,0" Width="42" FontSize="10"
-                        Command="{Binding GenerateFieldCommand}"
-                        CommandParameter="findings_proofread"/>
-            </StackPanel>
+         <TextBlock Text="Findings (PR)" VerticalAlignment="Center" FontSize="11"/>
+     <ToggleButton Content="auto" Margin="6,0,0,0" Width="42" FontSize="10" Style="{StaticResource DarkToggleButtonStyle}"
+     IsChecked="{Binding AutoFindingsProofread, Mode=TwoWay}"/>
+     <Button Content="gen" Margin="3,0,0,0" Width="42" FontSize="10"
+          Command="{Binding GenerateFieldCommand}"
+     CommandParameter="findings_proofread"/>
+      </StackPanel>
 
-            <!-- Row 8: Findings Textboxes (side-by-side, same row = perfect Y alignment) -->
-            <!-- CHANGED: Bind to RawFindingsTextEditable instead of FindingsText (not affected by Reportify toggle) -->
-            <TextBox x:Name="txtFindings" Grid.Row="8" Grid.Column="0"
-                     Text="{Binding RawFindingsTextEditable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
-            
+        <!-- Row8: Findings Textboxes (side-by-side, same row = perfect Y alignment) -->
+<!-- CHANGED: Bind to RawFindingsTextEditable instead of FindingsText (not affected by Reportify toggle) -->
+         <TextBox x:Name="txtFindings" Grid.Row="8" Grid.Column="0"
+       Text="{Binding RawFindingsTextEditable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+      
+   <!-- RESTORED: Regular editable TextBox for Findings (PR) -->
             <TextBox x:Name="txtFindingsProofread" Grid.Row="8" Grid.Column="2"
-                     Text="{Binding FindingsProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+           Text="{Binding FindingsProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+          Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
-            <!-- Row 9: Conclusion Labels -->
-            <StackPanel Grid.Row="9" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
-                <TextBlock Text="Conclusion" VerticalAlignment="Center"/>
-                <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
-                              IsChecked="{Binding AutoConclusion, Mode=TwoWay}"/>
-                <Button Content="generate" Margin="4,0,0,0" Width="72"
-                        Command="{Binding GenerateFieldCommand}"
-                        CommandParameter="conclusion"/>
-            </StackPanel>
-            
-            <StackPanel Grid.Row="9" Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,4">
-                <TextBlock Text="Conclusion (PR)" VerticalAlignment="Center" FontSize="11"/>
-                <ToggleButton Content="auto" Margin="6,0,0,0" Width="42" FontSize="10" Style="{StaticResource DarkToggleButtonStyle}"
-                              IsChecked="{Binding AutoConclusionProofread, Mode=TwoWay}"/>
-                <Button Content="gen" Margin="3,0,0,0" Width="42" FontSize="10"
-                        Command="{Binding GenerateFieldCommand}"
-                        CommandParameter="conclusion_proofread"/>
-            </StackPanel>
+   <!-- NEW Row9: Findings Diff Viewer (collapsible, spans all 3 columns) -->
+            <StackPanel Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,8">
+         <!-- Toggle button row -->
+           <StackPanel Orientation="Horizontal" Margin="4,0,0,4" VerticalAlignment="Center">
+           <ToggleButton x:Name="btnToggleFindingsDiff" 
+                   Content="&#9660;" 
+              Width="24" 
+        Height="24" 
+      FontSize="10" 
+   Padding="2"
+      Style="{StaticResource DarkToggleButtonStyle}"
+       IsChecked="False"
+         ToolTip="Toggle Findings diff viewer"/>
+     <TextBlock Text="Show Changes (Side-by-Side)" 
+         FontSize="11" 
+      FontWeight="Bold" 
+             VerticalAlignment="Center" 
+   Margin="8,0,0,0"/>
+          <TextBlock Text="(character/word/line-level diff)" 
+            FontSize="10" 
+      Foreground="#808080" 
+        VerticalAlignment="Center" 
+        Margin="8,0,0,0"/>
+          <!-- High-contrast toggle for diff colors -->
+           </StackPanel>
+                
+  <!-- Side-by-side diff viewer (collapsed by default) -->
+                <local:SideBySideDiffViewer x:Name="diffViewerFindings"
+ OriginalText="{Binding RawFindingsTextEditable, Mode=OneWay}"
+   ModifiedText="{Binding FindingsProofread, Mode=OneWay}"
+ UseHighContrastDiff="True"
+ MinHeight="200"
+  MaxHeight="400"
+          Visibility="{Binding IsChecked, ElementName=btnToggleFindingsDiff, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+         </StackPanel>
 
-            <!-- Row 10: Conclusion Textboxes (side-by-side, same row = perfect Y alignment) -->
-            <!-- CHANGED: Bind to RawConclusionTextEditable instead of ConclusionText (not affected by Reportify toggle) -->
-            <TextBox x:Name="txtConclusion" Grid.Row="10" Grid.Column="0"
-                     Text="{Binding RawConclusionTextEditable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
-            
-            <TextBox x:Name="txtConclusionProofread" Grid.Row="10" Grid.Column="2"
-                     Text="{Binding ConclusionProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+     <!-- Row10: Conclusion Labels -->
+    <StackPanel Grid.Row="10" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
+         <TextBlock Text="Conclusion" VerticalAlignment="Center"/>
+    <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
+      IsChecked="{Binding AutoConclusion, Mode=TwoWay}"/>
+      <Button Content="generate" Margin="4,0,0,0" Width="72"
+Command="{Binding GenerateFieldCommand}"
+        CommandParameter="conclusion"/>
+ </StackPanel>
+ 
+      <StackPanel Grid.Row="10" Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,4">
+  <TextBlock Text="Conclusion (PR)" VerticalAlignment="Center" FontSize="11"/>
+  <ToggleButton Content="auto" Margin="6,0,0,0" Width="42" FontSize="10" Style="{StaticResource DarkToggleButtonStyle}"
+       IsChecked="{Binding AutoConclusionProofread, Mode=TwoWay}"/>
+       <Button Content="gen" Margin="3,0,0,0" Width="42" FontSize="10"
+      Command="{Binding GenerateFieldCommand}"
+    CommandParameter="conclusion_proofread"/>
+    </StackPanel>
 
-                <!-- GridSplitters -->
-                <GridSplitter Grid.Row="0" Grid.RowSpan="11" Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
-                <GridSplitter x:Name="JsonSplitter" Grid.Row="0" Grid.RowSpan="11" Grid.Column="3" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+        <!-- Row11: Conclusion Textboxes (side-by-side, same row = perfect Y alignment) -->
+   <!-- CHANGED: Bind to RawConclusionTextEditable instead of ConclusionText (not affected by Reportify toggle) -->
+       <TextBox x:Name="txtConclusion" Grid.Row="11" Grid.Column="0"
+   Text="{Binding RawConclusionTextEditable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+     Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+     
+       <TextBox x:Name="txtConclusionProofread" Grid.Row="11" Grid.Column="2"
+          Text="{Binding ConclusionProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+     Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
-                <!-- Column 4: JSON (spans all rows) - ALREADY binds to CurrentReportJson which contains raw values -->
-                <TextBox x:Name="txtCurrentJson" Grid.Row="0" Grid.RowSpan="11" Grid.Column="4" 
-                         Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
-            </Grid>
-        </Border>
+   <!-- NEW Row12: Conclusion Diff Viewer (collapsible, spans all 3 columns) -->
+            <StackPanel Grid.Row="12" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,8">
+ <StackPanel Orientation="Horizontal" Margin="4,0,0,4" VerticalAlignment="Center">
+ <ToggleButton x:Name="btnToggleConclusionDiff"
+ Content="&#9660;"
+ Width="24"
+ Height="24"
+ FontSize="10"
+ Padding="2"
+ Style="{StaticResource DarkToggleButtonStyle}"
+ IsChecked="False"
+ ToolTip="Toggle Conclusion diff viewer"/>
+ <TextBlock Text="Show Changes (Side-by-Side)"
+ FontSize="11"
+ FontWeight="Bold"
+ VerticalAlignment="Center"
+ Margin="8,0,0,0"/>
+ <TextBlock Text="(character/word/line-level diff)"
+ FontSize="10"
+ Foreground="#808080"
+ VerticalAlignment="Center"
+ Margin="8,0,0,0"/>
+ </StackPanel>
+
+ <local:SideBySideDiffViewer x:Name="diffViewerConclusion"
+ OriginalText="{Binding RawConclusionTextEditable, Mode=OneWay}"
+ ModifiedText="{Binding ConclusionProofread, Mode=OneWay}"
+ UseHighContrastDiff="True"
+ MinHeight="200"
+ MaxHeight="400"
+ Visibility="{Binding IsChecked, ElementName=btnToggleConclusionDiff, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+ </StackPanel>
+
+ <!-- GridSplitters -->
+ <GridSplitter Grid.Row="0" Grid.RowSpan="13" Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+ <GridSplitter x:Name="JsonSplitter" Grid.Row="0" Grid.RowSpan="13" Grid.Column="3" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+
+ <!-- Column4: JSON (spans all rows) - ALREADY binds to CurrentReportJson which contains raw values -->
+ <TextBox x:Name="txtCurrentJson" Grid.Row="0" Grid.RowSpan="13" Grid.Column="4" 
+ Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+ Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AcceptsReturn="True"/>
+   </Grid>
+   </Border>
     </ScrollViewer>
 </UserControl>
