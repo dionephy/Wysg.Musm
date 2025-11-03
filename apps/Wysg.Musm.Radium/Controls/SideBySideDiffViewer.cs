@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -10,319 +11,170 @@ using DiffPlex.DiffBuilder.Model;
 
 namespace Wysg.Musm.Radium.Controls
 {
- /// <summary>
- /// Side-by-side diff viewer showing original text on left and modified text on right.
- /// Uses DiffPlex SideBySideDiffBuilder for line alignment and a lightweight
- /// single-region character diff for inline highlighting.
- /// </summary>
  public class SideBySideDiffViewer : Grid
  {
- private readonly RichTextBox _leftEditor;
- private readonly RichTextBox _rightEditor;
- private readonly ScrollViewer _leftScroll;
- private readonly ScrollViewer _rightScroll;
- private bool _syncingScroll;
+  // We use the same newline sentinel approach as DiffTextBox. See that file for detailed rationale.
+  private const string LbToken = "\uE000"; // Private Use char to represent a visual LineBreak
+  private readonly RichTextBox _leftEditor;
+  private readonly RichTextBox _rightEditor;
+  private readonly ScrollViewer _leftScroll;
+  private readonly ScrollViewer _rightScroll;
+  private bool _syncingScroll;
 
- public static readonly DependencyProperty OriginalTextProperty =
- DependencyProperty.Register(nameof(OriginalText), typeof(string), typeof(SideBySideDiffViewer),
- new PropertyMetadata(string.Empty, OnTextChanged));
+  public static readonly DependencyProperty OriginalTextProperty =
+  DependencyProperty.Register(nameof(OriginalText), typeof(string), typeof(SideBySideDiffViewer),
+  new PropertyMetadata(string.Empty, OnTextChanged));
 
- public static readonly DependencyProperty ModifiedTextProperty =
- DependencyProperty.Register(nameof(ModifiedText), typeof(string), typeof(SideBySideDiffViewer),
- new PropertyMetadata(string.Empty, OnTextChanged));
+  public static readonly DependencyProperty ModifiedTextProperty =
+  DependencyProperty.Register(nameof(ModifiedText), typeof(string), typeof(SideBySideDiffViewer),
+  new PropertyMetadata(string.Empty, OnTextChanged));
 
- // High-contrast highlighting switch
- public static readonly DependencyProperty UseHighContrastDiffProperty =
- DependencyProperty.Register(nameof(UseHighContrastDiff), typeof(bool), typeof(SideBySideDiffViewer),
- new PropertyMetadata(true, OnTextChanged));
+  public static readonly DependencyProperty UseHighContrastDiffProperty =
+  DependencyProperty.Register(nameof(UseHighContrastDiff), typeof(bool), typeof(SideBySideDiffViewer),
+  new PropertyMetadata(true, OnTextChanged));
 
- public string OriginalText
- {
- get => (string)GetValue(OriginalTextProperty);
- set => SetValue(OriginalTextProperty, value);
- }
+  public string OriginalText { get => (string)GetValue(OriginalTextProperty); set => SetValue(OriginalTextProperty, value); }
+  public string ModifiedText { get => (string)GetValue(ModifiedTextProperty); set => SetValue(ModifiedTextProperty, value); }
+  public bool UseHighContrastDiff { get => (bool)GetValue(UseHighContrastDiffProperty); set => SetValue(UseHighContrastDiffProperty, value); }
 
- public string ModifiedText
- {
- get => (string)GetValue(ModifiedTextProperty);
- set => SetValue(ModifiedTextProperty, value);
- }
+  public SideBySideDiffViewer()
+  {
+   // Layout omitted for brevity...
+   ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth =200 });
+   ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2) });
+   ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth =200 });
 
- public bool UseHighContrastDiff
- {
- get => (bool)GetValue(UseHighContrastDiffProperty);
- set => SetValue(UseHighContrastDiffProperty, value);
- }
+   _leftEditor = CreateEditor();
+   _leftScroll = new ScrollViewer { Content = _leftEditor, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+   Grid.SetColumn(_leftScroll,0);
+   Children.Add(_leftScroll);
 
- public SideBySideDiffViewer()
- {
- // Grid: [Left][Splitter][Right]
- ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth =200 });
- ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2) });
- ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth =200 });
+   var splitter = new GridSplitter { HorizontalAlignment = HorizontalAlignment.Stretch, Background = new SolidColorBrush(Color.FromRgb(45,45,48)), Width =2 };
+   Grid.SetColumn(splitter,1);
+   Children.Add(splitter);
 
- _leftEditor = CreateEditor();
- _leftScroll = new ScrollViewer
- {
- Content = _leftEditor,
- VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
- // Disable horizontal scroll on outer viewer to avoid infinite measure
- HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
- };
- Grid.SetColumn(_leftScroll,0);
- Children.Add(_leftScroll);
+   _rightEditor = CreateEditor();
+   _rightScroll = new ScrollViewer { Content = _rightEditor, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+   Grid.SetColumn(_rightScroll,2);
+   Children.Add(_rightScroll);
 
- var splitter = new GridSplitter
- {
- HorizontalAlignment = HorizontalAlignment.Stretch,
- Background = new SolidColorBrush(Color.FromRgb(45,45,48)),
- Width =2
- };
- Grid.SetColumn(splitter,1);
- Children.Add(splitter);
+   // Sync scrolling
+   _leftScroll.ScrollChanged += OnLeftScrollChanged;
+   _rightScroll.ScrollChanged += OnRightScrollChanged;
+  }
 
- _rightEditor = CreateEditor();
- _rightScroll = new ScrollViewer
- {
- Content = _rightEditor,
- VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
- HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
- };
- Grid.SetColumn(_rightScroll,2);
- Children.Add(_rightScroll);
+  private RichTextBox CreateEditor() => new RichTextBox { IsReadOnly = true, Background = new SolidColorBrush(Color.FromRgb(30,30,30)), Foreground = Brushes.White, BorderThickness = new Thickness(1), BorderBrush = new SolidColorBrush(Color.FromRgb(63,63,70)), Padding = new Thickness(8), FontFamily = new FontFamily("Consolas"), FontSize =12, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
 
- // Sync scrolling
- _leftScroll.ScrollChanged += OnLeftScrollChanged;
- _rightScroll.ScrollChanged += OnRightScrollChanged;
- }
+  private void OnLeftScrollChanged(object? sender, ScrollChangedEventArgs e) { if (_syncingScroll) return; _syncingScroll = true; _rightScroll.ScrollToVerticalOffset(e.VerticalOffset); _rightScroll.ScrollToHorizontalOffset(e.HorizontalOffset); _syncingScroll = false; }
+  private void OnRightScrollChanged(object? sender, ScrollChangedEventArgs e) { if (_syncingScroll) return; _syncingScroll = true; _leftScroll.ScrollToVerticalOffset(e.VerticalOffset); _leftScroll.ScrollToHorizontalOffset(e.HorizontalOffset); _syncingScroll = false; }
 
- private RichTextBox CreateEditor()
- {
- return new RichTextBox
- {
- IsReadOnly = true,
- Background = new SolidColorBrush(Color.FromRgb(30,30,30)),
- Foreground = Brushes.White,
- BorderThickness = new Thickness(1),
- BorderBrush = new SolidColorBrush(Color.FromRgb(63,63,70)),
- Padding = new Thickness(8),
- FontFamily = new FontFamily("Consolas"),
- FontSize =12,
- // Horizontal scroll lives on the inner editor
- VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
- HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
- };
- }
+  private static void OnTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) { if (d is SideBySideDiffViewer viewer) viewer.UpdateDiff(); }
 
- private void OnLeftScrollChanged(object? sender, ScrollChangedEventArgs e)
- {
- if (_syncingScroll) return;
- _syncingScroll = true;
- _rightScroll.ScrollToVerticalOffset(e.VerticalOffset);
- _rightScroll.ScrollToHorizontalOffset(e.HorizontalOffset);
- _syncingScroll = false;
- }
+  private void UpdateDiff()
+  {
+   var original = OriginalText ?? string.Empty;
+   var modified = ModifiedText ?? string.Empty;
 
- private void OnRightScrollChanged(object? sender, ScrollChangedEventArgs e)
- {
- if (_syncingScroll) return;
- _syncingScroll = true;
- _leftScroll.ScrollToVerticalOffset(e.VerticalOffset);
- _leftScroll.ScrollToHorizontalOffset(e.HorizontalOffset);
- _syncingScroll = false;
- }
+   // Word-level tokenization with newline sentinels
+   var originalTokens = TokenizeText(original);
+   var modifiedTokens = TokenizeText(modified);
 
- private static void OnTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
- {
- if (d is SideBySideDiffViewer viewer)
- {
- viewer.UpdateDiff();
- }
- }
+   // DiffPlex operates on strings joined by real '\n'. We keep the LbToken inside tokens.
+   var originalForDiff = string.Join("\n", originalTokens);
+   var modifiedForDiff = string.Join("\n", modifiedTokens);
 
- private void UpdateDiff()
- {
- var original = OriginalText ?? string.Empty;
- var modified = ModifiedText ?? string.Empty;
+   var differ = new Differ();
+   var builder = new SideBySideDiffBuilder(differ);
+   var diff = builder.BuildDiffModel(originalForDiff, modifiedForDiff, ignoreWhitespace: false);
 
- var differ = new Differ();
- var lineBuilder = new SideBySideDiffBuilder(differ);
- var lineModel = lineBuilder.BuildDiffModel(original, modified, ignoreWhitespace: false);
+   var leftDoc = new FlowDocument { PagePadding = new Thickness(0) };
+   var rightDoc = new FlowDocument { PagePadding = new Thickness(0) };
+   var leftPara = new Paragraph { Margin = new Thickness(0), LineHeight = 1 };
+   var rightPara = new Paragraph { Margin = new Thickness(0), LineHeight = 1 };
 
- // Prepare documents
- var leftDoc = new FlowDocument { PagePadding = new Thickness(0) };
- var rightDoc = new FlowDocument { PagePadding = new Thickness(0) };
- var leftPara = new Paragraph { Margin = new Thickness(0), LineHeight =1 };
- var rightPara = new Paragraph { Margin = new Thickness(0), LineHeight =1 };
+   int maxLines = Math.Max(diff.OldText.Lines.Count, diff.NewText.Lines.Count);
+   for (int i = 0; i < maxLines; i++)
+   {
+    var leftLine = i < diff.OldText.Lines.Count ? diff.OldText.Lines[i] : null;
+    var rightLine = i < diff.NewText.Lines.Count ? diff.NewText.Lines[i] : null;
 
- // Iterate by aligned rows
- int rows = Math.Max(lineModel.OldText.Lines.Count, lineModel.NewText.Lines.Count);
- for (int i =0; i < rows; i++)
- {
- var leftLine = i < lineModel.OldText.Lines.Count ? lineModel.OldText.Lines[i] : new DiffPiece(string.Empty, ChangeType.Imaginary, i);
- var rightLine = i < lineModel.NewText.Lines.Count ? lineModel.NewText.Lines[i] : new DiffPiece(string.Empty, ChangeType.Imaginary, i);
+    var leftText = leftLine?.Text ?? string.Empty;
+    var rightText = rightLine?.Text ?? string.Empty;
 
- AppendLinePair(leftPara, rightPara, leftLine, rightLine);
- }
+    // Explicitly render sentinel tokens as LineBreaks on each side
+    bool leftIsLb = leftText == LbToken;
+    bool rightIsLb = rightText == LbToken;
+    if (leftIsLb) leftPara.Inlines.Add(new LineBreak());
+    if (rightIsLb) rightPara.Inlines.Add(new LineBreak());
 
- leftDoc.Blocks.Add(leftPara);
- rightDoc.Blocks.Add(rightPara);
- _leftEditor.Document = leftDoc;
- _rightEditor.Document = rightDoc;
- }
+    // If both sides are just a line break token, skip adding runs
+    if (leftIsLb && rightIsLb) continue;
 
- private void AppendLinePair(Paragraph leftPara, Paragraph rightPara, DiffPiece leftLine, DiffPiece rightLine)
- {
- // If both sides have non-imaginary lines and texts differ, render single-region character diff
- if (leftLine.Type != ChangeType.Imaginary && rightLine.Type != ChangeType.Imaginary)
- {
- var leftText = leftLine.Text ?? string.Empty;
- var rightText = rightLine.Text ?? string.Empty;
- if (!string.Equals(leftText, rightText, StringComparison.Ordinal))
- {
- RenderSingleRegionCharDiff(leftPara, rightPara, leftText, rightText);
- leftPara.Inlines.Add(new LineBreak());
- rightPara.Inlines.Add(new LineBreak());
- return;
- }
- }
+    if (leftLine != null && !leftIsLb) AppendToken(leftPara, leftLine, true);
+    if (rightLine != null && !rightIsLb) AppendToken(rightPara, rightLine, false);
+   }
 
- // Fallback to line-level rendering (inserts/deletes or identical)
- AppendLine(leftPara, leftLine, isLeft: true);
- AppendLine(rightPara, rightLine, isLeft: false);
- }
+   leftDoc.Blocks.Add(leftPara);
+   rightDoc.Blocks.Add(rightPara);
+   _leftEditor.Document = leftDoc;
+   _rightEditor.Document = rightDoc;
+  }
 
- // Simple single-region character diff (prefix/suffix common, middle differs)
- private void RenderSingleRegionCharDiff(Paragraph leftPara, Paragraph rightPara, string a, string b)
- {
- int prefix =0;
- int maxPrefix = Math.Min(a.Length, b.Length);
- while (prefix < maxPrefix && a[prefix] == b[prefix]) prefix++;
+  private void AppendToken(Paragraph para, DiffPiece token, bool isLeft)
+  {
+   var text = token.Text ?? string.Empty;
+   if (token.Type == ChangeType.Imaginary) return;
 
- int aTail = a.Length -1;
- int bTail = b.Length -1;
- while (aTail >= prefix && bTail >= prefix && a[aTail] == b[bTail]) { aTail--; bTail--; }
+   Run run;
+   if (token.Type == ChangeType.Inserted && !isLeft)
+   { run = new Run(text); run.Background = GetInsertBrush(true); if (UseHighContrastDiff) run.TextDecorations = TextDecorations.Underline; para.Inlines.Add(run); }
+   else if (token.Type == ChangeType.Deleted && isLeft)
+   { run = new Run(text); run.Background = GetDeleteBrush(true); run.TextDecorations = TextDecorations.Strikethrough; para.Inlines.Add(run); }
+   else if (token.Type == ChangeType.Modified)
+   { run = new Run(text); run.Background = GetModifyBrush(true); if (UseHighContrastDiff) run.FontWeight = FontWeights.SemiBold; para.Inlines.Add(run); }
+   else
+   { para.Inlines.Add(new Run(text)); }
+  }
 
- string aPrefix = a.Substring(0, prefix);
- string aMid = prefix <= aTail ? a.Substring(prefix, aTail - prefix +1) : string.Empty;
- string aSuffix = aTail +1 < a.Length ? a[(aTail +1)..] : string.Empty;
+  /// <summary>
+  /// Tokenize into words/spaces/punct and emit a sentinel token per real line break.
+  /// Normalizes CRLF/CR/LF into a single sentinel so rendering inserts consistent LineBreaks.
+  /// </summary>
+  private List<string> TokenizeText(string text)
+  {
+   var tokens = new List<string>();
+   if (string.IsNullOrEmpty(text)) return tokens;
+   var sb = new System.Text.StringBuilder();
+   bool inWord = false;
+   for (int i = 0; i < text.Length; i++)
+   {
+    char c = text[i];
+    if (c == '\r' || c == '\n')
+    {
+     if (sb.Length > 0) { tokens.Add(sb.ToString()); sb.Clear(); }
+     if (c == '\r' && i + 1 < text.Length && text[i + 1] == '\n') i++; // consume LF in CRLF
+     tokens.Add(LbToken);
+     inWord = false;
+     continue;
+    }
+    bool isWord = char.IsLetterOrDigit(c) || c == '-' || c == '\'';
+    if (isWord)
+    {
+     if (!inWord && sb.Length > 0) { tokens.Add(sb.ToString()); sb.Clear(); }
+     sb.Append(c); inWord = true;
+    }
+    else
+    {
+     if (inWord && sb.Length > 0) { tokens.Add(sb.ToString()); sb.Clear(); }
+     sb.Append(c); inWord = false;
+    }
+   }
+   if (sb.Length > 0) tokens.Add(sb.ToString());
+   return tokens;
+  }
 
- string bPrefix = b.Substring(0, prefix);
- string bMid = prefix <= bTail ? b.Substring(prefix, bTail - prefix +1) : string.Empty;
- string bSuffix = bTail +1 < b.Length ? b[(bTail +1)..] : string.Empty;
-
- // Left side (original)
- if (!string.IsNullOrEmpty(aPrefix)) leftPara.Inlines.Add(new Run(aPrefix));
- if (!string.IsNullOrEmpty(aMid))
- {
- var delRun = new Run(aMid)
- {
- Background = GetDeleteBrush(inline: true)
- };
- delRun.TextDecorations = TextDecorations.Strikethrough;
- leftPara.Inlines.Add(delRun);
- }
- if (!string.IsNullOrEmpty(aSuffix)) leftPara.Inlines.Add(new Run(aSuffix));
-
- // Right side (modified)
- if (!string.IsNullOrEmpty(bPrefix)) rightPara.Inlines.Add(new Run(bPrefix));
- if (!string.IsNullOrEmpty(bMid))
- {
- var insRun = new Run(bMid)
- {
- Background = GetInsertBrush(inline: true)
- };
- if (UseHighContrastDiff) insRun.TextDecorations = TextDecorations.Underline;
- rightPara.Inlines.Add(insRun);
- }
- if (!string.IsNullOrEmpty(bSuffix)) rightPara.Inlines.Add(new Run(bSuffix));
- }
-
- private void AppendLine(Paragraph para, DiffPiece line, bool isLeft)
- {
- var lineBackground = GetLineBackground(line.Type, isLeft);
-
- if (line.Type == ChangeType.Imaginary)
- {
- var runEmpty = new Run(" ") { Background = new SolidColorBrush(Color.FromRgb(40,40,40)) };
- para.Inlines.Add(runEmpty);
- para.Inlines.Add(new LineBreak());
- return;
- }
-
- var hasCharDiffs = line.SubPieces != null && line.SubPieces.Any(p => p.Type != ChangeType.Unchanged && !string.IsNullOrEmpty(p.Text));
-
- if (hasCharDiffs)
- {
- foreach (var piece in line.SubPieces!)
- {
- if (string.IsNullOrEmpty(piece.Text)) continue;
- var run = new Run(piece.Text);
-
- switch (piece.Type)
- {
- case ChangeType.Inserted when !isLeft:
- run.Background = GetInsertBrush(inline: true);
- run.Foreground = Brushes.White;
- if (UseHighContrastDiff) run.TextDecorations = TextDecorations.Underline;
- break;
- case ChangeType.Deleted when isLeft:
- run.Background = GetDeleteBrush(inline: true);
- run.Foreground = Brushes.White;
- run.TextDecorations = TextDecorations.Strikethrough;
- break;
- case ChangeType.Modified:
- run.Background = GetModifyBrush(inline: true);
- run.Foreground = Brushes.White;
- if (UseHighContrastDiff) run.FontWeight = FontWeights.SemiBold;
- break;
- default:
- run.Background = Brushes.Transparent;
- break;
- }
-
- para.Inlines.Add(run);
- }
- }
- else
- {
- var lineText = line.Text ?? string.Empty;
- if (string.IsNullOrEmpty(lineText)) lineText = " ";
- var run = new Run(lineText) { Background = line.Type == ChangeType.Modified ? Brushes.Transparent : lineBackground };
- if (line.Type == ChangeType.Deleted && isLeft)
- {
- run.TextDecorations = TextDecorations.Strikethrough;
- }
- para.Inlines.Add(run);
- }
-
- para.Inlines.Add(new LineBreak());
- }
-
- private Brush GetLineBackground(ChangeType type, bool isLeft)
- {
- return type switch
- {
- ChangeType.Inserted when !isLeft => GetInsertBrush(inline: false),
- ChangeType.Deleted when isLeft => GetDeleteBrush(inline: false),
- ChangeType.Modified => GetModifyBrush(inline: false),
- _ => Brushes.Transparent
- };
- }
-
- private Brush GetInsertBrush(bool inline) =>
- UseHighContrastDiff
- ? new SolidColorBrush(Color.FromArgb(inline ? (byte)200 : (byte)110,0,255,0))
- : new SolidColorBrush(Color.FromArgb(inline ? (byte)140 : (byte)60,0,255,0));
-
- private Brush GetDeleteBrush(bool inline) =>
- UseHighContrastDiff
- ? new SolidColorBrush(Color.FromArgb(inline ? (byte)200 : (byte)110,255,0,0))
- : new SolidColorBrush(Color.FromArgb(inline ? (byte)140 : (byte)60,255,0,0));
-
- private Brush GetModifyBrush(bool inline) =>
- UseHighContrastDiff
- ? new SolidColorBrush(Color.FromArgb(inline ? (byte)180 : (byte)100,255,255,0))
- : new SolidColorBrush(Color.FromArgb(inline ? (byte)120 : (byte)70,255,255,0));
+  private Brush GetInsertBrush(bool inline) => UseHighContrastDiff ? new SolidColorBrush(Color.FromArgb(inline ? (byte)200 : (byte)110,0,255,0)) : new SolidColorBrush(Color.FromArgb(inline ? (byte)140 : (byte)60,0,255,0));
+  private Brush GetDeleteBrush(bool inline) => UseHighContrastDiff ? new SolidColorBrush(Color.FromArgb(inline ? (byte)200 : (byte)110,255,0,0)) : new SolidColorBrush(Color.FromArgb(inline ? (byte)140 : (byte)60,255,0,0));
+  private Brush GetModifyBrush(bool inline) => UseHighContrastDiff ? new SolidColorBrush(Color.FromArgb(inline ? (byte)180 : (byte)100,255,255,0)) : new SolidColorBrush(Color.FromArgb(inline ? (byte)120 : (byte)70,255,255,0));
  }
 }

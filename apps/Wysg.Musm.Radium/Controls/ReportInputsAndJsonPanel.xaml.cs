@@ -1,6 +1,10 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using Wysg.Musm.Editor.Controls;
 
 namespace Wysg.Musm.Radium.Controls
@@ -12,11 +16,101 @@ namespace Wysg.Musm.Radium.Controls
             InitializeComponent();
             Loaded += (_, __) => 
             {
+                Debug.WriteLine("[ReportInputsAndJsonPanel] Loaded: initializing layout + scroll fixes");
                 ApplyReverse(Reverse);
                 SetupAltArrowNavigation();
-                // Apply default collapsed state after control is loaded
                 UpdateJsonColumnVisibility(IsJsonCollapsed);
+                AttachMouseWheelScrollFix();
+                AttachRootWheelInterceptor();
             };
+        }
+
+        private void AttachRootWheelInterceptor()
+        {
+            AddHandler(UIElement.PreviewMouseWheelEvent, new MouseWheelEventHandler(OnRootPreviewMouseWheel), true);
+            Debug.WriteLine("[ReportInputsAndJsonPanel] Root wheel interceptor attached (handledEventsToo=true)");
+        }
+
+        private void OnRootPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (e.OriginalSource is not DependencyObject src) return;
+
+            TextBoxBase? editor = null;
+            var cur = src;
+            while (cur != null)
+            {
+                if (cur is TextBoxBase tbBase) { editor = tbBase; break; }
+                cur = GetParentObject(cur);
+            }
+
+            if (editor == null)
+            {
+                Debug.WriteLine($"[ReportInputsAndJsonPanel] ROOT Wheel: no TextBoxBase ancestor. Source={src.GetType().FullName}");
+                return;
+            }
+
+            var innerSv = FindVisualChild<ScrollViewer>(editor);
+            bool forward;
+            if (innerSv == null || innerSv.ScrollableHeight <= 0)
+            {
+                forward = true;
+            }
+            else if (e.Delta > 0)
+            {
+                forward = innerSv.VerticalOffset <= 0;
+            }
+            else
+            {
+                forward = innerSv.VerticalOffset >= innerSv.ScrollableHeight;
+            }
+
+            var outerSv = FindScrollableAncestor(editor);
+            Debug.WriteLine($"[ReportInputsAndJsonPanel] ROOT Wheel from '{editor.Name}' type={editor.GetType().Name} delta={e.Delta}, inner={(innerSv!=null ? $"off={innerSv.VerticalOffset:F0}/max={innerSv.ScrollableHeight:F0}" : "null")}, forward={forward}, outer={(outerSv!=null ? $"yes(off={outerSv.VerticalOffset:F0}/max={outerSv.ScrollableHeight:F0})" : "no")}, e.Handled={e.Handled}");
+
+            if (!forward || outerSv == null) return;
+
+            e.Handled = true;
+            int steps = System.Math.Max(1, System.Math.Abs(e.Delta) / 120);
+            double deltaOffset = steps * 48; // ~3 lines per wheel notch
+            double before = outerSv.VerticalOffset;
+            if (e.Delta < 0)
+                outerSv.ScrollToVerticalOffset(System.Math.Min(outerSv.VerticalOffset + deltaOffset, outerSv.ScrollableHeight));
+            else
+                outerSv.ScrollToVerticalOffset(System.Math.Max(outerSv.VerticalOffset - deltaOffset, 0));
+            double after = outerSv.VerticalOffset;
+            Debug.WriteLine($"[ReportInputsAndJsonPanel] OUTER scrolled: {before:F0} -> {after:F0} (max={outerSv.ScrollableHeight:F0})");
+        }
+
+        // Finds the nearest ancestor ScrollViewer that can actually scroll; falls back to a scrollable ScrollViewer within this control
+        private ScrollViewer? FindScrollableAncestor(DependencyObject start)
+        {
+            ScrollViewer? best = null;
+            var cur = start;
+            while (cur != null)
+            {
+                cur = GetParentObject(cur);
+                if (cur is ScrollViewer sv)
+                {
+                    // Prefer a viewer that has something to scroll
+                    if (sv.ScrollableHeight > 0)
+                        return sv;
+                    best ??= sv; // keep first as fallback
+                }
+
+                // Stop at this UserControl boundary
+                if (ReferenceEquals(cur, this)) break;
+            }
+
+            // Fallback: find any scrollable viewer under this control
+            if (best == null || best.ScrollableHeight <= 0)
+            {
+                foreach (var sv in FindVisualChildren<ScrollViewer>(this))
+                {
+                    if (sv.ScrollableHeight > 0) return sv;
+                    best ??= sv;
+                }
+            }
+            return best;
         }
 
         public static readonly DependencyProperty ReverseProperty =
@@ -350,6 +444,127 @@ var musmEditor = source.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
       target.Focus();
      target.CaretIndex = target.Text.Length;
       }
+        }
+
+        private void AttachMouseWheelScrollFix()
+        {
+            int count = 0;
+            foreach (var tb in FindVisualChildren<TextBox>(this))
+            {
+                tb.PreviewMouseWheel -= OnChildPreviewMouseWheel;
+                tb.PreviewMouseWheel += OnChildPreviewMouseWheel;
+                count++;
+            }
+            Debug.WriteLine($"[ReportInputsAndJsonPanel] Attached wheel handler to {count} TextBox controls");
+        }
+
+        private void OnChildPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (sender is not TextBox tb) return;
+
+            var innerSv = FindVisualChild<ScrollViewer>(tb);
+            bool forward;
+            if (innerSv == null || innerSv.ScrollableHeight <= 0)
+            {
+                forward = true;
+            }
+            else if (e.Delta > 0)
+            {
+                forward = innerSv.VerticalOffset <= 0; // up at top
+            }
+            else
+            {
+                forward = innerSv.VerticalOffset >= innerSv.ScrollableHeight; // down at bottom
+            }
+
+            var outerSv = GetOuterScrollViewer(tb);
+            Debug.WriteLine($"[ReportInputsAndJsonPanel] Wheel on TB '{tb.Name}' delta={e.Delta}, innerSv={(innerSv!=null ? $"off={innerSv.VerticalOffset:F0}/max={innerSv.ScrollableHeight:F0}" : "null")}, forward={forward}, outerSv={(outerSv!=null ? "yes" : "no")}");
+
+            if (!forward || outerSv == null) return; // Let inner handle
+
+            e.Handled = true;
+            int steps = System.Math.Max(1, System.Math.Abs(e.Delta) / 120);
+            for (int i = 0; i < steps; i++)
+            {
+                if (e.Delta < 0) outerSv.LineDown(); else outerSv.LineUp();
+            }
+        }
+
+        private static ScrollViewer? GetOuterScrollViewer(DependencyObject start)
+        {
+            DependencyObject? current = start;
+            ScrollViewer? firstSv = null;
+            while (current != null)
+            {
+                current = GetParentObject(current);
+                if (current is ScrollViewer sv)
+                {
+                    if (firstSv == null)
+                    {
+                        firstSv = sv;
+                        if (!string.Equals(sv.Name, "PART_ContentHost")) return sv;
+                        continue;
+                    }
+                    return sv;
+                }
+            }
+            return null;
+        }
+
+        // SAFE parent lookup that supports non-Visual objects (e.g., FlowDocument)
+        private static DependencyObject? GetParentObject(DependencyObject? child)
+        {
+            if (child == null) return null;
+
+            if (child is Visual || child is Visual3D)
+                return VisualTreeHelper.GetParent(child);
+
+            if (child is FrameworkContentElement fce)
+                return fce.Parent;
+
+            if (child is ContentElement ce)
+            {
+                var logicalParent = ContentOperations.GetParent(ce);
+                if (logicalParent != null) return logicalParent;
+            }
+
+            return LogicalTreeHelper.GetParent(child);
+        }
+
+        private static T? FindVisualParent<T>(DependencyObject? obj) where T : DependencyObject
+        {
+            var current = obj;
+            while (current != null)
+            {
+                var parent = GetParentObject(current);
+                if (parent is T t) return t;
+                current = parent;
+            }
+            return null;
+        }
+
+        private static T? FindVisualChild<T>(DependencyObject? obj) where T : DependencyObject
+        {
+            if (obj == null) return null;
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
+            {
+                var child = VisualTreeHelper.GetChild(obj, i);
+                if (child is T t) return t;
+                var sub = FindVisualChild<T>(child);
+                if (sub != null) return sub;
+            }
+            return null;
+        }
+
+        private static System.Collections.Generic.IEnumerable<T> FindVisualChildren<T>(DependencyObject obj) where T : DependencyObject
+        {
+            int count = VisualTreeHelper.GetChildrenCount(obj);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(obj, i);
+                if (child is T t) yield return t;
+                foreach (var sub in FindVisualChildren<T>(child)) yield return sub;
+            }
         }
     }
 }

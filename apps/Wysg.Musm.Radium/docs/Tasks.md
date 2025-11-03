@@ -710,3 +710,63 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [ ] V478 Type "COVID-19." → verify "COVID-19" matches, period ignored
 - [ ] V479 Add "COVID-19" to global phrases → verify highlighting updates in real-time
 - [ ] V480 Performance test: type 100+ lines with mixed hyphens → verify no lag
+
+## New (2025-02-02 – Word-Level Diff Granularity Fix)
+- [X] T1270 Investigate why diff viewer shows entire sentences as changed when many words are common (user report: "Decreased amount..." → "decreased amount..." shown as full replace instead of word-level diff)
+- [X] T1271 Identify root cause: DiffPlex BuildDiffModel treats each line as comparison unit, single-sentence text = one line = one big change
+- [X] T1272 Design solution: Word-level tokenization to split text into word+punctuation tokens before diff comparison
+- [X] T1273 Implement TokenizeText() method in DiffTextBox.cs with word/space/punctuation separation logic
+- [X] T1274 Update DiffTextBox.UpdateDiff() to tokenize before calling BuildDiffModel, join tokens with newline separator
+- [X] T1275 Implement TokenizeText() method in SideBySideDiffViewer.cs (same logic as DiffTextBox)
+- [X] T1276 Update SideBySideDiffViewer.UpdateDiff() to tokenize before calling BuildDiffModel
+- [X] T1277 Update SideBySideDiffViewer.AppendToken() to handle word-level tokens instead of lines
+- [X] T1278 Fix string literal syntax error in SideBySideDiffViewer (escape apostrophe character properly)
+- [X] T1279 Create comprehensive documentation FIX_2025-02-02_WordLevelDiffGranularity.md with examples, benefits, and performance analysis
+- [X] T1280 Update README.md with word-level diff fix entry in Recent Major Features section
+- [X] T1281 Update Tasks.md with T1270-T1285 and V500-V510 (this file, cumulative)
+- [X] T1282 Verify build passes with no compilation errors
+- [X] T1283 Fix line break rendering issue - tokens with \n or \r now rendered as LineBreak elements instead of being displayed inline
+- [X] T1284 Update DiffTextBox.UpdateDiff() to detect and render line breaks properly
+- [X] T1285 Update SideBySideDiffViewer.UpdateDiff() to detect and render line breaks on both left and right panels
+- [X] T1286 Update documentation with line break rendering fix details
+- [X] T1287 Verify build passes after line break rendering fix
+- [X] T1288 Fix line break rendering logic: detect tokens that are ONLY whitespace containing newlines, add LineBreak element without rendering token text
+- [X] T1289 Update DiffTextBox to use `token.Trim().Length == 0` check to properly identify newline-only tokens
+- [X] T1290 Update SideBySideDiffViewer to use same logic for both left and right panels
+- [X] T1291 Verify build passes with final line break fix
+- [X] T1292 Fix unchanged newlines disappearing: handle newline tokens in ALL change types including Unchanged (not just early continue)
+- [X] T1293 Update DiffTextBox Unchanged case to check isNewlineToken and add LineBreak instead of skipping
+- [X] T1294 Update SideBySideDiffViewer to add LineBreaks for newline tokens before checking if both are newlines
+- [X] T1295 Verify build passes with final unchanged newline fix
+- [X] T1296 Update documentation with root cause and final fix in FIX_2025-02-02_WordLevelDiffGranularity.md
+
+## Verification (Word-Level Diff Granularity Fix)
+- [ ] V500 Example 1: "No acute hemorrhage" → "No severe hemorrhage" shows [acute: RED] [severe: GREEN] hemorrhage
+- [ ] V501 Example 2: "Lungs clear bilaterally" → "Lungs are clear bilaterally." shows Lungs [are: GREEN] clear bilaterally[.: GREEN]
+- [ ] V502 Example 3: "decreased" → "Decreased" shows [decreased: RED] [Decreased: GREEN]
+- [ ] V503 Example 4 (User's case): "Decreased amount and chronologic change of contusional hemorrhages in both frontal, temporal lobes." → "decreased amount and chronologic change in the contusional hemorrhages in the bilateral frontal and temporal lobes" shows word-by-word diff with common words unchanged
+- [ ] V504 Empty text: "" → "New text" shows all tokens green (inserted)
+- [ ] V505 Identical text: "Same text" → "Same text" shows no highlighting (all unchanged)
+- [ ] V506 Hyphenated words treated as single tokens: "COVID-19" → "COVID-19" unchanged
+- [ ] V507 Multi-line paragraphs: each line treated independently (newlines as separate tokens) and rendered with proper line breaks
+- [ ] V508 Performance test: 100-word paragraph with 20+ word changes completes in <20ms
+- [ ] V509 Side-by-side diff viewer shows same word-level granularity as inline diff
+- [ ] V510 Toggle between diff views maintains word-level granularity in both modes
+- [ ] V511 Multi-line text: "Line 1\nLine 2" → "Line 1 modified\nLine 2" shows proper line breaks with word-level highlighting
+- [ ] V512 Verify line breaks appear correctly in both inline and side-by-side diff viewers
+- [ ] V513 Verify identical multi-line text displays with proper line breaks (not merged into one line)
+
+## Addendum (2025-02-02 – Line Break Handling Finalization)
+- [X] T1297 Newline sentinel approach: tokenize CR/LF/CRLF to sentinel and render as LineBreak in DiffTextBox
+- [X] T1298 Apply newline sentinel approach to SideBySideDiffViewer
+- [X] T1299 Add `NormalizeForWpf` and return CRLF-normalized text from TextBox-bound getters
+- [X] T1300 Document root cause and final fix in FIX_2025-02-02_WordLevelDiffGranularity.md
+- [X] V515 Verify identical two-paragraph Findings (PR) displays as two paragraphs in both top TextBox and bottom diff viewer
+
+# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
+
+## Changed
+- [X] T1301 Scroll lock fix: forward mouse wheel from inner TextBoxes to outer ScrollViewer in ReportInputsAndJsonPanel
+- [X] T1302 Scroll lock fix: same for PreviousReportTextAndJsonPanel
+- [X] V520 Verify page scrolls when mouse is over Findings (PR), Conclusion (PR), and split textboxes
+- [X] V521 Verify textboxes with their own vertical scrollbar still scroll independently
