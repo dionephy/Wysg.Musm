@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using Wysg.Musm.Editor.Controls;
 using Wysg.Musm.Editor.Snippets;
+using Wysg.Musm.Editor.Completion; // Added for WordBoundaryHelper
 using Wysg.Musm.Radium.Services;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,18 +17,9 @@ namespace Wysg.Musm.Radium.ViewModels
     {
         public void InitializeEditor(EditorControl editor)
         {
-            System.Diagnostics.Debug.WriteLine("[EditorInit] InitializeEditor START");
             editor.MinCharsForSuggest = 1;
             // Build a composite provider that merges phrases (tokens; combined scope) with active hotkeys and snippets
-            try
-            {
-                editor.SnippetProvider = new CompositeProvider(_phrases, _tenant, _cache, _hotkeys, _snippets);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("[EditorInit][EX] Creating CompositeProvider: " + ex);
-                throw;
-            }
+            editor.SnippetProvider = new CompositeProvider(_phrases, _tenant, _cache, _hotkeys, _snippets);
             editor.EnableGhostDebugAnchors(false);
             _ = Task.Run(async () =>
             {
@@ -35,24 +27,15 @@ namespace Wysg.Musm.Radium.ViewModels
                 // Seed cache with COMBINED phrases (global + account) so completion shows both
                 try
                 {
-                    System.Diagnostics.Debug.WriteLine($"[EditorInit] Preload start account={accountId}");
                     var combined = await _phrases.GetCombinedPhrasesAsync(accountId);
                     _cache.Set(accountId, combined);
-                    System.Diagnostics.Debug.WriteLine("[EditorInit] Phrases cached: " + combined.Count);
                     // Preload hotkeys snapshot
                     await _hotkeys.PreloadAsync(accountId);
-                    System.Diagnostics.Debug.WriteLine("[EditorInit] Hotkeys preloaded");
                     // Preload snippets snapshot
                     await _snippets.PreloadAsync(accountId);
-                    System.Diagnostics.Debug.WriteLine("[EditorInit] Snippets preloaded");
-                    // Removed: EnsureCapsAsync (Preserve known tokens feature deprecated)
                 }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine("[EditorInit][EX] Background preload: " + ex);
-                }
+                catch { }
             });
-            System.Diagnostics.Debug.WriteLine("[EditorInit] InitializeEditor COMPLETE");
         }
 
         private sealed class CompositeProvider : ISnippetProvider
@@ -99,9 +82,9 @@ namespace Wysg.Musm.Radium.ViewModels
                 foreach (var hk in meta.Where(h => h.IsActive))
                 {
                     if (!hk.TriggerText.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
-                    var desc = string.IsNullOrWhiteSpace(hk.Description) ? GetFirstLine(hk.ExpansionText) : hk.Description;
-                    var display = $"{hk.TriggerText} ¡æ {desc}";
-                    yield return Wysg.Musm.Editor.Snippets.MusmCompletionData.Hotkey(display, hk.ExpansionText, description: null);
+                    // Pass ONLY the trigger text as first parameter
+                    // MusmCompletionData.Hotkey will format the display as "trigger ¡æ expansion"
+                    yield return Wysg.Musm.Editor.Snippets.MusmCompletionData.Hotkey(hk.TriggerText, hk.ExpansionText, description: hk.Description);
                 }
 
                 // 3) Snippets (database-driven)
@@ -148,12 +131,14 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 int caret = editor.CaretOffset;
                 var line = editor.Document.GetLineByOffset(caret);
-                var text = editor.Document.GetText(line.Offset, caret - line.Offset);
-
-                int i = text.Length - 1;
-                while (i >= 0 && char.IsLetter(text[i])) i--;
-                int start = line.Offset + i + 1;
-                string word = editor.Document.GetText(start, caret - start);
+                string lineText = editor.Document.GetText(line);
+                int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
+                
+                // Use WordBoundaryHelper to include digits, hyphens, and underscores in word
+                var (startLocal, endLocal) = WordBoundaryHelper.ComputeWordSpan(lineText, local);
+                int start = line.Offset + startLocal;
+                string word = endLocal > startLocal ? lineText.Substring(startLocal, endLocal - startLocal) : string.Empty;
+                
                 return (word, start);
             }
         }

@@ -42,9 +42,9 @@ public sealed class MusmCompletionData : ICompletionData
 
     public static MusmCompletionData Hotkey(string trigger, string expanded, string? description = null)
     {
-        // Display shows trigger text only (no description in list)
+        // Display shows "trigger → expansion" for clarity (matching snippet format)
         // Text (for filtering) is just the trigger
-        var content = trigger; // Keep simple: just show trigger text
+        var content = $"{trigger} → {expanded}"; // FIX: Show full format like snippets
         return new(
             text: trigger, // Filter by trigger text only
             isHotkey: true,
@@ -53,7 +53,7 @@ public sealed class MusmCompletionData : ICompletionData
             preview: expanded,
             desc: description, // Show in tooltip if available
             snippet: null,
-            content: content,
+            content: content, // Display shows "trigger → expansion"
             priority: 2.0); // Higher priority - hotkeys go second
     }
 

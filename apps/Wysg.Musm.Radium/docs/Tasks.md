@@ -106,7 +106,7 @@
 - [X] T489 Add PACS method "Get current patient remark" to SpyWindow Custom Procedures combo (Tag `GetCurrentPatientRemark`) and wire PacsService wrapper `GetCurrentPatientRemarkAsync` (FR-336).
 - [X] T490 Add Custom Procedure op `Replace` (Arg1 Var, Arg2 String, Arg3 String) with presets and ExecuteSingle implementation (FR-337).
 - [X] T491 Add Custom Procedure op `GetHTML` (Arg1 Var URL) with async fetch via HttpClient in ExecuteSingleAsync; integrate into Set/Run flows (FR-338).
-- [X] T492 Update Spec/Plan/Tasks docs with FR-336..FR-338 entries and implementation notes.
+- [X] T492 Update Spec/Plan/Tasks with FR-336..FR-338 entries and implementation notes.
 - [X] T512 Fix `ProcedureExecutor` early-return that bypassed fallback/auto-seed and caused previous-value to persist when `GetHTML` executed.
 - [X] T513 Support reading/writing procedure variables by both implicit `var{i}` and custom `OutputVar` names so `GetHTML` Arg1 Type=Var can use named variables.
 - [X] T514 Register encoding provider in `ProcedureExecutor` and apply basic header/meta charset handling when decoding HTML.
@@ -756,13 +756,6 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [ ] V512 Verify line breaks appear correctly in both inline and side-by-side diff viewers
 - [ ] V513 Verify identical multi-line text displays with proper line breaks (not merged into one line)
 
-## Addendum (2025-02-02 – Line Break Handling Finalization)
-- [X] T1297 Newline sentinel approach: tokenize CR/LF/CRLF to sentinel and render as LineBreak in DiffTextBox
-- [X] T1298 Apply newline sentinel approach to SideBySideDiffViewer
-- [X] T1299 Add `NormalizeForWpf` and return CRLF-normalized text from TextBox-bound getters
-- [X] T1300 Document root cause and final fix in FIX_2025-02-02_WordLevelDiffGranularity.md
-- [X] V515 Verify identical two-paragraph Findings (PR) displays as two paragraphs in both top TextBox and bottom diff viewer
-
 # Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Changed
@@ -770,3 +763,17 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [X] T1302 Scroll lock fix: same for PreviousReportTextAndJsonPanel
 - [X] V520 Verify page scrolls when mouse is over Findings (PR), Conclusion (PR), and split textboxes
 - [X] V521 Verify textboxes with their own vertical scrollbar still scroll independently
+
+## New (2025-11-04 – Digit Support in Hotkey Triggers)
+- [X] T1303 Fix CompositeProvider.GetWordBeforeCaret in MainViewModel.EditorInit.cs to use WordBoundaryHelper for digit support
+- [X] T1304 Fix hotkey display formatting to pass only trigger text (not pre-formatted "trigger → expansion")
+- [X] T1305 Update MusmCompletionData.Hotkey to format content as "trigger → expansion" (prevent duplication)
+- [X] T1306 Create FIX_2025-11-04_NumberDigitsInTriggers.md documentation with root cause analysis
+- [X] T1307 Verify build passes with no compilation errors
+
+## Verification (Digit Support in Hotkey Triggers)
+- [X] V530 Type "zz1" → verify completion window shows "zz1 → RLLf" (not "zz1 → RLLf → RLLf")
+- [X] V531 Type "zz13" → verify completion window shows "zz13 → BLLf"
+- [X] V532 Type "zz79" → verify completion window shows "zz79 → BULf"
+- [X] V533 Press Tab/Space on "zz1" → verify expands to "RLLf"
+- [X] V534 Verify all hotkey triggers with digits now work correctly

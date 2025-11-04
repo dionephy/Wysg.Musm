@@ -16,25 +16,43 @@ namespace Wysg.Musm.Radium.Controls
             InitializeComponent();
             Loaded += (_, __) => 
             {
+                // Initialize layout and wire up input handlers once the visual tree is ready.
                 Debug.WriteLine("[ReportInputsAndJsonPanel] Loaded: initializing layout + scroll fixes");
                 ApplyReverse(Reverse);
                 SetupAltArrowNavigation();
                 UpdateJsonColumnVisibility(IsJsonCollapsed);
+
+                // Attach per-TextBox wheel handler (legacy) and a root-level interceptor (robust).
+                // Root interceptor is required to catch wheel events when inner controls already mark them handled
+                // and to support non-TextBox editors (RichTextBox / DiffTextBox) used by comparison fields.
                 AttachMouseWheelScrollFix();
                 AttachRootWheelInterceptor();
             };
         }
 
+        /// <summary>
+        /// Hooks a root-level PreviewMouseWheel handler and listens with handledEventsToo=true.
+        /// This ensures we can forward wheel events even if inner controls already handled them.
+        /// </summary>
         private void AttachRootWheelInterceptor()
         {
             AddHandler(UIElement.PreviewMouseWheelEvent, new MouseWheelEventHandler(OnRootPreviewMouseWheel), true);
             Debug.WriteLine("[ReportInputsAndJsonPanel] Root wheel interceptor attached (handledEventsToo=true)");
         }
 
+        /// <summary>
+        /// Root-level wheel handler that:
+        /// 1) Finds the nearest TextBoxBase (covers TextBox, RichTextBox, DiffTextBox)
+        /// 2) Checks if the inner editor can scroll further in the requested direction
+        /// 3) If at boundary, forwards the wheel to the nearest outer ScrollViewer
+        ///    using ScrollToVerticalOffset for smooth deterministic motion.
+        /// Safe parent traversal is used to handle ContentElement/FlowDocument ancestors.
+        /// </summary>
         private void OnRootPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
             if (e.OriginalSource is not DependencyObject src) return;
 
+            // Walk up to a TextBoxBase to support TextBox and RichTextBox-based editors.
             TextBoxBase? editor = null;
             var cur = src;
             while (cur != null)
@@ -49,29 +67,35 @@ namespace Wysg.Musm.Radium.Controls
                 return;
             }
 
+            // Determine whether to forward based on the inner ScrollViewer boundary.
             var innerSv = FindVisualChild<ScrollViewer>(editor);
             bool forward;
             if (innerSv == null || innerSv.ScrollableHeight <= 0)
             {
+                // No inner scroll present (or not scrollable) -> forward to outer viewer
                 forward = true;
             }
             else if (e.Delta > 0)
             {
+                // Wheel up: forward when already at top
                 forward = innerSv.VerticalOffset <= 0;
             }
             else
             {
+                // Wheel down: forward when already at bottom
                 forward = innerSv.VerticalOffset >= innerSv.ScrollableHeight;
             }
 
+            // Resolve the nearest outer ScrollViewer that can actually scroll
             var outerSv = FindScrollableAncestor(editor);
             Debug.WriteLine($"[ReportInputsAndJsonPanel] ROOT Wheel from '{editor.Name}' type={editor.GetType().Name} delta={e.Delta}, inner={(innerSv!=null ? $"off={innerSv.VerticalOffset:F0}/max={innerSv.ScrollableHeight:F0}" : "null")}, forward={forward}, outer={(outerSv!=null ? $"yes(off={outerSv.VerticalOffset:F0}/max={outerSv.ScrollableHeight:F0})" : "no")}, e.Handled={e.Handled}");
 
             if (!forward || outerSv == null) return;
 
+            // Perform the actual forwarding (one notch ~= 120 delta)
             e.Handled = true;
             int steps = System.Math.Max(1, System.Math.Abs(e.Delta) / 120);
-            double deltaOffset = steps * 48; // ~3 lines per wheel notch
+            double deltaOffset = steps * 48; // Adjust scroll distance per step (~3 text lines)
             double before = outerSv.VerticalOffset;
             if (e.Delta < 0)
                 outerSv.ScrollToVerticalOffset(System.Math.Min(outerSv.VerticalOffset + deltaOffset, outerSv.ScrollableHeight));
@@ -81,7 +105,10 @@ namespace Wysg.Musm.Radium.Controls
             Debug.WriteLine($"[ReportInputsAndJsonPanel] OUTER scrolled: {before:F0} -> {after:F0} (max={outerSv.ScrollableHeight:F0})");
         }
 
-        // Finds the nearest ancestor ScrollViewer that can actually scroll; falls back to a scrollable ScrollViewer within this control
+        /// <summary>
+        /// Finds the nearest ancestor ScrollViewer which can scroll (ScrollableHeight &gt; 0).
+        /// Falls back to any ScrollViewer under this control to ensure wheel can still move the page.
+        /// </summary>
         private ScrollViewer? FindScrollableAncestor(DependencyObject start)
         {
             ScrollViewer? best = null;
@@ -91,17 +118,14 @@ namespace Wysg.Musm.Radium.Controls
                 cur = GetParentObject(cur);
                 if (cur is ScrollViewer sv)
                 {
-                    // Prefer a viewer that has something to scroll
-                    if (sv.ScrollableHeight > 0)
-                        return sv;
-                    best ??= sv; // keep first as fallback
+                    if (sv.ScrollableHeight > 0) return sv;
+                    best ??= sv; // Remember first viewer as fallback
                 }
 
-                // Stop at this UserControl boundary
-                if (ReferenceEquals(cur, this)) break;
+                if (ReferenceEquals(cur, this)) break; // stop at control boundary
             }
 
-            // Fallback: find any scrollable viewer under this control
+            // Fallback: find any scrollable viewer beneath this control
             if (best == null || best.ScrollableHeight <= 0)
             {
                 foreach (var sv in FindVisualChildren<ScrollViewer>(this))
@@ -511,7 +535,9 @@ var musmEditor = source.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
             return null;
         }
 
-        // SAFE parent lookup that supports non-Visual objects (e.g., FlowDocument)
+        /// <summary>
+        /// SAFE parent lookup that supports non-Visual objects (e.g., FlowDocument)
+        /// </summary>
         private static DependencyObject? GetParentObject(DependencyObject? child)
         {
             if (child == null) return null;

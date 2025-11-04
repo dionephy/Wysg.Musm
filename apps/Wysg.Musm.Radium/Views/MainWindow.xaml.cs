@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using Microsoft.Extensions.DependencyInjection;
 using Wysg.Musm.Editor.Controls;
 using Wysg.Musm.Radium.ViewModels;
@@ -851,7 +852,16 @@ if (isLandscape)
          if (e.ClickCount != 3) return;
 
             // Find the TextBox ancestor from the original source
-            var textBox = FindAncestor<TextBox>(e.OriginalSource as DependencyObject);
+            TextBox? textBox = null;
+            try
+            {
+                textBox = FindAncestor<TextBox>(e.OriginalSource as DependencyObject);
+            }
+            catch (InvalidOperationException)
+            {
+                // Non-visual OriginalSource (e.g., Run) can throw when walking visual tree
+                return;
+            }
             if (textBox == null) return;
 
             // Select paragraph at caret position
@@ -949,12 +959,45 @@ return i;
         }
 
         private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
-      {
-     while (current != null && current is not T)
-       {
- current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+        {
+            while (current != null)
+            {
+                if (current is T match) return match;
+                try
+                {
+                    current = GetParentObject(current);
+                }
+                catch (InvalidOperationException)
+                {
+                    // Defensive: VisualTreeHelper can throw for non-visuals (e.g., Run)
+                    return null;
+                }
             }
- return current as T;
-}
+            return null;
+        }
+
+        // Safe parent lookup that supports non-Visuals (Run/Inline, FlowDocument, ContentElement)
+        private static DependencyObject? GetParentObject(DependencyObject? child)
+        {
+            if (child == null) return null;
+
+            // Visual or 3D visual
+            if (child is Visual || child is Visual3D)
+                return VisualTreeHelper.GetParent(child);
+
+            // FrameworkContentElement (e.g. Run, Paragraph in FlowDocument)
+            if (child is FrameworkContentElement fce)
+                return fce.Parent;
+
+            // ContentElement (non-visual); try logical parent first
+            if (child is ContentElement ce)
+            {
+                var logical = ContentOperations.GetParent(ce);
+                if (logical != null) return logical;
+            }
+
+            // Fallback to logical tree parent
+            return LogicalTreeHelper.GetParent(child);
+        }
     }
 }

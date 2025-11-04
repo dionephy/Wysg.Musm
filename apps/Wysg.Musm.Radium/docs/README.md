@@ -1,6 +1,6 @@
 ﻿# Radium Documentation
 
-**Last Updated**: 2025-02-02
+**Last Updated**: 2025-11-04
 
 ---
 
@@ -10,6 +10,10 @@
 - **[Spec-active.md](Spec-active.md)** - Active feature specifications
 - **[Plan-active.md](Plan-active.md)** - Recent implementation plans  
 - **[Tasks.md](Tasks.md)** - Active and pending tasks
+
+### Recent Major Features (2025-11-04)
+
+- [NEW] **[FIX_2025-11-04_NumberDigitsInTriggers.md](FIX_2025-11-04_NumberDigitsInTriggers.md)** - Fixed completion popup closing when typing digits in hotkey triggers by unifying word-boundary detection to include digits (and `_`, `-`). Keeps popup open for triggers like "no2" or "f3".
 
 ### Recent Major Features (2025-02-02)
 
@@ -123,7 +127,37 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ---
 
-## Recent Updates (2025-02-02)
+## Recent Updates (2025-11-04)
+
+### Hotkey Digit Completion Fix (2025-11-04)
+
+**What Changed:**
+- Fixed completion popup closing when typing digits in hotkey triggers
+- Unified word-boundary detection to include digits (and `_`, `-`)
+- Keeps popup open for triggers like "no2" or "f3"
+
+**Why This Matters:**
+- **Improved Usability** - Hotkeys with digits can now be used more flexibly
+- **Consistency** - Trigger behavior is now consistent regardless of digit presence
+- **Efficiency** - Reduces accidental popup closing when typing number-prefixed hotkeys
+
+**Technical Details:**
+- Completion word-boundary detection logic was updated
+- Now includes digits as part of the trigger word
+- Fixes issue where typing a digit would close the completion popup
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.ReportifyHelpers.cs` - Updated word-boundary detection logic
+
+**Documentation:**
+- See `FIX_2025-11-04_NumberDigitsInTriggers.md` for complete technical details
+
+**Benefits:**
+- ✅ Flexibility in using digits within hotkeys
+- ✅ Consistent and predictable completion behavior
+- ✅ Improved efficiency when working with number-prefixed triggers
+
+---
 
 ### Unicode Dash Normalization Fix (2025-02-02)
 
