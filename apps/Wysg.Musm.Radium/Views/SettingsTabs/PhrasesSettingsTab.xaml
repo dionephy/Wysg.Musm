@@ -19,6 +19,10 @@
             <Setter Property="GridLinesVisibility" Value="None"/>
             <Setter Property="SelectionMode" Value="Single"/>
             <Setter Property="SelectionUnit" Value="FullRow"/>
+            <Setter Property="EnableRowVirtualization" Value="True"/>
+            <Setter Property="EnableColumnVirtualization" Value="True"/>
+            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
+            <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
         </Style>
         <Style TargetType="DataGridColumnHeader" x:Key="PhraseHeaderStyle">
             <Setter Property="Background" Value="#30363D"/>
@@ -56,28 +60,138 @@
     <Grid Margin="8" Loaded="OnLoaded">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+        <!-- Add Phrase Section -->
         <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0 0 0 8">
             <TextBox Width="360" Style="{StaticResource PhraseInputBox}" Text="{Binding NewText, UpdateSourceTrigger=PropertyChanged}"/>
             <Button Style="{StaticResource PhraseButton}" Content="Add / Activate" Command="{Binding AddCommand}"/>
             <Button Style="{StaticResource PhraseButton}" Content="Refresh" Command="{Binding RefreshCommand}"/>
         </StackPanel>
 
-        <DataGrid Grid.Row="1" ItemsSource="{Binding Items}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" IsReadOnly="False" RowHeaderWidth="0" Margin="0 0 0 8"
-                  Style="{StaticResource PhraseGridStyle}" RowStyle="{StaticResource PhraseRowStyle}" ColumnHeaderStyle="{StaticResource PhraseHeaderStyle}">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="60" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Text" Binding="{Binding Text}" Width="*" IsReadOnly="True"/>
-                <DataGridCheckBoxColumn Header="Active" Binding="{Binding Active, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
-                <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedAt}" Width="140" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Rev" Binding="{Binding Rev}" Width="80" IsReadOnly="True"/>
-                <DataGridCheckBoxColumn Header="Global" Binding="{Binding IsGlobal, Mode=OneWay}" Width="70" IsReadOnly="True"/>
+        <!-- Search and Filter Section -->
+        <Border Grid.Row="1" 
+    BorderBrush="{StaticResource PhraseBorder}"
+       BorderThickness="1"
+    Padding="8"
+                Margin="0 0 0 8"
+    Background="{StaticResource PhrasePanelAlt}">
+       <Grid>
+     <Grid.ColumnDefinitions>
+         <ColumnDefinition Width="Auto"/>
+         <ColumnDefinition Width="*"/>
+      <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+
+ <TextBlock Grid.Column="0"
+  Text="? Search:"
+       VerticalAlignment="Center"
+     Foreground="#E0E0E0"
+       Margin="0,0,10,0"
+  FontSize="13"/>
+
+  <TextBox Grid.Column="1"
+      Text="{Binding SearchFilter, UpdateSourceTrigger=PropertyChanged}"
+    Style="{StaticResource PhraseInputBox}"
+     VerticalAlignment="Center"
+     Margin="0,0,10,0"
+         ToolTip="Type to filter phrases by text (updates automatically)">
+     <TextBox.InputBindings>
+      <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
+<KeyBinding Key="Escape" Command="{Binding ClearFilterCommand}"/>
+       </TextBox.InputBindings>
+  </TextBox>
+
+         <TextBlock Grid.Column="2"
+    Text="Page size:"
+         VerticalAlignment="Center"
+   Foreground="#E0E0E0"
+   Margin="0,0,8,0"
+    FontSize="13"/>
+
+<TextBox Grid.Column="3"
+        Text="{Binding PageSize, UpdateSourceTrigger=PropertyChanged}"
+       Width="60"
+         Style="{StaticResource PhraseInputBox}"
+         VerticalAlignment="Center"
+       ToolTip="Number of phrases per page (10-500)"/>
+   </Grid>
+   </Border>
+
+     <!-- DataGrid with Virtualization -->
+        <DataGrid Grid.Row="2" ItemsSource="{Binding Items}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" IsReadOnly="False" RowHeaderWidth="0" Margin="0 0 0 8"
+     Style="{StaticResource PhraseGridStyle}" RowStyle="{StaticResource PhraseRowStyle}" ColumnHeaderStyle="{StaticResource PhraseHeaderStyle}">
+    <DataGrid.Columns>
+   <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="60" IsReadOnly="True"/>
+ <DataGridTextColumn Header="Text" Binding="{Binding Text}" Width="*" IsReadOnly="True"/>
+         <DataGridCheckBoxColumn Header="Active" Binding="{Binding Active, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
+         <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedAt}" Width="140" IsReadOnly="True"/>
+     <DataGridTextColumn Header="Rev" Binding="{Binding Rev}" Width="80" IsReadOnly="True"/>
+        <DataGridCheckBoxColumn Header="Global" Binding="{Binding IsGlobal, Mode=OneWay}" Width="70" IsReadOnly="True"/>
             </DataGrid.Columns>
         </DataGrid>
 
-        <TextBlock Grid.Row="2" Text="Changes auto-save through phrase commands. Standalone window removed." Foreground="#9AA0A6" TextWrapping="Wrap"/>
+      <!-- Pagination Controls -->
+        <Border Grid.Row="3"
+           BorderBrush="{StaticResource PhraseBorder}"
+       BorderThickness="1"
+      Padding="8"
+     Margin="0 0 0 8"
+       Background="{StaticResource PhrasePanelAlt}">
+     <Grid>
+     <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="Auto"/>
+      <ColumnDefinition Width="*"/>
+         <ColumnDefinition Width="Auto"/>
+   </Grid.ColumnDefinitions>
+
+  <TextBlock Grid.Column="0"
+     Text="{Binding PageInfo}"
+       VerticalAlignment="Center"
+      Foreground="#E0E0E0"
+           FontSize="12"
+   FontWeight="SemiBold"/>
+
+   <StackPanel Grid.Column="2"
+    Orientation="Horizontal"
+          HorizontalAlignment="Right">
+  <Button Content="|?"
+      Command="{Binding FirstPageCommand}"
+         Style="{StaticResource PhraseButton}"
+        Padding="6,3"
+  MinWidth="40"
+  Margin="0,0,4,0"
+         ToolTip="First page"/>
+   <Button Content="? Prev"
+       Command="{Binding PreviousPageCommand}"
+       Style="{StaticResource PhraseButton}"
+    Padding="6,3"
+       MinWidth="60"
+      Margin="0,0,4,0"
+       ToolTip="Previous page"/>
+       <Button Content="Next ?"
+       Command="{Binding NextPageCommand}"
+    Style="{StaticResource PhraseButton}"
+      Padding="6,3"
+    MinWidth="60"
+      Margin="0,0,4,0"
+     ToolTip="Next page"/>
+ <Button Content="?|"
+       Command="{Binding LastPageCommand}"
+       Style="{StaticResource PhraseButton}"
+      Padding="6,3"
+      MinWidth="40"
+ ToolTip="Last page"/>
+    </StackPanel>
+     </Grid>
+   </Border>
+
+     <!-- Status Text -->
+<TextBlock Grid.Row="4" Text="Changes auto-save through phrase commands. Standalone window removed. Use search and pagination for large datasets." Foreground="#9AA0A6" TextWrapping="Wrap"/>
     </Grid>
 </UserControl>

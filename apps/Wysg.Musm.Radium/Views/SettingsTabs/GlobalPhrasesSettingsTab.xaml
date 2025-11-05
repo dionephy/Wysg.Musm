@@ -456,152 +456,273 @@ xmlns:views="clr-namespace:Wysg.Musm.Radium.Views">
             </Grid>
         </Border>
 
-        <!-- Global Phrases List -->
-        <DataGrid Grid.Row="4" 
-                  ItemsSource="{Binding Items}"
-                  AutoGenerateColumns="False"
-                  CanUserAddRows="False"
-                  CanUserDeleteRows="False"
-                  SelectionMode="Single"
-                  HeadersVisibility="Column"
-                  GridLinesVisibility="Horizontal"
-                  RowHeaderWidth="0"
-                  IsReadOnly="True"
-                  Background="{DynamicResource BrushSurface}"
-                  Foreground="{DynamicResource BrushTextPrimary}"
-                  BorderBrush="{DynamicResource BrushBorder}"
-                  RowBackground="{DynamicResource BrushSurface}"
-                  AlternatingRowBackground="{DynamicResource BrushSurfaceAlt}">
-            <DataGrid.ColumnHeaderStyle>
-                <Style TargetType="DataGridColumnHeader">
-                    <Setter Property="Background" Value="{DynamicResource BrushSurfaceAlt}"/>
-                    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
-                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
-                    <Setter Property="BorderThickness" Value="0 0 1 1"/>
-                    <Setter Property="Padding" Value="6 4"/>
-                </Style>
-            </DataGrid.ColumnHeaderStyle>
-            <DataGrid.Columns>
-                <!-- Text Column with Edit Support -->
-                <DataGridTemplateColumn Header="Phrase Text" Width="2*" MinWidth="150">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Grid>
-                                <TextBlock Text="{Binding Text}" 
-                                          VerticalAlignment="Center"
-                                          Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
-                                <TextBox Text="{Binding EditText, UpdateSourceTrigger=PropertyChanged}" 
-                                        VerticalAlignment="Center"
-                                        Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}"
-                                        BorderThickness="1"
-                                        BorderBrush="{DynamicResource BrushAccent}"
-                                        Background="{DynamicResource BrushSurfaceAlt}"
-                                        Foreground="{DynamicResource BrushTextPrimary}"
-                                        Padding="4"/>
-                            </Grid>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
+        <!-- Global Phrases List with Search and Pagination -->
+        <Border Grid.Row="4"
+        BorderBrush="{DynamicResource BrushBorder}"
+      BorderThickness="1"
+Padding="0"
+         Background="{DynamicResource BrushSurface}">
+     <Grid>
+<Grid.RowDefinitions>
+<RowDefinition Height="Auto"/>
+   <RowDefinition Height="*"/>
+<RowDefinition Height="Auto"/>
+       </Grid.RowDefinitions>
 
-                <!-- SNOMED Mapping Column -->
-                <DataGridTextColumn Header="SNOMED Mapping" 
-                                    Binding="{Binding SnomedMappingText}" 
-                                    Width="3*" 
-                                    MinWidth="200">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="#A8E6CF"/>
-                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                            <Setter Property="ToolTip" Value="{Binding SnomedMappingText}"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding SnomedSemanticTag}" Value="body structure">
-                                    <Setter Property="Foreground" Value="#90EE90"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding SnomedSemanticTag}" Value="finding">
-                                    <Setter Property="Foreground" Value="#ADD8E6"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding SnomedSemanticTag}" Value="disorder">
-                                    <Setter Property="Foreground" Value="#FFB3B3"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding SnomedSemanticTag}" Value="procedure">
-                                    <Setter Property="Foreground" Value="#FFFF99"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding SnomedSemanticTag}" Value="observable entity">
-                                    <Setter Property="Foreground" Value="#E0C4FF"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding SnomedSemanticTag}" Value="substance">
-                                    <Setter Property="Foreground" Value="#FFD580"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
+<!-- Search Box -->
+       <Border Grid.Row="0"
+  BorderBrush="{DynamicResource BrushBorder}"
+ BorderThickness="0,0,0,1"
+   Padding="10,8"
+   Background="{DynamicResource BrushSurfaceAlt}">
+         <Grid>
+<Grid.ColumnDefinitions>
+         <ColumnDefinition Width="Auto"/>
+  <ColumnDefinition Width="*"/>
+  <ColumnDefinition Width="Auto"/>
+<ColumnDefinition Width="Auto"/>
+  </Grid.ColumnDefinitions>
 
-                <DataGridTextColumn Header="Active" Binding="{Binding Active}" Width="60"/>
-                <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedAtDisplay}" Width="150"/>
-                <DataGridTextColumn Header="Rev" Binding="{Binding Rev}" Width="60"/>
+      <TextBlock Grid.Column="0"
+    Text="? Search:"
+     VerticalAlignment="Center"
+     Foreground="{DynamicResource BrushTextPrimary}"
+   Margin="0,0,10,0"
+  FontSize="14"/>
 
-                <!-- Actions Column -->
-                <DataGridTemplateColumn Header="Actions" Width="340">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <!-- Edit Mode Buttons -->
-                                <Button Content="Save"
-                                        Command="{Binding SaveEditCommand}"
-                                        Padding="5,2"
-                                        MinWidth="60"
-                                        Margin="0,0,4,0"
-                                        Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                <Button Content="Cancel"
-                                        Command="{Binding CancelEditCommand}"
-                                        Padding="5,2"
-                                        MinWidth="60"
-                                        Margin="0,0,4,0"
-                                        Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                
-                                <!-- Normal Mode Buttons -->
-                                <Button Content="Edit"
-                                        Command="{Binding EditCommand}"
-                                        Padding="5,2"
-                                        MinWidth="60"
-                                        Margin="0,0,4,0"
-                                        Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
-                                <Button Content="{Binding Active, Converter={StaticResource ActiveToButtonTextConverter}}"
-                                        Command="{Binding ToggleCommand}"
-                                        Padding="5,2"
-                                        MinWidth="80"
-                                        Margin="0,0,4,0"
-                                        Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
-                                <Button Content="Link SNOMED" 
-                                        Padding="5,2" 
-                                        MinWidth="100"
-                                        Click="OnLinkSnomedFromGlobal"
-                                        Margin="0,0,4,0"
-                                        Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
-                                <Button Content="Delete" 
-                                        Command="{Binding DeleteCommand}"
-                                        Padding="5,2" 
-                                        MinWidth="60"
-                                        Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                            <Setter Property="Background" Value="#8B0000"/>
-                                            <Setter Property="Foreground" Value="White"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#A52A2A"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-                            </StackPanel>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
+      <TextBox Grid.Column="1"
+  Text="{Binding PhraseSearchFilter, UpdateSourceTrigger=PropertyChanged}"
+      VerticalAlignment="Center"
+   Padding="6,4"
+      Margin="0,0,10,0"
+    FontSize="14"
+ToolTip="Type to filter phrases by text (updates automatically)">
+ <TextBox.InputBindings>
+      <KeyBinding Key="Enter" Command="{Binding PhraseSearchCommand}"/>
+ <KeyBinding Key="Escape" Command="{Binding PhraseClearFilterCommand}"/>
+ </TextBox.InputBindings>
+    </TextBox>
+
+    <TextBlock Grid.Column="2"
+       Text="Page size:"
+  VerticalAlignment="Center"
+         Foreground="{DynamicResource BrushTextPrimary}"
+      Margin="0,0,8,0"
+      FontSize="14"/>
+
+  <TextBox Grid.Column="3"
+     Text="{Binding PhrasePageSize, UpdateSourceTrigger=PropertyChanged}"
+    Width="60"
+ VerticalAlignment="Center"
+      Padding="4"
+  FontSize="14"
+   ToolTip="Number of phrases to display per page (10-500)"/>
+  </Grid>
+</Border>
+
+      <!-- DataGrid -->
+    <DataGrid Grid.Row="1" 
+      ItemsSource="{Binding Items}"
+   AutoGenerateColumns="False"
+      CanUserAddRows="False"
+ CanUserDeleteRows="False"
+   SelectionMode="Single"
+HeadersVisibility="Column"
+GridLinesVisibility="Horizontal"
+ RowHeaderWidth="0"
+       IsReadOnly="True"
+Background="{DynamicResource BrushSurface}"
+ Foreground="{DynamicResource BrushTextPrimary}"
+         BorderBrush="{DynamicResource BrushBorder}"
+BorderThickness="0"
+ RowBackground="{DynamicResource BrushSurface}"
+AlternatingRowBackground="{DynamicResource BrushSurfaceAlt}"
+     EnableRowVirtualization="True"
+ EnableColumnVirtualization="True"
+         VirtualizingPanel.IsVirtualizing="True"
+VirtualizingPanel.VirtualizationMode="Recycling">
+   <DataGrid.ColumnHeaderStyle>
+       <Style TargetType="DataGridColumnHeader">
+        <Setter Property="Background" Value="{DynamicResource BrushSurfaceAlt}"/>
+    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+<Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+      <Setter Property="BorderThickness" Value="0 0 1 1"/>
+    <Setter Property="Padding" Value="6 4"/>
+    </Style>
+       </DataGrid.ColumnHeaderStyle>
+    <DataGrid.Columns>
+<!-- Text Column with Edit Support -->
+      <DataGridTemplateColumn Header="Phrase Text" Width="2*" MinWidth="150">
+<DataGridTemplateColumn.CellTemplate>
+        <DataTemplate>
+     <Grid>
+      <TextBlock Text="{Binding Text}" 
+     VerticalAlignment="Center"
+  Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+      <TextBox Text="{Binding EditText, UpdateSourceTrigger=PropertyChanged}" 
+      VerticalAlignment="Center"
+    Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}"
+      BorderThickness="1"
+    BorderBrush="{DynamicResource BrushAccent}"
+ Background="{DynamicResource BrushSurfaceAlt}"
+  Foreground="{DynamicResource BrushTextPrimary}"
+    Padding="4"/>
+   </Grid>
+ </DataTemplate>
+    </DataGridTemplateColumn.CellTemplate>
+    </DataGridTemplateColumn>
+
+    <!-- SNOMED Mapping Column -->
+  <DataGridTextColumn Header="SNOMED Mapping" 
+  Binding="{Binding SnomedMappingText}" 
+Width="3*" 
+  MinWidth="200">
+       <DataGridTextColumn.ElementStyle>
+        <Style TargetType="TextBlock">
+    <Setter Property="Foreground" Value="#A8E6CF"/>
+<Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+         <Setter Property="ToolTip" Value="{Binding SnomedMappingText}"/>
+    <Style.Triggers>
+           <DataTrigger Binding="{Binding SnomedSemanticTag}" Value="body structure">
+                <Setter Property="Foreground" Value="#90EE90"/>
+     </DataTrigger>
+            <DataTrigger Binding="{Binding SnomedSemanticTag}" Value="finding">
+       <Setter Property="Foreground" Value="#ADD8E6"/>
+         </DataTrigger>
+   <DataTrigger Binding="{Binding SnomedSemanticTag}" Value="disorder">
+    <Setter Property="Foreground" Value="#FFB3B3"/>
+       </DataTrigger>
+    <DataTrigger Binding="{Binding SnomedSemanticTag}" Value="procedure">
+        <Setter Property="Foreground" Value="#FFFF99"/>
+ </DataTrigger>
+            <DataTrigger Binding="{Binding SnomedSemanticTag}" Value="observable entity">
+       <Setter Property="Foreground" Value="#E0C4FF"/>
+     </DataTrigger>
+     <DataTrigger Binding="{Binding SnomedSemanticTag}" Value="substance">
+ <Setter Property="Foreground" Value="#FFD580"/>
+   </DataTrigger>
+  </Style.Triggers>
+     </Style>
+   </DataGridTextColumn.ElementStyle>
+           </DataGridTextColumn>
+
+  <DataGridTextColumn Header="Active" Binding="{Binding Active}" Width="60"/>
+ <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedAtDisplay}" Width="150"/>
+    <DataGridTextColumn Header="Rev" Binding="{Binding Rev}" Width="60"/>
+
+ <!-- Actions Column -->
+<DataGridTemplateColumn Header="Actions" Width="340">
+           <DataGridTemplateColumn.CellTemplate>
+    <DataTemplate>
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+    <!-- Edit Mode Buttons -->
+       <Button Content="Save"
+     Command="{Binding SaveEditCommand}"
+   Padding="5,2"
+           MinWidth="60"
+         Margin="0,0,4,0"
+       Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}"/>
+         <Button Content="Cancel"
+          Command="{Binding CancelEditCommand}"
+Padding="5,2"
+   MinWidth="60"
+      Margin="0,0,4,0"
+Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}"/>
+   
+<!-- Normal Mode Buttons -->
+      <Button Content="Edit"
+         Command="{Binding EditCommand}"
+      Padding="5,2"
+   MinWidth="60"
+    Margin="0,0,4,0"
+      Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+<Button Content="{Binding Active, Converter={StaticResource ActiveToButtonTextConverter}}"
+      Command="{Binding ToggleCommand}"
+ Padding="5,2"
+      MinWidth="80"
+    Margin="0,0,4,0"
+         Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+     <Button Content="Link SNOMED" 
+     Padding="5,2" 
+      MinWidth="100"
+  Click="OnLinkSnomedFromGlobal"
+     Margin="0,0,4,0"
+  Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+       <Button Content="Delete" 
+      Command="{Binding DeleteCommand}"
+     Padding="5,2" 
+     MinWidth="60"
+Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+   <Button.Style>
+      <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+<Setter Property="Background" Value="#8B0000"/>
+        <Setter Property="Foreground" Value="White"/>
+     <Style.Triggers>
+   <Trigger Property="IsMouseOver" Value="True">
+<Setter Property="Background" Value="#A52A2A"/>
+ </Trigger>
+ </Style.Triggers>
+ </Style>
+       </Button.Style>
+    </Button>
+   </StackPanel>
+     </DataTemplate>
+      </DataGridTemplateColumn.CellTemplate>
+ </DataGridTemplateColumn>
+       </DataGrid.Columns>
+  </DataGrid>
+
+     <!-- Pagination Controls -->
+<Border Grid.Row="2"
+      BorderBrush="{DynamicResource BrushBorder}"
+  BorderThickness="0,1,0,0"
+Padding="10,8"
+       Background="{DynamicResource BrushSurfaceAlt}">
+   <Grid>
+       <Grid.ColumnDefinitions>
+<ColumnDefinition Width="Auto"/>
+    <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+    </Grid.ColumnDefinitions>
+
+<TextBlock Grid.Column="0"
+Text="{Binding PhrasePageInfo}"
+         VerticalAlignment="Center"
+         Foreground="{DynamicResource BrushTextPrimary}"
+   FontSize="13"
+  FontWeight="SemiBold"/>
+
+<StackPanel Grid.Column="2"
+ Orientation="Horizontal"
+      HorizontalAlignment="Right">
+         <Button Content="|?"
+      Command="{Binding PhraseFirstPageCommand}"
+     Padding="8,4"
+    MinWidth="50"
+   Margin="0,0,4,0"
+   ToolTip="First page"/>
+     <Button Content="? Prev"
+       Command="{Binding PhrasePreviousPageCommand}"
+ Padding="8,4"
+  MinWidth="70"
+     Margin="0,0,4,0"
+      ToolTip="Previous page"/>
+    <Button Content="Next ?"
+Command="{Binding PhraseNextPageCommand}"
+      Padding="8,4"
+    MinWidth="70"
+   Margin="0,0,4,0"
+    ToolTip="Next page"/>
+     <Button Content="?|"
+    Command="{Binding PhraseLastPageCommand}"
+       Padding="8,4"
+ MinWidth="50"
+  ToolTip="Last page"/>
+ </StackPanel>
+       </Grid>
+</Border>
+     </Grid>
+  </Border>
 
         <!-- Status Bar -->
         <Border Grid.Row="5" 

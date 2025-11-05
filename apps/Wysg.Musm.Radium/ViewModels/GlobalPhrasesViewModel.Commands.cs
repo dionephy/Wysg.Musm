@@ -128,74 +128,24 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 var phrases = await _phraseService.GetAllGlobalPhraseMetaAsync();
 
-                Items.Clear();
-                // Only show ACTIVE phrases (filter out soft-deleted ones)
-                foreach (var phrase in phrases.Where(p => p.Active).OrderByDescending(p => p.UpdatedAt))
-                {
-                    var item = new GlobalPhraseItem(phrase, this);
-                    
-                    // Set SNOMED properties directly from PhraseInfo (FR-SNOMED-2025-01-19)
-                    if (!string.IsNullOrWhiteSpace(phrase.TagsSemanticTag))
-                    {
-                        item.SnomedSemanticTag = phrase.TagsSemanticTag;
-                        
-                        // Build display text from tags JSON if available
-                        if (!string.IsNullOrWhiteSpace(phrase.Tags))
-                        {
-                            try
-                            {
-                                // Parse tags JSON to extract concept_id
-                                var tagsJson = System.Text.Json.JsonDocument.Parse(phrase.Tags);
-                                var conceptId = tagsJson.RootElement.GetProperty("concept_id").GetString();
-                                item.SnomedMappingText = $"{phrase.Text} (SNOMED {conceptId}) - {phrase.TagsSemanticTag}";
-                            }
-                            catch
-                            {
-                                // Fallback if JSON parsing fails
-                                item.SnomedMappingText = $"{phrase.Text} - {phrase.TagsSemanticTag}";
-                            }
-                        }
-                        else
-                        {
-                            item.SnomedMappingText = $"{phrase.Text} - {phrase.TagsSemanticTag}";
-                        }
-                    }
-                    
-                    // Load SNOMED mapping from service if available (optional enhancement)
-                    if (_snomedMapService != null)
-                    {
-                        try
-                        {
-                            var mapping = await _snomedMapService.GetMappingAsync(phrase.Id);
-                            if (mapping != null)
-                            {
-                                // Override with richer mapping data from service
-                                var displayText = !string.IsNullOrWhiteSpace(mapping.Fsn) 
-                                    ? mapping.Fsn 
-                                    : mapping.Pt ?? string.Empty;
-                                    
-                                if (!string.IsNullOrWhiteSpace(displayText))
-                                {
-                                    item.SnomedMappingText = $"{displayText} ({mapping.ConceptIdStr})";
-                                }
-                                
-                                item.SnomedSemanticTag = mapping.GetSemanticTag();
-                            }
-                        }
-                        catch
-                        {
-                            // Silently skip mapping load errors for individual phrases
-                        }
-                    }
-                    
-                    Items.Add(item);
-                }
+                // Store all active phrases in cache (2025-02-02)
+                // No sorting here - alphabetical sort applied in ApplyPhraseFilter()
+                _allPhrasesCache = phrases.Where(p => p.Active).ToList();
+                PhraseTotalCount = _allPhrasesCache.Count;
 
-                StatusMessage = $"Loaded {Items.Count} global phrases";
+                // Reset to first page and apply filter (loads only one page into Items)
+                _phraseCurrentPageIndex = 0;
+                OnPropertyChanged(nameof(PhraseCurrentPageIndex));
+                ApplyPhraseFilter();
+
+                StatusMessage = $"Loaded {_allPhrasesCache.Count} global phrases (showing page 1, sorted A-Z)";
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Error loading phrases: {ex.Message}";
+                _allPhrasesCache.Clear();
+                Items.Clear();
+                PhraseTotalCount = 0;
             }
             finally
             {
