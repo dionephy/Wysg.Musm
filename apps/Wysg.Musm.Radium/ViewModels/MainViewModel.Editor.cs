@@ -139,7 +139,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _chiefComplaintProofread = string.Empty; 
         public string ChiefComplaintProofread 
         { 
-            get => _chiefComplaintProofread; 
+            get => NormalizeForWpf(_chiefComplaintProofread); 
             set 
             { 
                 if (SetProperty(ref _chiefComplaintProofread, value ?? string.Empty)) 
@@ -155,7 +155,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _patientHistoryProofread = string.Empty; 
         public string PatientHistoryProofread 
         { 
-            get => _patientHistoryProofread; 
+            get => NormalizeForWpf(_patientHistoryProofread); 
             set 
             { 
                 if (SetProperty(ref _patientHistoryProofread, value ?? string.Empty)) 
@@ -171,7 +171,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _studyTechniquesProofread = string.Empty; 
         public string StudyTechniquesProofread 
         { 
-            get => _studyTechniquesProofread; 
+            get => NormalizeForWpf(_studyTechniquesProofread); 
             set 
             { 
                 if (SetProperty(ref _studyTechniquesProofread, value ?? string.Empty)) 
@@ -187,7 +187,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _comparisonProofread = string.Empty; 
         public string ComparisonProofread 
         { 
-            get => _comparisonProofread; 
+            get => NormalizeForWpf(_comparisonProofread); 
             set 
             { 
                 if (SetProperty(ref _comparisonProofread, value ?? string.Empty)) 
@@ -203,7 +203,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _findingsProofread = string.Empty; 
         public string FindingsProofread 
         { 
-            get => _findingsProofread; 
+            get => NormalizeForWpf(_findingsProofread); 
             set 
             { 
                 if (SetProperty(ref _findingsProofread, value ?? string.Empty)) 
@@ -218,7 +218,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _conclusionProofread = string.Empty; 
         public string ConclusionProofread 
         { 
-            get => _conclusionProofread; 
+            get => NormalizeForWpf(_conclusionProofread); 
             set 
             { 
                 if (SetProperty(ref _conclusionProofread, value ?? string.Empty)) 
@@ -849,7 +849,7 @@ namespace Wysg.Musm.Radium.ViewModels
         // These always read/write the raw values, regardless of Reportified state
         public string RawFindingsTextEditable
         {
-            get => _reportified ? _rawFindings : (_findingsText ?? string.Empty);
+            get => NormalizeForWpf(_reportified ? _rawFindings : (_findingsText ?? string.Empty));
             set
             {
                 if (_reportified)
@@ -859,8 +859,6 @@ namespace Wysg.Musm.Radium.ViewModels
                     {
                         _rawFindings = value;
                         OnPropertyChanged(nameof(RawFindingsTextEditable));
-                        
-                        // CRITICAL FIX: Also update the center editor with the reportified version
                         _suppressAutoToggle = true;
                         try
                         {
@@ -872,7 +870,6 @@ namespace Wysg.Musm.Radium.ViewModels
                         {
                             _suppressAutoToggle = false;
                         }
-                        
                         UpdateCurrentReportJson();
                     }
                 }
@@ -886,18 +883,15 @@ namespace Wysg.Musm.Radium.ViewModels
 
         public string RawConclusionTextEditable
         {
-            get => _reportified ? _rawConclusion : (_conclusionText ?? string.Empty);
+            get => NormalizeForWpf(_reportified ? _rawConclusion : (_conclusionText ?? string.Empty));
             set
             {
                 if (_reportified)
                 {
-                    // When reportified, update the raw backing value
                     if (_rawConclusion != value)
                     {
                         _rawConclusion = value;
                         OnPropertyChanged(nameof(RawConclusionTextEditable));
-                        
-                        // CRITICAL FIX: Also update the center editor with the reportified version
                         _suppressAutoToggle = true;
                         try
                         {
@@ -909,16 +903,29 @@ namespace Wysg.Musm.Radium.ViewModels
                         {
                             _suppressAutoToggle = false;
                         }
-                        
                         UpdateCurrentReportJson();
                     }
                 }
                 else
                 {
-                    // When not reportified, update ConclusionText normally
                     ConclusionText = value;
                 }
             }
+        }
+        
+        // Normalize newlines for WPF TextBox display (use CRLF) without mutating stored values
+        // NOTE: TextBox in WPF renders best with CRLF (\r\n). Proofread/raw fields can contain LF-only or CRLF
+        // depending on source (API, copy-paste). To avoid visual concatenation in some flows and keep consistent
+        // caret behavior, getters that are bound to TextBoxes return a normalized CRLF view while setters keep
+        // storing values unmodified. This is a UI-only normalization.
+        private static string NormalizeForWpf(string? s)
+        {
+            if (string.IsNullOrEmpty(s)) return string.Empty;
+            // Unify to LF then map to CRLF
+            var t = s.Replace("\r\n", "\n");
+            t = t.Replace("\r", "\n");
+            t = t.Replace("\n", "\r\n");
+            return t;
         }
         
         // Safe wrappers that check initialization state (removed excessive logging)

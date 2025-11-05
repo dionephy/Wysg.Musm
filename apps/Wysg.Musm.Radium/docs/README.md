@@ -1,6 +1,6 @@
 ﻿# Radium Documentation
 
-**Last Updated**: 2025-02-02
+**Last Updated**: 2025-11-04
 
 ---
 
@@ -11,9 +11,13 @@
 - **[Plan-active.md](Plan-active.md)** - Recent implementation plans  
 - **[Tasks.md](Tasks.md)** - Active and pending tasks
 
+### Recent Major Features (2025-11-04)
+
+- [NEW] **[FIX_2025-11-04_NumberDigitsInTriggers.md](FIX_2025-11-04_NumberDigitsInTriggers.md)** - Fixed completion popup closing when typing digits in hotkey triggers by unifying word-boundary detection to include digits (and `_`, `-`). Keeps popup open for triggers like "no2" or "f3".
+
 ### Recent Major Features (2025-02-02)
 
-- **[PERFORMANCE_2025-02-02_PhraseTabsOptimization.md](PERFORMANCE_2025-02-02_PhraseTabsOptimization.md)** - Optimized Settings window Phrases and Global Phrases tabs to handle large datasets (2000+ phrases) efficiently; implemented search/filter functionality, pagination (default 100 items per page), alphabetical sorting (A-Z, case-insensitive), UI virtualization with DataGrid row recycling, and deferred SNOMED mapping loading for visible items only; achieves 90%+ faster initial load (<1s vs 10-30s), 90%+ lower memory usage (50 MB vs 500 MB), 60 FPS smooth scrolling, and eliminates UI freezing; users can search instantly with Enter/Escape key support, adjust page size (10-500), and navigate with First/Prev/Next/Last buttons; phrases automatically sorted alphabetically for easy navigation; separate pagination for phrase list (PhrasePageSize, PhraseCurrentPageIndex) and Bulk SNOMED search (PageSize, CurrentPage) to avoid naming conflicts
+- **[FIX_2025-02-02_WordLevelDiffGranularity.md](FIX_2025-02-02_WordLevelDiffGranularity.md)** - Fixed diff viewer to show word-by-word differences instead of marking entire sentences as changed; uses word-level tokenization to preserve spaces and punctuation as separate tokens; now correctly shows granular changes like capitalization fixes ("Decreased" → "decreased"), word insertions ("in hemorrhages" → "in the hemorrhages"), and word reordering ("both frontal, temporal" → "bilateral frontal and temporal"); resolves issue where sentences with many common words were completely striked out and rewritten instead of showing actual word-level changes
 - **[FEATURE_2025-02-02_FindingsDiffVisualization.md](FEATURE_2025-02-02_FindingsDiffVisualization.md)** - Findings (PR) textbox now has a collapsible diff viewer panel below showing character-by-character differences between original and proofread text using inline color-coded highlighting (green for additions, red with strikethrough for deletions); uses DiffPlex library (Myers diff algorithm) for production-grade performance (6-13x faster than custom implementation); toggle button to show/hide diff on demand; original Findings (PR) textbox remains fully editable; provides instant visual feedback for AI-generated changes without interfering with editing workflow
 - **[FIX_2025-02-02_PreviousReportJsonFieldLoading.md](FIX_2025-02-02_PreviousReportJsonFieldLoading.md)** - Fixed previous report JSON field loading to extract and populate ALL fields from database (metadata, header components, proofread fields) instead of only basic fields; resolves data loss issue where study_remark, patient_remark, and other fields appeared empty despite being stored in database
 - **[ENHANCEMENT_2025-02-02_NewStudyEmptyAllJson.md](ENHANCEMENT_2025-02-02_NewStudyEmptyAllJson.md)** - NewStudy module now empties ALL JSON fields (current and previous reports) at the very beginning, not just proofread fields, ensuring clean state for every new study
@@ -123,7 +127,37 @@ Use workspace search (Ctrl+Shift+F) to find specific FR-XXX requirements across 
 
 ---
 
-## Recent Updates (2025-02-02)
+## Recent Updates (2025-11-04)
+
+### Hotkey Digit Completion Fix (2025-11-04)
+
+**What Changed:**
+- Fixed completion popup closing when typing digits in hotkey triggers
+- Unified word-boundary detection to include digits (and `_`, `-`)
+- Keeps popup open for triggers like "no2" or "f3"
+
+**Why This Matters:**
+- **Improved Usability** - Hotkeys with digits can now be used more flexibly
+- **Consistency** - Trigger behavior is now consistent regardless of digit presence
+- **Efficiency** - Reduces accidental popup closing when typing number-prefixed hotkeys
+
+**Technical Details:**
+- Completion word-boundary detection logic was updated
+- Now includes digits as part of the trigger word
+- Fixes issue where typing a digit would close the completion popup
+
+**Key File Changes:**
+- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.ReportifyHelpers.cs` - Updated word-boundary detection logic
+
+**Documentation:**
+- See `FIX_2025-11-04_NumberDigitsInTriggers.md` for complete technical details
+
+**Benefits:**
+- ✅ Flexibility in using digits within hotkeys
+- ✅ Consistent and predictable completion behavior
+- ✅ Improved efficiency when working with number-prefixed triggers
+
+---
 
 ### SNOMED Mapping Column Visibility Fix (2025-02-02)
 
