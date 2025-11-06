@@ -57,6 +57,8 @@ namespace Wysg.Musm.Radium.ViewModels
             { 
                 if (SetProperty(ref _previousProofreadMode, value))
                 {
+                    Debug.WriteLine($"[PreviousProofreadMode] Changed to: {value}");
+                    
                     // Notify all previous report computed display properties
                     OnPropertyChanged(nameof(PreviousChiefComplaintDisplay));
                     OnPropertyChanged(nameof(PreviousPatientHistoryDisplay));
@@ -65,9 +67,12 @@ namespace Wysg.Musm.Radium.ViewModels
                     OnPropertyChanged(nameof(PreviousFindingsDisplay));
                     OnPropertyChanged(nameof(PreviousConclusionDisplay));
                     
-                    // NEW: Notify editor properties when proofread mode changes
+                    // CRITICAL FIX: Notify editor properties when proofread mode changes
+                    // These properties must be notified so editors update in real-time
                     OnPropertyChanged(nameof(PreviousFindingsEditorText));
                     OnPropertyChanged(nameof(PreviousConclusionEditorText));
+                    
+                    Debug.WriteLine("[PreviousProofreadMode] All editor properties notified");
                 }
             } 
         }

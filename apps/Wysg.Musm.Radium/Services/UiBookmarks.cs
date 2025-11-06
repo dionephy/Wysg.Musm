@@ -392,7 +392,7 @@ public sealed class UiBookmarks
     private const int ManualWalkCapChildren = 10000; // Cap for Children scope
     private const int ManualWalkCapDescendants = 5000; // Cap for Descendants scope (reduced from 100k)
     private const int ManualWalkTimeoutMs = 3000; // Max time for manual walker Descendants search
-    private const int FastFailThresholdMs = 150; // Query time threshold for fast-fail (increased from 100ms)
+    private const int FastFailThresholdMs = 500; // Query time threshold for fast-fail - queries under 500ms that find nothing are strong indicators element doesn't exist
 
     // Core walker used by ResolvePath / TryResolveWithTrace / ResolveBookmark
     private static (AutomationElement? final, List<AutomationElement> path) Walk(AutomationElement start, Bookmark b, List<Node> nodes, StringBuilder? trace)
@@ -590,7 +590,7 @@ public sealed class UiBookmarks
                 
                 // FIX: For Descendants scope, skip manual walker if query failed quickly (likely doesn't exist)
                 // Manual walker for Descendants is extremely expensive (can take 30+ seconds)
-                // Increased threshold from 100ms to 150ms to catch more fast-failure cases
+                // 500ms threshold: queries that complete quickly (<500ms) and find nothing are strong evidence element doesn't exist
                 if (!skipFallbacks && node.Scope == SearchScope.Descendants && queryTimeMs < FastFailThresholdMs)
                 {
                     trace?.AppendLine($"Step {i}: Skipping manual walker for Descendants (query failed quickly in {queryTimeMs}ms < {FastFailThresholdMs}ms, likely element doesn't exist)");
@@ -894,14 +894,37 @@ sb.AppendLine("Process not found - skipping all fallback root discovery strategi
             {
                 try
                 {
-                    if (node.UseName && !string.Equals(el.Name, node.Name, StringComparison.Ordinal)) return false;
-                    if (node.UseClassName && !string.Equals(el.ClassName, node.ClassName, StringComparison.Ordinal)) return false;
-                    if (node.UseAutomationId && !string.IsNullOrEmpty(node.AutomationId) && !string.Equals(el.AutomationId, node.AutomationId, StringComparison.Ordinal)) return false;
+                    // FIX: Wrap each individual property access to prevent PropertyNotSupportedException propagation
+                    // This prevents infinite exception loops when properties are not supported
+                    
+                    if (node.UseName)
+                    {
+                        string? elName = null;
+                        try { elName = el.Name; } catch { }
+                        if (!string.Equals(elName, node.Name, StringComparison.Ordinal)) return false;
+                    }
+                    
+                    if (node.UseClassName)
+                    {
+                        string? elClass = null;
+                        try { elClass = el.ClassName; } catch { }
+                        if (!string.Equals(elClass, node.ClassName, StringComparison.Ordinal)) return false;
+                    }
+                    
+                    if (node.UseAutomationId && !string.IsNullOrEmpty(node.AutomationId))
+                    {
+                        string? elAutoId = null;
+                        try { elAutoId = el.AutomationId; } catch { }
+                        if (!string.Equals(elAutoId, node.AutomationId, StringComparison.Ordinal)) return false;
+                    }
+                    
                     if (node.UseControlTypeId)
                     {
-                        int ct; try { ct = (int)el.Properties.ControlType.Value; } catch { return false; }
+                        int ct = -1;
+                        try { ct = (int)el.Properties.ControlType.Value; } catch { return false; }
                         if (!node.ControlTypeId.HasValue || ct != node.ControlTypeId.Value) return false;
                     }
+                    
                     return true;
                 }
                 catch { return false; }
