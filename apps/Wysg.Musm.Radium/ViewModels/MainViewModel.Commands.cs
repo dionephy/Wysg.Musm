@@ -26,6 +26,7 @@ namespace Wysg.Musm.Radium.ViewModels
         public ICommand EditStudyTechniqueCommand { get; private set; } = null!;
         public ICommand EditComparisonCommand { get; private set; } = null!;
         public ICommand SavePreorderCommand { get; private set; } = null!;
+        public ICommand SavePreviousStudyToDBCommand { get; private set; } = null!;
 
         // UI mode toggles
         private bool _proofreadMode; 
@@ -109,6 +110,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     (SendReportPreviewCommand as DelegateCommand)?.RaiseCanExecuteChanged();
                     (SendReportCommand as DelegateCommand)?.RaiseCanExecuteChanged();
                     (SelectPreviousStudyCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (SavePreviousStudyToDBCommand as DelegateCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -126,6 +128,7 @@ namespace Wysg.Musm.Radium.ViewModels
             EditStudyTechniqueCommand = new DelegateCommand(_ => OnEditStudyTechnique(), _ => PatientLocked);
             EditComparisonCommand = new DelegateCommand(_ => OnEditComparison(), _ => PatientLocked);
             SavePreorderCommand = new DelegateCommand(_ => OnSavePreorder());
+            SavePreviousStudyToDBCommand = new DelegateCommand(_ => OnSavePreviousStudyToDB(), _ => PatientLocked && SelectedPreviousStudy != null);
         }
 
         // ------------- Handlers -------------
@@ -1030,6 +1033,65 @@ namespace Wysg.Musm.Radium.ViewModels
                 var reportDateStr = await _pacs.GetSelectedReportDateTimeFromRelatedStudiesAsync();
                 DateTime? reportDt = DateTime.TryParse(reportDateStr, out var rdt) ? rdt : null;
 
+                // CRITICAL FIX: Check if study already exists in database with same studyname and studydatetime
+                if (_studyRepo != null)
+                {
+                    var existingStudyId = await _studyRepo.GetStudyIdAsync(PatientNumber, studyName, studyDt);
+                    if (existingStudyId.HasValue)
+                    {
+                        Debug.WriteLine($"[AddPreviousStudyModule] Study already exists in DB: studyId={existingStudyId.Value}");
+                        
+                        // Check if a report with the same reportDateTime already exists
+                        // If it does, skip the save to preserve any manual edits (like proofread texts)
+                        var existingReports = await _studyRepo.GetReportsForPatientAsync(PatientNumber);
+                        var matchingReport = existingReports.FirstOrDefault(r => 
+                            r.StudyId == existingStudyId.Value && 
+                            r.ReportDateTime.HasValue && 
+                            reportDt.HasValue && 
+                            r.ReportDateTime.Value == reportDt.Value);
+                        
+                        if (matchingReport != null)
+                        {
+                            sw.Stop();
+                            Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Report with same datetime already exists in DB ===== ({sw.ElapsedMilliseconds} ms)");
+                            Debug.WriteLine($"[AddPreviousStudyModule] Preserving existing report to keep manual edits (proofread texts, etc.)");
+                            
+                            // Still reload and select the existing study (in case UI wasn't showing it)
+                            await LoadPreviousStudiesForPatientAsync(PatientNumber);
+                            var existingTab = PreviousStudies.FirstOrDefault(t => t.StudyDateTime == studyDt);
+                            if (existingTab != null) SelectedPreviousStudy = existingTab;
+                            
+                            // Append to comparison even though we skipped save
+                            try
+                            {
+                                var modality = ExtractModality(studyName);
+                                var dateStr = studyDt.ToString("yyyy-MM-dd");
+                                var simplifiedStudy = $"{modality} {dateStr}";
+                                var currentComparison = Comparison ?? string.Empty;
+                                if (string.IsNullOrWhiteSpace(currentComparison))
+                                {
+                                    Comparison = simplifiedStudy;
+                                }
+                                else
+                                {
+                                    Comparison = currentComparison.TrimEnd() + ", " + simplifiedStudy;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"[AddPreviousStudyModule] Comparison append error: {ex.Message}");
+                            }
+                            
+                            SetStatus("Previous study already exists (preserved existing data)");
+                            return;
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"[AddPreviousStudyModule] Study exists but report datetime is different - will add new report");
+                        }
+                    }
+                }
+
                 // 4) CRITICAL OPTIMIZATION: Skip the slow ReportTextIsVisible check (takes 58 seconds!)
                 // Instead, always try ALL getters in parallel and pick the longest result
                 Debug.WriteLine("[AddPreviousStudy] Trying ALL getters in parallel (bypassing slow visibility check)");
@@ -1105,7 +1167,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine($"[AddPreviousStudy] Primary conclusion: {c1.Length}ch, Alternate conclusion: {c2.Length}ch ¡æ Using: {conclusion.Length}ch");
                 SetStatus($"Report text captured (findings={findings.Length}ch, conclusion={conclusion.Length}ch)");
 
-                // 6) Persist as previous study via existing repo methods
+                // 5) Persist as previous study via existing repo methods
                 if (_studyRepo == null) 
                 {
                     sw.Stop();
@@ -1122,9 +1184,12 @@ namespace Wysg.Musm.Radium.ViewModels
                     return; 
                 }
 
+                // NEW: Only save report if it doesn't already exist (or if report datetime is different)
+                Debug.WriteLine($"[AddPreviousStudyModule] Saving new report with datetime: {reportDt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "(null)"}");
                 var reportObj = new { header_and_findings = findings, final_conclusion = conclusion };
                 string json = JsonSerializer.Serialize(reportObj);
                 await _studyRepo.UpsertPartialReportAsync(studyId.Value, reportDt, json, isMine: false);
+                Debug.WriteLine($"[AddPreviousStudyModule] Report saved successfully");
 
                 // Fire-and-forget reload to avoid blocking the sequence (OpenStudy can run immediately)
                 async void ReloadAndSelectAsync()
@@ -1292,6 +1357,12 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine($"[SavePreorder] Error: {ex.Message}");
                 SetStatus("Save preorder operation failed", true);
             }
+        }
+
+        private void OnSavePreviousStudyToDB()
+        {
+            // Reuse the existing RunSavePreviousStudyToDBAsync implementation
+            _ = RunSavePreviousStudyToDBAsync();
         }
 
         // Internal AutomationSettings class for deserialization

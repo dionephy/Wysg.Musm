@@ -72,6 +72,9 @@ namespace Wysg.Musm.Radium.ViewModels
                     // These MUST be notified AFTER UpdatePreviousReportJson() completes
                     OnPropertyChanged(nameof(PreviousFindingsEditorText));
                     OnPropertyChanged(nameof(PreviousConclusionEditorText));
+                    
+                    // NEW: Update SavePreviousStudyToDBCommand CanExecute state when selection changes
+                    System.Windows.Input.CommandManager.InvalidateRequerySuggested();
                 } 
             } 
         }
