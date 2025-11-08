@@ -630,12 +630,24 @@ if (isLandscape)
                     return;
                 }
                 
-                var win = new PhraseExtractionWindow { Owner = this, DataContext = vmExtract };
+                // Get or create singleton window instance
+                var win = PhraseExtractionWindow.GetOrCreateInstance();
+                win.Owner = this;
+                win.DataContext = vmExtract;
                 
-                // Build dereportified / raw lines from current editors
-                var (header, findings, conclusion) = vm.GetDereportifiedSections();
+                // Get content with proofread fallback mechanism (uses new helper method)
+                var (header, findings, conclusion) = vm.GetProofreadOrRawSections();
                 vmExtract.LoadFromDeReportified(header, findings, conclusion);
-                win.Show();
+                
+                // Show window (activate if already open)
+                if (!win.IsVisible)
+                {
+                    win.Show();
+                }
+                else
+                {
+                    win.Activate();
+                }
             }
             catch (Exception ex)
             {

@@ -50,18 +50,32 @@ namespace Wysg.Musm.Radium.Views
 
         public IRelayCommand SearchCommand { get; }
         public IRelayCommand MapCommand { get; }
+        
+        // NEW: Indicates if this window is in "selection only" mode (phraseId = -1, from phrase extraction)
+        public bool IsSelectionOnlyMode => _phraseId < 0;
 
         public PhraseSnomedLinkWindowViewModel(long phraseId, string phraseText, long? accountId, ISnomedMapService map, ISnowstormClient snow)
         {
             _phraseId = phraseId; _accountId = accountId; _map = map; _snow = snow;
             PhraseText = phraseText;
             SearchText = phraseText; // Pre-fill search box with phrase text
-            ScopeText = accountId == null ? "Global" : $"Account {accountId}";
+            
+            // NEW: Update scope text to indicate selection-only mode
+            if (IsSelectionOnlyMode)
+            {
+                ScopeText = "Selection Mode (phrase not yet saved)";
+            }
+            else
+            {
+                ScopeText = accountId == null ? "Global" : $"Account {accountId}";
+            }
+            
             SearchCommand = new AsyncRelayCommand(OnSearchAsync);
             MapCommand = new AsyncRelayCommand(OnMapAsync, CanMap);
         }
 
-        private bool CanMap() => SelectedConcept != null;
+        // NEW: Can only map if we have a selected concept AND a valid phrase ID (not in selection-only mode)
+        private bool CanMap() => SelectedConcept != null && !IsSelectionOnlyMode;
 
         private async Task OnSearchAsync()
         {
@@ -73,6 +87,13 @@ namespace Wysg.Musm.Radium.Views
         private async Task OnMapAsync()
         {
             if (SelectedConcept == null) return;
+            
+            // Double-check we're not in selection-only mode
+            if (IsSelectionOnlyMode)
+            {
+                MessageBox.Show("Cannot map in selection-only mode. Please save the phrase first.", "SNOMED", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             
             try
             {

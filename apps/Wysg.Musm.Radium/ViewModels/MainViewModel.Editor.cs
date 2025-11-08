@@ -355,7 +355,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     if (string.IsNullOrWhiteSpace(chiefComplaintDisplay) && !string.IsNullOrWhiteSpace(patientHistoryDisplay))
                     {
                         // Chief complaint is empty but history exists -> show "Clinical information: NA"
-                        lines.Add("Clinical information: NA");
+                        lines.Add("Clinical information: N/A");
                     }
                     else if (!string.IsNullOrWhiteSpace(chiefComplaintDisplay))
                     {
@@ -392,7 +392,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 else if (hasAnyHeaderContent)
                 {
                     // Comparison is empty but we have other header content -> show "Comparison: NA"
-                    lines.Add("Comparison: NA");
+                    lines.Add("Comparison: N/A");
                 }
                 // else: if comparison is empty AND no other header content, don't show comparison line at all
                 
@@ -840,6 +840,106 @@ namespace Wysg.Musm.Radium.ViewModels
             string c = Reportified ? _rawConclusion : ConclusionText;
             return (h, f, c);
         }
+
+        // NEW: Get sections with proofread fallback for phrase extraction
+        // ALWAYS returns proofread versions when available, regardless of ProofreadMode toggle
+        public (string header, string findings, string conclusion) GetProofreadOrRawSections()
+        {
+            string header, findings, conclusion;
+            
+            // ALWAYS prefer proofread versions if they exist (ignore ProofreadMode toggle for phrase extraction)
+            // Header: use HeaderDisplay if any proofread component exists
+            if (!string.IsNullOrWhiteSpace(_chiefComplaintProofread) || !string.IsNullOrWhiteSpace(_patientHistoryProofread) ||
+                !string.IsNullOrWhiteSpace(_studyTechniquesProofread) || !string.IsNullOrWhiteSpace(_comparisonProofread))
+            {
+                // Build header from proofread components
+                var lines = new System.Collections.Generic.List<string>();
+                
+                string chiefComplaint = ApplyProofreadPlaceholders(_chiefComplaintProofread);
+                string patientHistory = ApplyProofreadPlaceholders(_patientHistoryProofread);
+                string studyTechniques = ApplyProofreadPlaceholders(_studyTechniquesProofread);
+                string comparison = ApplyProofreadPlaceholders(_comparisonProofread);
+                
+                bool hasClinicalInfo = !string.IsNullOrWhiteSpace(chiefComplaint) || !string.IsNullOrWhiteSpace(patientHistory);
+                bool hasTechniques = !string.IsNullOrWhiteSpace(studyTechniques);
+                bool hasAnyHeaderContent = hasClinicalInfo || hasTechniques;
+                
+                // Clinical information logic
+                if (hasClinicalInfo)
+                {
+                    if (string.IsNullOrWhiteSpace(chiefComplaint) && !string.IsNullOrWhiteSpace(patientHistory))
+                    {
+                        lines.Add("Clinical information: N/A");
+                    }
+                    else if (!string.IsNullOrWhiteSpace(chiefComplaint))
+                    {
+                        lines.Add($"Clinical information: {chiefComplaint}");
+                    }
+                    
+                    // Add patient history lines (each line prefixed with "- ")
+                    if (!string.IsNullOrWhiteSpace(patientHistory))
+                    {
+                        var historyLines = patientHistory.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var line in historyLines)
+                        {
+                            var trimmed = line.Trim();
+                            if (!string.IsNullOrWhiteSpace(trimmed))
+                            {
+                                lines.Add($"- {trimmed}");
+                            }
+                        }
+                    }
+                }
+                
+                // Techniques logic
+                if (hasTechniques)
+                {
+                    lines.Add($"Techniques: {studyTechniques}");
+                }
+                
+                // Comparison logic
+                if (!string.IsNullOrWhiteSpace(comparison))
+                {
+                    lines.Add($"Comparison: {comparison}");
+                }
+                else if (hasAnyHeaderContent)
+                {
+                    lines.Add("Comparison: N/A");
+                }
+                
+                header = string.Join("\n", lines).Trim();
+            }
+            else
+            {
+                // No proofread header components, use raw
+                var (h, _, _) = GetDereportifiedSections();
+                header = h;
+            }
+            
+            // Findings: ALWAYS prefer proofread if available
+            if (!string.IsNullOrWhiteSpace(_findingsProofread))
+            {
+                findings = ApplyProofreadPlaceholders(_findingsProofread);
+            }
+            else
+            {
+                var (_, f, _) = GetDereportifiedSections();
+                findings = f;
+            }
+            
+            // Conclusion: ALWAYS prefer proofread if available
+            if (!string.IsNullOrWhiteSpace(_conclusionProofread))
+            {
+                conclusion = ApplyProofreadPlaceholders(_conclusionProofread);
+            }
+            else
+            {
+                var (_, _, c) = GetDereportifiedSections();
+                conclusion = c;
+            }
+            
+            return (header, findings, conclusion);
+        }
         
         // NEW: Public accessors for raw (unreportified) values - use these for database saves and PACS sends
         public string RawFindingsText => _reportified ? _rawFindings : (_findingsText ?? string.Empty);
@@ -958,7 +1058,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (string.IsNullOrWhiteSpace(_chiefComplaint) && !string.IsNullOrWhiteSpace(_patientHistory))
                 {
                     // Chief complaint is empty but history exists -> show "Clinical information: NA"
-                    lines.Add("Clinical information: NA");
+                    lines.Add("Clinical information: N/A");
                 }
                 else if (!string.IsNullOrWhiteSpace(_chiefComplaint))
                 {
@@ -995,7 +1095,7 @@ namespace Wysg.Musm.Radium.ViewModels
             else if (hasAnyHeaderContent)
             {
                 // Comparison is empty but we have other header content -> show "Comparison: NA"
-                lines.Add("Comparison: NA");
+                lines.Add("Comparison: N/A");
             }
             // else: if comparison is empty AND no other header content, don't show comparison line at all
             
