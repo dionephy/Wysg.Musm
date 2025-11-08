@@ -162,12 +162,12 @@ namespace Wysg.Musm.Editor.Ui
                 // Skip whitespace
                 if (char.IsWhiteSpace(text, i)) { i++; continue; }
                 
-                // Skip standalone punctuation
-                if (char.IsPunctuation(text[i])) { i++; continue; }
+                // Skip standalone punctuation (except hyphen and forward slash which are part of medical terms)
+                if (char.IsPunctuation(text[i]) && text[i] != '-' && text[i] != '/') { i++; continue; }
 
-                // Find word boundaries (include hyphens as part of words for phrases like "COVID-19")
+                // Find word boundaries (include hyphens and forward slashes as part of words for phrases like "COVID-19" and "N/A")
                 int wordStart = i;
-                while (i < text.Length && !char.IsWhiteSpace(text, i) && (char.IsLetterOrDigit(text, i) || text[i] == '-'))
+                while (i < text.Length && !char.IsWhiteSpace(text, i) && (char.IsLetterOrDigit(text, i) || text[i] == '-' || text[i] == '/'))
                     i++;
 
                 if (i <= wordStart) { i++; continue; }
@@ -183,28 +183,28 @@ namespace Wysg.Musm.Editor.Ui
                     while (scanPos < text.Length && char.IsWhiteSpace(text, scanPos)) scanPos++;
                     if (scanPos >= text.Length) break;
             
-                    // Skip punctuation before next word
-          if (char.IsPunctuation(text[scanPos])) break;
+                    // Skip punctuation before next word (except hyphen and forward slash)
+                    if (char.IsPunctuation(text[scanPos]) && text[scanPos] != '-' && text[scanPos] != '/') break;
 
-       // Find next word (include hyphens)
- int nextStart = scanPos;
-      while (scanPos < text.Length && !char.IsWhiteSpace(text, scanPos) && (char.IsLetterOrDigit(text, scanPos) || text[scanPos] == '-'))
-scanPos++;
+                    // Find next word (include hyphens and forward slashes)
+                    int nextStart = scanPos;
+                    while (scanPos < text.Length && !char.IsWhiteSpace(text, scanPos) && (char.IsLetterOrDigit(text, scanPos) || text[scanPos] == '-' || text[scanPos] == '/'))
+                        scanPos++;
         
-          if (scanPos <= nextStart) break;
+                    if (scanPos <= nextStart) break;
 
-         int phraseLen = scanPos - wordStart;
-    var phrase = text.Substring(wordStart, phraseLen);
-       if (set.Contains(phrase))
-         {
-       bestLen = phraseLen;
-    bestExists = true;
-            i = scanPos; // advance to end of phrase
-  }
-     }
+                    int phraseLen = scanPos - wordStart;
+                    var phrase = text.Substring(wordStart, phraseLen);
+                    if (set.Contains(phrase))
+                    {
+                        bestLen = phraseLen;
+                        bestExists = true;
+                        i = scanPos; // advance to end of phrase
+                    }
+                }
 
-    var matchedText = text.Substring(wordStart, bestLen);
- yield return new PhraseMatch(wordStart, bestLen, bestExists, matchedText);
+                var matchedText = text.Substring(wordStart, bestLen);
+                yield return new PhraseMatch(wordStart, bestLen, bestExists, matchedText);
             }
         }
     }

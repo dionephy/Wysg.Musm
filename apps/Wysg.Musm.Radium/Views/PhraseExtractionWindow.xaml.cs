@@ -26,6 +26,23 @@ namespace Wysg.Musm.Radium.Views
         private void OnClosed(object? sender, System.EventArgs e)
         {
             _instance = null;
+            
+            // Refresh phrase colorization in MainWindow after extraction window closes
+            // This ensures any newly added phrases are immediately colorized
+            try
+            {
+                var mainWindow = Application.Current.MainWindow;
+                if (mainWindow?.DataContext is MainViewModel mainVM)
+                {
+                    // Async fire-and-forget: refresh phrases from database
+                    _ = mainVM.RefreshPhrasesAsync();
+                    System.Diagnostics.Debug.WriteLine("[PhraseExtractionWindow] Triggered phrase refresh in MainViewModel on window close");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PhraseExtractionWindow] Error refreshing phrases on close: {ex.Message}");
+            }
         }
 
         public void Load(string header, string findings, string conclusion)

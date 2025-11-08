@@ -161,89 +161,89 @@ public sealed class PhraseHighlightRenderer : IBackgroundRenderer, IDisposable
     private static List<PhraseMatch> FindPhraseMatches(string text, HashSet<string> phraseSet)
     {
         var matches = new List<PhraseMatch>();
-    if (string.IsNullOrEmpty(text)) return matches;
+        if (string.IsNullOrEmpty(text)) return matches;
         
-    int i = 0;
+        int i = 0;
         while (i < text.Length)
         {
             // Skip whitespace
             if (char.IsWhiteSpace(text[i]))
             {
-      i++;
-     continue;
-}
+                i++;
+                continue;
+            }
   
-   // Skip standalone punctuation that's not part of a word
-            if (char.IsPunctuation(text[i]))
-    {
- i++;
-    continue;
+            // Skip standalone punctuation that's not part of a word (except hyphen and forward slash)
+            if (char.IsPunctuation(text[i]) && text[i] != '-' && text[i] != '/')
+            {
+                i++;
+                continue;
             }
           
-            // Find word boundaries (include hyphens as part of words for phrases like "COVID-19")
+            // Find word boundaries (include hyphens and forward slashes as part of words for phrases like "COVID-19" and "N/A")
             int wordStart = i;
-            while (i < text.Length && !char.IsWhiteSpace(text[i]) && (char.IsLetterOrDigit(text[i]) || text[i] == '-'))
-    {
-        i++;
-     }
+            while (i < text.Length && !char.IsWhiteSpace(text[i]) && (char.IsLetterOrDigit(text[i]) || text[i] == '-' || text[i] == '/'))
+            {
+                i++;
+            }
      
-      if (i > wordStart)
-     {
-        int wordLength = i - wordStart;
-        var word = text.Substring(wordStart, wordLength);
+            if (i > wordStart)
+            {
+                int wordLength = i - wordStart;
+                var word = text.Substring(wordStart, wordLength);
      
-     // Check if this word (or phrase starting with this word) exists in snapshot
-    bool exists = phraseSet.Contains(word);
+                // Check if this word (or phrase starting with this word) exists in snapshot
+                bool exists = phraseSet.Contains(word);
           
-        // Try to match longer phrases by looking ahead
-      int longestMatch = wordLength;
-      bool longestExists = exists;
+                // Try to match longer phrases by looking ahead
+                int longestMatch = wordLength;
+                bool longestExists = exists;
     
-           // Look ahead for multi-word phrases (up to 5 words)
-       for (int ahead = 1; ahead <= 4 && i < text.Length; ahead++)
-    {
-               // Skip whitespace
-  int tempI = i;
-      while (tempI < text.Length && char.IsWhiteSpace(text[tempI]))
-     tempI++;
+                // Look ahead for multi-word phrases (up to 5 words)
+                for (int ahead = 1; ahead <= 4 && i < text.Length; ahead++)
+                {
+                    // Skip whitespace
+                    int tempI = i;
+                    while (tempI < text.Length && char.IsWhiteSpace(text[tempI]))
+                        tempI++;
        
-         if (tempI >= text.Length) break;
+                    if (tempI >= text.Length) break;
         
-             // Skip punctuation before next word
-             if (char.IsPunctuation(text[tempI]))
-             break;
+                    // Skip punctuation before next word (except hyphen and forward slash)
+                    if (char.IsPunctuation(text[tempI]) && text[tempI] != '-' && text[tempI] != '/')
+                        break;
   
-         // Find next word (include hyphens)
-       int nextWordStart = tempI;
-          while (tempI < text.Length && !char.IsWhiteSpace(text[tempI]) && (char.IsLetterOrDigit(text[tempI]) || text[tempI] == '-'))
-         tempI++;
+                    // Find next word (include hyphens and forward slashes)
+                    int nextWordStart = tempI;
+                    while (tempI < text.Length && !char.IsWhiteSpace(text[tempI]) && (char.IsLetterOrDigit(text[tempI]) || text[tempI] == '-' || text[tempI] == '/'))
+                        tempI++;
 
-        if (tempI <= nextWordStart) break;
+                    if (tempI <= nextWordStart) break;
            
-      int phraseLength = tempI - wordStart;
-         var phrase = text.Substring(wordStart, phraseLength);
+                    int phraseLength = tempI - wordStart;
+                    var phrase = text.Substring(wordStart, phraseLength);
      
- if (phraseSet.Contains(phrase))
-        {
-        longestMatch = phraseLength;
-  longestExists = true;
-        i = tempI; // Advance to end of matched phrase
-        }
-         }
+                    if (phraseSet.Contains(phrase))
+                    {
+                        longestMatch = phraseLength;
+                        longestExists = true;
+                        i = tempI; // Advance to end of matched phrase
+                    }
+                }
   
-   var matchedText = text.Substring(wordStart, longestMatch);
+                var matchedText = text.Substring(wordStart, longestMatch);
       
                 matches.Add(new PhraseMatch
-      {
-  Offset = wordStart,
-                Length = longestMatch,
-   ExistsInSnapshot = longestExists,
-         PhraseText = matchedText
-     });
+                {
+                    Offset = wordStart,
+                    Length = longestMatch,
+                    ExistsInSnapshot = longestExists,
+                    PhraseText = matchedText
+                });
             }
         }
  
-return matches;
+        return matches;
     }
 
     private void OnVisualLinesChanged(object? s, EventArgs e) => _view.InvalidateLayer(KnownLayer.Background);
