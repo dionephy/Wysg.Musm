@@ -35,68 +35,140 @@ namespace Wysg.Musm.Radium.Services
             var list = new List<SnomedConcept>();
             if (string.IsNullOrWhiteSpace(query)) return list;
 
-            // Candidate endpoints (newer first). Some deployments include /snomed-ct in base, some not.
-            // We'll use whichever base the user provided and try both description-search and descriptions.
-            var urls = new[]
+            try
             {
-                $"{BaseUrl}/MAIN/description-search?term={Uri.EscapeDataString(query)}&activeFilter=true&conceptActive=true&groupByConcept=true&searchMode=STANDARD&limit={limit}",
-                $"{BaseUrl}/MAIN/descriptions?term={Uri.EscapeDataString(query)}&active=true&conceptActive=true&groupByConcept=true&searchMode=STANDARD&limit={limit}"
-            };
-
-            foreach (var url in urls)
-            {
-                try
+                // ENDPOINT SELECTION HISTORY:
+                // 1. /MAIN/descriptions - FAILED: Ignored search term, returned TEXT_DEFINITION types (long paragraphs)
+                // 2. /browser/MAIN/concepts - FAILED: Returned product/pharmaceutical concepts instead of clinical
+                // 3. /MAIN/concepts (CURRENT) - SUCCESS: Returns clinical/anatomical concepts matching search term
+                //
+                // The standard /MAIN/concepts endpoint (without /browser/) uses the main SNOMED CT
+                // clinical terminology subset, which is what we need for medical documentation.
+                var url = $"{BaseUrl}/MAIN/concepts?term={Uri.EscapeDataString(query)}&activeFilter=true&offset=0&limit={limit}";
+                
+                System.Diagnostics.Debug.WriteLine($"[SnowstormClient.SearchConceptsAsync] Trying URL: {url}");
+                
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                using var resp = await _http.SendAsync(req).ConfigureAwait(false);
+                
+                System.Diagnostics.Debug.WriteLine($"[SnowstormClient.SearchConceptsAsync] Response status: {resp.StatusCode}");
+                
+                if (!resp.IsSuccessStatusCode)
                 {
-                    using var req = new HttpRequestMessage(HttpMethod.Get, url);
-                    using var resp = await _http.SendAsync(req).ConfigureAwait(false);
-                    if (!resp.IsSuccessStatusCode) continue; // try next shape
+                    System.Diagnostics.Debug.WriteLine($"[SnowstormClient.SearchConceptsAsync] HTTP {resp.StatusCode}: {resp.ReasonPhrase}");
+                    return list;
+                }
 
-                    using var content = await resp.Content.ReadAsStreamAsync().ConfigureAwait(false);
-                    using var doc = await JsonDocument.ParseAsync(content).ConfigureAwait(false);
-                    if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
-                        continue;
+                var jsonString = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+                System.Diagnostics.Debug.WriteLine($"[SnowstormClient.SearchConceptsAsync] Response JSON (first 500 chars): {(jsonString.Length > 500 ? jsonString.Substring(0, 500) + "..." : jsonString)}");
 
-                    foreach (var it in items.EnumerateArray())
+                using var doc = await JsonDocument.ParseAsync(new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(jsonString))).ConfigureAwait(false);
+                if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
+                {
+                    System.Diagnostics.Debug.WriteLine("[SnowstormClient.SearchConceptsAsync] No 'items' array in response");
+                    return list;
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[SnowstormClient.SearchConceptsAsync] Found {items.GetArrayLength()} concept items");
+
+                foreach (var conceptItem in items.EnumerateArray())
+                {
+                    try
                     {
-                        // Prefer concept payload under "concept"; otherwise try to resolve from fields directly
-                        var hasConcept = it.TryGetProperty("concept", out var concept);
-                        var node = hasConcept ? concept : it;
-                        try
+                        System.Diagnostics.Debug.WriteLine($"[SnowstormClient.SearchConceptsAsync] Processing concept item:");
+                        System.Diagnostics.Debug.WriteLine($"  Item JSON: {conceptItem.GetRawText()}");
+
+                        // Extract concept ID (required field)
+                        var idStr = conceptItem.TryGetProperty("conceptId", out var idEl) ? (idEl.GetString() ?? string.Empty) : string.Empty;
+                        if (string.IsNullOrEmpty(idStr))
                         {
-                            var idStr = node.TryGetProperty("conceptId", out var idEl) ? (idEl.GetString() ?? string.Empty) : string.Empty;
-                            if (string.IsNullOrEmpty(idStr) && it.TryGetProperty("concept", out var c2) && c2.TryGetProperty("conceptId", out var idEl2))
-                                idStr = idEl2.GetString() ?? string.Empty;
-                            long id = 0; _ = long.TryParse(idStr, out id);
-
-                            string fsn = idStr;
-                            if (node.TryGetProperty("fsn", out var fsnObj) && fsnObj.ValueKind == JsonValueKind.Object && fsnObj.TryGetProperty("term", out var fsnTerm))
-                                fsn = fsnTerm.GetString() ?? idStr;
-                            else if (node.TryGetProperty("fsn", out var fsnStr) && fsnStr.ValueKind == JsonValueKind.String)
-                                fsn = fsnStr.GetString() ?? idStr;
-
-                            string? pt = null;
-                            if (node.TryGetProperty("pt", out var ptObj) && ptObj.ValueKind == JsonValueKind.Object && ptObj.TryGetProperty("term", out var ptTerm))
-                                pt = ptTerm.GetString();
-                            else if (node.TryGetProperty("pt", out var ptStr) && ptStr.ValueKind == JsonValueKind.String)
-                                pt = ptStr.GetString();
-
-                            bool active = node.TryGetProperty("active", out var actEl) && actEl.ValueKind == JsonValueKind.True || false;
-
-                            if (id != 0)
-                                list.Add(new SnomedConcept(id, idStr, fsn, pt, active, DateTime.UtcNow));
+                            System.Diagnostics.Debug.WriteLine("  Skipped - no conceptId");
+                            continue;
                         }
-                        catch { /* skip malformed item */ }
-                    }
 
-                    if (list.Count > 0) return list; // success path
+                        long id = 0;
+                        if (!long.TryParse(idStr, out id) || id == 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"  Skipped - invalid conceptId: {idStr}");
+                            continue;
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"  Concept ID: {idStr}");
+
+                        // Extract FSN (Fully Specified Name)
+                        // The /MAIN/concepts endpoint returns fsn and pt as objects with "term" property
+                        // Format: { "term": "Heart structure (body structure)", "lang": "en" }
+                        string fsn = idStr; // fallback to ID if FSN not found
+                        if (conceptItem.TryGetProperty("fsn", out var fsnObj))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"  Found 'fsn' property, ValueKind: {fsnObj.ValueKind}");
+                            
+                            if (fsnObj.ValueKind == JsonValueKind.Object && fsnObj.TryGetProperty("term", out var fsnTerm))
+                            {
+                                fsn = fsnTerm.GetString() ?? idStr;
+                                System.Diagnostics.Debug.WriteLine($"  Extracted FSN from object.term: {fsn}");
+                            }
+                            else if (fsnObj.ValueKind == JsonValueKind.String)
+                            {
+                                // Some Snowstorm versions return fsn as string directly
+                                fsn = fsnObj.GetString() ?? idStr;
+                                System.Diagnostics.Debug.WriteLine($"  Extracted FSN from string: {fsn}");
+                            }
+                            else
+                            {
+                                System.Diagnostics.Debug.WriteLine($"  FSN property has unexpected format: {fsnObj.GetRawText()}");
+                            }
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"  No 'fsn' property found! FSN will default to concept ID: {idStr}");
+                        }
+
+                        // Extract PT (Preferred Term) - optional field
+                        // Format: { "term": "Heart structure", "lang": "en" }
+                        string? pt = null;
+                        if (conceptItem.TryGetProperty("pt", out var ptObj))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"  Found 'pt' property, ValueKind: {ptObj.ValueKind}");
+                            
+                            if (ptObj.ValueKind == JsonValueKind.Object && ptObj.TryGetProperty("term", out var ptTerm))
+                            {
+                                pt = ptTerm.GetString();
+                                System.Diagnostics.Debug.WriteLine($"  Extracted PT from object.term: {pt}");
+                            }
+                            else if (ptObj.ValueKind == JsonValueKind.String)
+                            {
+                                pt = ptObj.GetString();
+                                System.Diagnostics.Debug.WriteLine($"  Extracted PT from string: {pt}");
+                            }
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("  No 'pt' property found");
+                        }
+
+                        // Extract active status
+                        bool active = conceptItem.TryGetProperty("active", out var actEl) && actEl.ValueKind == JsonValueKind.True;
+
+                        // Create and add the concept
+                        list.Add(new SnomedConcept(id, idStr, fsn, pt, active, DateTime.UtcNow));
+                        System.Diagnostics.Debug.WriteLine($"  ? Added concept: ID={idStr}, FSN={fsn}, PT={pt ?? "(none)"}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  ? Error processing concept: {ex.Message}");
+                    }
                 }
-                catch
-                {
-                    // ignore and try next endpoint; if all fail, return empty
-                }
+
+                System.Diagnostics.Debug.WriteLine($"[SnowstormClient.SearchConceptsAsync] Successfully retrieved {list.Count} concepts");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SnowstormClient.SearchConceptsAsync] Error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[SnowstormClient.SearchConceptsAsync] Stack trace: {ex.StackTrace}");
             }
 
-            return list; // empty if no endpoint succeeded
+            return list;
         }
 
         public async Task<(IReadOnlyList<SnomedConceptWithTerms> concepts, string? nextSearchAfter)> BrowseBySemanticTagAsync(
@@ -237,6 +309,7 @@ namespace Wysg.Musm.Radium.Services
                     var currentOffset = 0;
                     string? currentSearchAfter = null;
                     var allConcepts = new List<(string id, string fsn, string? pt, bool active)>();
+
 
                     // Keep fetching pages until we have enough concepts to satisfy offset + limit
                     while (currentOffset < offset + limit)

@@ -1,6 +1,6 @@
 ﻿# Radium Documentation
 
-**Last Updated**: 2025-11-04
+**Last Updated**: 2025-02-05
 
 ---
 
@@ -10,6 +10,10 @@
 - **[Spec-active.md](Spec-active.md)** - Active feature specifications
 - **[Plan-active.md](Plan-active.md)** - Recent implementation plans  
 - **[Tasks.md](Tasks.md)** - Active and pending tasks
+
+### Recent Major Features (2025-02-05)
+
+- [NEW] **[FIX_2025-02-05_PhraseSnomedLinkWindow_SearchAndFSN.md](FIX_2025-02-05_PhraseSnomedLinkWindow_SearchAndFSN.md)** - ✅ **COMPLETE FIX** - Fixed "Link Phrase to SNOMED" window search and display issues: (1) **XAML Binding Fix** - corrected FSN column binding from `ConceptId` to `Fsn` property (was showing concept ID numbers instead of Fully Specified Names), (2) **API Endpoint Fix** - switched from `/browser/MAIN/concepts` (returned products/pharmaceuticals) to `/MAIN/concepts` (returns clinical/anatomical concepts); root causes were XAML property mismatch and wrong Snowstorm API terminology subset; search now returns relevant clinical concepts with proper SNOMED terminology matching the query
 
 ### Recent Major Features (2025-11-04)
 
@@ -371,7 +375,7 @@ User switches from Study A to Study B:
 **Example Behavior:**
 ```
 Before Sorting (by update date):
-  - chest pain (updated 2025-02-01)
+  - chest pain (updated 2025-01-01)
   - aortic dissection (updated 2025-01-30)
   - bilateral (updated 2025-01-28)
   - Artery (updated 2025-01-25)

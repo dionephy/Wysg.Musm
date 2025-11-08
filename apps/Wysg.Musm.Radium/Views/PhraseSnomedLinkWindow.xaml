@@ -36,7 +36,7 @@
                   AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
                   Background="#262A30" Foreground="#E0E0E0" BorderBrush="#41474F" RowHeaderWidth="0">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="ConceptId" Binding="{Binding ConceptId}" Width="120"/>
+                <DataGridTextColumn Header="ConceptId" Binding="{Binding ConceptIdStr}" Width="120"/>
                 <DataGridTextColumn Header="FSN" Binding="{Binding Fsn}" Width="*"/>
                 <DataGridTextColumn Header="PT" Binding="{Binding Pt}" Width="260"/>
             </DataGrid.Columns>
