@@ -968,487 +968,556 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private async Task RunAddPreviousStudyModuleAsync()
         {
-            var sw = Stopwatch.StartNew(); // Start timing
-            Debug.WriteLine("[AddPreviousStudyModule] ===== START =====");
-            
             try
             {
-                // 1) Ensure PACS current patient equals application's current patient number
-                var pacsCurrent = await _pacs.GetCurrentPatientNumberAsync();
-                string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : Regex.Replace(s, "[^A-Za-z0-9]", "").ToUpperInvariant();
-                if (Normalize(pacsCurrent) != Normalize(PatientNumber)) 
-                { 
-                    sw.Stop();
-                    Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Patient mismatch ===== ({sw.ElapsedMilliseconds} ms)");
-                    SetStatus("Patient mismatch cannot add", true); 
-                    return; 
-                }
+                Debug.WriteLine("[AddPreviousStudyModule] ===== START =====");
+                var stopwatch = Stopwatch.StartNew();
 
-                // Optional: also verify selected related study belongs to same patient
-                var relatedSelected = await _pacs.GetSelectedIdFromRelatedStudiesAsync();
-                if (!string.IsNullOrWhiteSpace(relatedSelected) && Normalize(relatedSelected) != Normalize(PatientNumber))
-                { 
-                    sw.Stop();
-                    Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Related study patient mismatch ===== ({sw.ElapsedMilliseconds} ms)");
-                    SetStatus("Related study not for current patient", true); 
-                    return; 
-                }
-
-                // 2) Fetch ONLY studyname and datetime first (for early duplicate detection)
-                var studyName = await _pacs.GetSelectedStudynameFromRelatedStudiesAsync();
-                var dtStr = await _pacs.GetSelectedStudyDateTimeFromRelatedStudiesAsync();
-
-                // Abort when studyname/datetime missing
-                if (string.IsNullOrWhiteSpace(studyName) || string.IsNullOrWhiteSpace(dtStr))
-                { 
-                    sw.Stop();
-                    Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Missing metadata ===== ({sw.ElapsedMilliseconds} ms)");
-                    SetStatus("Related study is incomplete (name/datetime)", true); 
-                    return; 
-                }
-
-                // Parse datetimes
-                if (!DateTime.TryParse(dtStr, out var studyDt)) 
-                { 
-                    sw.Stop();
-                    Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Invalid datetime ===== ({sw.ElapsedMilliseconds} ms)");
-                    SetStatus("Related study datetime invalid", true); 
-                    return; 
-                }
-
-                // EARLY EXIT: Check if same as current study (before fetching radiologist/reportDate)
-                if (DateTime.TryParse(StudyDateTime, out var currentDt))
+                // Step 1: Validate current patient matches PACS
+                Debug.WriteLine("[AddPreviousStudyModule] Step 1: Validating patient match...");
+                var pacsPatientNumber = await _pacs.GetCurrentPatientNumberAsync();
+                if (string.IsNullOrWhiteSpace(pacsPatientNumber))
                 {
-                    if (string.Equals(studyName?.Trim(), StudyName?.Trim(), StringComparison.OrdinalIgnoreCase) && studyDt == currentDt)
-                    { 
-                        sw.Stop();
-                        Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Same as current study (early exit) ===== ({sw.ElapsedMilliseconds} ms)");
-                        SetStatus("Same as current study; skipping add", true); 
-                        return; 
-                    }
+                    SetStatus("AddPreviousStudy: Could not read patient number from PACS", true);
+                    return;
                 }
 
-                // 3) Fetch remaining metadata (only if not duplicate)
-                var radiologist = await _pacs.GetSelectedRadiologistFromRelatedStudiesAsync();
-                var reportDateStr = await _pacs.GetSelectedReportDateTimeFromRelatedStudiesAsync();
-                DateTime? reportDt = DateTime.TryParse(reportDateStr, out var rdt) ? rdt : null;
+                // Inline normalization (remove non-alphanumeric, uppercase)
+                string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : 
+                    System.Text.RegularExpressions.Regex.Replace(s, "[^A-Za-z0-9]", "").ToUpperInvariant();
 
-                // CRITICAL FIX: Check if study already exists in database with same studyname and studydatetime
-                if (_studyRepo != null)
+                var normalizedPacs = Normalize(pacsPatientNumber);
+                var normalizedApp = Normalize(PatientNumber);
+                if (!string.Equals(normalizedPacs, normalizedApp, StringComparison.OrdinalIgnoreCase))
                 {
-                    var existingStudyId = await _studyRepo.GetStudyIdAsync(PatientNumber, studyName, studyDt);
-                    if (existingStudyId.HasValue)
+                    SetStatus($"AddPreviousStudy: Patient mismatch (PACS={normalizedPacs}, App={normalizedApp})", true);
+                    return;
+                }
+                Debug.WriteLine($"[AddPreviousStudyModule] Patient match confirmed: {normalizedApp}");
+
+                // Step 2: Read selected study metadata from Related Studies list
+                Debug.WriteLine("[AddPreviousStudyModule] Step 2: Reading study metadata...");
+                var studynameTask = _pacs.GetSelectedStudynameFromRelatedStudiesAsync();
+                var studyDateTimeTask = _pacs.GetSelectedStudyDateTimeFromRelatedStudiesAsync();
+                var radiologistTask = _pacs.GetSelectedRadiologistFromRelatedStudiesAsync();
+                var reportDateTimeTask = _pacs.GetSelectedReportDateTimeFromRelatedStudiesAsync();
+
+                await Task.WhenAll(studynameTask, studyDateTimeTask, radiologistTask, reportDateTimeTask);
+
+                var studyname = studynameTask.Result;
+                var studyDateTimeStr = studyDateTimeTask.Result;
+                var radiologist = radiologistTask.Result;
+                var reportDateTimeStr = reportDateTimeTask.Result;
+
+                if (string.IsNullOrWhiteSpace(studyname) || string.IsNullOrWhiteSpace(studyDateTimeStr))
+                {
+                    SetStatus("AddPreviousStudy: Missing studyname or study datetime", true);
+                    return;
+                }
+
+                if (!DateTime.TryParse(studyDateTimeStr, out var studyDateTime))
+                {
+                    SetStatus($"AddPreviousStudy: Invalid study datetime: {studyDateTimeStr}", true);
+                    return;
+                }
+
+                // NEW VALIDATION: Check if this is the CURRENT study (not a previous study)
+                // Compare with the current study loaded in the application
+                bool isCurrentStudy = false;
+                if (!string.IsNullOrWhiteSpace(StudyName) && !string.IsNullOrWhiteSpace(StudyDateTime))
+                {
+                    if (string.Equals(studyname, StudyName, StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.WriteLine($"[AddPreviousStudyModule] Study already exists in DB: studyId={existingStudyId.Value}");
-                        
-                        // Check if a report with the same reportDateTime already exists
-                        // If it does, skip the save to preserve any manual edits (like proofread texts)
-                        var existingReports = await _studyRepo.GetReportsForPatientAsync(PatientNumber);
-                        var matchingReport = existingReports.FirstOrDefault(r => 
-                            r.StudyId == existingStudyId.Value && 
-                            r.ReportDateTime.HasValue && 
-                            reportDt.HasValue && 
-                            r.ReportDateTime.Value == reportDt.Value);
-                        
-                        if (matchingReport != null)
+                        // Same studyname - now check datetime
+                        if (DateTime.TryParse(StudyDateTime, out var currentStudyDt))
                         {
-                            sw.Stop();
-                            Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Report with same datetime already exists in DB ===== ({sw.ElapsedMilliseconds} ms)");
-                            Debug.WriteLine($"[AddPreviousStudyModule] Preserving existing report to keep manual edits (proofread texts, etc.)");
-                            
-                            // Still reload and select the existing study (in case UI wasn't showing it)
-                            await LoadPreviousStudiesForPatientAsync(PatientNumber);
-                            var existingTab = PreviousStudies.FirstOrDefault(t => t.StudyDateTime == studyDt);
-                            if (existingTab != null) SelectedPreviousStudy = existingTab;
-                            
-                            // Append to comparison even though we skipped save
-                            try
+                            // Consider same if within 1 minute tolerance (account for slight timing differences)
+                            if (Math.Abs((studyDateTime - currentStudyDt).TotalSeconds) < 60)
                             {
-                                var modality = ExtractModality(studyName);
-                                var dateStr = studyDt.ToString("yyyy-MM-dd");
-                                var simplifiedStudy = $"{modality} {dateStr}";
-                                var currentComparison = Comparison ?? string.Empty;
-                                if (string.IsNullOrWhiteSpace(currentComparison))
-                                {
-                                    Comparison = simplifiedStudy;
-                                }
-                                else
-                                {
-                                    Comparison = currentComparison.TrimEnd() + ", " + simplifiedStudy;
-                                }
+                                isCurrentStudy = true;
+                                Debug.WriteLine($"[AddPreviousStudyModule] VALIDATION FAILED: Selected study is the CURRENT study");
+                                Debug.WriteLine($"[AddPreviousStudyModule] Current: {StudyName} @ {StudyDateTime}");
+                                Debug.WriteLine($"[AddPreviousStudyModule] Selected: {studyname} @ {studyDateTimeStr}");
                             }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"[AddPreviousStudyModule] Comparison append error: {ex.Message}");
-                            }
-                            
-                            SetStatus("Previous study already exists (preserved existing data)");
-                            return;
-                        }
-                        else
-                        {
-                            Debug.WriteLine($"[AddPreviousStudyModule] Study exists but report datetime is different - will add new report");
                         }
                     }
                 }
 
-                // 4) CRITICAL OPTIMIZATION: Skip the slow ReportTextIsVisible check (takes 58 seconds!)
-                // Instead, always try ALL getters in parallel and pick the longest result
-                Debug.WriteLine("[AddPreviousStudy] Trying ALL getters in parallel (bypassing slow visibility check)");
-                
-                string findings = string.Empty, conclusion = string.Empty;
-                
-                // Launch all 4 getters simultaneously
-                var f1Task = Task.Run(async () => 
+                if (isCurrentStudy)
                 {
-                    try 
-                    { 
-                        return await _pacs.GetCurrentFindingsAsync() ?? string.Empty;
-                    } 
-                    catch (Exception ex) 
-                    { 
-                        Debug.WriteLine($"[AddPreviousStudy][GetCurrentFindings] Exception: {ex.Message}");
-                        return string.Empty; 
-                    }
-                });
-                
-                var c1Task = Task.Run(async () => 
-                {
-                    try 
-                    { 
-                        return await _pacs.GetCurrentConclusionAsync() ?? string.Empty;
-                    } 
-                    catch (Exception ex) 
-                    { 
-                        Debug.WriteLine($"[AddPreviousStudy][GetCurrentConclusion] Exception: {ex.Message}");
-                        return string.Empty; 
-                    }
-                });
-                
-                var f2Task = Task.Run(async () => 
-                {
-                    try 
-                    { 
-                        return await _pacs.GetCurrentFindings2Async() ?? string.Empty;
-                    } 
-                    catch (Exception ex) 
-                    { 
-                        Debug.WriteLine($"[AddPreviousStudy][GetCurrentFindings2] Exception: {ex.Message}");
-                        return string.Empty; 
-                    }
-                });
-                
-                var c2Task = Task.Run(async () => 
-                {
-                    try 
-                    { 
-                        return await _pacs.GetCurrentConclusion2Async() ?? string.Empty;
-                    } 
-                    catch (Exception ex) 
-                    { 
-                        Debug.WriteLine($"[AddPreviousStudy][GetCurrentConclusion2] Exception: {ex.Message}");
-                        return string.Empty; 
-                    }
-                });
-                
-                // Wait for all to complete (max time = slowest getter, not sum of all)
-                await Task.WhenAll(f1Task, f2Task, c1Task, c2Task);
-                
-                // Pick the longer result from each pair
-                string f1 = f1Task.Result;
-                string f2 = f2Task.Result;
-                string c1 = c1Task.Result;
-                string c2 = c2Task.Result;
-                
-                findings = (f2.Length > f1.Length) ? f2 : f1;
-                conclusion = (c2.Length > c1.Length) ? c2 : c1;
-                
-                Debug.WriteLine($"[AddPreviousStudy] Primary findings: {f1.Length}ch, Alternate findings: {f2.Length}ch ¡æ Using: {findings.Length}ch");
-                Debug.WriteLine($"[AddPreviousStudy] Primary conclusion: {c1.Length}ch, Alternate conclusion: {c2.Length}ch ¡æ Using: {conclusion.Length}ch");
-                SetStatus($"Report text captured (findings={findings.Length}ch, conclusion={conclusion.Length}ch)");
-
-                // 5) Persist as previous study via existing repo methods
-                if (_studyRepo == null) 
-                {
-                    sw.Stop();
-                    Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Repository unavailable ===== ({sw.ElapsedMilliseconds} ms)");
+                    SetStatus("AddPreviousStudy: Cannot add current study as previous study (select a different study from Related Studies list)", true);
                     return;
                 }
-                
-                var studyId = await _studyRepo.EnsureStudyAsync(PatientNumber, PatientName, PatientSex, null, studyName, studyDt);
-                if (studyId == null) 
-                { 
-                    sw.Stop();
-                    Debug.WriteLine($"[AddPreviousStudyModule] ===== ABORTED: Study save failed ===== ({sw.ElapsedMilliseconds} ms)");
-                    SetStatus("Study save failed", true); 
-                    return; 
-                }
 
-                // NEW: Only save report if it doesn't already exist (or if report datetime is different)
-                Debug.WriteLine($"[AddPreviousStudyModule] Saving new report with datetime: {reportDt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "(null)"}");
-                var reportObj = new { header_and_findings = findings, final_conclusion = conclusion };
-                string json = JsonSerializer.Serialize(reportObj);
-                await _studyRepo.UpsertPartialReportAsync(studyId.Value, reportDt, json, isMine: false);
-                Debug.WriteLine($"[AddPreviousStudyModule] Report saved successfully");
-
-                // Fire-and-forget reload to avoid blocking the sequence (OpenStudy can run immediately)
-                async void ReloadAndSelectAsync()
+                // Parse report datetime from PACS
+                DateTime? reportDateTime = null;
+                if (!string.IsNullOrWhiteSpace(reportDateTimeStr) && DateTime.TryParse(reportDateTimeStr, out var reportDt))
                 {
-                    try
-                    {
-                        await LoadPreviousStudiesForPatientAsync(PatientNumber);
-                        var newTabLocal = PreviousStudies.FirstOrDefault(t => t.StudyDateTime == studyDt);
-                        if (newTabLocal != null) SelectedPreviousStudy = newTabLocal;
-                    }
-                    catch (Exception ex) { Debug.WriteLine("[AddPreviousStudyModule][Reload] " + ex.Message); }
-                }
-                ReloadAndSelectAsync();
-                
-                // Append simplified study string to current report's Comparison field
-                try
-                {
-                    Debug.WriteLine("[AddPreviousStudyModule] Appending to Comparison field");
-                    var modality = ExtractModality(studyName);
-                    var dateStr = studyDt.ToString("yyyy-MM-dd");
-                    var simplifiedStudy = $"{modality} {dateStr}";
-                    Debug.WriteLine($"[AddPreviousStudyModule] Simplified string: '{simplifiedStudy}'");
-                    
-                    // Append to existing Comparison with proper separator
-                    var currentComparison = Comparison ?? string.Empty;
-                    if (string.IsNullOrWhiteSpace(currentComparison))
-                    {
-                        Comparison = simplifiedStudy;
-                        Debug.WriteLine($"[AddPreviousStudyModule] Set Comparison to: '{simplifiedStudy}'");
-                    }
-                    else
-                    {
-                        // Append with comma separator
-                        Comparison = currentComparison.TrimEnd() + ", " + simplifiedStudy;
-                        Debug.WriteLine($"[AddPreviousStudyModule] Appended to Comparison: '{Comparison}'");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[AddPreviousStudyModule] Comparison append error: {ex.Message}");
-                    // Don't fail the entire operation if comparison append fails
-                }
-                
-                sw.Stop();
-                Debug.WriteLine($"[AddPreviousStudyModule] ===== END: SUCCESS ===== ({sw.ElapsedMilliseconds} ms)");
-                SetStatus("Previous study added");
-            }
-            catch (Exception ex)
-            {
-                sw.Stop();
-                Debug.WriteLine($"[AddPreviousStudyModule] ===== EXCEPTION ===== ({sw.ElapsedMilliseconds} ms)");
-                Debug.WriteLine("[AddPreviousStudyModule] error: " + ex.Message);
-                SetStatus("Add previous study module failed", true);
-            }
-        }
-
-        private void OnSelectPrevious(object? o)
-        {
-            if (o is not PreviousStudyTab tab) return;
-            if (SelectedPreviousStudy?.Id == tab.Id)
-            {
-                foreach (var t in PreviousStudies) t.IsSelected = (t.Id == tab.Id);
-                return;
-            }
-            SelectedPreviousStudy = tab;
-        }
-
-        private void OnGenerateField(object? param)
-        {
-            try
-            {
-                var key = (param as string) ?? string.Empty;
-                SetStatus(string.IsNullOrWhiteSpace(key) ? "Generate requested" : $"Generate {key} requested");
-            }
-            catch { }
-        }
-
-        private void OnEditStudyTechnique()
-        {
-            try
-            {
-                // Open window to edit technique combination for current study
-                Views.StudyTechniqueWindow.OpenForStudy(this);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[EditStudyTechnique] Error: {ex.Message}");
-                SetStatus("Failed to open study technique editor", true);
-            }
-        }
-
-        private void OnEditComparison()
-        {
-            try
-            {
-                Debug.WriteLine("[EditComparison] Opening Edit Comparison window");
-                
-                // Check if we have patient info and previous studies
-                if (string.IsNullOrWhiteSpace(PatientNumber))
-                {
-                    SetStatus("No patient loaded - cannot edit comparison", true);
-                    return;
-                }
-                
-                if (PreviousStudies.Count == 0)
-                {
-                    SetStatus("No previous studies available for this patient", true);
-                    return;
-                }
-                
-                // Open the Edit Comparison window and get the updated comparison string
-                var newComparison = Views.EditComparisonWindow.Open(
-                    PatientNumber,
-                    PatientName,
-                    PatientSex,
-                    PreviousStudies.ToList(),
-                    Comparison
-                );
-                
-                // Update comparison if user clicked OK
-                if (newComparison != null)
-                {
-                    Comparison = newComparison;
-                    SetStatus("Comparison updated");
-                    Debug.WriteLine($"[EditComparison] Updated comparison: '{newComparison}'");
+                    reportDateTime = reportDt;
+                    Debug.WriteLine($"[AddPreviousStudyModule] Report datetime from PACS: {reportDateTime:yyyy-MM-dd HH:mm:ss}");
                 }
                 else
                 {
-                    Debug.WriteLine("[EditComparison] User cancelled");
+                    Debug.WriteLine($"[AddPreviousStudyModule] No report datetime from PACS (reportDateTimeStr='{reportDateTimeStr}')");
                 }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[EditComparison] Error: {ex.Message}");
-                SetStatus("Failed to open comparison editor", true);
-            }
-        }
 
-        private void OnSavePreorder()
-        {
-            try
-            {
-                Debug.WriteLine("[SavePreorder] Saving current findings to findings_preorder JSON field");
-                
-                // Get the raw findings text (unreportified)
-                var findingsText = RawFindingsText;
-                
-                if (string.IsNullOrWhiteSpace(findingsText))
+                // NEW VALIDATION: Don't save/load if report doesn't have datetime
+                if (!reportDateTime.HasValue)
                 {
-                    SetStatus("No findings text available to save as preorder", true);
-                    Debug.WriteLine("[SavePreorder] Findings text is empty");
+                    Debug.WriteLine($"[AddPreviousStudyModule] VALIDATION FAILED: Report datetime is missing");
+                    Debug.WriteLine($"[AddPreviousStudyModule] Study: {studyname} @ {studyDateTimeStr}");
+                    Debug.WriteLine($"[AddPreviousStudyModule] Report datetime from PACS: '{reportDateTimeStr}'");
+                    SetStatus("AddPreviousStudy: Report datetime is missing - report not saved (this is expected for studies without finalized reports)", false);
                     return;
                 }
-                
-                Debug.WriteLine($"[SavePreorder] Captured findings text: length={findingsText.Length} chars");
-                
-                // Save to FindingsPreorder property (which will trigger JSON update)
-                FindingsPreorder = findingsText;
-                
-                SetStatus($"Pre-order findings saved ({findingsText.Length} chars)");
-                Debug.WriteLine("[SavePreorder] Successfully saved to FindingsPreorder property");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[SavePreorder] Error: {ex.Message}");
-                SetStatus("Save preorder operation failed", true);
-            }
-        }
 
-        private void OnSavePreviousStudyToDB()
-        {
-            // Reuse the existing RunSavePreviousStudyToDBAsync implementation
-            _ = RunSavePreviousStudyToDBAsync();
-        }
-
-        // Internal AutomationSettings class for deserialization
-        private sealed class AutomationSettings
-        {
-            public string? NewStudySequence { get; set; }
-            public string? AddStudySequence { get; set; }
-            public string? ShortcutOpenNew { get; set; }
-            public string? ShortcutOpenAdd { get; set; }
-            public string? ShortcutOpenAfterOpen { get; set; }
-            public string? SendReportSequence { get; set; }
-            public string? SendReportPreviewSequence { get; set; }
-            public string? ShortcutSendReportPreview { get; set; }
-            public string? ShortcutSendReportReportified { get; set; }
-            public string? TestSequence { get; set; }
-        }
-
-        // Helper to get automation sequence for current PACS
-        private string GetAutomationSequenceForCurrentPacs(Func<AutomationSettings, string?> selector)
-        {
-            try
-            {
-                var pacsKey = _tenant?.CurrentPacsKey ?? "default_pacs";
-                var automationFile = GetAutomationFilePath(pacsKey);
+                // FIXED: Check for duplicate in memory, considering BOTH study datetime AND report datetime
+                Debug.WriteLine("[AddPreviousStudyModule] Step 2.5: Checking for duplicate in-memory tabs...");
                 
-                if (!System.IO.File.Exists(automationFile))
+                PreviousStudyTab? duplicate = null;
+                if (reportDateTime.HasValue)
                 {
-                    Debug.WriteLine($"[GetAutomationSequence] No automation file found at {automationFile}");
-                    return string.Empty;
-                }
+                    // If we have a report datetime, check for exact match (study + report datetime)
+                    duplicate = PreviousStudies.FirstOrDefault(tab =>
+                        string.Equals(tab.SelectedReport?.Studyname, studyname, StringComparison.OrdinalIgnoreCase) &&
+                        tab.StudyDateTime == studyDateTime &&
+                        tab.SelectedReport?.ReportDateTime.HasValue == true &&
+                        Math.Abs((tab.SelectedReport.ReportDateTime.Value - reportDateTime.Value).TotalSeconds) < 1);
+            
+            if (duplicate != null)
+            {
+                Debug.WriteLine($"[AddPreviousStudyModule] Exact duplicate found (same study + same report datetime): {duplicate.Title}");
+            }
+            else
+            {
+                Debug.WriteLine($"[AddPreviousStudyModule] No exact duplicate in memory - checking if study has different reports loaded");
                 
-                var json = System.IO.File.ReadAllText(automationFile);
-                var settings = System.Text.Json.JsonSerializer.Deserialize<AutomationSettings>(json);
+                // Check if study exists with different report datetime
+                var existingStudyWithDifferentReport = PreviousStudies.FirstOrDefault(tab =>
+                    string.Equals(tab.SelectedReport?.Studyname, studyname, StringComparison.OrdinalIgnoreCase) &&
+                    tab.StudyDateTime == studyDateTime);
                 
-                if (settings == null)
+                if (existingStudyWithDifferentReport != null)
                 {
-                    Debug.WriteLine($"[GetAutomationSequence] Failed to deserialize automation settings");
-                    return string.Empty;
+                    var existingReportDt = existingStudyWithDifferentReport.SelectedReport?.ReportDateTime;
+                    Debug.WriteLine($"[AddPreviousStudyModule] Study exists in memory with different report datetime: existing={existingReportDt:yyyy-MM-dd HH:mm:ss}, new={reportDateTime:yyyy-MM-dd HH:mm:ss}");
+                    Debug.WriteLine($"[AddPreviousStudyModule] Will check database and potentially fetch new report");
                 }
+            }
+        }
+        else
+        {
+            // No report datetime available - fall back to old behavior (check study only)
+            duplicate = PreviousStudies.FirstOrDefault(tab =>
+                string.Equals(tab.SelectedReport?.Studyname, studyname, StringComparison.OrdinalIgnoreCase) &&
+                tab.StudyDateTime == studyDateTime);
+            
+            if (duplicate != null)
+            {
+                Debug.WriteLine($"[AddPreviousStudyModule] Duplicate found (no report datetime available): {duplicate.Title}");
+            }
+        }
+
+        if (duplicate != null)
+        {
+            Debug.WriteLine($"[AddPreviousStudyModule] Duplicate confirmed: {duplicate.Title}");
+            SelectedPreviousStudy = duplicate;
+            PreviousReportSplitted = true;
+            stopwatch.Stop();
+            SetStatus($"Previous study already loaded: {duplicate.Title} ({stopwatch.ElapsedMilliseconds} ms)", false);
+            Debug.WriteLine($"[AddPreviousStudyModule] ===== END: DUPLICATE DETECTED ===== ({stopwatch.ElapsedMilliseconds} ms)");
+            return;
+        }
+
+        // Check if study exists in database and if this specific report exists
+        Debug.WriteLine("[AddPreviousStudyModule] Step 2.6: Checking database for existing study and report...");
+        long? existingStudyId = null;
+        bool reportExistsInDb = false;
+
+        if (_studyRepo != null)
+        {
+            // Check if study exists
+            existingStudyId = await _studyRepo.GetStudyIdAsync(PatientNumber, studyname, studyDateTime);
+            
+            if (existingStudyId.HasValue && reportDateTime.HasValue)
+            {
+                // Study exists - now check if this specific report exists
+                Debug.WriteLine($"[AddPreviousStudyModule] Study exists with ID: {existingStudyId.Value}");
                 
-                var sequence = selector(settings);
-                Debug.WriteLine($"[GetAutomationSequence] PACS={pacsKey}, Sequence='{sequence}'");
-                return sequence ?? string.Empty;
+                // Get all reports for this study to check if this report datetime already exists
+                var existingReports = await _studyRepo.GetReportsForPatientAsync(PatientNumber);
+                reportExistsInDb = existingReports.Any(r => 
+                    r.StudyId == existingStudyId.Value && 
+                    r.ReportDateTime.HasValue && 
+                    Math.Abs((r.ReportDateTime.Value - reportDateTime.Value).TotalSeconds) < 1);
+                
+                if (reportExistsInDb)
+                {
+                    Debug.WriteLine($"[AddPreviousStudyModule] Report with datetime {reportDateTime:yyyy-MM-dd HH:mm:ss} already exists in database");
+                }
+                else
+                {
+                    Debug.WriteLine($"[AddPreviousStudyModule] Study exists but report with datetime {reportDateTime:yyyy-MM-dd HH:mm:ss} NOT found - will save new report");
+                }
             }
-            catch (Exception ex)
+            else if (existingStudyId.HasValue)
             {
-                Debug.WriteLine($"[GetAutomationSequence] Error: {ex.Message}");
-                return string.Empty;
+                Debug.WriteLine($"[AddPreviousStudyModule] Study exists with ID: {existingStudyId.Value}, but no report datetime from PACS");
             }
-        }
-
-        private static string GetAutomationFilePath(string pacsKey)
-        {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            return System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey), "automation.json");
-        }
-
-        private static string SanitizeFileName(string name)
-        {
-            var invalid = System.IO.Path.GetInvalidFileNameChars();
-            return string.Join("_", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
-        }
-
-        // DelegateCommand helper class
-        private sealed class DelegateCommand : ICommand
-        {
-            private readonly Action<object?> _execute;
-            private readonly Predicate<object?>? _canExecute;
-
-            public DelegateCommand(Action<object?> execute, Predicate<object?>? canExecute = null)
+            else
             {
-                _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-                _canExecute = canExecute;
+                Debug.WriteLine($"[AddPreviousStudyModule] Study does NOT exist in database - will create new study");
             }
-
-            public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
-
-            public void Execute(object? parameter) => _execute(parameter);
-
-            public event EventHandler? CanExecuteChanged
-            {
-                add { CommandManager.RequerySuggested += value; }
-                remove { CommandManager.RequerySuggested -= value; }
-            }
-
-            public void RaiseCanExecuteChanged() => CommandManager.InvalidateRequerySuggested();
         }
+
+        // Step 3: Read report text (only if we need to save it to DB)
+        bool needsReportFetch = !reportExistsInDb; // Fetch if report doesn't exist or if study doesn't exist
+                
+        string findings = string.Empty;
+        string conclusion = string.Empty;
+
+        if (needsReportFetch)
+        {
+            Debug.WriteLine("[AddPreviousStudyModule] Step 3: Reading report text from PACS...");
+            
+            // Run all getters in parallel
+            var f1Task = Task.Run(async () => await _pacs.GetCurrentFindingsAsync());
+            var f2Task = Task.Run(async () => await _pacs.GetCurrentFindings2Async());
+            var c1Task = Task.Run(async () => await _pacs.GetCurrentConclusionAsync());
+            var c2Task = Task.Run(async () => await _pacs.GetCurrentConclusion2Async());
+
+            await Task.WhenAll(f1Task, f2Task, c1Task, c2Task);
+
+            var f1 = f1Task.Result ?? string.Empty;
+            var f2 = f2Task.Result ?? string.Empty;
+            var c1 = c1Task.Result ?? string.Empty;
+            var c2 = c2Task.Result ?? string.Empty;
+
+            // Pick the longer variant for each field
+            findings = (f2.Length > f1.Length) ? f2 : f1;
+            conclusion = (c2.Length > c1.Length) ? c2 : c1;
+
+            Debug.WriteLine($"[AddPreviousStudyModule] Findings length: {findings.Length} (used {(f2.Length > f1.Length ? "GetCurrentFindings2" : "GetCurrentFindings")})");
+            Debug.WriteLine($"[AddPreviousStudyModule] Conclusion length: {conclusion.Length} (used {(c2.Length > c1.Length ? "GetCurrentConclusion2" : "GetCurrentConclusion")})");
+        }
+        else
+        {
+            Debug.WriteLine("[AddPreviousStudyModule] Step 3: Skipping report text fetch (report already exists in DB)");
+        }
+
+        // Step 4: Persist to database (create study if needed, save new report if needed)
+        if (_studyRepo != null && needsReportFetch)
+        {
+            Debug.WriteLine("[AddPreviousStudyModule] Step 4: Persisting to database...");
+            
+            // Ensure study exists (will return existing ID if already exists)
+            long studyId = existingStudyId ?? 0;
+            if (studyId == 0)
+            {
+                var newStudyId = await _studyRepo.EnsureStudyAsync(
+                    PatientNumber, 
+                    PatientName, 
+                    PatientSex, 
+                    birthDateRaw: null, 
+                    studyname, 
+                    studyDateTime);
+                
+                if (newStudyId.HasValue)
+                {
+                    studyId = newStudyId.Value;
+                    Debug.WriteLine($"[AddPreviousStudyModule] Created new study with ID: {studyId}");
+                }
+            }
+
+            if (studyId > 0)
+            {
+                // Save the new report
+                var reportJson = JsonSerializer.Serialize(new
+                {
+                    header_and_findings = findings,
+                    final_conclusion = conclusion,
+                    chief_complaint = string.Empty,
+                    patient_history = string.Empty,
+                    study_techniques = string.Empty,
+                    comparison = string.Empty
+                });
+
+                await _studyRepo.UpsertPartialReportAsync(studyId, reportDateTime, reportJson, isMine: false);
+                Debug.WriteLine($"[AddPreviousStudyModule] Saved new report to database (study_id={studyId}, report_datetime={reportDateTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "null"})");
+            }
+        }
+        else if (!needsReportFetch)
+        {
+            Debug.WriteLine("[AddPreviousStudyModule] Step 4: Skipping database save (report already exists)");
+        }
+
+        // Step 5: Load previous studies and select the new/existing tab
+        Debug.WriteLine("[AddPreviousStudyModule] Step 5: Loading previous studies...");
+        await LoadPreviousStudiesForPatientAsync(PatientNumber);
+        
+        // FIXED: When selecting the tab, try to find the one with matching report datetime
+        PreviousStudyTab? newTab = null;
+        if (reportDateTime.HasValue)
+        {
+            // Try to find tab with matching report datetime
+            newTab = PreviousStudies.FirstOrDefault(tab =>
+                string.Equals(tab.SelectedReport?.Studyname, studyname, StringComparison.OrdinalIgnoreCase) &&
+                tab.StudyDateTime == studyDateTime &&
+                tab.SelectedReport?.ReportDateTime.HasValue == true &&
+                Math.Abs((tab.SelectedReport.ReportDateTime.Value - reportDateTime.Value).TotalSeconds) < 1);
+            
+            if (newTab != null)
+            {
+                Debug.WriteLine($"[AddPreviousStudyModule] Found tab with matching report datetime: {newTab.Title}");
+            }
+            else
+            {
+                Debug.WriteLine($"[AddPreviousStudyModule] No tab found with matching report datetime, trying study-only match");
+            }
+        }
+        
+        // Fallback: find by study datetime only
+        if (newTab == null)
+        {
+            newTab = PreviousStudies.FirstOrDefault(tab =>
+                string.Equals(tab.SelectedReport?.Studyname, studyname, StringComparison.OrdinalIgnoreCase) &&
+                tab.StudyDateTime == studyDateTime);
+            
+            if (newTab != null)
+            {
+                Debug.WriteLine($"[AddPreviousStudyModule] Found tab with matching study datetime: {newTab.Title}");
+            }
+        }
+
+        if (newTab != null)
+        {
+            SelectedPreviousStudy = newTab;
+            PreviousReportSplitted = true;
+            stopwatch.Stop();
+            
+            string action = existingStudyId.HasValue && !reportExistsInDb ? "New report saved" : 
+                           !existingStudyId.HasValue ? "New study created" : 
+                           "Existing report loaded";
+            SetStatus($"{action}: {newTab.Title} ({stopwatch.ElapsedMilliseconds} ms)", false);
+            Debug.WriteLine($"[AddPreviousStudyModule] ===== END: SUCCESS ===== ({stopwatch.ElapsedMilliseconds} ms)");
+        }
+        else
+        {
+            stopwatch.Stop();
+            SetStatus($"Previous study processed but tab not found: {studyname} ({stopwatch.ElapsedMilliseconds} ms)", true);
+            Debug.WriteLine($"[AddPreviousStudyModule] ===== END: TAB NOT FOUND ===== ({stopwatch.ElapsedMilliseconds} ms)");
+        }
+    }
+    catch (Exception ex)
+    {
+        SetStatus($"AddPreviousStudy error: {ex.Message}", true);
+        Debug.WriteLine($"[AddPreviousStudyModule] ===== ERROR: {ex.Message} =====");
+    }
+}
+
+private void OnSelectPrevious(object? o)
+{
+    if (o is not PreviousStudyTab tab) return;
+    if (SelectedPreviousStudy?.Id == tab.Id)
+    {
+        foreach (var t in PreviousStudies) t.IsSelected = (t.Id == tab.Id);
+        return;
+    }
+    SelectedPreviousStudy = tab;
+}
+
+private void OnGenerateField(object? param)
+{
+    try
+    {
+        var key = (param as string) ?? string.Empty;
+        SetStatus(string.IsNullOrWhiteSpace(key) ? "Generate requested" : $"Generate {key} requested");
+    }
+    catch { }
+}
+
+private void OnEditStudyTechnique()
+{
+    try
+    {
+        // Open window to edit technique combination for current study
+        Views.StudyTechniqueWindow.OpenForStudy(this);
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"[EditStudyTechnique] Error: {ex.Message}");
+        SetStatus("Failed to open study technique editor", true);
+    }
+}
+
+private void OnEditComparison()
+{
+    try
+    {
+        Debug.WriteLine("[EditComparison] Opening Edit Comparison window");
+        
+        // Check if we have patient info and previous studies
+        if (string.IsNullOrWhiteSpace(PatientNumber))
+        {
+            SetStatus("No patient loaded - cannot edit comparison", true);
+            return;
+        }
+        
+        if (PreviousStudies.Count == 0)
+        {
+            SetStatus("No previous studies available for this patient", true);
+            return;
+        }
+        
+        // Open the Edit Comparison window and get the updated comparison string
+        var newComparison = Views.EditComparisonWindow.Open(
+            PatientNumber,
+            PatientName,
+            PatientSex,
+            PreviousStudies.ToList(),
+            Comparison
+        );
+        
+        // Update comparison if user clicked OK
+        if (newComparison != null)
+        {
+            Comparison = newComparison;
+            SetStatus("Comparison updated");
+            Debug.WriteLine($"[EditComparison] Updated comparison: '{newComparison}'");
+        }
+        else
+        {
+            Debug.WriteLine("[EditComparison] User cancelled");
+        }
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"[EditComparison] Error: {ex.Message}");
+        SetStatus("Failed to open comparison editor", true);
+    }
+}
+
+private void OnSavePreorder()
+{
+    try
+    {
+        Debug.WriteLine("[SavePreorder] Saving current findings to findings_preorder JSON field");
+        
+        // Get the raw findings text (unreportified)
+        var findingsText = RawFindingsText;
+        
+        if (string.IsNullOrWhiteSpace(findingsText))
+        {
+            SetStatus("No findings text available to save as preorder", true);
+            Debug.WriteLine("[SavePreorder] Findings text is empty");
+            return;
+        }
+        
+        Debug.WriteLine($"[SavePreorder] Captured findings text: length={findingsText.Length} chars");
+        
+        // Save to FindingsPreorder property (which will trigger JSON update)
+        FindingsPreorder = findingsText;
+        
+        SetStatus($"Pre-order findings saved ({findingsText.Length} chars)");
+        Debug.WriteLine("[SavePreorder] Successfully saved to FindingsPreorder property");
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"[SavePreorder] Error: {ex.Message}");
+        SetStatus("Save preorder operation failed", true);
+    }
+}
+
+private void OnSavePreviousStudyToDB()
+{
+    // Reuse the existing RunSavePreviousStudyToDBAsync implementation
+    _ = RunSavePreviousStudyToDBAsync();
+}
+
+// Internal AutomationSettings class for deserialization
+private sealed class AutomationSettings
+{
+    public string? NewStudySequence { get; set; }
+    public string? AddStudySequence { get; set; }
+    public string? ShortcutOpenNew { get; set; }
+    public string? ShortcutOpenAdd { get; set; }
+    public string? ShortcutOpenAfterOpen { get; set; }
+    public string? SendReportSequence { get; set; }
+    public string? SendReportPreviewSequence { get; set; }
+    public string? ShortcutSendReportPreview { get; set; }
+    public string? ShortcutSendReportReportified { get; set; }
+    public string? TestSequence { get; set; }
+}
+
+// Helper to get automation sequence for current PACS
+private string GetAutomationSequenceForCurrentPacs(Func<AutomationSettings, string?> selector)
+{
+    try
+    {
+        var pacsKey = _tenant?.CurrentPacsKey ?? "default_pacs";
+        var automationFile = GetAutomationFilePath(pacsKey);
+        
+        if (!System.IO.File.Exists(automationFile))
+        {
+            Debug.WriteLine($"[GetAutomationSequence] No automation file found at {automationFile}");
+            return string.Empty;
+        }
+        
+        var json = System.IO.File.ReadAllText(automationFile);
+        var settings = System.Text.Json.JsonSerializer.Deserialize<AutomationSettings>(json);
+        
+        if (settings == null)
+        {
+            Debug.WriteLine($"[GetAutomationSequence] Failed to deserialize automation settings");
+            return string.Empty;
+        }
+        
+        var sequence = selector(settings);
+        Debug.WriteLine($"[GetAutomationSequence] PACS={pacsKey}, Sequence='{sequence}'");
+        return sequence ?? string.Empty;
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"[GetAutomationSequence] Error: {ex.Message}");
+        return string.Empty;
+    }
+}
+
+private static string GetAutomationFilePath(string pacsKey)
+{
+    var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+    return System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey), "automation.json");
+}
+
+private static string SanitizeFileName(string name)
+{
+    var invalid = System.IO.Path.GetInvalidFileNameChars();
+    return string.Join("_", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
+}
+
+// DelegateCommand helper class
+private sealed class DelegateCommand : ICommand
+{
+    private readonly Action<object?> _execute;
+    private readonly Predicate<object?>? _canExecute;
+
+    public DelegateCommand(Action<object?> execute, Predicate<object?>? canExecute = null)
+    {
+        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+        _canExecute = canExecute;
+    }
+
+    public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
+
+    public void Execute(object? parameter) => _execute(parameter);
+
+    public event EventHandler? CanExecuteChanged
+    {
+        add { CommandManager.RequerySuggested += value; }
+        remove { CommandManager.RequerySuggested -= value; }
+    }
+
+    public void RaiseCanExecuteChanged() => CommandManager.InvalidateRequerySuggested();
+}
     }
 }

@@ -74,15 +74,32 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     if (SetProperty(ref _selectedReport, value))
                     {
-                        Debug.WriteLine($"[PrevTab] Report selection changed");
+                        Debug.WriteLine($"[PrevTab] Report selection changed to: {value?.Display ?? "(null)"}");
                         ApplyReportSelection(value);
+                        
+                        // CRITICAL: Notify that Findings and Conclusion changed so MainViewModel updates JSON and UI
+                        // This is needed because ApplyReportSelection updates these properties internally
+                        OnPropertyChanged(nameof(Findings));
+                        OnPropertyChanged(nameof(Conclusion));
+                        OnPropertyChanged(nameof(OriginalFindings));
+                        OnPropertyChanged(nameof(OriginalConclusion));
                     }
                 }
             }
             
             public void ApplyReportSelection(PreviousReportChoice? rep)
             {
-                if (rep == null) return;
+                if (rep == null)
+                {
+                    Debug.WriteLine("[PrevTab] ApplyReportSelection: null report - clearing fields");
+                    OriginalFindings = string.Empty;
+                    OriginalConclusion = string.Empty;
+                    Findings = string.Empty;
+                    Conclusion = string.Empty;
+                    return;
+                }
+                
+                Debug.WriteLine($"[PrevTab] ApplyReportSelection: applying report datetime={rep.ReportDateTime:yyyy-MM-dd HH:mm:ss}, findings len={rep.Findings?.Length ?? 0}, conclusion len={rep.Conclusion?.Length ?? 0}");
                 OriginalFindings = rep.Findings;
                 OriginalConclusion = rep.Conclusion;
                 Findings = rep.Findings;
