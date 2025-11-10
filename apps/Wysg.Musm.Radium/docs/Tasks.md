@@ -663,117 +663,46 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [ ] V459 Verify Save button enables after loading techniques from All Combinations
 - [ ] V460 Load techniques from All Combinations, modify list (add/remove), then save → verify new combination created
 
-## New (2025-02-02 – Unicode Dash Normalization Fix)
-- [X] T1250 Investigate hyphen removal issue where "A2-A3" became "A22A3" in PACS (FR-HYPHEN-001)
-- [X] T1251 Identify root cause: Unicode dash characters (en-dash, em-dash, minus sign) not preserved (FR-HYPHEN-002)
-- [X] T1252 Add Unicode dash normalization at beginning of ApplyReportifyBlock() (FR-HYPHEN-003)
-- [X] T1253 Normalize en-dash (U+2013) to ASCII hyphen (U+002D) (FR-HYPHEN-004)
-- [X] T1254 Normalize em-dash (U+2014) to ASCII hyphen (U+002D) (FR-HYPHEN-005)
-- [X] T1255 Normalize minus sign (U+2212) to ASCII hyphen (U+002D) (FR-HYPHEN-006)
-- [X] T1256 Create FIX_2025-02-02_HyphenNormalization.md documentation (FR-HYPHEN-007)
-- [X] T1257 Create INVESTIGATION_2025-02-02_HyphenRemovalIssue.md analysis (FR-HYPHEN-008)
-- [X] T1258 Update README.md with Unicode dash normalization entry (FR-HYPHEN-009)
-- [X] T1259 Update Tasks.md with T1250-T1265 entries (this file, cumulative) (FR-HYPHEN-010)
-- [X] T1260 Verify build passes with no compilation errors (FR-HYPHEN-011)
+## New (2025-02-08 – Disable Auto-Save on Previous Study Tab Switch)
+- [X] T1320 Disable auto-save logic when switching between previous study tabs per user request (FR-DISABLE-AUTOSAVE-001)
+- [X] T1321 Comment out JSON capture and apply code in SelectedPreviousStudy setter (FR-DISABLE-AUTOSAVE-002)
+- [X] T1322 Add comments explaining disabled behavior and rationale (FR-DISABLE-AUTOSAVE-003)
+- [X] T1323 Preserve original auto-save code in comments for future reference (FR-DISABLE-AUTOSAVE-004)
+- [X] T1324 Create FIX_2025-02-08_DisableAutoSaveOnPreviousTabSwitch.md documentation (FR-DISABLE-AUTOSAVE-005)
+- [X] T1325 Update README.md with disable auto-save entry (FR-DISABLE-AUTOSAVE-006)
+- [X] T1326 Update Tasks.md with completed disable auto-save tasks (this file, cumulative)
+- [X] T1327 Verify build passes with no compilation errors
+- [X] V340 Verify changes from previous tab are NOT saved automatically when switching tabs
+- [X] V341 Verify changes ARE saved when clicking "Save Previous Study to DB" button before switching tabs
+- [X] V342 Verify behavior change documented clearly with warnings about data loss risk
 
-## Verification (Unicode Dash Normalization Fix)
-- [ ] V490 Type "A2–A3" with en-dash → verify normalizes to "A2-A3" with regular hyphen
-- [ ] V491 Type "A2—A3" with em-dash → verify normalizes to "A2-A3"
-- [ ] V492 Type "A2−A3" with minus sign → verify normalizes to "A2-A3"
-- [ ] V493 Copy "A2–A3" from Word → paste → verify normalizes correctly
-- [ ] V494 Copy "T1-weighted, T2-weighted" from PDF → paste → verify hyphens preserved
-- [ ] V495 Toggle Reportified ON with "A2–A3" → verify shows "A2-A3"
-- [ ] V496 Send report with "A2–A3" to PACS → verify PACS receives "A2-A3" not "A22A3"
-- [ ] V497 Type multiple dashes "T1–weighted, T2—weighted, 5−10" → verify all normalize to hyphens
-- [ ] V498 Type regular hyphen "A2-A3" → verify remains unchanged (no over-processing)
-- [ ] V499 Verify normalization works with Reportified OFF (dereportified text also goes through reportify on save)
+## New (2025-02-08 – Fix Save Button Not Updating Previous Study JSON)
+- [X] T1330 Investigate why "Save Previous Study to DB" button not saving current edits (FR-SAVE-JSON-001)
+- [X] T1331 Identify root cause: PreviousReportJson not synchronized with UI state when auto-save disabled (FR-SAVE-JSON-002)
+- [X] T1332 Add UpdatePreviousReportJson() call before RunSavePreviousStudyToDBAsync() in OnSavePreviousStudyToDB() (FR-SAVE-JSON-003)
+- [X] T1333 Create FIX_2025-02-08_SaveButtonNotUpdatingPreviousStudyJSON.md documentation (FR-SAVE-JSON-004)
+- [X] T1334 Update Tasks.md with completed save button fix tasks (this file, cumulative)
+- [X] T1335 Verify build passes with no compilation errors
+- [X] V350 Verify edits to proofread fields are saved when clicking Save button immediately after typing
+- [X] V351 Verify edits to split fields (Header temp, Findings split, Conclusion split) are saved correctly
+- [X] V352 Verify edits to original fields (Previous Header and Findings, Final Conclusion) are saved correctly
+- [X] V353 Verify multiple edits with mixed focus changes are all saved when clicking Save button
+- [X] V354 Verify behavior is consistent regardless of which textbox has focus when Save is clicked
 
-## New (2025-02-02 – COVID-19 Hyphen Fix in Phrase Highlighting)
-- [X] T1240 Fix phrase tokenizer to treat hyphens as valid word characters (FR-COVID19-Hyphen-001)
-- [X] T1241 Update FindPhraseMatches to include hyphens in word boundary detection (FR-COVID19-Hyphen-002)
-- [X] T1242 Add separate punctuation skip logic excluding hyphens (FR-COVID19-Hyphen-003)
-- [X] T1243 Apply hyphen handling to multi-word phrase lookahead logic (FR-COVID19-Hyphen-004)
-- [X] T1244 Update phrase-highlighting-usage.md with hyphenated word support section (FR-COVID19-Hyphen-005)
-- [X] T1245 Create BUGFIX_2025-02-02_COVID19-Hyphen.md documentation (FR-COVID19-Hyphen-006)
-- [X] T1246 Update Tasks.md with T1240-T1250 and V470-V480 entries (this file, cumulative)
-- [X] T1247 Verify build passes with no compilation errors
-
-## Verification (COVID-19 Hyphen Fix)
-- [ ] V470 Type "COVID-19" with phrase in database → verify gray/SNOMED color highlighting (not red)
-- [ ] V471 Type "covid-19" lowercase → verify case-insensitive match works with hyphen
-- [ ] V472 Type "T-cell lymphoma" → verify multi-word phrase with hyphen matches
-- [ ] V473 Type "follow-up examination" → verify phrase matching works
-- [ ] V474 Type "non-small-cell lung cancer" → verify 4-word phrase with multiple hyphens matches
-- [ ] V475 Type "post-operative" → verify single hyphenated word matches
-- [ ] V476 Type "COVID - 19" with spaces around hyphen → verify two separate tokens (no match)
-- [ ] V477 Type "pneumonia." → verify period treated as delimiter, not part of word
-- [ ] V478 Type "COVID-19." → verify "COVID-19" matches, period ignored
-- [ ] V479 Add "COVID-19" to global phrases → verify highlighting updates in real-time
-- [ ] V480 Performance test: type 100+ lines with mixed hyphens → verify no lag
-
-## New (2025-02-02 – Word-Level Diff Granularity Fix)
-- [X] T1270 Investigate why diff viewer shows entire sentences as changed when many words are common (user report: "Decreased amount..." → "decreased amount..." shown as full replace instead of word-level diff)
-- [X] T1271 Identify root cause: DiffPlex BuildDiffModel treats each line as comparison unit, single-sentence text = one line = one big change
-- [X] T1272 Design solution: Word-level tokenization to split text into word+punctuation tokens before diff comparison
-- [X] T1273 Implement TokenizeText() method in DiffTextBox.cs with word/space/punctuation separation logic
-- [X] T1274 Update DiffTextBox.UpdateDiff() to tokenize before calling BuildDiffModel, join tokens with newline separator
-- [X] T1275 Implement TokenizeText() method in SideBySideDiffViewer.cs (same logic as DiffTextBox)
-- [X] T1276 Update SideBySideDiffViewer.UpdateDiff() to tokenize before calling BuildDiffModel
-- [X] T1277 Update SideBySideDiffViewer.AppendToken() to handle word-level tokens instead of lines
-- [X] T1278 Fix string literal syntax error in SideBySideDiffViewer (escape apostrophe character properly)
-- [X] T1279 Create comprehensive documentation FIX_2025-02-02_WordLevelDiffGranularity.md with examples, benefits, and performance analysis
-- [X] T1280 Update README.md with word-level diff fix entry in Recent Major Features section
-- [X] T1281 Update Tasks.md with T1270-T1285 and V500-V510 (this file, cumulative)
-- [X] T1282 Verify build passes with no compilation errors
-- [X] T1283 Fix line break rendering issue - tokens with \n or \r now rendered as LineBreak elements instead of being displayed inline
-- [X] T1284 Update DiffTextBox.UpdateDiff() to detect and render line breaks properly
-- [X] T1285 Update SideBySideDiffViewer.UpdateDiff() to detect and render line breaks on both left and right panels
-- [X] T1286 Update documentation with line break rendering fix details
-- [X] T1287 Verify build passes after line break rendering fix
-- [X] T1288 Fix line break rendering logic: detect tokens that are ONLY whitespace containing newlines, add LineBreak element without rendering token text
-- [X] T1289 Update DiffTextBox to use `token.Trim().Length == 0` check to properly identify newline-only tokens
-- [X] T1290 Update SideBySideDiffViewer to use same logic for both left and right panels
-- [X] T1291 Verify build passes with final line break fix
-- [X] T1292 Fix unchanged newlines disappearing: handle newline tokens in ALL change types including Unchanged (not just early continue)
-- [X] T1293 Update DiffTextBox Unchanged case to check isNewlineToken and add LineBreak instead of skipping
-- [X] T1294 Update SideBySideDiffViewer to add LineBreaks for newline tokens before checking if both are newlines
-- [X] T1295 Verify build passes with final unchanged newline fix
-- [X] T1296 Update documentation with root cause and final fix in FIX_2025-02-02_WordLevelDiffGranularity.md
-
-## Verification (Word-Level Diff Granularity Fix)
-- [ ] V500 Example 1: "No acute hemorrhage" → "No severe hemorrhage" shows [acute: RED] [severe: GREEN] hemorrhage
-- [ ] V501 Example 2: "Lungs clear bilaterally" → "Lungs are clear bilaterally." shows Lungs [are: GREEN] clear bilaterally[.: GREEN]
-- [ ] V502 Example 3: "decreased" → "Decreased" shows [decreased: RED] [Decreased: GREEN]
-- [ ] V503 Example 4 (User's case): "Decreased amount and chronologic change of contusional hemorrhages in both frontal, temporal lobes." → "decreased amount and chronologic change in the contusional hemorrhages in the bilateral frontal and temporal lobes" shows word-by-word diff with common words unchanged
-- [ ] V504 Empty text: "" → "New text" shows all tokens green (inserted)
-- [ ] V505 Identical text: "Same text" → "Same text" shows no highlighting (all unchanged)
-- [ ] V506 Hyphenated words treated as single tokens: "COVID-19" → "COVID-19" unchanged
-- [ ] V507 Multi-line paragraphs: each line treated independently (newlines as separate tokens) and rendered with proper line breaks
-- [ ] V508 Performance test: 100-word paragraph with 20+ word changes completes in <20ms
-- [ ] V509 Side-by-side diff viewer shows same word-level granularity as inline diff
-- [ ] V510 Toggle between diff views maintains word-level granularity in both modes
-- [ ] V511 Multi-line text: "Line 1\nLine 2" → "Line 1 modified\nLine 2" shows proper line breaks with word-level highlighting
-- [ ] V512 Verify line breaks appear correctly in both inline and side-by-side diff viewers
-- [ ] V513 Verify identical multi-line text displays with proper line breaks (not merged into one line)
-
-# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
+## New (2025-02-08 – Fix Previous Report Split Ranges Loading Order)
+- [X] T1370 Investigate why conclusion editor shows concatenated content when reselecting reports (FR-SPLIT-ORDER-001)
+- [X] T1371 Identify root cause: split ranges loaded AFTER setting Findings/Conclusion, causing stale ranges (FR-SPLIT-ORDER-002)
+- [X] T1372 Reorder ApplyReportSelection() to update RawJson first (FR-SPLIT-ORDER-003)
+- [X] T1373 Call LoadProofreadFieldsFromRawJson() BEFORE setting Findings/Conclusion (FR-SPLIT-ORDER-004)
+- [X] T1374 Update null report handling to load split ranges before clearing fields (FR-SPLIT-ORDER-005)
+- [X] T1375 Create FIX_2025-02-08_PreviousReportSplitRangesLoadingOrder.md documentation (FR-SPLIT-ORDER-006)
+- [X] T1376 Update Tasks.md with completed split ranges loading order tasks (this file, cumulative)
+- [X] T1377 Verify build passes with no compilation errors
+- [X] V390 Verify switching from Report A to Report B (no split ranges) to Report A shows correct conclusion
+- [X] V391 Verify conclusion editor shows only conclusion, not concatenated content
+- [X] V392 Verify split ranges loaded before property change events fire
+- [X] V393 Verify multiple report switches maintain correct split outputs
+- [X] V394 Verify debug output shows correct split range loading order
 
 ## Changed
-- [X] T1301 Scroll lock fix: forward mouse wheel from inner TextBoxes to outer ScrollViewer in ReportInputsAndJsonPanel
-- [X] T1302 Scroll lock fix: same for PreviousReportTextAndJsonPanel
-- [X] V520 Verify page scrolls when mouse is over Findings (PR), Conclusion (PR), and split textboxes
-- [X] V521 Verify textboxes with their own vertical scrollbar still scroll independently
-
-## New (2025-11-04 – Digit Support in Hotkey Triggers)
-- [X] T1303 Fix CompositeProvider.GetWordBeforeCaret in MainViewModel.EditorInit.cs to use WordBoundaryHelper for digit support
-- [X] T1304 Fix hotkey display formatting to pass only trigger text (not pre-formatted "trigger → expansion")
-- [X] T1305 Update MusmCompletionData.Hotkey to format content as "trigger → expansion" (prevent duplication)
-- [X] T1306 Create FIX_2025-11-04_NumberDigitsInTriggers.md documentation with root cause analysis
-- [X] T1307 Verify build passes with no compilation errors
-
-## Verification (Digit Support in Hotkey Triggers)
-- [X] V530 Type "zz1" → verify completion window shows "zz1 → RLLf" (not "zz1 → RLLf → RLLf")
-- [X] V531 Type "zz13" → verify completion window shows "zz13 → BLLf"
-- [X] V532 Type "zz79" → verify completion window shows "zz79 → BULf"
-- [X] V533 Press Tab/Space on "zz1" → verify expands to "RLLf"
-- [X] V534 Verify all hotkey triggers with digits now work correctly
+...existing code...

@@ -1430,6 +1430,30 @@ private void OnSavePreorder()
 
 private void OnSavePreviousStudyToDB()
 {
+    // CRITICAL FIX: Update JSON from current tab state BEFORE saving
+    // Since auto-save on tab switch was disabled (2025-02-08), we must explicitly
+    // synchronize the JSON with the current UI state when user clicks Save button
+    
+    // Add diagnostic logging to help debug split range persistence
+    var tab = SelectedPreviousStudy;
+    if (tab != null)
+    {
+        Debug.WriteLine("[SavePrevious] BEFORE UpdatePreviousReportJson:");
+        Debug.WriteLine($"[SavePrevious]   HfHeaderFrom={tab.HfHeaderFrom}, HfHeaderTo={tab.HfHeaderTo}");
+        Debug.WriteLine($"[SavePrevious]   HfConclusionFrom={tab.HfConclusionFrom}, HfConclusionTo={tab.HfConclusionTo}");
+        Debug.WriteLine($"[SavePrevious]   FcHeaderFrom={tab.FcHeaderFrom}, FcHeaderTo={tab.FcHeaderTo}");
+        Debug.WriteLine($"[SavePrevious]   FcFindingsFrom={tab.FcFindingsFrom}, FcFindingsTo={tab.FcFindingsTo}");
+    }
+    
+    UpdatePreviousReportJson();
+    
+    if (tab != null)
+    {
+        Debug.WriteLine("[SavePrevious] AFTER UpdatePreviousReportJson:");
+        Debug.WriteLine($"[SavePrevious]   JSON length: {PreviousReportJson?.Length ?? 0}");
+        Debug.WriteLine($"[SavePrevious]   JSON preview: {(PreviousReportJson?.Length > 200 ? PreviousReportJson.Substring(0, 200) + "..." : PreviousReportJson)}");
+    }
+    
     // Reuse the existing RunSavePreviousStudyToDBAsync implementation
     _ = RunSavePreviousStudyToDBAsync();
 }

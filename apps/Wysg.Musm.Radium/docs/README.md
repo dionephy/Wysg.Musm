@@ -1,6 +1,6 @@
 ﻿# Radium Documentation
 
-**Last Updated**: 2025-02-05
+**Last Updated**: 2025-02-08
 
 ---
 
@@ -10,6 +10,20 @@
 - **[Spec-active.md](Spec-active.md)** - Active feature specifications
 - **[Plan-active.md](Plan-active.md)** - Recent implementation plans  
 - **[Tasks.md](Tasks.md)** - Active and pending tasks
+
+### Recent Major Features (2025-02-08)
+
+- [NEW] **[FIX_2025-02-08_PreviousReportSplitRangesLoadingOrder.md](FIX_2025-02-08_PreviousReportSplitRangesLoadingOrder.md)** - ✅ **CRITICAL FIX** - Fixed conclusion editor showing concatenated content when switching between reports; root cause was split ranges being loaded AFTER setting `Findings`/`Conclusion` properties, causing split output computation to use stale/cleared split ranges from previously selected report (e.g., Report B with no split ranges leaves hfCTo=0, then switching to Report A computes splitConclusion with hfCTo=0 instead of 142); solution reorders `ApplyReportSelection()` to update `RawJson` and call `LoadProofreadFieldsFromRawJson()` BEFORE setting `Findings`/`Conclusion`, ensuring split ranges are correct when property change events fire; fixes issue where conclusion editor showed "header + findings + conclusion" instead of just conclusion when reselecting a report after viewing one without split ranges; completes the previous report selection feature chain
+
+- [NEW] **[FIX_2025-02-08_ProofreadFieldsNotUpdatingOnReportChange.md](FIX_2025-02-08_ProofreadFieldsNotUpdatingOnReportChange.md)** - ✅ **CRITICAL FIX** - Fixed proofread textboxes not updating when changing report selection in Previous Report ComboBox; root cause was `ApplyReportSelection()` only updating original text fields (`Findings`, `Conclusion`) and not loading proofread fields from the newly selected report's JSON; solution stores JSON for each individual report in `PreviousReportChoice.ReportJson`, updates `RawJson` when selection changes, parses JSON to extract all 6 proofread fields and 8 split range properties, and notifies all property changes to update UI; now switching reports immediately shows the correct proofread data and split ranges for the selected report; completes the previous study report selection experience
+
+- [NEW] **[FIX_2025-02-08_ProofreadFieldsNotUpdatingToJSON.md](FIX_2025-02-08_ProofreadFieldsNotUpdatingToJSON.md)** - ✅ **CRITICAL FIX** - Fixed proofread field edits not being written to JSON when saving previous studies; root cause was `UpdatePreviousReportJson()` copying stale proofread values from `RawJson` (original database JSON) instead of reading current edited values from tab properties; solution excludes 6 proofread fields (`chief_complaint_proofread`, `patient_history_proofread`, `study_techniques_proofread`, `comparison_proofread`, `findings_proofread`, `conclusion_proofread`) from RawJson copy operation and explicitly writes them from tab properties, ensuring JSON always contains current edited state; fixes data loss issue where user edits to proofread fields would appear in UI but not persist to database; completes the previous study persistence feature chain (disable auto-save → fix Save button → fix split range loading → fix proofread JSON updates)
+
+- [NEW] **[FIX_2025-02-08_PreviousStudySplitRangesNotLoading.md](FIX_2025-02-08_PreviousStudySplitRangesNotLoading.md)** - ✅ **CRITICAL FIX** - Fixed split ranges not persisting across sessions; root cause was `LoadPreviousStudiesForPatientAsync` only reading text fields from JSON and completely skipping the `PrevReport` section containing split range values (`header_and_findings_header_splitter_from/to`, etc.); solution adds JSON parsing of `PrevReport` section and populates all 8 split range properties (`HfHeaderFrom`, `HfHeaderTo`, `HfConclusionFrom`, `HfConclusionTo`, `FcHeaderFrom`, `FcHeaderTo`, `FcFindingsFrom`, `FcFindingsTo`) into the `PreviousStudyTab` object when loading from database; split UI state now fully persists - user can split a report, save it, close patient, reopen, and all splits are restored exactly as saved; completes the split range persistence feature chain (disable auto-save → fix Save button → fix loading from DB)
+
+- [NEW] **[FIX_2025-02-08_SaveButtonNotUpdatingPreviousStudyJSON.md](FIX_2025-02-08_SaveButtonNotUpdatingPreviousStudyJSON.md)** - ✅ **FIXED SAVE BUTTON** - Fixed "Save Previous Study to DB" button not persisting current edits after auto-save on tab switch was disabled; root cause was `PreviousReportJson` property not being synchronized with UI state before save operation; solution adds explicit `UpdatePreviousReportJson()` call in `OnSavePreviousStudyToDB()` to ensure JSON is always current when user clicks Save button; now works correctly regardless of focus state or timing of property change events; complements the auto-save disable feature to give users full control over when changes are persisted; includes enhanced debug logging to diagnose split range persistence issues
+
+- [NEW] **[FIX_2025-02-08_DisableAutoSaveOnPreviousTabSwitch.md](FIX_2025-02-08_DisableAutoSaveOnPreviousTabSwitch.md)** - ✅ **DISABLED AUTO-SAVE** - Disabled automatic saving of previous study JSON changes when switching between tabs; users must now explicitly click "Save Previous Study to DB" button to persist changes; original auto-save code preserved in comments for potential future re-enablement; this change was requested by user to prevent unintended data persistence and give users full control over when previous study edits are saved to database
 
 ### Recent Major Features (2025-02-05)
 
@@ -578,11 +592,6 @@ Examples:
 
 **Key File Changes:**
 - `apps\Wysg.Musm.Radium\Controls\PreviousReportEditorPanel.xaml` - Simplified ComboBox binding
-
-**Implementation Already in Place:**
-- `MainViewModel.PreviousStudies.cs` - Tab and report selection management
-- `MainViewModel.PreviousStudiesLoader.cs` - Database loading with proper sorting
-- `RadStudyRepository.cs` - Report query with `ORDER BY report_datetime DESC`
 
 **Documentation:**
 - See `ENHANCEMENT_2025-02-02_PreviousReportSelector.md` for complete feature details

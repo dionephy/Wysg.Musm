@@ -56,6 +56,16 @@ namespace Wysg.Musm.Radium.ViewModels
                         string findingsProofread = string.Empty;
                         string conclusionProofread = string.Empty;
                         
+                        // CRITICAL FIX: Variables to hold split range properties from PrevReport section
+                        int? hfHeaderFrom = null;
+                        int? hfHeaderTo = null;
+                        int? hfConclusionFrom = null;
+                        int? hfConclusionTo = null;
+                        int? fcHeaderFrom = null;
+                        int? fcHeaderTo = null;
+                        int? fcFindingsFrom = null;
+                        int? fcFindingsTo = null;
+                        
                         try
                         {
                             using var doc = JsonDocument.Parse(row.ReportJson);
@@ -100,6 +110,28 @@ namespace Wysg.Musm.Radium.ViewModels
                             if (root.TryGetProperty("comparison_proofread", out var cmppr)) comparisonProofread = cmppr.GetString() ?? string.Empty;
                             if (root.TryGetProperty("findings_proofread", out var fpr)) findingsProofread = fpr.GetString() ?? string.Empty;
                             if (root.TryGetProperty("conclusion_proofread", out var cnpr)) conclusionProofread = cnpr.GetString() ?? string.Empty;
+                    
+                            // CRITICAL FIX: Read split ranges from PrevReport section
+                            if (root.TryGetProperty("PrevReport", out var prevReport) && prevReport.ValueKind == JsonValueKind.Object)
+                            {
+                                int? GetInt(string name)
+                                {
+                                    if (prevReport.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out var i))
+                                        return i;
+                                    return null;
+                                }
+                        
+                                hfHeaderFrom = GetInt("header_and_findings_header_splitter_from");
+                                hfHeaderTo = GetInt("header_and_findings_header_splitter_to");
+                                hfConclusionFrom = GetInt("header_and_findings_conclusion_splitter_from");
+                                hfConclusionTo = GetInt("header_and_findings_conclusion_splitter_to");
+                                fcHeaderFrom = GetInt("final_conclusion_header_splitter_from");
+                                fcHeaderTo = GetInt("final_conclusion_header_splitter_to");
+                                fcFindingsFrom = GetInt("final_conclusion_findings_splitter_from");
+                                fcFindingsTo = GetInt("final_conclusion_findings_splitter_to");
+                        
+                                Debug.WriteLine($"[PrevLoad] Loaded split ranges from DB: HfHeaderFrom={hfHeaderFrom}, HfHeaderTo={hfHeaderTo}");
+                            }
                         }
                         catch (Exception ex) { Debug.WriteLine("[PrevLoad] JSON parse error: " + ex.Message); }
                         
@@ -110,7 +142,8 @@ namespace Wysg.Musm.Radium.ViewModels
                             Studyname = row.Studyname,
                             Findings = headerFind,  // Use original header_and_findings
                             Conclusion = finalConclusion,  // Use original final_conclusion
-                            _studyDateTime = row.StudyDateTime
+                            _studyDateTime = row.StudyDateTime,
+                            ReportJson = row.ReportJson  // CRITICAL FIX: Store the raw JSON for this report
                         };
                         tab.Reports.Add(choice);
                         
@@ -132,6 +165,16 @@ namespace Wysg.Musm.Radium.ViewModels
                             tab.ComparisonProofread = comparisonProofread;
                             tab.FindingsProofread = findingsProofread;
                             tab.ConclusionProofread = conclusionProofread;
+                            
+                            // CRITICAL FIX: Populate split range properties in the tab
+                            tab.HfHeaderFrom = hfHeaderFrom;
+                            tab.HfHeaderTo = hfHeaderTo;
+                            tab.HfConclusionFrom = hfConclusionFrom;
+                            tab.HfConclusionTo = hfConclusionTo;
+                            tab.FcHeaderFrom = fcHeaderFrom;
+                            tab.FcHeaderTo = fcHeaderTo;
+                            tab.FcFindingsFrom = fcFindingsFrom;
+                            tab.FcFindingsTo = fcFindingsTo;
                             
                             // Store the raw JSON for later use
                             tab.RawJson = row.ReportJson;

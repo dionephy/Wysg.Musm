@@ -75,6 +75,18 @@ namespace Wysg.Musm.Radium.ViewModels
                     if (SetProperty(ref _selectedReport, value))
                     {
                         Debug.WriteLine($"[PrevTab] Report selection changed to: {value?.Display ?? "(null)"}");
+                        
+                        // CRITICAL FIX: Update RawJson from the selected report's JSON
+                        // Each PreviousReportChoice should contain its own JSON from the database
+                        // This ensures proofread fields and split ranges are loaded correctly
+                        if (value != null)
+                        {
+                            // Get the JSON for this specific report from the Reports collection
+                            // We need to find the matching report in the database and load its JSON
+                            // For now, we'll trigger the load in ApplyReportSelection
+                            Debug.WriteLine($"[PrevTab] SelectedReport changed - will load proofread fields for report datetime={value.ReportDateTime:yyyy-MM-dd HH:mm:ss}");
+                        }
+                        
                         ApplyReportSelection(value);
                         
                         // CRITICAL: Notify that Findings and Conclusion changed so MainViewModel updates JSON and UI
@@ -83,6 +95,24 @@ namespace Wysg.Musm.Radium.ViewModels
                         OnPropertyChanged(nameof(Conclusion));
                         OnPropertyChanged(nameof(OriginalFindings));
                         OnPropertyChanged(nameof(OriginalConclusion));
+                        
+                        // CRITICAL FIX: Also notify proofread field changes so UI updates
+                        OnPropertyChanged(nameof(ChiefComplaintProofread));
+                        OnPropertyChanged(nameof(PatientHistoryProofread));
+                        OnPropertyChanged(nameof(StudyTechniquesProofread));
+                        OnPropertyChanged(nameof(ComparisonProofread));
+                        OnPropertyChanged(nameof(FindingsProofread));
+                        OnPropertyChanged(nameof(ConclusionProofread));
+                        
+                        // Notify split range changes
+                        OnPropertyChanged(nameof(HfHeaderFrom));
+                        OnPropertyChanged(nameof(HfHeaderTo));
+                        OnPropertyChanged(nameof(HfConclusionFrom));
+                        OnPropertyChanged(nameof(HfConclusionTo));
+                        OnPropertyChanged(nameof(FcHeaderFrom));
+                        OnPropertyChanged(nameof(FcHeaderTo));
+                        OnPropertyChanged(nameof(FcFindingsFrom));
+                        OnPropertyChanged(nameof(FcFindingsTo));
                     }
                 }
             }
@@ -92,18 +122,166 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (rep == null)
                 {
                     Debug.WriteLine("[PrevTab] ApplyReportSelection: null report - clearing fields");
+                    
+                    // CRITICAL FIX: Update RawJson first, THEN load proofread fields and split ranges BEFORE clearing other fields
+                    // This ensures that when property changes fire, split ranges are already correct
+                    RawJson = string.Empty;
+                    LoadProofreadFieldsFromRawJson();
+                    
                     OriginalFindings = string.Empty;
                     OriginalConclusion = string.Empty;
                     Findings = string.Empty;
                     Conclusion = string.Empty;
+                    
                     return;
                 }
                 
                 Debug.WriteLine($"[PrevTab] ApplyReportSelection: applying report datetime={rep.ReportDateTime:yyyy-MM-dd HH:mm:ss}, findings len={rep.Findings?.Length ?? 0}, conclusion len={rep.Conclusion?.Length ?? 0}");
+                
+                // CRITICAL FIX: Update RawJson FIRST, then load split ranges BEFORE setting Findings/Conclusion
+                // This ensures split ranges are correct when property change events fire
+                RawJson = rep.ReportJson ?? string.Empty;
+                Debug.WriteLine($"[PrevTab] ApplyReportSelection: Updated RawJson length={RawJson.Length}");
+                
+                // CRITICAL FIX: Load proofread fields and split ranges BEFORE setting Findings/Conclusion
+                // This prevents computing splits with wrong (stale) split ranges
+                LoadProofreadFieldsFromRawJson();
+                
+                // Now set the findings and conclusion - split ranges are already correct
                 OriginalFindings = rep.Findings;
                 OriginalConclusion = rep.Conclusion;
                 Findings = rep.Findings;
                 Conclusion = rep.Conclusion;
+            }
+            
+            /// <summary>
+            /// Loads proofread fields and split ranges from RawJson.
+            /// Called when a different report is selected in the ComboBox.
+            /// </summary>
+            private void LoadProofreadFieldsFromRawJson()
+            {
+                if (string.IsNullOrWhiteSpace(RawJson) || RawJson == "{}")
+                {
+                    Debug.WriteLine("[PrevTab] LoadProofreadFieldsFromRawJson: No RawJson available - clearing proofread fields");
+                    
+                    // Clear all proofread fields
+                    ChiefComplaintProofread = string.Empty;
+                    PatientHistoryProofread = string.Empty;
+                    StudyTechniquesProofread = string.Empty;
+                    ComparisonProofread = string.Empty;
+                    FindingsProofread = string.Empty;
+                    ConclusionProofread = string.Empty;
+                    
+                    // Clear split ranges
+                    HfHeaderFrom = null;
+                    HfHeaderTo = null;
+                    HfConclusionFrom = null;
+                    HfConclusionTo = null;
+                    FcHeaderFrom = null;
+                    FcHeaderTo = null;
+                    FcFindingsFrom = null;
+                    FcFindingsTo = null;
+                    
+                    return;
+                }
+                
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(RawJson);
+                    var root = doc.RootElement;
+                    
+                    Debug.WriteLine("[PrevTab] LoadProofreadFieldsFromRawJson: Parsing RawJson");
+                    
+                    // Load proofread fields
+                    if (root.TryGetProperty("chief_complaint_proofread", out var ccpr))
+                        ChiefComplaintProofread = ccpr.GetString() ?? string.Empty;
+                    else
+                        ChiefComplaintProofread = string.Empty;
+                        
+                    if (root.TryGetProperty("patient_history_proofread", out var phpr))
+                        PatientHistoryProofread = phpr.GetString() ?? string.Empty;
+                    else
+                        PatientHistoryProofread = string.Empty;
+                        
+                    if (root.TryGetProperty("study_techniques_proofread", out var stpr))
+                        StudyTechniquesProofread = stpr.GetString() ?? string.Empty;
+                    else
+                        StudyTechniquesProofread = string.Empty;
+                        
+                    if (root.TryGetProperty("comparison_proofread", out var cppr))
+                        ComparisonProofread = cppr.GetString() ?? string.Empty;
+                    else
+                        ComparisonProofread = string.Empty;
+                        
+                    if (root.TryGetProperty("findings_proofread", out var fpr))
+                        FindingsProofread = fpr.GetString() ?? string.Empty;
+                    else
+                        FindingsProofread = string.Empty;
+                        
+                    if (root.TryGetProperty("conclusion_proofread", out var clpr))
+                        ConclusionProofread = clpr.GetString() ?? string.Empty;
+                    else
+                        ConclusionProofread = string.Empty;
+                    
+                    Debug.WriteLine($"[PrevTab] LoadProofreadFieldsFromRawJson: Loaded proofread fields - findings len={FindingsProofread.Length}, conclusion len={ConclusionProofread.Length}");
+                    
+                    // Load split ranges from PrevReport section
+                    if (root.TryGetProperty("PrevReport", out var prevReport) && prevReport.ValueKind == System.Text.Json.JsonValueKind.Object)
+                    {
+                        int? GetInt(string name)
+                        {
+                            if (prevReport.TryGetProperty(name, out var el) && el.ValueKind == System.Text.Json.JsonValueKind.Number && el.TryGetInt32(out var i))
+                                return i;
+                            return null;
+                        }
+                        
+                        HfHeaderFrom = GetInt("header_and_findings_header_splitter_from");
+                        HfHeaderTo = GetInt("header_and_findings_header_splitter_to");
+                        HfConclusionFrom = GetInt("header_and_findings_conclusion_splitter_from");
+                        HfConclusionTo = GetInt("header_and_findings_conclusion_splitter_to");
+                        FcHeaderFrom = GetInt("final_conclusion_header_splitter_from");
+                        FcHeaderTo = GetInt("final_conclusion_header_splitter_to");
+                        FcFindingsFrom = GetInt("final_conclusion_findings_splitter_from");
+                        FcFindingsTo = GetInt("final_conclusion_findings_splitter_to");
+                        
+                        Debug.WriteLine($"[PrevTab] LoadProofreadFieldsFromRawJson: Loaded split ranges - HfHeaderFrom={HfHeaderFrom}, HfHeaderTo={HfHeaderTo}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[PrevTab] LoadProofreadFieldsFromRawJson: No PrevReport section found - clearing split ranges");
+                        
+                        // Clear split ranges if not found
+                        HfHeaderFrom = null;
+                        HfHeaderTo = null;
+                        HfConclusionFrom = null;
+                        HfConclusionTo = null;
+                        FcHeaderFrom = null;
+                        FcHeaderTo = null;
+                        FcFindingsFrom = null;
+                        FcFindingsTo = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[PrevTab] LoadProofreadFieldsFromRawJson: Error parsing JSON - {ex.Message}");
+                    
+                    // Clear all fields on error
+                    ChiefComplaintProofread = string.Empty;
+                    PatientHistoryProofread = string.Empty;
+                    StudyTechniquesProofread = string.Empty;
+                    ComparisonProofread = string.Empty;
+                    FindingsProofread = string.Empty;
+                    ConclusionProofread = string.Empty;
+                    
+                    HfHeaderFrom = null;
+                    HfHeaderTo = null;
+                    HfConclusionFrom = null;
+                    HfConclusionTo = null;
+                    FcHeaderFrom = null;
+                    FcHeaderTo = null;
+                    FcFindingsFrom = null;
+                    FcFindingsTo = null;
+                }
             }
             
             // Splitter fields for user-defined ranges
@@ -192,6 +370,10 @@ namespace Wysg.Musm.Radium.ViewModels
             public string Studyname { get; set; } = string.Empty;
             public string Findings { get; set; } = string.Empty;
             public string Conclusion { get; set; } = string.Empty;
+            
+            // CRITICAL FIX: Store the raw JSON for this specific report
+            // This allows loading proofread fields and split ranges when this report is selected
+            public string ReportJson { get; set; } = string.Empty;
             
             public string Display => $"{Studyname} ({StudyDateTimeFmt}) - {ReportDateTimeFmt} by {CreatedBy}";
             

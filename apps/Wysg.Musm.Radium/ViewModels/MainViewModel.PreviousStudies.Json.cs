@@ -86,13 +86,20 @@ namespace Wysg.Musm.Radium.ViewModels
                     
                     writer.WriteStartObject();
                     
-                    // Fields to exclude from copy (will be rewritten with computed values)
+                    // CRITICAL FIX: Fields to exclude from copy (will be rewritten with current values from tab properties)
                     var excludedFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                     {
                         "PrevReport",     // Will rebuild this
                         "header_temp",    // Will rewrite with computed split value
                         "findings",       // Will rewrite with computed split value
-                        "conclusion"      // Will rewrite with computed split value
+                        "conclusion",     // Will rewrite with computed split value
+                        // CRITICAL FIX: Exclude proofread fields so they're written from tab properties, not stale RawJson
+                        "chief_complaint_proofread",
+                        "patient_history_proofread",
+                        "study_techniques_proofread",
+                        "comparison_proofread",
+                        "findings_proofread",
+                        "conclusion_proofread"
                     };
                     
                     // Copy all existing properties from raw JSON (except excluded fields)
@@ -131,40 +138,48 @@ namespace Wysg.Musm.Radium.ViewModels
                     writer.WriteString("findings", tab.FindingsOut ?? string.Empty);
                     writer.WriteString("conclusion", tab.ConclusionOut ?? string.Empty);
                     
-                    // Add PrevReport section with split ranges
-                    writer.WritePropertyName("PrevReport");
-                    writer.WriteStartObject();
-                    writer.WriteNumber("header_and_findings_header_splitter_from", tab.HfHeaderFrom ?? 0);
-                    writer.WriteNumber("header_and_findings_header_splitter_to", tab.HfHeaderTo ?? 0);
-                    writer.WriteNumber("header_and_findings_conclusion_splitter_from", tab.HfConclusionFrom ?? hf.Length);
-                    writer.WriteNumber("header_and_findings_conclusion_splitter_to", tab.HfConclusionTo ?? hf.Length);
-                    writer.WriteNumber("final_conclusion_header_splitter_from", tab.FcHeaderFrom ?? 0);
-                    writer.WriteNumber("final_conclusion_header_splitter_to", tab.FcHeaderTo ?? 0);
-                    writer.WriteNumber("final_conclusion_findings_splitter_from", tab.FcFindingsFrom ?? 0);
-                    writer.WriteNumber("final_conclusion_findings_splitter_to", tab.FcFindingsTo ?? 0);
-                    writer.WriteEndObject();
-                    
-                    writer.WriteEndObject();
-                    writer.Flush();
-                    
-                    var jsonBytes = stream.ToArray();
-                    var json = System.Text.Encoding.UTF8.GetString(jsonBytes);
-                    
-                    _updatingPrevFromEditors = true;
-                    PreviousReportJson = json;
-                    OnPropertyChanged(nameof(PreviousReportJson));
-                    Debug.WriteLine($"[PrevJson] Update (tab, from raw DB JSON) htLen={tab.HeaderTemp?.Length} hfLen={tab.Findings?.Length} fcLen={tab.Conclusion?.Length}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("[PrevJson] Update error: " + ex.Message);
-            }
-            finally
-            {
-                _updatingPrevFromEditors = false;
-            }
+                    // CRITICAL FIX: Write proofread fields from tab properties (current values), not from stale RawJson
+                    writer.WriteString("chief_complaint_proofread", tab.ChiefComplaintProofread ?? string.Empty);
+                    writer.WriteString("patient_history_proofread", tab.PatientHistoryProofread ?? string.Empty);
+                    writer.WriteString("study_techniques_proofread", tab.StudyTechniquesProofread ?? string.Empty);
+                    writer.WriteString("comparison_proofread", tab.ComparisonProofread ?? string.Empty);
+                    writer.WriteString("findings_proofread", tab.FindingsProofread ?? string.Empty);
+                    writer.WriteString("conclusion_proofread", tab.ConclusionProofread ?? string.Empty);
+            
+            // Add PrevReport section with split ranges
+            writer.WritePropertyName("PrevReport");
+            writer.WriteStartObject();
+            writer.WriteNumber("header_and_findings_header_splitter_from", tab.HfHeaderFrom ?? 0);
+            writer.WriteNumber("header_and_findings_header_splitter_to", tab.HfHeaderTo ?? 0);
+            writer.WriteNumber("header_and_findings_conclusion_splitter_from", tab.HfConclusionFrom ?? hf.Length);
+            writer.WriteNumber("header_and_findings_conclusion_splitter_to", tab.HfConclusionTo ?? hf.Length);
+            writer.WriteNumber("final_conclusion_header_splitter_from", tab.FcHeaderFrom ?? 0);
+            writer.WriteNumber("final_conclusion_header_splitter_to", tab.FcHeaderTo ?? 0);
+            writer.WriteNumber("final_conclusion_findings_splitter_from", tab.FcFindingsFrom ?? 0);
+            writer.WriteNumber("final_conclusion_findings_splitter_to", tab.FcFindingsTo ?? 0);
+            writer.WriteEndObject();
+            
+            writer.WriteEndObject();
+            writer.Flush();
+            
+            var jsonBytes = stream.ToArray();
+            var json = System.Text.Encoding.UTF8.GetString(jsonBytes);
+            
+            _updatingPrevFromEditors = true;
+            PreviousReportJson = json;
+            OnPropertyChanged(nameof(PreviousReportJson));
+            Debug.WriteLine($"[PrevJson] Update (tab, from raw DB JSON) htLen={tab.HeaderTemp?.Length} hfLen={tab.Findings?.Length} fcLen={tab.Conclusion?.Length}");
         }
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine("[PrevJson] Update error: " + ex.Message);
+    }
+    finally
+    {
+        _updatingPrevFromEditors = false;
+    }
+}
         
         private void ApplyJsonToPrevious(string json)
         {

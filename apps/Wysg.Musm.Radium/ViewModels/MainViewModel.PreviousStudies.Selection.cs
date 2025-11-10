@@ -17,6 +17,10 @@ namespace Wysg.Musm.Radium.ViewModels
             { 
                 var old = _selectedPreviousStudy;
                 
+                // DISABLED 2025-02-08: Auto-save on tab switch removed per user request
+                // Users now need to manually save changes using the "Save to DB" button
+                // Previous behavior: Captured old tab's JSON and applied it before switching away
+                /*
                 // CRITICAL FIX: Capture OLD tab's JSON BEFORE the binding system updates _previousReportJson
                 // This prevents the bug where Tab A gets saved with Tab B's JSON content
                 string? oldTabJson = null;
@@ -26,6 +30,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     oldTabJson = _previousReportJson;
                     Debug.WriteLine($"[Prev] Captured JSON for outgoing tab: {old.Title}, len={oldTabJson?.Length}");
                 }
+                */
                 
                 // Now update the selected tab property (this may trigger WPF binding updates)
                 if (SetProperty(ref _selectedPreviousStudy, value)) 
@@ -35,6 +40,8 @@ namespace Wysg.Musm.Radium.ViewModels
                     HookPreviousStudy(old, value); 
                     EnsureSplitDefaultsIfNeeded(); 
                     
+                    // DISABLED 2025-02-08: Auto-save on tab switch removed per user request
+                    /*
                     // CRITICAL FIX: Apply the captured JSON to the OLD tab AFTER binding completes
                     // This ensures Tab A's changes are saved to Tab A, not to Tab B
                     if (old != null && !string.IsNullOrWhiteSpace(oldTabJson) && oldTabJson != "{}")
@@ -50,6 +57,7 @@ namespace Wysg.Musm.Radium.ViewModels
                             Debug.WriteLine($"[Prev] Error saving JSON for outgoing tab: {ex.Message}");
                         }
                     }
+                    */
                     
                     // CRITICAL FIX: Call UpdatePreviousReportJson() BEFORE notifying editor properties
                     // This ensures ConclusionOut and FindingsOut are computed before bindings try to read them
