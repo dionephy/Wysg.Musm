@@ -20,7 +20,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
         [ObservableProperty]
         private PacsProfileItem? selectedPacsProfile;
-
+        
         public string? SelectedPacsForAutomation
         {
             get => _selectedPacsForAutomation;
@@ -157,7 +157,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         LoadModuleSequence(settings.ShortcutSendReportPreview, ShortcutSendReportPreviewModules);
                         LoadModuleSequence(settings.ShortcutSendReportReportified, ShortcutSendReportReportifiedModules);
                         LoadModuleSequence(settings.TestSequence, TestModules);
-
+                        
                         Debug.WriteLine($"[SettingsVM] Loaded automation settings from {automationFile}");
                     }
                 }
@@ -191,6 +191,7 @@ namespace Wysg.Musm.Radium.ViewModels
             try
             {
                 Debug.WriteLine($"[SettingsVM] Saving automation for PACS={SelectedPacsForAutomation}");
+                Debug.WriteLine($"[SettingsVM] DoNotUpdateHeaderInXR current value: {DoNotUpdateHeaderInXR}");
 
                 var settings = new AutomationSettings
                 {
@@ -215,6 +216,34 @@ namespace Wysg.Musm.Radium.ViewModels
                 System.IO.File.WriteAllText(automationFile, json);
 
                 Debug.WriteLine($"[SettingsVM] Saved automation to {automationFile}");
+                
+                // NEW: Also save DoNotUpdateHeaderInXR to local settings (global setting)
+                try
+                {
+                    Debug.WriteLine($"[SettingsVM] Attempting to save DoNotUpdateHeaderInXR to local settings...");
+                    Debug.WriteLine($"[SettingsVM] _local is null: {_local == null}");
+                    if (_local != null)
+                    {
+                        var valueToSave = DoNotUpdateHeaderInXR ? "true" : "false";
+                        Debug.WriteLine($"[SettingsVM] Calling _local.DoNotUpdateHeaderInXR = '{valueToSave}'");
+                        _local.DoNotUpdateHeaderInXR = valueToSave;
+                        Debug.WriteLine($"[SettingsVM] Successfully set DoNotUpdateHeaderInXR in local settings");
+                        
+                        // Verify it was saved by reading it back
+                        var readBack = _local.DoNotUpdateHeaderInXR;
+                        Debug.WriteLine($"[SettingsVM] Read back value: '{readBack}'");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[SettingsVM] ERROR: _local is null, cannot save DoNotUpdateHeaderInXR");
+                    }
+                }
+                catch (Exception localEx)
+                {
+                    Debug.WriteLine($"[SettingsVM] EXCEPTION while saving DoNotUpdateHeaderInXR: {localEx.Message}");
+                    Debug.WriteLine($"[SettingsVM] Stack trace: {localEx.StackTrace}");
+                }
+                
                 MessageBox.Show($"Automation saved for {SelectedPacsForAutomation}.", "Automation", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -254,6 +283,7 @@ namespace Wysg.Musm.Radium.ViewModels
             public string? ShortcutSendReportPreview { get; set; }
             public string? ShortcutSendReportReportified { get; set; }
             public string? TestSequence { get; set; }
+            // REMOVED: DoNotUpdateHeaderInXR - now stored in local settings, not PACS-scoped
         }
 
         private static string? Prompt(string title, string message, string defaultText)
@@ -365,6 +395,14 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 IsBusy = false;
             }
+        }
+
+        // NEW: Do not update header in XR modality
+        private bool _doNotUpdateHeaderInXR;
+        public bool DoNotUpdateHeaderInXR
+        {
+            get => _doNotUpdateHeaderInXR;
+            set => SetProperty(ref _doNotUpdateHeaderInXR, value);
         }
     }
 }

@@ -43,5 +43,8 @@ namespace Wysg.Musm.Radium.Services
 
         // Window placement (MainWindow): serialized as "Left,Top,Width,Height,State" where State=Normal|Maximized
         string? MainWindowPlacement { get; set; }
+        
+        /// <summary>Do not update header in XR modality (global setting, not PACS-specific).</summary>
+        string? DoNotUpdateHeaderInXR { get; set; }
     }
 }

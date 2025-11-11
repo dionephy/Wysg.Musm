@@ -1039,6 +1039,14 @@ namespace Wysg.Musm.Radium.ViewModels
         private void SafeUpdateHeader()
         {
             if (!_isInitialized) return;
+            
+            // NEW: Check if header updates should be skipped for XR modality
+            if (ShouldSkipHeaderUpdateForXR())
+            {
+                Debug.WriteLine("[Editor] SafeUpdateHeader: Skipped for XR modality (setting enabled)");
+                return;
+            }
+            
             try { UpdateFormattedHeader(); } 
             catch { }
         }
@@ -1094,7 +1102,6 @@ namespace Wysg.Musm.Radium.ViewModels
             }
             else if (hasAnyHeaderContent)
             {
-                // Comparison is empty but we have other header content -> show "Comparison: NA"
                 lines.Add("Comparison: N/A");
             }
             // else: if comparison is empty AND no other header content, don't show comparison line at all
@@ -1102,6 +1109,69 @@ namespace Wysg.Musm.Radium.ViewModels
             // Join and trim the result
             var formatted = string.Join("\n", lines).Trim();
             HeaderText = formatted;
+        }
+        
+        /// <summary>
+        /// Checks if header updates should be skipped based on modality and automation settings.
+        /// Returns true if current study is XR modality AND "Do not update header in XR" setting is enabled.
+        /// </summary>
+        private bool ShouldSkipHeaderUpdateForXR()
+        {
+            try
+            {
+                // Check if the setting is enabled
+                if (!GetDoNotUpdateHeaderInXRSetting())
+                {
+                    return false; // Setting is OFF, allow header updates
+                }
+                
+                // Check if current study modality is XR (case-insensitive)
+                var modality = ExtractModalityFromStudyName(StudyName);
+                bool isXR = string.Equals(modality, "XR", StringComparison.OrdinalIgnoreCase);
+                
+                if (isXR)
+                {
+                    Debug.WriteLine($"[Editor] Detected XR modality from StudyName: '{StudyName}', skipping header update");
+                }
+                
+                return isXR;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Editor] Error checking XR modality: {ex.Message}");
+                return false; // On error, allow header updates (safe fallback)
+            }
+        }
+        
+        /// <summary>
+        /// Extracts modality from study name. Assumes modality is the first word.
+        /// Examples: "XR Chest PA" ¡æ "XR", "CT Brain" ¡æ "CT", "MR Brain" ¡æ "MR"
+        /// </summary>
+        private static string ExtractModalityFromStudyName(string? studyName)
+        {
+            if (string.IsNullOrWhiteSpace(studyName))
+                return string.Empty;
+            
+            var parts = studyName.Trim().Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length > 0 ? parts[0].Trim() : string.Empty;
+        }
+        
+        /// <summary>
+        /// Reads the "Do not update header in XR" setting from the local settings file.
+        /// </summary>
+        private bool GetDoNotUpdateHeaderInXRSetting()
+        {
+            try
+            {
+                // Read from local settings instead of PACS automation file
+                var setting = _localSettings?.DoNotUpdateHeaderInXR ?? "false";
+                return setting == "true";
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Editor] Error reading DoNotUpdateHeaderInXR setting: {ex.Message}");
+                return false; // On error, allow header updates (safe fallback)
+            }
         }
     }
 }
