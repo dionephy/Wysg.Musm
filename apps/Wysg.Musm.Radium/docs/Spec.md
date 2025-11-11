@@ -907,7 +907,7 @@ myocardial infarction,22298006,exact,1.0,"Standard mapping"
 
 **Use Cases**:
 - Get reference to selected row from SearchResultsList
-- Get reference to selected item from RelatedStudiesList
+- Get reference to selected study from related studies
 - Get reference to selected item from any list control
 - Extract element metadata (name, automation ID) for logging
 - Validate selection state before performing actions
@@ -1057,4 +1057,19 @@ ClickElement(var1)  // var1 = "SelectedElement:MRI Brain"
   → Clicks element center
 ```
 
-### FR-970: PACS Method – ReportText Is Visible (2025-01-17)
+## FR-970: PACS Method – ReportText Is Visible (2025-01-17)
+
+## Update: GetStudyRemark Module Enhancement – Fill Chief Complaint (2025-02-09)
+- FR-1180 `GetStudyRemark` automation module MUST fill BOTH `StudyRemark` and `ChiefComplaint` properties with the same text captured from PACS.
+- FR-1181 When study remark is successfully acquired:
+  - Set `StudyRemark` property (existing behavior)
+  - Set `ChiefComplaint` property with the same text (new behavior)
+  - Display status: "Study remark captured (N chars)"
+  - Log both property assignments for diagnostics
+- FR-1182 When study remark is empty or capture fails:
+  - Set `StudyRemark = string.Empty`
+  - Set `ChiefComplaint = string.Empty`
+  - Maintain consistent clearing behavior for both fields
+- FR-1183 Implementation MUST preserve existing retry logic (3 attempts with 200ms delays)
+- FR-1184 User can manually edit `ChiefComplaint` after automation if study remark text is not appropriate
+- FR-1185 Rationale: In many radiology workflows, study remark directly represents chief complaint; auto-filling eliminates manual copy-paste step

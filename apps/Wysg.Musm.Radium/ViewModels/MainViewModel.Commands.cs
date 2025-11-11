@@ -192,6 +192,11 @@ namespace Wysg.Musm.Radium.ViewModels
                         Debug.WriteLine($"[Automation][GetStudyRemark] SUCCESS on attempt {attempt}");
                         StudyRemark = s;
                         Debug.WriteLine($"[Automation][GetStudyRemark] Set StudyRemark property: '{StudyRemark}'");
+                        
+                        // NEW: Also fill ChiefComplaint with the same text
+                        ChiefComplaint = s;
+                        Debug.WriteLine($"[Automation][GetStudyRemark] Set ChiefComplaint property: '{ChiefComplaint}'");
+                        
                         SetStatus($"Study remark captured ({s.Length} chars)");
                         return; // Success - exit retry loop
                     }
@@ -207,6 +212,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         {
                             Debug.WriteLine($"[Automation][GetStudyRemark] Max retries reached - accepting empty result");
                             StudyRemark = string.Empty;
+                            ChiefComplaint = string.Empty; // Also clear ChiefComplaint
                             SetStatus("Study remark empty after retries");
                             return;
                         }
@@ -227,6 +233,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         Debug.WriteLine($"[Automation][GetStudyRemark] Max retries reached after exception");
                         SetStatus("Study remark capture failed after retries", true);
                         StudyRemark = string.Empty; // Set empty to prevent stale data
+                        ChiefComplaint = string.Empty; // Also clear ChiefComplaint
                         return;
                     }
                 }
@@ -1172,7 +1179,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
         // Step 3: Read report text (only if we need to save it to DB)
         bool needsReportFetch = !reportExistsInDb; // Fetch if report doesn't exist or if study doesn't exist
-                
+                 
         string findings = string.Empty;
         string conclusion = string.Empty;
 

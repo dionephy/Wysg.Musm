@@ -120,7 +120,7 @@
                 <Image Source="/Wysg.Musm.Radium;component/Assets/Images/radium.png"
                        Width="128" Height="128" Stretch="Uniform" Margin="0,0,0,8"
                        SnapsToDevicePixels="True" RenderOptions.BitmapScalingMode="HighQuality"/>
-                <TextBlock Text="RADIUM" FontSize="24" FontWeight="Bold" Foreground="#FF5FFBFF" HorizontalAlignment="Center"/>
+                <TextBlock Text="Radium" FontSize="24" FontWeight="Bold" Foreground="#FF5FFBFF" HorizontalAlignment="Center"/>
                 
             </StackPanel>
 
