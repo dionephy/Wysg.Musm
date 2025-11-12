@@ -14,9 +14,40 @@ namespace Wysg.Musm.Radium.Views
     /// </summary>
     public partial class EditComparisonWindow : Window
     {
-        public EditComparisonWindow()
+        private readonly string _patientNumber;
+        
+        public EditComparisonWindow(string patientNumber)
         {
             InitializeComponent();
+            _patientNumber = patientNumber;
+            
+            // Subscribe to Closed event to refresh previous studies in MainViewModel
+            Closed += OnWindowClosed;
+        }
+        
+        private async void OnWindowClosed(object? sender, EventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[EditComparisonWindow] Window closed - refreshing previous studies in MainViewModel");
+                
+                // Get the ACTUAL MainViewModel from MainWindow's DataContext
+                var mainWindow = Application.Current?.MainWindow;
+                if (mainWindow?.DataContext is MainViewModel mainVm && !string.IsNullOrWhiteSpace(_patientNumber))
+                {
+                    // Reload previous studies to pick up any modality changes from LOINC mappings
+                    await mainVm.LoadPreviousStudiesAsync(_patientNumber);
+                    System.Diagnostics.Debug.WriteLine("[EditComparisonWindow] Previous studies refresh completed");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[EditComparisonWindow] WARN: Could not refresh - MainViewModel not found or no patient number");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[EditComparisonWindow] Error refreshing previous studies on window close: {ex.Message}");
+            }
         }
         
         /// <summary>
@@ -31,7 +62,7 @@ namespace Wysg.Musm.Radium.Views
                 
                 var vm = new EditComparisonViewModel(studynameRepo, patientNumber, patientName, patientSex, previousStudies, currentComparison);
                 
-                var window = new EditComparisonWindow
+                var window = new EditComparisonWindow(patientNumber)
                 {
                     DataContext = vm,
                     Owner = Application.Current?.Windows.OfType<Window>().FirstOrDefault(x => x.IsActive)

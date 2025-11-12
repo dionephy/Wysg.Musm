@@ -52,11 +52,14 @@ namespace Wysg.Musm.Radium.ViewModels
                 }
             });
             
-            OpenStudynameMapCommand = new RelayCommand(p =>
+            OpenStudynameMapCommand = new RelayCommand(async p =>
             {
                 if (p is ComparisonStudyItem study && !study.HasLoincMap)
                 {
                     Views.StudynameLoincWindow.Open(study.Studyname);
+                    
+                    // After the window closes, refresh the modality for this study
+                    await RefreshModalityForStudyAsync(study);
                 }
             });
             
@@ -180,6 +183,112 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
         
+        /// <summary>
+        /// Refreshes the modality for a study after LOINC mapping has been added.
+        /// </summary>
+        private async Task RefreshModalityForStudyAsync(ComparisonStudyItem study)
+        {
+            try
+            {
+                Debug.WriteLine($"[EditComparison] Refreshing modality for studyname: '{study.Studyname}'");
+                
+                // Get the studyname ID
+                var studynames = await _studynameRepo.GetStudynamesAsync();
+                var studynameRow = studynames.FirstOrDefault(s => 
+                    string.Equals(s.Studyname, study.Studyname, StringComparison.OrdinalIgnoreCase));
+                
+                if (studynameRow == null)
+                {
+                    Debug.WriteLine($"[EditComparison] Studyname '{study.Studyname}' not found in database");
+                    return;
+                }
+                
+                // Get the mappings for this studyname
+                var mappings = await _studynameRepo.GetMappingsAsync(studynameRow.Id);
+                
+                // Check if mapping now exists
+                if (mappings.Any())
+                {
+                    study.HasLoincMap = true;
+                    
+                    // Get all parts to lookup part details
+                    var parts = await _studynameRepo.GetPartsAsync();
+                    var partsByNumber = parts.ToDictionary(p => p.PartNumber, p => p);
+                    
+                    // Find the modality part
+                    var modalityMapping = mappings.FirstOrDefault(m => 
+                    {
+                        if (partsByNumber.TryGetValue(m.PartNumber, out var part))
+                        {
+                            return part.PartTypeName.Equals("Rad.Modality.Modality Type", StringComparison.OrdinalIgnoreCase);
+                        }
+                        return false;
+                    });
+                    
+                    if (modalityMapping != null && partsByNumber.TryGetValue(modalityMapping.PartNumber, out var modalityPart))
+                    {
+                        var newModality = ExtractModalityFromPartName(modalityPart.PartName);
+                        
+                        if (!string.IsNullOrEmpty(newModality) && newModality != study.Modality)
+                        {
+                            Debug.WriteLine($"[EditComparison] Updating modality from '{study.Modality}' to '{newModality}' for studyname '{study.Studyname}'");
+                            study.Modality = newModality;
+                            
+                            // Update display text
+                            study.DisplayText = $"{study.Modality} {study.StudyDateTime:yyyy-MM-dd}";
+                            
+                            // Update comparison string if this study is selected
+                            if (study.IsSelected)
+                            {
+                                UpdateComparisonString();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[EditComparison] No modality part found in mapping for '{study.Studyname}', keeping '{study.Modality}'");
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"[EditComparison] No mapping found for studyname '{study.Studyname}' after window close");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[EditComparison] Error refreshing modality: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Extracts modality abbreviation from LOINC part name.
+        /// </summary>
+        private string ExtractModalityFromPartName(string partName)
+        {
+            if (string.IsNullOrWhiteSpace(partName))
+                return "OT";
+            
+            // Common LOINC modality patterns
+            if (partName.Contains("CT", StringComparison.OrdinalIgnoreCase))
+                return "CT";
+            if (partName.Contains("MR", StringComparison.OrdinalIgnoreCase) || partName.Contains("Magnetic", StringComparison.OrdinalIgnoreCase))
+                return "MR";
+            if (partName.Contains("US", StringComparison.OrdinalIgnoreCase) || partName.Contains("Ultrasound", StringComparison.OrdinalIgnoreCase))
+                return "US";
+            if (partName.Contains("XR", StringComparison.OrdinalIgnoreCase) || partName.Contains("X-ray", StringComparison.OrdinalIgnoreCase))
+                return "XR";
+            if (partName.Contains("NM", StringComparison.OrdinalIgnoreCase) || partName.Contains("Nuclear", StringComparison.OrdinalIgnoreCase))
+                return "NM";
+            if (partName.Contains("PET", StringComparison.OrdinalIgnoreCase))
+                return "PT";
+            if (partName.Contains("Mammography", StringComparison.OrdinalIgnoreCase))
+                return "MG";
+            if (partName.Contains("Fluoroscopy", StringComparison.OrdinalIgnoreCase))
+                return "RF";
+            
+            return "OT"; // Other
+        }
+        
         private void UpdateComparisonString()
         {
             try
@@ -203,10 +312,33 @@ namespace Wysg.Musm.Radium.ViewModels
         
         public class ComparisonStudyItem : BaseViewModel
         {
-            public DateTime StudyDateTime { get; set; }
-            public string Modality { get; set; } = string.Empty;
-            public string Studyname { get; set; } = string.Empty;
-            public string DisplayText { get; set; } = string.Empty;
+            private DateTime _studyDateTime;
+            public DateTime StudyDateTime
+            {
+                get => _studyDateTime;
+                set => SetProperty(ref _studyDateTime, value);
+            }
+            
+            private string _modality = string.Empty;
+            public string Modality
+            {
+                get => _modality;
+                set => SetProperty(ref _modality, value);
+            }
+            
+            private string _studyname = string.Empty;
+            public string Studyname
+            {
+                get => _studyname;
+                set => SetProperty(ref _studyname, value);
+            }
+            
+            private string _displayText = string.Empty;
+            public string DisplayText
+            {
+                get => _displayText;
+                set => SetProperty(ref _displayText, value);
+            }
             
             private bool _isSelected;
             public bool IsSelected
@@ -225,17 +357,37 @@ namespace Wysg.Musm.Radium.ViewModels
         
         private sealed class RelayCommand : ICommand
         {
-            private readonly Action<object?> _execute;
+            private readonly Func<object?, Task> _executeAsync;
+            private readonly Action<object?>? _execute;
             private readonly Predicate<object?>? _canExecute;
             
             public RelayCommand(Action<object?> execute, Predicate<object?>? canExecute = null)
             {
                 _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+                _executeAsync = null;
+                _canExecute = canExecute;
+            }
+            
+            public RelayCommand(Func<object?, Task> executeAsync, Predicate<object?>? canExecute = null)
+            {
+                _executeAsync = executeAsync ?? throw new ArgumentNullException(nameof(executeAsync));
+                _execute = null;
                 _canExecute = canExecute;
             }
             
             public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
-            public void Execute(object? parameter) => _execute(parameter);
+            
+            public void Execute(object? parameter)
+            {
+                if (_executeAsync != null)
+                {
+                    _ = _executeAsync(parameter);
+                }
+                else
+                {
+                    _execute?.Invoke(parameter);
+                }
+            }
             
             public event EventHandler? CanExecuteChanged
             {

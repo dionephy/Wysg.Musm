@@ -261,7 +261,8 @@ namespace Wysg.Musm.Radium
                 sp.GetService<IRadiumLocalSettings>(),
                 sp.GetService<Wysg.Musm.Radium.Services.Procedures.ILockStudyProcedure>(),
                 sp.GetService<IAuthStorage>(),
-                sp.GetService<ISnomedMapService>()
+                sp.GetService<ISnomedMapService>(),
+                sp.GetService<IStudynameLoincRepository>()
             ));
             services.AddTransient<StudynameLoincViewModel>();
             services.AddTransient<StudynameTechniqueViewModel>();

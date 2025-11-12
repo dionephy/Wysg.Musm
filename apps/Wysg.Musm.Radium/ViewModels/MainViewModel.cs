@@ -47,6 +47,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly ILockStudyProcedure? _lockStudyProc;
         private readonly ISnomedMapService? _snomedMapService; // SNOMED mapping service for semantic tags
         private readonly TextSyncService? _textSyncService; // Text sync service for foreign textbox sync
+        private readonly IStudynameLoincRepository? _studynameLoincRepo; // LOINC mapping repository for modality extraction
 
         // ------------------------------------------------------------------
         // Status / UI flags
@@ -181,7 +182,8 @@ namespace Wysg.Musm.Radium.ViewModels
             IRadiumLocalSettings? localSettings = null,
             ILockStudyProcedure? lockStudyProc = null,
             IAuthStorage? authStorage = null,
-            ISnomedMapService? snomedMapService = null)
+            ISnomedMapService? snomedMapService = null,
+            IStudynameLoincRepository? studynameLoincRepo = null)
         {
             Debug.WriteLine("[MainViewModel] Constructor START");
             try
@@ -190,6 +192,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 _phrases = phrases; _tenant = tenant; _cache = cache; _hotkeys = hotkeys; _snippets = snippets;
                 _studyRepo = studyRepo; _newStudyProc = newStudyProc; _localSettings = localSettings; _lockStudyProc = lockStudyProc;
                 _snomedMapService = snomedMapService;
+                _studynameLoincRepo = studynameLoincRepo;
                 
                 // ============================================================================
                 // CRITICAL: Clear phrase cache on startup to force reload with new filtering

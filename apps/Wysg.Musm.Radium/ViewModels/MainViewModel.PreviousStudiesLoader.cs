@@ -23,7 +23,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 var groups = rows.GroupBy(r => new { r.StudyId, r.StudyDateTime, r.Studyname });
                 foreach (var g in groups.OrderByDescending(g => g.Key.StudyDateTime))
                 {
-                    string modality = ExtractModality(g.Key.Studyname);
+                    string modality = await ExtractModalityAsync(g.Key.Studyname);
                     if (PreviousStudies.Any(t => t.StudyDateTime == g.Key.StudyDateTime && string.Equals(t.Modality, modality, StringComparison.OrdinalIgnoreCase)))
                         continue;
                     var tab = new PreviousStudyTab
@@ -196,6 +196,66 @@ namespace Wysg.Musm.Radium.ViewModels
                 }
             }
             catch (Exception ex) { Debug.WriteLine("[PrevLoad] error: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Extracts modality from studyname using LOINC mapping.
+        /// First tries to get modality from LOINC part mapping (Rad.Modality.Modality Type).
+        /// Falls back to simple prefix extraction from studyname if no LOINC mapping exists.
+        /// </summary>
+        private async Task<string> ExtractModalityAsync(string studyname)
+        {
+            if (string.IsNullOrWhiteSpace(studyname))
+                return "UNKNOWN";
+
+            try
+            {
+                // Try to get modality from LOINC mapping
+                if (_studynameLoincRepo != null)
+                {
+                    var studynameRows = await _studynameLoincRepo.GetStudynamesAsync();
+                    var studynameRow = studynameRows.FirstOrDefault(s => string.Equals(s.Studyname, studyname, StringComparison.OrdinalIgnoreCase));
+                    
+                    if (studynameRow != null)
+                    {
+                        var mappings = await _studynameLoincRepo.GetMappingsAsync(studynameRow.Id);
+                        var parts = await _studynameLoincRepo.GetPartsAsync();
+                        
+                        // Find the Rad.Modality.Modality Type part
+                        var modalityPart = mappings
+                            .Join(parts, m => m.PartNumber, p => p.PartNumber, (m, p) => p)
+                            .FirstOrDefault(p => string.Equals(p.PartTypeName, "Rad.Modality.Modality Type", StringComparison.Ordinal));
+                        
+                        if (modalityPart != null && !string.IsNullOrWhiteSpace(modalityPart.PartName))
+                        {
+                            Debug.WriteLine($"[ExtractModality] Found LOINC modality for '{studyname}': {modalityPart.PartName}");
+                            return modalityPart.PartName;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ExtractModality] Error getting LOINC modality: {ex.Message}");
+            }
+            
+            // Fallback: Extract modality from studyname prefix
+            return ExtractModalityFallback(studyname);
+        }
+
+        /// <summary>
+        /// Fallback method to extract modality from studyname when LOINC mapping is not available.
+        /// Returns "OT" (Other) for unmapped studynames as per specification.
+        /// </summary>
+        private static string ExtractModalityFallback(string studyname)
+        {
+            if (string.IsNullOrWhiteSpace(studyname))
+                return "OT";
+
+            // For unmapped studies, return "OT" (Other) as per specification
+            // This indicates the study needs LOINC mapping to get proper modality
+            Debug.WriteLine($"[ExtractModality] No LOINC mapping for '{studyname}' - returning 'OT'");
+            return "OT";
         }
     }
 }

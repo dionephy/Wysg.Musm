@@ -99,6 +99,22 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine("[FetchCurrentStudy] error: " + ex.Message);
             }
         }
+        
+        /// <summary>
+        /// Public method to reload previous studies for a patient.
+        /// Used by EditComparisonWindow to refresh modality after LOINC mapping changes.
+        /// </summary>
+        public async Task LoadPreviousStudiesAsync(string patientNumber)
+        {
+            if (string.IsNullOrWhiteSpace(patientNumber))
+            {
+                Debug.WriteLine("[MainViewModel] LoadPreviousStudiesAsync: empty patient number");
+                return;
+            }
+            
+            Debug.WriteLine($"[MainViewModel] LoadPreviousStudiesAsync: loading for patient {patientNumber}");
+            await LoadPreviousStudiesForPatientAsync(patientNumber);
+        }
 
         // Persistence of patient/study basic metadata
         private async Task PersistCurrentStudyAsync(string? birthDate = null)
