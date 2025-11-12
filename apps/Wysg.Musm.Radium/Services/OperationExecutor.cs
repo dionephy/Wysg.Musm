@@ -96,6 +96,8 @@ namespace Wysg.Musm.Radium.Services
                     return ExecuteIsMatch(resolveArg1String(), resolveArg2String());
                 case "IsAlmostMatch":
                     return ExecuteIsAlmostMatch(resolveArg1String(), resolveArg2String());
+                case "And":
+                    return ExecuteAnd(resolveArg1String(), resolveArg2String());
                 case "TrimString":
                     return ExecuteTrimString(resolveArg1String(), resolveArg2String());
                 case "Replace":
@@ -123,6 +125,8 @@ namespace Wysg.Musm.Radium.Services
                     return ExecuteInvoke(resolveArg1Element());
                 case "SetFocus":
                     return ExecuteSetFocus(resolveArg1Element());
+                case "SetValue":
+                    return ExecuteSetValue(resolveArg1Element(), resolveArg2String());
                 case "ClickElement":
                     return ExecuteClickElement(resolveArg1Element(), restoreCursor: true);
                 case "ClickElementAndStay":
@@ -145,6 +149,10 @@ namespace Wysg.Musm.Radium.Services
                     return ExecuteSimulateTab();
                 case "SimulatePaste":
                     return ExecuteSimulatePaste();
+                case "SimulateSelectAll":
+                    return ExecuteSimulateSelectAll();
+                case "SimulateDelete":
+                    return ExecuteSimulateDelete();
                 case "Delay":
                     return ExecuteDelay(resolveArg1String());
 

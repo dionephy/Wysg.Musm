@@ -208,6 +208,27 @@ namespace Wysg.Musm.Radium.Services
             return true;
         }
 
+        // NEW: Invoke send report (runs InvokeSendReport custom procedure)
+        public async Task<bool> InvokeSendReportAsync()
+        {
+            await ExecCustom("InvokeSendReport");
+            return true;
+        }
+
+        // NEW: Send report with retry (runs SendReportRetry custom procedure)
+        public async Task<bool> SendReportRetryAsync()
+        {
+            await ExecCustom("SendReportRetry");
+            return true;
+        }
+
+        // NEW: Clear report (runs ClearReport custom procedure)
+        public async Task<bool> ClearReportAsync()
+        {
+            await ExecCustom("ClearReport");
+            return true;
+        }
+
         // NEW: Check if patient number matches between PACS and MainWindow
         public async Task<string?> PatientNumberMatchAsync()
         {

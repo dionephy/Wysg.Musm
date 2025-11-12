@@ -53,10 +53,17 @@
         <ComboBoxItem Tag="WorklistIsVisible">Worklist is visible</ComboBoxItem>
         <ComboBoxItem Tag="ReportTextIsVisible">ReportText is visible</ComboBoxItem>
         
-        <!-- NEW: UI Actions -->
+        <!-- UI Actions -->
         <ComboBoxItem Tag="InvokeOpenWorklist">Invoke open worklist</ComboBoxItem>
         <ComboBoxItem Tag="SetFocusSearchResultsList">Set focus search results list</ComboBoxItem>
         <ComboBoxItem Tag="SendReport">Send report</ComboBoxItem>
+        
+        <!-- Send Report Actions -->
+        <ComboBoxItem Tag="InvokeSendReport">Invoke send report</ComboBoxItem>
+        <ComboBoxItem Tag="SendReportRetry">Send report retry</ComboBoxItem>
+        
+        <!-- Report Actions -->
+        <ComboBoxItem Tag="ClearReport">Clear report</ComboBoxItem>
     </x:Array>
 
 </ResourceDictionary>

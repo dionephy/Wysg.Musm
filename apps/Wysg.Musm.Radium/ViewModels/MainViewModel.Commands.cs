@@ -493,7 +493,10 @@ namespace Wysg.Musm.Radium.ViewModels
                     else if (string.Equals(m, "SetCurrentInMainScreen", StringComparison.OrdinalIgnoreCase)) { await RunSetCurrentInMainScreenAsync(); }
                     else if (string.Equals(m, "OpenWorklist", StringComparison.OrdinalIgnoreCase)) { await RunOpenWorklistAsync(); }
                     else if (string.Equals(m, "ResultsListSetFocus", StringComparison.OrdinalIgnoreCase)) { await RunResultsListSetFocusAsync(); }
-                    else if (string.Equals(m, "SendReport", StringComparison.OrdinalIgnoreCase)) { await RunSendReportAsync(); }
+                    else if (string.Equals(m, "SendReport", StringComparison.OrdinalIgnoreCase)) 
+                    { 
+                        await RunSendReportModuleWithRetryAsync(); 
+                    }
                     else if (string.Equals(m, "Reportify", StringComparison.OrdinalIgnoreCase)) 
                     {
                         ProofreadMode = true;
@@ -720,6 +723,144 @@ namespace Wysg.Musm.Radium.ViewModels
                 System.Diagnostics.Debug.WriteLine("[Automation] SendReport error: " + ex.Message);
                 SetStatus("Send report failed", true);
             }
+        }
+
+        /// <summary>
+        /// SendReport module with retry logic:
+        /// 1. Run SendReport custom procedure
+        /// 2. If result is "true", run InvokeSendReport and succeed
+        /// 3. If result is "false", show "Send failed. Retry?" messagebox
+        /// 4. If user clicks OK, run ClearReport custom procedure
+        /// 5. If ClearReport returns "true", go back to step 1
+        /// 6. If ClearReport returns "false", show "Clear Report failed. Retry?" messagebox
+        /// 7. If user clicks OK, go back to step 4
+        /// 8. If user clicks Cancel, abort procedure
+        /// </summary>
+        private async Task RunSendReportModuleWithRetryAsync()
+        {
+            while (true)  // Main retry loop for SendReport
+            {
+                // Step 1: Run SendReport custom procedure
+                Debug.WriteLine("[SendReportModule] Step 1: Running SendReport custom procedure");
+                SetStatus("Sending report to PACS...");
+                
+                string? sendReportResult = null;
+                try
+                {
+                    sendReportResult = await Services.ProcedureExecutor.ExecuteAsync("SendReport");
+                    Debug.WriteLine($"[SendReportModule] SendReport result: '{sendReportResult}'");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[SendReportModule] SendReport EXCEPTION: {ex.Message}");
+                    sendReportResult = "false";  // Treat exception as failure
+                }
+
+                // Step 2: Check if SendReport succeeded
+                if (string.Equals(sendReportResult, "true", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Success - run InvokeSendReport and end
+                    Debug.WriteLine("[SendReportModule] Step 2: SendReport succeeded, running InvokeSendReport");
+                    SetStatus("Report sent successfully, finalizing...");
+                    
+                    try
+                    {
+                        await Services.ProcedureExecutor.ExecuteAsync("InvokeSendReport");
+                        Debug.WriteLine("[SendReportModule] InvokeSendReport completed");
+                        SetStatus("? Report sent and finalized successfully");
+                        return;  // Success - exit module
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[SendReportModule] InvokeSendReport EXCEPTION: {ex.Message}");
+                        SetStatus("Report sent but finalization failed", true);
+                        return;  // Exit even if finalize fails
+                    }
+                }
+                else
+                {
+                    // Step 3: SendReport failed - show retry dialog
+                    Debug.WriteLine("[SendReportModule] Step 3: SendReport failed, showing retry dialog");
+                    SetStatus("Report send failed", true);
+                    
+                    bool retrySend = false;
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        var result = System.Windows.MessageBox.Show(
+                            "Send report failed.\n\nDo you want to clear the report and retry?",
+                            "Send Failed",
+                            System.Windows.MessageBoxButton.OKCancel,
+                            System.Windows.MessageBoxImage.Warning);
+                        
+                        retrySend = (result == System.Windows.MessageBoxResult.OK);
+                    });
+                    
+                    if (!retrySend)
+                    {
+                        // User cancelled - abort
+                        Debug.WriteLine("[SendReportModule] User cancelled send retry - aborting");
+                        SetStatus("Send report aborted by user", true);
+                        return;  // Abort
+                    }
+                    
+                    // Step 4: User wants to retry - attempt ClearReport
+                    while (true)  // Inner retry loop for ClearReport
+                    {
+                        Debug.WriteLine("[SendReportModule] Step 4: Running ClearReport custom procedure");
+                        SetStatus("Clearing report for retry...");
+                        
+                        string? clearReportResult = null;
+                        try
+                        {
+                            clearReportResult = await Services.ProcedureExecutor.ExecuteAsync("ClearReport");
+                            Debug.WriteLine($"[SendReportModule] ClearReport result: '{clearReportResult}'");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[SendReportModule] ClearReport EXCEPTION: {ex.Message}");
+                            clearReportResult = "false";  // Treat exception as failure
+                        }
+                        
+                        // Step 5: Check if ClearReport succeeded
+                        if (string.Equals(clearReportResult, "true", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // ClearReport succeeded - go back to SendReport (main loop)
+                            Debug.WriteLine("[SendReportModule] Step 5: ClearReport succeeded, retrying SendReport");
+                            SetStatus("Report cleared, retrying send...");
+                            break;  // Exit inner loop, continue main loop
+                        }
+                        else
+                        {
+                            // Step 6: ClearReport failed - show retry dialog
+                            Debug.WriteLine("[SendReportModule] Step 6: ClearReport failed, showing retry dialog");
+                            SetStatus("Clear report failed", true);
+                            
+                            bool retryClear = false;
+                            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                var result = System.Windows.MessageBox.Show(
+                                    "Clear report failed.\n\nDo you want to retry clearing?",
+                                    "Clear Failed",
+                                    System.Windows.MessageBoxButton.OKCancel,
+                                    System.Windows.MessageBoxImage.Warning);
+                        
+                                retryClear = (result == System.Windows.MessageBoxResult.OK);
+                            });
+                            
+                            if (!retryClear)
+                            {
+                                // User cancelled - abort entire procedure
+                                Debug.WriteLine("[SendReportModule] User cancelled clear retry - aborting");
+                                SetStatus("Send report aborted (clear failed)", true);
+                                return;  // Abort entire module
+                            }
+                            
+                            // User wants to retry clear - continue inner loop
+                            Debug.WriteLine("[SendReportModule] User chose to retry ClearReport");
+                        }
+                    }  // End inner ClearReport retry loop
+                }
+            }  // End main SendReport retry loop
         }
 
         private async Task RunSaveCurrentStudyToDBAsync()
@@ -1107,7 +1248,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (existingStudyWithDifferentReport != null)
                 {
                     var existingReportDt = existingStudyWithDifferentReport.SelectedReport?.ReportDateTime;
-                    Debug.WriteLine($"[AddPreviousStudyModule] Study exists in memory with different report datetime: existing={existingReportDt:yyyy-MM-dd HH:mm:ss}, new={reportDateTime:yyyy-MM-dd HH:mm:ss}");
+                    Debug.WriteLine($"[AddPreviousStudyModule] Study exists in memory with different report datetime: {existingReportDt:yyyy-MM-dd HH:mm:ss}");
                     Debug.WriteLine($"[AddPreviousStudyModule] Will check database and potentially fetch new report");
                 }
             }

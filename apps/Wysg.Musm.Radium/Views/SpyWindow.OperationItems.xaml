@@ -23,11 +23,15 @@
         <ComboBoxItem Content="MouseMoveToElement"/>
         <ComboBoxItem Content="IsVisible"/>
         <ComboBoxItem Content="SetFocus"/>
+        <ComboBoxItem Content="SetValue"/>
         <ComboBoxItem Content="SetClipboard"/>
         <ComboBoxItem Content="SimulateTab"/>
         <ComboBoxItem Content="SimulatePaste"/>
+        <ComboBoxItem Content="SimulateSelectAll"/>
+        <ComboBoxItem Content="SimulateDelete"/>
         <ComboBoxItem Content="IsMatch"/>
         <ComboBoxItem Content="IsAlmostMatch"/>
+        <ComboBoxItem Content="And"/>
         <ComboBoxItem Content="GetCurrentPatientNumber"/>
         <ComboBoxItem Content="GetCurrentStudyDateTime"/>
         <ComboBoxItem Content="GetCurrentHeader"/>

@@ -63,6 +63,26 @@ namespace Wysg.Musm.Radium.Services
             catch (Exception ex) { return ($"(error: {ex.Message})", null); }
         }
 
+        private static (string preview, string? value) ExecuteSimulateSelectAll()
+        {
+            try
+            {
+                System.Windows.Forms.SendKeys.SendWait("^a");
+                return ("(Ctrl+A sent)", null);
+            }
+            catch (Exception ex) { return ($"(error: {ex.Message})", null); }
+        }
+
+        private static (string preview, string? value) ExecuteSimulateDelete()
+        {
+            try
+            {
+                System.Windows.Forms.SendKeys.SendWait("{DELETE}");
+                return ("(Delete key sent)", null);
+            }
+            catch (Exception ex) { return ($"(error: {ex.Message})", null); }
+        }
+
         private static (string preview, string? value) ExecuteDelay(string? delayStr)
         {
             if (!int.TryParse(delayStr, out var delayMs) || delayMs < 0)

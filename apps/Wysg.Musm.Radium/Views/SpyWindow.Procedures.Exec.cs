@@ -46,6 +46,12 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
+                        case "SetValue":
+                            // SetValue: Arg1=Element (target control), Arg2=String or Var (value to set)
+                            row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
+                            row.Arg2Enabled = true; // Allow String or Var
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
+                            break;
                         case "ClickElement":
                             // ClickElement accepts both Element (bookmark) and Var (from GetSelectedElement output)
                             // Don't reset Type if already set by user - only enable/disable args
@@ -81,6 +87,8 @@ namespace Wysg.Musm.Radium.Views
                             break;
                         case "SimulateTab":
                         case "SimulatePaste":
+                        case "SimulateSelectAll":
+                        case "SimulateDelete":
                         case "GetCurrentPatientNumber":
                         case "GetCurrentStudyDateTime":
                         case "GetCurrentHeader":
@@ -97,11 +105,15 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg3.Value)) row.Arg3.Value = "0";
                             break;
                         case "IsMatch":
-                            row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.Var); row.Arg2Enabled = true;
+                        case "IsAlmostMatch":
+                            // IsMatch/IsAlmostMatch: Arg1=input (Var), Arg2=comparison value (String or Var)
+                            // Don't force Arg2 type - let user choose between String literal and Var
+                            row.Arg1Enabled = true; // Typically Var but could be String
+                            row.Arg2Enabled = true; // Allow String or Var
                             row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
-                        case "IsAlmostMatch":
+                        case "And":
+                            // And: Arg1=boolean var, Arg2=boolean var, returns "true" if both true
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.Var); row.Arg2Enabled = true;
                             row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;

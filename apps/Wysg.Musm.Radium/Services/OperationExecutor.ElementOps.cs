@@ -245,103 +245,111 @@ namespace Wysg.Musm.Radium.Services
 
             Debug.WriteLine($"[SetFocus] Element resolved: Name='{el.Name}', AutomationId='{el.AutomationId}'");
 
-            // Execute SetFocus logic on UI thread asynchronously
-            string resultPreview = "(error)";
-            var completionSource = new System.Threading.Tasks.TaskCompletionSource<string>();
-
             try
             {
-                Debug.WriteLine("[SetFocus] Queuing BeginInvoke on Dispatcher...");
+                // Get window handle and activate containing window first
+                Debug.WriteLine("[SetFocus] Attempting to get window handle...");
+                var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
+                Debug.WriteLine($"[SetFocus] Window handle: 0x{hwnd.ToInt64():X}");
 
-                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                if (hwnd != IntPtr.Zero)
                 {
-                    Debug.WriteLine("[SetFocus] BeginInvoke callback START - executing on UI thread");
+                    Debug.WriteLine("[SetFocus] Calling SetForegroundWindow...");
+                    var activated = NativeMouseHelper.SetForegroundWindow(hwnd);
+                    Debug.WriteLine($"[SetFocus] SetForegroundWindow result: {activated}");
 
+                    Debug.WriteLine("[SetFocus] Sleeping 100ms for window activation...");
+                    System.Threading.Thread.Sleep(100);
+                }
+
+                // Retry focus with delays
+                const int maxAttempts = 3;
+                const int retryDelayMs = 150;
+                Exception? lastException = null;
+
+                for (int attempt = 1; attempt <= maxAttempts; attempt++)
+                {
+                    Debug.WriteLine($"[SetFocus] Focus attempt {attempt}/{maxAttempts}...");
                     try
                     {
-                        // 1. Get window handle (MUST be done on UI thread)
-                        Debug.WriteLine("[SetFocus] Attempting to get window handle...");
-                        var hwnd = new IntPtr(el.Properties.NativeWindowHandle.Value);
-                        Debug.WriteLine($"[SetFocus] Window handle: 0x{hwnd.ToInt64():X}");
-
-                        // 2. Activate containing window first
-                        if (hwnd != IntPtr.Zero)
-                        {
-                            Debug.WriteLine("[SetFocus] Calling SetForegroundWindow...");
-                            var activated = NativeMouseHelper.SetForegroundWindow(hwnd);
-                            Debug.WriteLine($"[SetFocus] SetForegroundWindow result: {activated}");
-
-                            Debug.WriteLine("[SetFocus] Sleeping 100ms for window activation...");
-                            System.Threading.Thread.Sleep(100);
-                        }
-
-                        // 3. Retry focus with delays
-                        const int maxAttempts = 3;
-                        const int retryDelayMs = 150;
-                        Exception? lastException = null;
-
-                        for (int attempt = 1; attempt <= maxAttempts; attempt++)
-                        {
-                            Debug.WriteLine($"[SetFocus] Focus attempt {attempt}/{maxAttempts}...");
-                            try
-                            {
-                                Debug.WriteLine($"[SetFocus] Calling el.Focus() on element '{el.Name}'...");
-                                el.Focus();
-                                Debug.WriteLine($"[SetFocus] SUCCESS: Focus() completed on attempt {attempt}");
-                                resultPreview = attempt > 1 ? $"(focused after {attempt} attempts)" : "(focused)";
-                                completionSource.SetResult(resultPreview);
-                                return;
-                            }
-                            catch (Exception ex)
-                            {
-                                lastException = ex;
-                                Debug.WriteLine($"[SetFocus] Attempt {attempt} FAILED: {ex.GetType().Name}");
-                                Debug.WriteLine($"[SetFocus] Exception message: {ex.Message}");
-
-                                if (attempt < maxAttempts)
-                                {
-                                    Debug.WriteLine($"[SetFocus] Sleeping {retryDelayMs}ms before retry...");
-                                    System.Threading.Thread.Sleep(retryDelayMs);
-                                }
-                            }
-                        }
-
-                        // All attempts failed
-                        resultPreview = $"(error after {maxAttempts} attempts: {lastException?.Message})";
-                        completionSource.SetResult(resultPreview);
+                        Debug.WriteLine($"[SetFocus] Calling el.Focus() on element '{el.Name}'...");
+                        el.Focus();
+                        Debug.WriteLine($"[SetFocus] SUCCESS: Focus() completed on attempt {attempt}");
+                        var resultPreview = attempt > 1 ? $"(focused after {attempt} attempts)" : "(focused)";
+                        return (resultPreview, null);
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[SetFocus] Dispatcher execution EXCEPTION: {ex.GetType().Name}");
+                        lastException = ex;
+                        Debug.WriteLine($"[SetFocus] Attempt {attempt} FAILED: {ex.GetType().Name}");
                         Debug.WriteLine($"[SetFocus] Exception message: {ex.Message}");
-                        resultPreview = $"(error: {ex.Message})";
-                        completionSource.SetResult(resultPreview);
+
+                        if (attempt < maxAttempts)
+                        {
+                            Debug.WriteLine($"[SetFocus] Sleeping {retryDelayMs}ms before retry...");
+                            System.Threading.Thread.Sleep(retryDelayMs);
+                        }
                     }
-
-                    Debug.WriteLine("[SetFocus] BeginInvoke callback END");
-                }));
-
-                Debug.WriteLine("[SetFocus] BeginInvoke queued, waiting for completion...");
-
-                // Wait for completion with timeout
-                var task = completionSource.Task;
-                if (task.Wait(TimeSpan.FromSeconds(5)))
-                {
-                    var result = task.Result;
-                    Debug.WriteLine($"[SetFocus] Task completed: preview='{result}'");
-                    return (result, null);
                 }
-                else
-                {
-                    Debug.WriteLine("[SetFocus] TIMEOUT: Task did not complete within 5 seconds");
-                    return ("(timeout waiting for UI thread)", null);
-                }
+
+                // All attempts failed
+                Debug.WriteLine($"[SetFocus] FAILED after {maxAttempts} attempts: {lastException?.Message}");
+                return ($"(error after {maxAttempts} attempts: {lastException?.Message})", null);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[SetFocus] Outer try/catch EXCEPTION: {ex.GetType().Name}");
+                Debug.WriteLine($"[SetFocus] EXCEPTION: {ex.GetType().Name}");
                 Debug.WriteLine($"[SetFocus] Exception message: {ex.Message}");
-                return ($"(dispatcher error: {ex.Message})", null);
+                return ($"(error: {ex.Message})", null);
+            }
+        }
+
+        private static (string preview, string? value) ExecuteSetValue(AutomationElement? el, string? valueToSet)
+        {
+            if (el == null)
+            {
+                Debug.WriteLine("[SetValue] FAIL: Element resolution returned null");
+                return ("(no element)", null);
+            }
+
+            if (valueToSet == null)
+            {
+                Debug.WriteLine("[SetValue] WARN: Value to set is null, treating as empty string");
+                valueToSet = string.Empty;
+            }
+
+            Debug.WriteLine($"[SetValue] Element resolved: Name='{el.Name}', AutomationId='{el.AutomationId}'");
+            Debug.WriteLine($"[SetValue] Value to set: '{valueToSet}' (length={valueToSet.Length})");
+
+            try
+            {
+                // Try to get ValuePattern
+                var valuePattern = el.Patterns.Value.PatternOrDefault;
+                
+                if (valuePattern == null)
+                {
+                    Debug.WriteLine("[SetValue] FAIL: Element does not support ValuePattern");
+                    return ("(no value pattern)", null);
+                }
+
+                if (valuePattern.IsReadOnly)
+                {
+                    Debug.WriteLine("[SetValue] FAIL: Element is read-only");
+                    return ("(read-only)", null);
+                }
+
+                // Set the value
+                Debug.WriteLine($"[SetValue] Calling SetValue('{valueToSet}')...");
+                valuePattern.SetValue(valueToSet);
+                Debug.WriteLine($"[SetValue] SUCCESS: Value set to '{valueToSet}'");
+
+                return ($"(value set, {valueToSet.Length} chars)", null);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SetValue] EXCEPTION: {ex.GetType().Name}");
+                Debug.WriteLine($"[SetValue] Exception message: {ex.Message}");
+                return ($"(error: {ex.Message})", null);
             }
         }
 
