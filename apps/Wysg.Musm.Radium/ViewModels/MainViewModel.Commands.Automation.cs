@@ -227,9 +227,13 @@ namespace Wysg.Musm.Radium.ViewModels
                     { 
                         PatientLocked = false; 
                         StudyOpened = false; 
+                        SetStatus("Study unlocked (patient/study toggles off)"); 
+                    }
+                    else if (string.Equals(m, "ToggleOff", StringComparison.OrdinalIgnoreCase)) 
+                    { 
                         ProofreadMode = false;
                         Reportified = false;
-                        SetStatus("Study unlocked (all toggles off)"); 
+                        SetStatus("Toggles off (proofread/reportified off)"); 
                     }
                     else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { await AcquireStudyRemarkAsync(); }
                     else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { await AcquirePatientRemarkAsync(); }

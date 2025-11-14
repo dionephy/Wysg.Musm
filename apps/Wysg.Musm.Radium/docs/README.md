@@ -1,6 +1,6 @@
 ﻿# Radium Documentation
 
-**Last Updated**: 2025-02-08
+**Last Updated**: 2025-02-09
 
 ---
 
@@ -10,6 +10,12 @@
 - **[Spec-active.md](Spec-active.md)** - Active feature specifications
 - **[Plan-active.md](Plan-active.md)** - Recent implementation plans  
 - **[Tasks.md](Tasks.md)** - Active and pending tasks
+
+### Recent Major Features (2025-02-09)
+
+- [NEW] **[BUGFIX_2025-02-09_PreviousFindingsBlankOnComparisonAdd.md](BUGFIX_2025-02-09_PreviousFindingsBlankOnComparisonAdd.md)** - ✅ **BUG FIX** - Fixed Previous findings editor becoming blank when adding or modifying comparison using "Edit Comparison" window; root cause was `SelectedPreviousStudy` setter calling `UpdatePreviousReportJson()` before selected report's `RawJson` and proofread fields were loaded, causing split outputs (FindingsOut, ConclusionOut) to be computed with empty/stale proofread fields; solution ensures `RawJson` is loaded from selected report and `ApplyReportSelection()` is triggered BEFORE calling `UpdatePreviousReportJson()`, guaranteeing proofread fields and split ranges are correct when computing split outputs; fixes UI glitch where findings editor would show blank content after EditComparisonWindow closed and reloaded studies, with content returning only when text changed; eliminates need for workarounds like switching tabs to "refresh" content
+
+- [NEW] **[BUGFIX_2025-02-09_BypassAltKeySystemMenu.md](BUGFIX_2025-02-09_BypassAltKeySystemMenu.md)** - ✅ **BUG FIX** - Fixed Alt key system menu activation that was stealing focus to window title bar and causing next key press to be ignored or trigger menu actions; added `OnPreviewKeyDownBypassAlt` event handler that intercepts Alt key when pressed alone (without other modifiers) and marks event as handled to suppress system menu behavior; Alt-based shortcuts (Alt+Arrow, Ctrl+Alt+S, Ctrl+Alt+O, etc.) continue working normally; improves keyboard navigation workflow by preventing unwanted focus changes
 
 ### Recent Major Features (2025-02-08)
 

@@ -43,6 +43,37 @@ namespace Wysg.Musm.Radium.Views
             
             // Initialize triple-click paragraph selection support
             InitializeTripleClickSupport();
+            
+            // Bypass Alt key system menu behavior
+            PreviewKeyDown += OnPreviewKeyDownBypassAlt;
+        }
+        
+        /// <summary>
+        /// Bypass Alt key system menu behavior to prevent title bar focus and menu dropdown.
+        /// When Alt is pressed alone (without other keys), it normally activates the window menu system
+        /// and gives focus to the title bar, causing the next key press to be ignored or trigger menu actions.
+        /// This handler suppresses that behavior by marking the Alt key as handled.
+        /// </summary>
+        private void OnPreviewKeyDownBypassAlt(object sender, KeyEventArgs e)
+        {
+            // Only suppress Alt when it's pressed completely alone (not with arrow keys or other keys)
+            // SystemKey is used for Alt combinations, Key is used for regular keys
+            
+            // Check if this is Alt being pressed alone
+            bool isAltAlone = (e.Key == Key.System || e.Key == Key.LeftAlt || e.Key == Key.RightAlt) &&
+                              (e.SystemKey == Key.LeftAlt || e.SystemKey == Key.RightAlt || e.SystemKey == Key.None);
+            
+            // Only handle if Alt is truly alone (no arrow keys or other keys)
+            if (isAltAlone && e.KeyboardDevice.Modifiers == ModifierKeys.Alt)
+            {
+                // Don't suppress if this is part of a combination (check if SystemKey indicates a combination)
+                // When Alt+Arrow is pressed, SystemKey will be the arrow key (Up, Down, Left, Right)
+                if (e.SystemKey == Key.None || e.SystemKey == Key.LeftAlt || e.SystemKey == Key.RightAlt)
+                {
+                    e.Handled = true;
+                    System.Diagnostics.Debug.WriteLine("[MainWindow] Suppressed Alt key (pressed alone)");
+                }
+            }
         }
 
         private void InitEditor(MainViewModel vm, EditorControl ctl)

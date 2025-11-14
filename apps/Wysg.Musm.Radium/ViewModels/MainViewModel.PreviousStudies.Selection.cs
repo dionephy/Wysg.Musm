@@ -59,6 +59,25 @@ namespace Wysg.Musm.Radium.ViewModels
                     }
                     */
                     
+                    // CRITICAL FIX (2025-02-09): Load proofread fields from selected report BEFORE calling UpdatePreviousReportJson()
+                    // This prevents the "Previous findings suddenly become blank" issue when EditComparisonWindow closes and reloads studies
+                    // Root cause: UpdatePreviousReportJson() was being called before the selected report's RawJson was loaded into the tab,
+                    // causing split outputs (FindingsOut, ConclusionOut) to be computed with empty/stale proofread fields
+                    if (value != null && value.SelectedReport != null)
+                    {
+                        Debug.WriteLine($"[Prev] Loading proofread fields from selected report before UpdatePreviousReportJson");
+                        // Ensure RawJson is set from the selected report
+                        if (!string.IsNullOrWhiteSpace(value.SelectedReport.ReportJson))
+                        {
+                            value.RawJson = value.SelectedReport.ReportJson;
+                            Debug.WriteLine($"[Prev] Set RawJson from SelectedReport, length={value.RawJson.Length}");
+                        }
+                        // Now explicitly load proofread fields from RawJson
+                        // This is normally done in PreviousStudyTab.ApplyReportSelection, but we need to ensure it happens
+                        // before UpdatePreviousReportJson is called
+                        value.SelectedReport = value.SelectedReport; // Trigger ApplyReportSelection
+                    }
+                    
                     // CRITICAL FIX: Call UpdatePreviousReportJson() BEFORE notifying editor properties
                     // This ensures ConclusionOut and FindingsOut are computed before bindings try to read them
                     UpdatePreviousReportJson();

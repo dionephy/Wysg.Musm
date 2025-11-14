@@ -21,34 +21,19 @@ namespace Wysg.Musm.Radium.Views
             InitializeComponent();
             _patientNumber = patientNumber;
             
-            // Subscribe to Closed event to refresh previous studies in MainViewModel
-            Closed += OnWindowClosed;
+            // REMOVED: Don't subscribe to Closed event - no need to reload studies
+            // The EditComparisonViewModel already handles modality updates in real-time
+            // Reloading causes toggle buttons to disappear/reappear and editors to clear
+            // Closed += OnWindowClosed;
         }
         
-        private async void OnWindowClosed(object? sender, EventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("[EditComparisonWindow] Window closed - refreshing previous studies in MainViewModel");
-                
-                // Get the ACTUAL MainViewModel from MainWindow's DataContext
-                var mainWindow = Application.Current?.MainWindow;
-                if (mainWindow?.DataContext is MainViewModel mainVm && !string.IsNullOrWhiteSpace(_patientNumber))
-                {
-                    // Reload previous studies to pick up any modality changes from LOINC mappings
-                    await mainVm.LoadPreviousStudiesAsync(_patientNumber);
-                    System.Diagnostics.Debug.WriteLine("[EditComparisonWindow] Previous studies refresh completed");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("[EditComparisonWindow] WARN: Could not refresh - MainViewModel not found or no patient number");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[EditComparisonWindow] Error refreshing previous studies on window close: {ex.Message}");
-            }
-        }
+        // REMOVED: OnWindowClosed method that was causing unnecessary reload
+        // Previous studies don't need to be reloaded when window closes because:
+        // 1. Modality updates happen in real-time via RefreshModalityForStudyAsync
+        // 2. Full reload clears and rebuilds PreviousStudies collection
+        // 3. This causes toggle buttons to disappear/reappear
+        // 4. Editor text gets cleared during rebuild
+        // 5. The fix in SelectedPreviousStudy setter helps but doesn't eliminate the visual glitch
         
         /// <summary>
         /// Opens the Edit Comparison window with the given patient context and previous studies.

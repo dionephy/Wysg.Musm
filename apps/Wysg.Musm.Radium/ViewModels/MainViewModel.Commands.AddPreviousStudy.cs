@@ -23,6 +23,35 @@ namespace Wysg.Musm.Radium.ViewModels
                 var previouslySelectedStudy = SelectedPreviousStudy;
                 Debug.WriteLine($"[AddPreviousStudyModule] Previously selected study: {previouslySelectedStudy?.Title ?? "(none)"}");
 
+                // NEW STEP 0: Validate Related Studies list patient number matches current study
+                Debug.WriteLine("[AddPreviousStudyModule] Step 0: Validating Related Studies patient number...");
+                var relatedStudiesPatientNumber = await _pacs.GetSelectedIdFromRelatedStudiesAsync();
+                if (string.IsNullOrWhiteSpace(relatedStudiesPatientNumber))
+                {
+                    SetStatus("AddPreviousStudy: Could not read patient number from Related Studies list", true);
+                    return;
+                }
+
+                // Inline normalization (remove non-alphanumeric, uppercase)
+                string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : 
+                    System.Text.RegularExpressions.Regex.Replace(s, "[^A-Za-z0-9]", "").ToUpperInvariant();
+
+                var normalizedRelatedStudies = Normalize(relatedStudiesPatientNumber);
+                var normalizedCurrent = Normalize(PatientNumber);
+                
+                Debug.WriteLine($"[AddPreviousStudyModule] Related Studies patient number (raw): '{relatedStudiesPatientNumber}'");
+                Debug.WriteLine($"[AddPreviousStudyModule] Related Studies patient number (normalized): '{normalizedRelatedStudies}'");
+                Debug.WriteLine($"[AddPreviousStudyModule] Current study patient number (normalized): '{normalizedCurrent}'");
+                
+                if (!string.Equals(normalizedRelatedStudies, normalizedCurrent, StringComparison.OrdinalIgnoreCase))
+                {
+                    SetStatus($"AddPreviousStudy: Patient number mismatch - Related Studies patient ({normalizedRelatedStudies}) does not match current study patient ({normalizedCurrent})", true);
+                    Debug.WriteLine($"[AddPreviousStudyModule] ABORT: Patient mismatch");
+                    return;
+                }
+                
+                Debug.WriteLine($"[AddPreviousStudyModule] Patient number validated: {normalizedCurrent}");
+
                 // Step 1: Validate current patient matches PACS
                 Debug.WriteLine("[AddPreviousStudyModule] Step 1: Validating patient match...");
                 var pacsPatientNumber = await _pacs.GetCurrentPatientNumberAsync();
@@ -31,10 +60,6 @@ namespace Wysg.Musm.Radium.ViewModels
                     SetStatus("AddPreviousStudy: Could not read patient number from PACS", true);
                     return;
                 }
-
-                // Inline normalization (remove non-alphanumeric, uppercase)
-                string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : 
-                    System.Text.RegularExpressions.Regex.Replace(s, "[^A-Za-z0-9]", "").ToUpperInvariant();
 
                 var normalizedPacs = Normalize(pacsPatientNumber);
                 var normalizedApp = Normalize(PatientNumber);

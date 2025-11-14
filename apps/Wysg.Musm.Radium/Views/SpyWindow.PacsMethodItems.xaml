@@ -17,6 +17,7 @@
         <ComboBoxItem Tag="GetSelectedReportDateTimeFromSearchResults">Get selected report date time from search results list</ComboBoxItem>
         
         <!-- Related Studies List -->
+        <ComboBoxItem Tag="GetSelectedIdFromRelatedStudies">Get selected ID from related studies list</ComboBoxItem>
         <ComboBoxItem Tag="GetSelectedStudynameFromRelatedStudies">Get selected studyname from related studies list</ComboBoxItem>
         <ComboBoxItem Tag="GetSelectedStudyDateTimeFromRelatedStudies">Get selected study date time from related studies list</ComboBoxItem>
         <ComboBoxItem Tag="GetSelectedRadiologistFromRelatedStudies">Get selected radiologist from related studies list</ComboBoxItem>

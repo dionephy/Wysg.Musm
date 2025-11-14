@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows.Media;
 using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Rendering;
@@ -10,7 +11,9 @@ namespace Wysg.Musm.Editor.Ui
     /// <summary>
     /// Foreground-based phrase colorizer with SNOMED semantic tag support.
     /// - Phrases with SNOMED mappings: colored based on semantic tag (body structure, disorder, etc.)
-    /// - Phrases in snapshot without mappings: use existingBrush (default #4A4A4A)
+    /// - Phrases in snapshot without mappings: use existingBrush (default #A0A0A0)
+    /// - Numbers (integers and decimals): use existingBrush
+    /// - Dates (0000-00-00 format): use existingBrush
     /// - Missing phrases: use missingBrush (default Red)
     /// Matching is case-insensitive; supports multi-word phrases up to 10 words.
     /// </summary>
@@ -28,6 +31,10 @@ namespace Wysg.Musm.Editor.Ui
         private readonly Brush _procedureBrush;
         private readonly Brush _observableEntityBrush;
         private readonly Brush _substanceBrush;
+        
+        // Regex patterns for numbers and dates
+        private static readonly Regex NumberPattern = new Regex(@"^\d+(\.\d+)?$", RegexOptions.Compiled);
+        private static readonly Regex DatePattern = new Regex(@"^\d{4}-\d{2}-\d{2}$", RegexOptions.Compiled);
 
         public PhraseColorizer(Func<IReadOnlyList<string>> getSnapshot,
                                Func<IReadOnlyDictionary<string, string?>>? getSemanticTags = null,
@@ -165,46 +172,67 @@ namespace Wysg.Musm.Editor.Ui
                 // Skip standalone punctuation (except hyphen and forward slash which are part of medical terms)
                 if (char.IsPunctuation(text[i]) && text[i] != '-' && text[i] != '/') { i++; continue; }
 
-                // Find word boundaries (include hyphens and forward slashes as part of words for phrases like "COVID-19" and "N/A")
+                // Find word boundaries (include hyphens, forward slashes, and periods for phrases like "COVID-19", "N/A", and decimals)
                 int wordStart = i;
-                while (i < text.Length && !char.IsWhiteSpace(text, i) && (char.IsLetterOrDigit(text, i) || text[i] == '-' || text[i] == '/'))
+                while (i < text.Length && !char.IsWhiteSpace(text, i) && (char.IsLetterOrDigit(text, i) || text[i] == '-' || text[i] == '/' || text[i] == '.'))
                     i++;
 
                 if (i <= wordStart) { i++; continue; }
 
                 int bestLen = i - wordStart;
-                bool bestExists = set.Contains(text.Substring(wordStart, bestLen));
+                var currentToken = text.Substring(wordStart, bestLen);
+                
+                // Strip trailing periods (sentence punctuation) but keep them for matching purposes
+                var tokenForMatching = currentToken.TrimEnd('.');
+                int trailingPeriodsCount = currentToken.Length - tokenForMatching.Length;
+                
+                // Check if this token is a number or date - if so, treat it as existing
+                bool isNumberOrDate = NumberPattern.IsMatch(tokenForMatching) || DatePattern.IsMatch(tokenForMatching);
+                bool bestExists = isNumberOrDate || set.Contains(tokenForMatching);
                 int scanPos = i;
 
-                // Look ahead up to 9 additional words (total up to 10)
-                for (int ahead = 1; ahead <= 9; ahead++)
+                // Only look ahead for multi-word phrases if not a number or date
+                if (!isNumberOrDate)
                 {
-                    // Skip whitespace
-                    while (scanPos < text.Length && char.IsWhiteSpace(text, scanPos)) scanPos++;
-                    if (scanPos >= text.Length) break;
-            
-                    // Skip punctuation before next word (except hyphen and forward slash)
-                    if (char.IsPunctuation(text[scanPos]) && text[scanPos] != '-' && text[scanPos] != '/') break;
-
-                    // Find next word (include hyphens and forward slashes)
-                    int nextStart = scanPos;
-                    while (scanPos < text.Length && !char.IsWhiteSpace(text, scanPos) && (char.IsLetterOrDigit(text, scanPos) || text[scanPos] == '-' || text[scanPos] == '/'))
-                        scanPos++;
-        
-                    if (scanPos <= nextStart) break;
-
-                    int phraseLen = scanPos - wordStart;
-                    var phrase = text.Substring(wordStart, phraseLen);
-                    if (set.Contains(phrase))
+                    // Look ahead up to 9 additional words (total up to 10)
+                    for (int ahead = 1; ahead <= 9; ahead++)
                     {
-                        bestLen = phraseLen;
-                        bestExists = true;
-                        i = scanPos; // advance to end of phrase
+                        // Skip whitespace
+                        while (scanPos < text.Length && char.IsWhiteSpace(text, scanPos)) scanPos++;
+                        if (scanPos >= text.Length) break;
+            
+                        // Skip punctuation before next word (except hyphen and forward slash)
+                        if (char.IsPunctuation(text[scanPos]) && text[scanPos] != '-' && text[scanPos] != '/') break;
+
+                        // Find next word (include hyphens and forward slashes, but not periods at this stage)
+                        int nextStart = scanPos;
+                        while (scanPos < text.Length && !char.IsWhiteSpace(text, scanPos) && (char.IsLetterOrDigit(text, scanPos) || text[scanPos] == '-' || text[scanPos] == '/'))
+                            scanPos++;
+        
+                        if (scanPos <= nextStart) break;
+
+                        int phraseLen = scanPos - wordStart;
+                        var phrase = text.Substring(wordStart, phraseLen);
+                        
+                        // Strip trailing periods from multi-word phrases too
+                        var phraseForMatching = phrase.TrimEnd('.');
+                        if (set.Contains(phraseForMatching))
+                        {
+                            bestLen = phraseForMatching.Length;
+                            bestExists = true;
+                            i = wordStart + bestLen; // advance to end of matched phrase (without trailing periods)
+                            tokenForMatching = phraseForMatching;
+                            trailingPeriodsCount = 0; // We've already adjusted the length
+                        }
                     }
                 }
 
-                var matchedText = text.Substring(wordStart, bestLen);
-                yield return new PhraseMatch(wordStart, bestLen, bestExists, matchedText);
+                // Use the matched length (excluding trailing periods)
+                int matchLen = bestLen - trailingPeriodsCount;
+                if (matchLen > 0)
+                {
+                    yield return new PhraseMatch(wordStart, matchLen, bestExists, tokenForMatching);
+                }
             }
         }
     }
