@@ -199,8 +199,10 @@ namespace Wysg.Musm.Radium.ViewModels
                     SelectedPreviousStudy = duplicate;
                     PreviousReportSplitted = true;
                     
-                    // NEW: Update comparison field if there was a previously selected study
-                    await UpdateComparisonFromPreviousStudyAsync(previouslySelectedStudy);
+                    // UPDATED: Update comparison field
+                    // If there was a previously selected study, use it for comparison
+                    // If not, use the duplicate (newly selected) study
+                    await UpdateComparisonFromPreviousStudyAsync(previouslySelectedStudy ?? duplicate);
                     
                     stopwatch.Stop();
                     SetStatus($"Previous study already loaded: {duplicate.Title} ({stopwatch.ElapsedMilliseconds} ms)", false);
@@ -373,8 +375,10 @@ namespace Wysg.Musm.Radium.ViewModels
                     SelectedPreviousStudy = newTab;
                     PreviousReportSplitted = true;
                     
-                    // NEW: Update comparison field if there was a previously selected study
-                    await UpdateComparisonFromPreviousStudyAsync(previouslySelectedStudy);
+                    // UPDATED: Update comparison field
+                    // If there was a previously selected study, use it for comparison
+                    // If not, use the newTab (newly loaded) study
+                    await UpdateComparisonFromPreviousStudyAsync(previouslySelectedStudy ?? newTab);
                     
                     stopwatch.Stop();
                     
@@ -399,7 +403,7 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         /// <summary>
-        /// Updates the Comparison field from a previously selected previous study.
+        /// Updates the Comparison field from a previous study.
         /// Skips update if current study is XR and "Do not update header in XR" setting is checked.
         /// </summary>
         private async Task UpdateComparisonFromPreviousStudyAsync(PreviousStudyTab? previousStudy)
@@ -408,13 +412,13 @@ namespace Wysg.Musm.Radium.ViewModels
             
             if (previousStudy == null)
             {
-                Debug.WriteLine("[UpdateComparisonFromPreviousStudy] No previously selected study - skipping comparison update");
+                Debug.WriteLine("[UpdateComparisonFromPreviousStudy] No previous study provided - skipping comparison update");
                 return;
             }
             
             try
             {
-                Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] Previously selected study: {previousStudy.Title}");
+                Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] Using study for comparison: {previousStudy.Title}");
                 
                 // Check if current study is XR modality
                 bool isXRModality = false;

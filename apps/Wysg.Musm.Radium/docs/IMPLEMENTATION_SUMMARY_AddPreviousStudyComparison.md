@@ -1,7 +1,7 @@
 # SUMMARY: AddPreviousStudy Comparison Update Feature
 
 **Date**: 2025-02-09  
-**Status**: ? Implementation blocked by syntax errors in MainViewModel.Commands.cs  
+**Status**: ? Implemented & Fixed (2025-02-10)
 **Priority**: High - Improves workflow automation
 
 ---
@@ -10,18 +10,52 @@
 
 When the "AddPreviousStudy" automation module loads a new previous study:
 1. **Remember** which previous study was selected BEFORE loading the new one
-2. **After successfully loading** the new study, automatically fill the `Comparison` field with: `"{Modality} {Date}"` from the previously selected study
+2. **After successfully loading** the new study, automatically fill the `Comparison` field with: `"{Modality} {Date}"` from:
+   - The **previously selected study** (if one existed), OR
+   - The **newly loaded study** (if no previous study was selected - ensures first load fills comparison) ? FIXED 2025-02-10
 3. **Skip the update** if current study is XR modality AND "Do not update header in XR" setting is enabled
+
+---
+
+## Key Fix (2025-02-10)
+
+### Problem
+The comparison string sometimes remained "N/A" even when a previous study was successfully loaded. This occurred when loading the **first** previous study because `previouslySelectedStudy` was null.
+
+### Solution
+Changed from:
+```csharp
+await UpdateComparisonFromPreviousStudyAsync(previouslySelectedStudy);
+```
+
+To:
+```csharp
+await UpdateComparisonFromPreviousStudyAsync(previouslySelectedStudy ?? newTab);
+```
+
+This ensures the comparison field is populated with:
+- The previously selected study (if available) - **typical workflow**
+- OR the newly loaded study (if no previous selection) - **first load scenario** ?
+
+### Log Evidence
+**Before fix**:
+```
+[AddPreviousStudyModule] Previously selected study: (none)
+...
+[UpdateComparisonFromPreviousStudy] No previously selected study - skipping comparison update
+```
+
+**After fix**: Comparison will be filled with newly loaded study info
 
 ---
 
 ## Required Code Changes
 
-### File: `MainViewModel.Commands.cs`
+### File: `MainViewModel.Commands.AddPreviousStudy.cs`
 
-#### 1. Capture Previously Selected Study (Line ~1400)
+#### 1. Capture Previously Selected Study (Line ~33)
 
-At the **very start** of `RunAddPreviousStudyModuleAsync()` method, add:
+At the **very start** of `RunAddPreviousStudyModuleAsync()` method:
 
 ```csharp
 // REMEMBER: Capture the currently selected previous study BEFORE loading new one
@@ -30,11 +64,9 @@ var previouslySelectedStudy = SelectedPreviousStudy;
 Debug.WriteLine($"[AddPreviousStudyModule] Previously selected study: {previouslySelectedStudy?.Title ?? "(none)"}");
 ```
 
-#### 2. Update Comparison After Load (Two locations)
+#### 2. Update Comparison After Load (Two locations) - UPDATED 2025-02-10
 
-Add this call in TWO places within `RunAddPreviousStudyModuleAsync()`:
-
-**Location A** - After duplicate detection (around line ~1470):
+**Location A** - After duplicate detection (around line ~160):
 ```csharp
 if (duplicate != null)
 {
@@ -42,143 +74,72 @@ if (duplicate != null)
     SelectedPreviousStudy = duplicate;
     PreviousReportSplitted = true;
     
-    // NEW: Update comparison field if there was a previously selected study
-    await UpdateComparisonFromPreviousStudyAsync(previouslySelectedStudy);
+    // UPDATED: Use previouslySelectedStudy if available, otherwise use duplicate (newly selected)
+    await UpdateComparisonFromPreviousStudyAsync(previouslySelectedStudy ?? duplicate);
     
     stopwatch.Stop();
     // ... rest of existing code ...
 }
 ```
 
-**Location B** - After successful new study load (around line ~1560):
+**Location B** - After successful new study load (around line ~240):
 ```csharp
 if (newTab != null)
 {
     SelectedPreviousStudy = newTab;
     PreviousReportSplitted = true;
     
-    // NEW: Update comparison field if there was a previously selected study
-    await UpdateComparisonFromPreviousStudyAsync(previouslySelectedStudy);
+    // UPDATED: Use previouslySelectedStudy if available, otherwise use newTab (newly loaded)
+    await UpdateComparisonFromPreviousStudyAsync(previouslySelectedStudy ?? newTab);
     
     stopwatch.Stop();
     // ... rest of existing code ...
 }
 ```
 
-#### 3. New Method: `UpdateComparisonFromPreviousStudyAsync`
+#### 3. Method: `UpdateComparisonFromPreviousStudyAsync`
 
-Add this method at the END of the MainViewModel partial class (before the closing braces):
-
-```csharp
-/// <summary>
-/// Updates the Comparison field from a previously selected previous study.
-/// Skips update if current study is XR and "Do not update header in XR" setting is checked.
-/// </summary>
-private async Task UpdateComparisonFromPreviousStudyAsync(PreviousStudyTab? previousStudy)
-{
-    await Task.CompletedTask; // Make method async-compatible
-    
-    if (previousStudy == null)
-    {
-        Debug.WriteLine("[UpdateComparisonFromPreviousStudy] No previously selected study - skipping comparison update");
-        return;
-    }
-    
-    try
-    {
-        Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] Previously selected study: {previousStudy.Title}");
-        
-        // Check if current study is XR modality
-        bool isXRModality = false;
-        if (!string.IsNullOrWhiteSpace(StudyName))
-        {
-            // Extract modality from studyname (typically first word or first few characters)
-            var studyNameUpper = StudyName.ToUpperInvariant();
-            isXRModality = studyNameUpper.StartsWith("XR") || studyNameUpper.Contains(" XR ");
-            Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] Current study modality check: isXR={isXRModality}, StudyName='{StudyName}'");
-        }
-        
-        // Check "Do not update header in XR" setting
-        bool doNotUpdateHeaderInXR = false;
-        if (_local != null)
-        {
-            var settingValue = _local.DoNotUpdateHeaderInXR;
-            doNotUpdateHeaderInXR = string.Equals(settingValue, "true", StringComparison.OrdinalIgnoreCase);
-            Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] DoNotUpdateHeaderInXR setting: '{settingValue}' -> {doNotUpdateHeaderInXR}");
-        }
-        
-        // Skip update if XR and setting is enabled
-        if (isXRModality && doNotUpdateHeaderInXR)
-        {
-            Debug.WriteLine("[UpdateComparisonFromPreviousStudy] Skipping comparison update - XR modality and DoNotUpdateHeaderInXR is enabled");
-            SetStatus("Comparison not updated (XR modality with 'Do not update header in XR' enabled)");
-            return;
-        }
-        
-        // Build comparison string from previous study
-        // Format: "{Modality} {Date}"
-        var comparisonText = $"{previousStudy.Modality} {previousStudy.StudyDateTime:yyyy-MM-dd}";
-        Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] Built comparison text: '{comparisonText}'");
-        
-        // Update Comparison property
-        Comparison = comparisonText;
-        Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] Updated Comparison property: '{Comparison}'");
-        SetStatus($"Comparison updated: {comparisonText}");
-    }
-    catch (Exception ex)
-    {
-        Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] ERROR: {ex.Message}");
-        Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] StackTrace: {ex.StackTrace}");
-        // Don't throw - allow AddPreviousStudy to continue even if comparison update fails
-    }
-}
-```
+**Already implemented** - no changes needed to method signature or body
 
 ---
 
 ## Testing Steps
 
-1. **Normal Case** (Non-XR Study):
+1. **First Load** (FIXED ?):
+   - Load a study (e.g., "CT Chest")
+   - No previous study selected yet
+   - Load first previous study "CT Chest 2025-01-15"
+   - ? Expected: Comparison field shows "CT 2025-01-15"
+
+2. **Second Load** (Normal Case):
    - Load a study (e.g., "CT Chest")
    - Load previous study "CT Chest 2025-01-15"
    - Load another previous study "MRI Brain 2025-02-01"
-   - ? Expected: Comparison field shows "CT 2025-01-15"
+   - ? Expected: Comparison field shows "CT 2025-01-15" (previously selected)
 
-2. **XR with Setting ON**:
+3. **XR with Setting ON**:
    - Load "XR Chest PA" study
    - Enable "Do not update header in XR" in Settings
    - Load previous study
    - ? Expected: Comparison field NOT updated, status shows skip message
 
-3. **XR with Setting OFF**:
+4. **XR with Setting OFF**:
    - Load "XR Chest AP" study
    - Disable "Do not update header in XR" setting
    - Load previous study
    - ? Expected: Comparison field IS updated
 
-4. **No Previous Study**:
-   - Load first previous study when none selected
-   - ? Expected: No crash, status shows "skipping comparison update"
-
 ---
 
 ## Current Status
 
-? **Blocked**: Multiple attempts to edit `MainViewModel.Commands.cs` resulted in syntax errors (CS1513: } needed)
-
-**Root Cause**: The file is very large (~1800 lines) and has complex nested structure. Incremental edits keep breaking the structure.
-
-**Recommended Next Steps**:
-1. Fix syntax error in `MainViewModel.Commands.cs` first (missing closing brace somewhere)
-2. Ensure file compiles successfully
-3. Then apply the three changes listed above
-4. Build and test
+? **Implemented and Fixed**: The null-coalescing operator ensures comparison is filled on first load
 
 ---
 
-## Related Files
+## Files Modified
 
-- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Commands.cs` - Main implementation
+- `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Commands.AddPreviousStudy.cs` - Main implementation with fix
 - `apps\Wysg.Musm.Radium\Services\IRadiumLocalSettings.cs` - DoNotUpdateHeaderInXR setting
 - `apps\Wysg.Musm.Radium\docs\ENHANCEMENT_2025-02-09_AddPreviousStudyComparisonUpdate.md` - Full specification
 
@@ -187,6 +148,7 @@ private async Task UpdateComparisonFromPreviousStudyAsync(PreviousStudyTab? prev
 ## Benefits
 
 - ? Saves user time - no manual comparison entry
+- ? Works on first load - no need to load two studies to fill comparison
 - ? Consistent format across all reports
 - ? Respects existing XR header settings
 - ? Non-breaking - gracefully handles errors
@@ -194,10 +156,9 @@ private async Task UpdateComparisonFromPreviousStudyAsync(PreviousStudyTab? prev
 
 ---
 
-## Alternative Implementation Approach
+## Related Features
 
-If syntax errors persist, consider:
-1. Create a NEW partial class file: `MainViewModel.ComparisonHelpers.cs`
-2. Move the `UpdateComparisonFromPreviousStudyAsync` method there
-3. Modify `MainViewModel.Commands.cs` to call it
-4. This reduces risk of breaking existing file structure
+- FR-511: Add Previous Study Automation Module
+- FR-514: Map Add study in Automation to '+' Button
+- Comparison field editing (EditComparison window)
+- Settings ¡æ "Do not update header in XR" checkbox
