@@ -20,7 +20,7 @@ namespace Wysg.Musm.Radium.Controls
                 Debug.WriteLine("[ReportInputsAndJsonPanel] Loaded: initializing layout + scroll fixes");
                 ApplyReverse(Reverse);
                 SetupAltArrowNavigation();
-                UpdateJsonColumnVisibility(IsJsonCollapsed);
+                // JSON panel is now always visible - no need to update visibility
 
                 // Attach per-TextBox wheel handler (legacy) and a root-level interceptor (robust).
                 // Root interceptor is required to catch wheel events when inner controls already mark them handled
@@ -64,6 +64,14 @@ namespace Wysg.Musm.Radium.Controls
             if (editor == null)
             {
                 Debug.WriteLine($"[ReportInputsAndJsonPanel] ROOT Wheel: no TextBoxBase ancestor. Source={src.GetType().FullName}");
+                return;
+            }
+
+            // IMPORTANT: Don't forward scroll events from JSON TextBox (txtCurrentJson)
+            // The JSON column scrolls independently and should not affect the left columns
+            if (editor.Name == "txtCurrentJson")
+            {
+                Debug.WriteLine($"[ReportInputsAndJsonPanel] ROOT Wheel: Ignoring JSON TextBox scroll (independent column)");
                 return;
             }
 
@@ -146,44 +154,16 @@ namespace Wysg.Musm.Radium.Controls
             set => SetValue(ReverseProperty, value);
         }
 
-        // NEW: IsJsonCollapsed dependency property with default value true
+        // IsJsonCollapsed property removed - JSON panel is always visible
+        // Legacy property kept for backward compatibility but has no effect
         public static readonly DependencyProperty IsJsonCollapsedProperty =
             DependencyProperty.Register(nameof(IsJsonCollapsed), typeof(bool), typeof(ReportInputsAndJsonPanel), 
-                new PropertyMetadata(true, OnIsJsonCollapsedChanged));
+                new PropertyMetadata(false)); // Changed default to false (not collapsed)
 
         public bool IsJsonCollapsed
         {
             get => (bool)GetValue(IsJsonCollapsedProperty);
             set => SetValue(IsJsonCollapsedProperty, value);
-        }
-
-        private static void OnIsJsonCollapsedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            if (d is ReportInputsAndJsonPanel self && e.NewValue is bool collapsed)
-            {
-                self.UpdateJsonColumnVisibility(collapsed);
-            }
-        }
-
-        private void UpdateJsonColumnVisibility(bool collapsed)
-        {
-            if (JsonSplitter == null || txtCurrentJson == null || btnToggleJson == null)
-                return;
-
-            if (collapsed)
-            {
-                // Collapsed: just hide the TextBox and splitter, leave column structure intact
-                JsonSplitter.Visibility = Visibility.Collapsed;
-                txtCurrentJson.Visibility = Visibility.Collapsed;
-                btnToggleJson.Content = "\u25B6"; // Right arrow (expand)
-            }
-            else
-            {
-                // Expanded: show the TextBox and splitter
-                JsonSplitter.Visibility = Visibility.Visible;
-                txtCurrentJson.Visibility = Visibility.Visible;
-                btnToggleJson.Content = "\u25C0"; // Left arrow (collapse)
-            }
         }
 
         public static readonly DependencyProperty TargetEditorProperty =

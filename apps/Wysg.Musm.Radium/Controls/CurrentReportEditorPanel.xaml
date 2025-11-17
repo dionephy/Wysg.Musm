@@ -19,94 +19,99 @@
 
         <!-- Two-line header area: top buttons/toggles; bottom label -->
         <Grid Grid.Row="0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="18"/>
-                <RowDefinition Height="30"/>
-            </Grid.RowDefinitions>
 
-            <!-- Upper row: controls -->
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,0" VerticalAlignment="Center">
-                <Button Content="New" Command="{Binding NewStudyCommand}" FontSize="12" Margin="2,2,0,2"/>
-                <Button Content="Send Report Preview" Command="{Binding SendReportPreviewCommand}" Margin="2,2,0,2"/>
-                <Button Content="Send Report" Command="{Binding SendReportCommand}" Margin="2,2,0,2"/>
-                <Button Content="Extract Phrases" Click="OnExtractPhrasesClick" Margin="2,2,0,2"/>
-                <Button Content="Save Preorder" Command="{Binding SavePreorderCommand}" Margin="2,2,0,2"/>
-                <Button Content="Test" Command="{Binding TestNewStudyProcedureCommand}" Margin="2,2,0,2"/>
-                <ToggleButton Content="Proofread" Margin="4,2,0,2" 
-                              Style="{StaticResource DarkToggleButtonStyle}" 
-                              IsChecked="{Binding ProofreadMode, Mode=TwoWay}"/>
-                <ToggleButton Content="Reportified" Margin="4,2,0,2" 
-                              Style="{StaticResource DarkToggleButtonStyle}" 
-                              IsChecked="{Binding Reportified, Mode=TwoWay}"/>
-            </StackPanel>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
-            <!-- Lower row: toggles and label -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">
-                <ToggleButton x:Name="btnStudyLocked"
+            <Grid Grid.Column="0">
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="18"/>
+                    <RowDefinition Height="30"/>
+                </Grid.RowDefinitions>
+
+                <!-- Upper row: controls -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,0" VerticalAlignment="Center">
+                    <Button Content="New" Command="{Binding NewStudyCommand}" FontSize="12" Margin="2,2,0,2"/>
+                    <Button Content="Send Preview" Command="{Binding SendReportPreviewCommand}" Margin="2,2,0,2"/>
+                    <Button Content="Send" Command="{Binding SendReportCommand}" Margin="2,2,0,2"/>
+                    <Button Content="Technique" Command="{Binding EditStudyTechniqueCommand}" Margin="2,2,0,2"/>
+                    <Button Content="Comparison" Command="{Binding EditComparisonCommand}" Margin="2,2,0,2"/>
+                    <Button Content="Phrases" Click="OnExtractPhrasesClick" Margin="2,2,0,2"/>
+                    <Button Content="Preorder" Command="{Binding SavePreorderCommand}" Margin="2,2,0,2"/>
+                    <Button Content="Test" Command="{Binding TestNewStudyProcedureCommand}" Margin="2,2,0,2"/>
+                    
+                </StackPanel>
+
+                <!-- Lower row: toggles and label -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">
+                    <ToggleButton x:Name="btnStudyLocked"
                               Margin="2,0,0,2"
                               VerticalAlignment="Center"
                               IsChecked="{Binding PatientLocked, Mode=TwoWay}"
                               Style="{StaticResource IconToggleButtonStyle}"
                               Padding="4" Width="28" Height="28" 
                               ToolTip="Toggle Study Lock">
-                    <Image Width="16" Height="16" Stretch="Uniform">
-                        <Image.Style>
-                            <Style TargetType="Image">
-                                <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/unlocked.png"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
-                                        <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/locked.png"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Image.Style>
-                    </Image>
-                </ToggleButton>
-                
-                <ToggleButton x:Name="btnStudyOpened"
+                        <Image Width="16" Height="16" Stretch="Uniform">
+                            <Image.Style>
+                                <Style TargetType="Image">
+                                    <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/unlocked.png"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                            <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/locked.png"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Image.Style>
+                        </Image>
+                    </ToggleButton>
+
+                    <ToggleButton x:Name="btnStudyOpened"
                               Margin="2,0,0,2"
                               VerticalAlignment="Center"
                               IsChecked="{Binding StudyOpened, Mode=TwoWay}"
                               Style="{StaticResource IconToggleButtonStyle}"
                               Padding="4" Width="28" Height="28" 
                               ToolTip="Toggle Study Opened">
-                    <Image Width="16" Height="16" Stretch="Uniform">
-                        <Image.Style>
-                            <Style TargetType="Image">
-                                <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/folder_closed.png"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
-                                        <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/folder_open.png"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Image.Style>
-                    </Image>
-                </ToggleButton>
-                
-                <ToggleButton x:Name="btnSyncText"
+                        <Image Width="16" Height="16" Stretch="Uniform">
+                            <Image.Style>
+                                <Style TargetType="Image">
+                                    <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/folder_closed.png"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                            <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/folder_open.png"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Image.Style>
+                        </Image>
+                    </ToggleButton>
+
+                    <ToggleButton x:Name="btnSyncText"
                               Margin="2,0,0,2"
                               VerticalAlignment="Center"
                               IsChecked="{Binding TextSyncEnabled, Mode=TwoWay}"
                               Style="{StaticResource IconToggleButtonStyle}"
                               Padding="4" Width="28" Height="28" 
                               ToolTip="Sync text with foreign textbox (e.g. Notepad)">
-                    <Image Width="16" Height="16" Stretch="Uniform">
-                        <Image.Style>
-                            <Style TargetType="Image">
-                                <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/unlinked.png"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
-                                        <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/linked.png"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Image.Style>
-                    </Image>
-                </ToggleButton>
-                
-                <!-- Selectable Current Study Label -->
-                <TextBox Text="{Binding CurrentStudyLabel, Mode=OneWay}" 
+                        <Image Width="16" Height="16" Stretch="Uniform">
+                            <Image.Style>
+                                <Style TargetType="Image">
+                                    <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/unlinked.png"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                            <Setter Property="Source" Value="pack://application:,,,/Wysg.Musm.Radium;component/Assets/Images/linked.png"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Image.Style>
+                        </Image>
+                    </ToggleButton>
+
+                    <!-- Selectable Current Study Label -->
+                    <TextBox Text="{Binding CurrentStudyLabel, Mode=OneWay}" 
                          Margin="2,0,0,0" 
                          FontFamily="{StaticResource Dark.MonoFont}" 
                          Foreground="#5A9FD6" 
@@ -117,7 +122,20 @@
                          TextWrapping="Wrap" 
                          MinWidth="260" 
                          Padding="0,0,0,0"/>
+                </StackPanel>
+
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Grid.Column="1">
+                <ToggleButton Content=" PR "
+                              Margin="0" Style="{StaticResource DarkToggleButtonStyle}" 
+                              IsChecked="{Binding ProofreadMode, Mode=TwoWay}"/>
+                <ToggleButton Content=" RF " Margin="0" 
+          Style="{StaticResource DarkToggleButtonStyle}" 
+          IsChecked="{Binding Reportified, Mode=TwoWay}"/>
             </StackPanel>
+
+
         </Grid>
 
         <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>

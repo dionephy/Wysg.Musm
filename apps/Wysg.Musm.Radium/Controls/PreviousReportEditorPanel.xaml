@@ -20,53 +20,51 @@
 
         <!-- Header area with tabs and toggles -->
         <Grid Grid.Row="0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="18"/>
-                <RowDefinition Height="30"/>
-            </Grid.RowDefinitions>
 
-            <!-- Row 0: Previous studies tabs strip -->
-            <rad:PreviousStudiesStrip Grid.Row="0"
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <ToggleButton Content=" SP " FontSize="11" Margin="0,0,0,0" 
+          Style="{StaticResource DarkToggleButtonStyle}" 
+          IsChecked="{Binding PreviousReportSplitted, Mode=TwoWay}"/>
+                <ToggleButton Content=" PR " FontSize="11" Margin="0,0,0,0" 
+          Style="{StaticResource DarkToggleButtonStyle}" 
+          IsChecked="{Binding PreviousProofreadMode, Mode=TwoWay}"/>
+            </StackPanel>
+
+            <Grid Grid.Column="1" Margin="0">
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="24"/>
+                    <RowDefinition Height="24"/>
+                </Grid.RowDefinitions>
+
+                <!-- Row 0: Previous studies tabs strip -->
+                <rad:PreviousStudiesStrip Grid.Row="0"
                                       VerticalAlignment="Center"
                                       ItemsSource="{Binding PreviousStudies}"
                                       SelectCommand="{Binding SelectPreviousStudyCommand}"
                                       AddCommand="{Binding AddStudyCommand}"/>
-
-            <!-- Row 1: Toggles and report selector -->
-            <Grid Grid.Row="1" Margin="0" VerticalAlignment="Center">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+               
                 
-                <Grid Grid.Column="1" Margin="0,0,0,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    
-                    <!-- Toggles -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,0,0,0">
-                        <ToggleButton Content="Splitted" FontSize="11" Margin="0,0,0,0" 
-                                      Style="{StaticResource DarkToggleButtonStyle}" 
-                                      IsChecked="{Binding PreviousReportSplitted, Mode=TwoWay}"/>
-                        <ToggleButton Content="Proofread" FontSize="11" Margin="4,0,0,0" 
-                                      Style="{StaticResource DarkToggleButtonStyle}" 
-                                      IsChecked="{Binding PreviousProofreadMode, Mode=TwoWay}"/>
-                    </StackPanel>
-                    
-                    <!-- Report selector ComboBox -->
-                    <ComboBox Grid.Row="1" 
-                              x:Name="cboPrevReport" 
-                              Margin="0,1,0,0" 
-                              HorizontalAlignment="Stretch" 
-                              HorizontalContentAlignment="Stretch"
-                              ItemsSource="{Binding SelectedPreviousStudy.Reports}"
-                              SelectedItem="{Binding SelectedPreviousStudy.SelectedReport, Mode=TwoWay}" 
-                              MinWidth="200">
-                    </ComboBox>
-                </Grid>
+                <!-- Row 1: Toggles and report selector -->
+
+                <ComboBox Grid.Row="1" 
+                      x:Name="cboPrevReport" 
+                      Margin="0,1,0,0" 
+                      HorizontalAlignment="Stretch" 
+                      HorizontalContentAlignment="Stretch"
+                      ItemsSource="{Binding SelectedPreviousStudy.Reports}"
+                      SelectedItem="{Binding SelectedPreviousStudy.SelectedReport, Mode=TwoWay}" 
+                      MinWidth="200">       
+                </ComboBox>
+
             </Grid>
+
+
         </Grid>
 
         <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
