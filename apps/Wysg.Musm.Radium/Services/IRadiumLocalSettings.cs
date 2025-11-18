@@ -46,5 +46,15 @@ namespace Wysg.Musm.Radium.Services
         
         /// <summary>Comma-separated list of modalities that should not update header fields (e.g., "XR,CR,DX").</summary>
         string? ModalitiesNoHeaderUpdate { get; set; }
+        
+        // Auto toggles for report field generation
+        bool CopyStudyRemarkToChiefComplaint { get; set; }
+        bool AutoChiefComplaint { get; set; }
+        bool AutoPatientHistory { get; set; }
+        bool AutoConclusion { get; set; }
+        bool AutoChiefComplaintProofread { get; set; }
+        bool AutoPatientHistoryProofread { get; set; }
+        bool AutoFindingsProofread { get; set; }
+        bool AutoConclusionProofread { get; set; }
     }
 }

@@ -152,8 +152,11 @@
 
                     <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="4,4,0,0">
                         <TextBlock Text="Chief Complaint"/>
-                        <ToggleButton Content="auto" 
+                        <ToggleButton Content="copy" 
                                       Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
+                                      IsChecked="{Binding CopyStudyRemarkToChiefComplaint, Mode=TwoWay}"/>
+                        <ToggleButton Content="auto" 
+                                      Margin="4,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
                                       IsChecked="{Binding AutoChiefComplaint, Mode=TwoWay}"/>
                         <Button Content="generate" Margin="4,0,0,0" Width="72"
 Command="{Binding GenerateFieldCommand}"

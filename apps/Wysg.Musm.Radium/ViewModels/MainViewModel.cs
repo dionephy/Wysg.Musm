@@ -247,6 +247,9 @@ namespace Wysg.Musm.Radium.ViewModels
                 // Mark as initialized after all construction is complete
                 _isInitialized = true;
                 
+                // Load toggle settings from local settings
+                LoadToggleSettings();
+                
                 Debug.WriteLine("[MainViewModel] Constructor COMPLETE");
             }
             catch (Exception ex)

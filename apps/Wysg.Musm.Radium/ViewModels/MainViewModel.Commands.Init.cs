@@ -77,13 +77,71 @@ namespace Wysg.Musm.Radium.ViewModels
         private bool _studyOpened; 
         public bool StudyOpened { get => _studyOpened; set => SetProperty(ref _studyOpened, value); }
 
+        // NEW: Copy Study Remark to Chief Complaint toggle (mutually exclusive with AutoChiefComplaint)
+        private bool _copyStudyRemarkToChiefComplaint; 
+        public bool CopyStudyRemarkToChiefComplaint 
+        { 
+            get => _copyStudyRemarkToChiefComplaint; 
+            set 
+            { 
+                if (SetProperty(ref _copyStudyRemarkToChiefComplaint, value))
+                {
+                    // Mutual exclusion: if copy is ON, turn auto OFF
+                    if (value && _autoChiefComplaint)
+                    {
+                        AutoChiefComplaint = false;
+                    }
+                    // Save to local settings
+                    SaveToggleSettings();
+                }
+            } 
+        }
+
         // Auto toggles for generation on current report fields
         private bool _autoChiefComplaint; 
-        public bool AutoChiefComplaint { get => _autoChiefComplaint; set => SetProperty(ref _autoChiefComplaint, value); }
+        public bool AutoChiefComplaint 
+        { 
+            get => _autoChiefComplaint; 
+            set 
+            { 
+                if (SetProperty(ref _autoChiefComplaint, value))
+                {
+                    // Mutual exclusion: if auto is ON, turn copy OFF
+                    if (value && _copyStudyRemarkToChiefComplaint)
+                    {
+                        CopyStudyRemarkToChiefComplaint = false;
+                    }
+                    // Save to local settings
+                    SaveToggleSettings();
+                }
+            } 
+        }
+        
         private bool _autoPatientHistory; 
-        public bool AutoPatientHistory { get => _autoPatientHistory; set => SetProperty(ref _autoPatientHistory, value); }
+        public bool AutoPatientHistory 
+        { 
+            get => _autoPatientHistory; 
+            set 
+            { 
+                if (SetProperty(ref _autoPatientHistory, value))
+                {
+                    SaveToggleSettings();
+                }
+            } 
+        }
+        
         private bool _autoConclusion; 
-        public bool AutoConclusion { get => _autoConclusion; set => SetProperty(ref _autoConclusion, value); }
+        public bool AutoConclusion 
+        { 
+            get => _autoConclusion; 
+            set 
+            { 
+                if (SetProperty(ref _autoConclusion, value))
+                {
+                    SaveToggleSettings();
+                }
+            } 
+        }
 
         // Auto toggles for previous/bottom extra fields
         private bool _autoStudyTechniques; 
@@ -93,17 +151,61 @@ namespace Wysg.Musm.Radium.ViewModels
 
         // Auto toggles for proofread fields
         private bool _autoChiefComplaintProofread; 
-        public bool AutoChiefComplaintProofread { get => _autoChiefComplaintProofread; set => SetProperty(ref _autoChiefComplaintProofread, value); }
+        public bool AutoChiefComplaintProofread 
+        { 
+            get => _autoChiefComplaintProofread; 
+            set 
+            { 
+                if (SetProperty(ref _autoChiefComplaintProofread, value))
+                {
+                    SaveToggleSettings();
+                }
+            } 
+        }
+        
         private bool _autoPatientHistoryProofread; 
-        public bool AutoPatientHistoryProofread { get => _autoPatientHistoryProofread; set => SetProperty(ref _autoPatientHistoryProofread, value); }
+        public bool AutoPatientHistoryProofread 
+        { 
+            get => _autoPatientHistoryProofread; 
+            set 
+            { 
+                if (SetProperty(ref _autoPatientHistoryProofread, value))
+                {
+                    SaveToggleSettings();
+                }
+            } 
+        }
+        
         private bool _autoStudyTechniquesProofread; 
         public bool AutoStudyTechniquesProofread { get => _autoStudyTechniquesProofread; set => SetProperty(ref _autoStudyTechniquesProofread, value); }
         private bool _autoComparisonProofread; 
         public bool AutoComparisonProofread { get => _autoComparisonProofread; set => SetProperty(ref _autoComparisonProofread, value); }
+        
         private bool _autoFindingsProofread; 
-        public bool AutoFindingsProofread { get => _autoFindingsProofread; set => SetProperty(ref _autoFindingsProofread, value); }
+        public bool AutoFindingsProofread 
+        { 
+            get => _autoFindingsProofread; 
+            set 
+            { 
+                if (SetProperty(ref _autoFindingsProofread, value))
+                {
+                    SaveToggleSettings();
+                }
+            } 
+        }
+        
         private bool _autoConclusionProofread; 
-        public bool AutoConclusionProofread { get => _autoConclusionProofread; set => SetProperty(ref _autoConclusionProofread, value); }
+        public bool AutoConclusionProofread 
+        { 
+            get => _autoConclusionProofread; 
+            set 
+            { 
+                if (SetProperty(ref _autoConclusionProofread, value))
+                {
+                    SaveToggleSettings();
+                }
+            } 
+        }
 
         // Patient locked state influences several command CanExecute states
         private bool _patientLocked; 
@@ -137,6 +239,68 @@ namespace Wysg.Musm.Radium.ViewModels
             EditComparisonCommand = new DelegateCommand(_ => OnEditComparison(), _ => PatientLocked);
             SavePreorderCommand = new DelegateCommand(_ => OnSavePreorder());
             SavePreviousStudyToDBCommand = new DelegateCommand(_ => OnSavePreviousStudyToDB(), _ => PatientLocked && SelectedPreviousStudy != null);
+        }
+        
+        /// <summary>
+        /// Saves all auto toggle states to local settings.
+        /// </summary>
+        private void SaveToggleSettings()
+        {
+            if (_localSettings == null) return;
+            
+            try
+            {
+                _localSettings.CopyStudyRemarkToChiefComplaint = _copyStudyRemarkToChiefComplaint;
+                _localSettings.AutoChiefComplaint = _autoChiefComplaint;
+                _localSettings.AutoPatientHistory = _autoPatientHistory;
+                _localSettings.AutoConclusion = _autoConclusion;
+                _localSettings.AutoChiefComplaintProofread = _autoChiefComplaintProofread;
+                _localSettings.AutoPatientHistoryProofread = _autoPatientHistoryProofread;
+                _localSettings.AutoFindingsProofread = _autoFindingsProofread;
+                _localSettings.AutoConclusionProofread = _autoConclusionProofread;
+                
+                Debug.WriteLine("[MainViewModel] Toggle settings saved to local settings");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainViewModel] Error saving toggle settings: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Loads all auto toggle states from local settings.
+        /// </summary>
+        private void LoadToggleSettings()
+        {
+            if (_localSettings == null) return;
+            
+            try
+            {
+                _copyStudyRemarkToChiefComplaint = _localSettings.CopyStudyRemarkToChiefComplaint;
+                _autoChiefComplaint = _localSettings.AutoChiefComplaint;
+                _autoPatientHistory = _localSettings.AutoPatientHistory;
+                _autoConclusion = _localSettings.AutoConclusion;
+                _autoChiefComplaintProofread = _localSettings.AutoChiefComplaintProofread;
+                _autoPatientHistoryProofread = _localSettings.AutoPatientHistoryProofread;
+                _autoFindingsProofread = _localSettings.AutoFindingsProofread;
+                _autoConclusionProofread = _localSettings.AutoConclusionProofread;
+                
+                // Notify properties to update UI
+                OnPropertyChanged(nameof(CopyStudyRemarkToChiefComplaint));
+                OnPropertyChanged(nameof(AutoChiefComplaint));
+                OnPropertyChanged(nameof(AutoPatientHistory));
+                OnPropertyChanged(nameof(AutoConclusion));
+                OnPropertyChanged(nameof(AutoChiefComplaintProofread));
+                OnPropertyChanged(nameof(AutoPatientHistoryProofread));
+                OnPropertyChanged(nameof(AutoFindingsProofread));
+                OnPropertyChanged(nameof(AutoConclusionProofread));
+                
+                Debug.WriteLine("[MainViewModel] Toggle settings loaded from local settings");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainViewModel] Error loading toggle settings: {ex.Message}");
+            }
         }
     }
 }

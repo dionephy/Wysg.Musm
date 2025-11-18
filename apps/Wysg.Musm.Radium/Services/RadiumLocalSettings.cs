@@ -65,6 +65,16 @@ namespace Wysg.Musm.Radium.Services
         // Comma-separated list of modalities that should not update header fields (e.g., "XR,CR,DX")
         public string? ModalitiesNoHeaderUpdate { get => ReadSecret("modalities_no_header_update"); set => WriteSecret("modalities_no_header_update", value ?? string.Empty); }
 
+        // Auto toggles for report field generation
+        public bool CopyStudyRemarkToChiefComplaint { get => ReadBool("copy_study_remark_to_chief_complaint"); set => WriteBool("copy_study_remark_to_chief_complaint", value); }
+        public bool AutoChiefComplaint { get => ReadBool("auto_chief_complaint"); set => WriteBool("auto_chief_complaint", value); }
+        public bool AutoPatientHistory { get => ReadBool("auto_patient_history"); set => WriteBool("auto_patient_history", value); }
+        public bool AutoConclusion { get => ReadBool("auto_conclusion"); set => WriteBool("auto_conclusion", value); }
+        public bool AutoChiefComplaintProofread { get => ReadBool("auto_chief_complaint_proofread"); set => WriteBool("auto_chief_complaint_proofread", value); }
+        public bool AutoPatientHistoryProofread { get => ReadBool("auto_patient_history_proofread"); set => WriteBool("auto_patient_history_proofread", value); }
+        public bool AutoFindingsProofread { get => ReadBool("auto_findings_proofread"); set => WriteBool("auto_findings_proofread", value); }
+        public bool AutoConclusionProofread { get => ReadBool("auto_conclusion_proofread"); set => WriteBool("auto_conclusion_proofread", value); }
+
         /// <summary>
         /// Decrypts settings file (if present) and returns the value for a key. Failures are swallowed to avoid
         /// disruptive UX (caller sees null and can prompt for settings).
@@ -88,6 +98,15 @@ namespace Wysg.Musm.Radium.Services
                 return null;
             }
             catch { return null; }
+        }
+
+        /// <summary>
+        /// Reads a boolean value from settings file. Returns false if key not found.
+        /// </summary>
+        private static bool ReadBool(string key)
+        {
+            var value = ReadSecret(key);
+            return !string.IsNullOrWhiteSpace(value) && (value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
@@ -123,6 +142,14 @@ namespace Wysg.Musm.Radium.Services
                 File.WriteAllBytes(MainPath, encOut);
             }
             catch { /* Swallow write errors to avoid crashing settings UI */ }
+        }
+
+        /// <summary>
+        /// Writes a boolean value to settings file.
+        /// </summary>
+        private static void WriteBool(string key, bool value)
+        {
+            WriteSecret(key, value ? "1" : "0");
         }
     }
 }
