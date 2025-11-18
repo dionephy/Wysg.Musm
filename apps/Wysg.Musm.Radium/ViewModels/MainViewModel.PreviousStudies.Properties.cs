@@ -20,10 +20,8 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _prevHeaderTempCache = string.Empty;
         private string _prevFindingsOutCache = string.Empty;
         private string _prevConclusionOutCache = string.Empty;
-        private string _prevChiefComplaintProofreadCache = string.Empty;
-        private string _prevPatientHistoryProofreadCache = string.Empty;
-        private string _prevStudyTechniquesProofreadCache = string.Empty;
-        private string _prevComparisonProofreadCache = string.Empty;
+        // NOTE: All header component proofread cache fields removed as per user request
+        // Only Findings and Conclusion have proofread versions
         private string _prevFindingsProofreadCache = string.Empty;
         private string _prevConclusionProofreadCache = string.Empty;
         
@@ -225,58 +223,6 @@ namespace Wysg.Musm.Radium.ViewModels
         
         // NEW: Computed properties for previous report that switch between raw and proofread versions based on PreviousProofreadMode
         // These properties will be bound to the previous report editor DocumentText
-        public string PreviousChiefComplaintDisplay 
-        {
-            get
-            {
-                var tab = SelectedPreviousStudy;
-                if (tab == null) return string.Empty;
-                var text = PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.ChiefComplaintProofread) 
-                    ? tab.ChiefComplaintProofread 
-                    : tab.ChiefComplaint;
-                return PreviousProofreadMode ? ApplyProofreadPlaceholders(text) : text;
-            }
-        }
-
-        public string PreviousPatientHistoryDisplay 
-        {
-            get
-            {
-                var tab = SelectedPreviousStudy;
-                if (tab == null) return string.Empty;
-                var text = PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.PatientHistoryProofread) 
-                    ? tab.PatientHistoryProofread 
-                    : tab.PatientHistory;
-                return PreviousProofreadMode ? ApplyProofreadPlaceholders(text) : text;
-            }
-        }
-
-        public string PreviousStudyTechniquesDisplay 
-        {
-            get
-            {
-                var tab = SelectedPreviousStudy;
-                if (tab == null) return string.Empty;
-                var text = PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.StudyTechniquesProofread) 
-                    ? tab.StudyTechniquesProofread 
-                    : tab.StudyTechniques;
-                return PreviousProofreadMode ? ApplyProofreadPlaceholders(text) : text;
-            }
-        }
-
-        public string PreviousComparisonDisplay 
-        {
-            get
-            {
-                var tab = SelectedPreviousStudy;
-                if (tab == null) return string.Empty;
-                var text = PreviousProofreadMode && !string.IsNullOrWhiteSpace(tab.ComparisonProofread) 
-                    ? tab.ComparisonProofread 
-                    : tab.Comparison;
-                return PreviousProofreadMode ? ApplyProofreadPlaceholders(text) : text;
-            }
-        }
-
         public string PreviousFindingsDisplay 
         {
             get

@@ -246,39 +246,25 @@ self.ApplyReverse((bool)e.NewValue);
 
  // Existing navigation pairs
             SetupAltArrowPair(studyRemark, txtChiefComplaint, Key.Down, Key.Up);
-            SetupAltArrowPair(txtChiefComplaint, txtChiefComplaintProofread, Key.Right, Key.Left);
 
         // NEW: Additional vertical navigation through the form
        // Study Remark -> Chief Complaint (already exists above)
-            // Chief Complaint Proofread -> Study Remark
-         SetupOneWayAltArrow(txtChiefComplaintProofread, studyRemark, Key.Up);
+            // Chief Complaint -> Patient Remark
+         SetupOneWayAltArrow(txtChiefComplaint, patientRemark, Key.Down);
         
-   // Chief Complaint -> Patient Remark
-          SetupOneWayAltArrow(txtChiefComplaint, patientRemark, Key.Down);
-       
-    // Chief Complaint Proofread -> Patient Remark
-          SetupOneWayAltArrow(txtChiefComplaintProofread, patientRemark, Key.Down);
-  
    // Patient Remark -> Chief Complaint
-            SetupOneWayAltArrow(patientRemark, txtChiefComplaint, Key.Up);
-            
-  // Patient Remark -> Patient History
-            SetupOneWayAltArrow(patientRemark, txtPatientHistory, Key.Down);
-            
+          SetupOneWayAltArrow(patientRemark, txtChiefComplaint, Key.Up);
+          
+   // Patient Remark -> Patient History
+     SetupOneWayAltArrow(patientRemark, txtPatientHistory, Key.Down);
+     
    // Patient History -> Patient Remark
      SetupOneWayAltArrow(txtPatientHistory, patientRemark, Key.Up);
  
-   // Patient History Proofread -> Patient Remark
-        SetupOneWayAltArrow(txtPatientHistoryProofread, patientRemark, Key.Up);
- 
-     // Patient History <-> Patient History Proofread (horizontal)
-  SetupAltArrowPair(txtPatientHistory, txtPatientHistoryProofread, Key.Right, Key.Left);
-      
-  // NEW: Navigation from Patient History to EditorFindings (if TargetEditor is set)
+     // NEW: Navigation from Patient History to EditorFindings (if TargetEditor is set)
        if (TargetEditor != null)
             {
          SetupTextBoxToEditorNavigation(txtPatientHistory, TargetEditor, Key.Down);
-    SetupTextBoxToEditorNavigation(txtPatientHistoryProofread, TargetEditor, Key.Down);
                 SetupEditorToTextBoxNavigation(TargetEditor, txtPatientHistory, Key.Up);
 }
   }

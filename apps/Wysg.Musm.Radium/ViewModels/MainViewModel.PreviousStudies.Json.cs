@@ -51,10 +51,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         patient_history = _prevPatientHistoryCache,
                         study_techniques = _prevStudyTechniquesCache,
                         comparison = _prevComparisonCache,
-                        chief_complaint_proofread = _prevChiefComplaintProofreadCache,
-                        patient_history_proofread = _prevPatientHistoryProofreadCache,
-                        study_techniques_proofread = _prevStudyTechniquesProofreadCache,
-                        comparison_proofread = _prevComparisonProofreadCache,
+                        // NOTE: All header component proofread fields removed as per user request
                         findings_proofread = _prevFindingsProofreadCache,
                         conclusion_proofread = _prevConclusionProofreadCache
                     };
@@ -94,10 +91,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         "findings",       // Will rewrite with computed split value
                         "conclusion",     // Will rewrite with computed split value
                         // CRITICAL FIX: Exclude proofread fields so they're written from tab properties, not stale RawJson
-                        "chief_complaint_proofread",
-                        "patient_history_proofread",
-                        "study_techniques_proofread",
-                        "comparison_proofread",
+                        // NOTE: All header component proofread fields removed as per user request
                         "findings_proofread",
                         "conclusion_proofread"
                     };
@@ -139,10 +133,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     writer.WriteString("conclusion", tab.ConclusionOut ?? string.Empty);
                     
                     // CRITICAL FIX: Write proofread fields from tab properties (current values), not from stale RawJson
-                    writer.WriteString("chief_complaint_proofread", tab.ChiefComplaintProofread ?? string.Empty);
-                    writer.WriteString("patient_history_proofread", tab.PatientHistoryProofread ?? string.Empty);
-                    writer.WriteString("study_techniques_proofread", tab.StudyTechniquesProofread ?? string.Empty);
-                    writer.WriteString("comparison_proofread", tab.ComparisonProofread ?? string.Empty);
+                    // NOTE: All header component proofread fields removed as per user request
                     writer.WriteString("findings_proofread", tab.FindingsProofread ?? string.Empty);
                     writer.WriteString("conclusion_proofread", tab.ConclusionProofread ?? string.Empty);
             
@@ -229,10 +220,7 @@ namespace Wysg.Musm.Radium.ViewModels
             string newPatientHistory = root.TryGetProperty("patient_history", out var phEl) ? (phEl.GetString() ?? string.Empty) : string.Empty;
             string newStudyTechniques = root.TryGetProperty("study_techniques", out var stEl) ? (stEl.GetString() ?? string.Empty) : string.Empty;
             string newComparison = root.TryGetProperty("comparison", out var compEl) ? (compEl.GetString() ?? string.Empty) : string.Empty;
-            string newChiefComplaintPf = root.TryGetProperty("chief_complaint_proofread", out var ccpEl) ? (ccpEl.GetString() ?? string.Empty) : string.Empty;
-            string newPatientHistoryPf = root.TryGetProperty("patient_history_proofread", out var phpEl) ? (phpEl.GetString() ?? string.Empty) : string.Empty;
-            string newStudyTechniquesPf = root.TryGetProperty("study_techniques_proofread", out var stpEl) ? (stpEl.GetString() ?? string.Empty) : string.Empty;
-            string newComparisonPf = root.TryGetProperty("comparison_proofread", out var cpEl) ? (cpEl.GetString() ?? string.Empty) : string.Empty;
+            // NOTE: All header component proofread fields removed as per user request
             string newFindingsPf = root.TryGetProperty("findings_proofread", out var fpEl) ? (fpEl.GetString() ?? string.Empty) : string.Empty;
             string newConclusionPf = root.TryGetProperty("conclusion_proofread", out var clpEl) ? (clpEl.GetString() ?? string.Empty) : string.Empty;
             
@@ -249,13 +237,10 @@ namespace Wysg.Musm.Radium.ViewModels
             _prevPatientHistoryCache = newPatientHistory;
             _prevStudyTechniquesCache = newStudyTechniques;
             _prevComparisonCache = newComparison;
-            _prevChiefComplaintProofreadCache = newChiefComplaintPf;
-            _prevPatientHistoryProofreadCache = newPatientHistoryPf;
-            _prevStudyTechniquesProofreadCache = newStudyTechniquesPf;
-            _prevComparisonProofreadCache = newComparisonPf;
+            // NOTE: All header component proofread cache fields removed as per user request
             _prevFindingsProofreadCache = newFindingsPf;
             _prevConclusionProofreadCache = newConclusionPf;
-            
+
             if (changed) UpdatePreviousReportJson();
             else OnPropertyChanged(nameof(PreviousReportJson));
         }
@@ -336,30 +321,7 @@ namespace Wysg.Musm.Radium.ViewModels
             }
             
             // Update proofread fields - CRITICAL: Track changes for real-time editor updates
-            if (root.TryGetProperty("chief_complaint_proofread", out var ccpEl) && ccpEl.ValueKind == JsonValueKind.String)
-            {
-                string value = ccpEl.GetString() ?? string.Empty;
-                if (tab.ChiefComplaintProofread != value) { tab.ChiefComplaintProofread = value; changed = true; }
-            }
-            
-            if (root.TryGetProperty("patient_history_proofread", out var phpEl) && phpEl.ValueKind == JsonValueKind.String)
-            {
-                string value = phpEl.GetString() ?? string.Empty;
-                if (tab.PatientHistoryProofread != value) { tab.PatientHistoryProofread = value; changed = true; }
-            }
-            
-            if (root.TryGetProperty("study_techniques_proofread", out var stpEl) && stpEl.ValueKind == JsonValueKind.String)
-            {
-                string value = stpEl.GetString() ?? string.Empty;
-                if (tab.StudyTechniquesProofread != value) { tab.StudyTechniquesProofread = value; changed = true; }
-            }
-            
-            if (root.TryGetProperty("comparison_proofread", out var cpEl) && cpEl.ValueKind == JsonValueKind.String)
-            {
-                string value = cpEl.GetString() ?? string.Empty;
-                if (tab.ComparisonProofread != value) { tab.ComparisonProofread = value; changed = true; }
-            }
-            
+            // NOTE: All header component proofread fields removed as per user request
             // CRITICAL: Findings proofread - notify editor property for real-time updates
             if (root.TryGetProperty("findings_proofread", out var fpEl) && fpEl.ValueKind == JsonValueKind.String)
             {
@@ -484,10 +446,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 || e.PropertyName == nameof(PreviousStudyTab.HeaderTemp)
                 || e.PropertyName == nameof(PreviousStudyTab.FindingsOut)
                 || e.PropertyName == nameof(PreviousStudyTab.ConclusionOut)
-                || e.PropertyName == nameof(PreviousStudyTab.ChiefComplaintProofread)
-                || e.PropertyName == nameof(PreviousStudyTab.PatientHistoryProofread)
-                || e.PropertyName == nameof(PreviousStudyTab.StudyTechniquesProofread)
-                || e.PropertyName == nameof(PreviousStudyTab.ComparisonProofread)
+                // NOTE: All header component proofread property names removed as per user request
                 || e.PropertyName == nameof(PreviousStudyTab.FindingsProofread)
                 || e.PropertyName == nameof(PreviousStudyTab.ConclusionProofread))
             {

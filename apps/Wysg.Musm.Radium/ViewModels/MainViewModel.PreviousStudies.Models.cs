@@ -97,10 +97,8 @@ namespace Wysg.Musm.Radium.ViewModels
                         OnPropertyChanged(nameof(OriginalConclusion));
                         
                         // CRITICAL FIX: Also notify proofread field changes so UI updates
-                        OnPropertyChanged(nameof(ChiefComplaintProofread));
-                        OnPropertyChanged(nameof(PatientHistoryProofread));
-                        OnPropertyChanged(nameof(StudyTechniquesProofread));
-                        OnPropertyChanged(nameof(ComparisonProofread));
+                        // NOTE: All header component proofread fields removed as per user request
+                        // Only Findings and Conclusion have proofread versions
                         OnPropertyChanged(nameof(FindingsProofread));
                         OnPropertyChanged(nameof(ConclusionProofread));
                         
@@ -164,11 +162,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     Debug.WriteLine("[PrevTab] LoadProofreadFieldsFromRawJson: No RawJson available - clearing proofread fields");
                     
-                    // Clear all proofread fields
-                    ChiefComplaintProofread = string.Empty;
-                    PatientHistoryProofread = string.Empty;
-                    StudyTechniquesProofread = string.Empty;
-                    ComparisonProofread = string.Empty;
+                    // Clear all proofread fields (all header component proofread fields removed)
                     FindingsProofread = string.Empty;
                     ConclusionProofread = string.Empty;
                     
@@ -192,27 +186,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     
                     Debug.WriteLine("[PrevTab] LoadProofreadFieldsFromRawJson: Parsing RawJson");
                     
-                    // Load proofread fields
-                    if (root.TryGetProperty("chief_complaint_proofread", out var ccpr))
-                        ChiefComplaintProofread = ccpr.GetString() ?? string.Empty;
-                    else
-                        ChiefComplaintProofread = string.Empty;
-                        
-                    if (root.TryGetProperty("patient_history_proofread", out var phpr))
-                        PatientHistoryProofread = phpr.GetString() ?? string.Empty;
-                    else
-                        PatientHistoryProofread = string.Empty;
-                        
-                    if (root.TryGetProperty("study_techniques_proofread", out var stpr))
-                        StudyTechniquesProofread = stpr.GetString() ?? string.Empty;
-                    else
-                        StudyTechniquesProofread = string.Empty;
-                        
-                    if (root.TryGetProperty("comparison_proofread", out var cppr))
-                        ComparisonProofread = cppr.GetString() ?? string.Empty;
-                    else
-                        ComparisonProofread = string.Empty;
-                        
+                    // Load proofread fields (all header component proofread fields removed)
                     if (root.TryGetProperty("findings_proofread", out var fpr))
                         FindingsProofread = fpr.GetString() ?? string.Empty;
                     else
@@ -265,11 +239,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     Debug.WriteLine($"[PrevTab] LoadProofreadFieldsFromRawJson: Error parsing JSON - {ex.Message}");
                     
-                    // Clear all fields on error
-                    ChiefComplaintProofread = string.Empty;
-                    PatientHistoryProofread = string.Empty;
-                    StudyTechniquesProofread = string.Empty;
-                    ComparisonProofread = string.Empty;
+                    // Clear all fields on error (all header component proofread fields removed)
                     FindingsProofread = string.Empty;
                     ConclusionProofread = string.Empty;
                     
@@ -329,17 +299,8 @@ namespace Wysg.Musm.Radium.ViewModels
             public string PatientRemark { get => _patientRemark; set => SetProperty(ref _patientRemark, value ?? string.Empty); }
             
             // Proofread fields (root JSON)
-            private string _chiefComplaintProofread = string.Empty;
-            public string ChiefComplaintProofread { get => _chiefComplaintProofread; set => SetProperty(ref _chiefComplaintProofread, value ?? string.Empty); }
-            
-            private string _patientHistoryProofread = string.Empty;
-            public string PatientHistoryProofread { get => _patientHistoryProofread; set => SetProperty(ref _patientHistoryProofread, value ?? string.Empty); }
-            
-            private string _studyTechniquesProofread = string.Empty;
-            public string StudyTechniquesProofread { get => _studyTechniquesProofread; set => SetProperty(ref _studyTechniquesProofread, value ?? string.Empty); }
-            
-            private string _comparisonProofread = string.Empty;
-            public string ComparisonProofread { get => _comparisonProofread; set => SetProperty(ref _comparisonProofread, value ?? string.Empty); }
+            // NOTE: All header component proofread fields removed as per user request
+            // Only Findings and Conclusion have proofread versions
             
             private string _findingsProofread = string.Empty;
             public string FindingsProofread { get => _findingsProofread; set => SetProperty(ref _findingsProofread, value ?? string.Empty); }

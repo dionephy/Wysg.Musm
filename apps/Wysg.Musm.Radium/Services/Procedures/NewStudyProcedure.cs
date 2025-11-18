@@ -34,10 +34,7 @@ namespace Wysg.Musm.Radium.Services.Procedures
             // ChiefComplaint, PatientHistory, StudyTechniques, Comparison
             
             // Current report proofread fields
-            vm.ChiefComplaintProofread = string.Empty;
-            vm.PatientHistoryProofread = string.Empty;
-            vm.StudyTechniquesProofread = string.Empty;
-            vm.ComparisonProofread = string.Empty;
+            // NOTE: All header component proofread fields removed as per user request
             vm.FindingsProofread = string.Empty;
             vm.ConclusionProofread = string.Empty;
             
@@ -66,10 +63,7 @@ namespace Wysg.Musm.Radium.Services.Procedures
                 prevTab.PatientRemark = string.Empty;
                 
                 // Proofread fields
-                prevTab.ChiefComplaintProofread = string.Empty;
-                prevTab.PatientHistoryProofread = string.Empty;
-                prevTab.StudyTechniquesProofread = string.Empty;
-                prevTab.ComparisonProofread = string.Empty;
+                // NOTE: All header component proofread fields removed as per user request
                 prevTab.FindingsProofread = string.Empty;
                 prevTab.ConclusionProofread = string.Empty;
                 

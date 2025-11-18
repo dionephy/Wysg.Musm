@@ -52,8 +52,6 @@ namespace Wysg.Musm.Radium.Services
         bool AutoChiefComplaint { get; set; }
         bool AutoPatientHistory { get; set; }
         bool AutoConclusion { get; set; }
-        bool AutoChiefComplaintProofread { get; set; }
-        bool AutoPatientHistoryProofread { get; set; }
         bool AutoFindingsProofread { get; set; }
         bool AutoConclusionProofread { get; set; }
     }

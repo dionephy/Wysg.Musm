@@ -1,6 +1,6 @@
 ﻿# Radium Documentation
 
-**Last Updated**: 2025-02-09
+**Last Updated**: 2025-02-10
 
 ---
 
@@ -10,6 +10,14 @@
 - **[Spec-active.md](Spec-active.md)** - Active feature specifications
 - **[Plan-active.md](Plan-active.md)** - Recent implementation plans  
 - **[Tasks.md](Tasks.md)** - Active and pending tasks
+
+### Recent Major Features (2025-02-10)
+
+- [NEW] **[REMOVAL_2025-02-10_ChiefComplaintPatientHistoryProofread.md](REMOVAL_2025-02-10_ChiefComplaintPatientHistoryProofread.md)** - ✅ **UI CLEANUP** - Removed Chief Complaint (PR) and Patient History (PR) textboxes, related toggle buttons, and JSON components; simplified UI by removing 2 rows from ReportInputsAndJsonPanel (from 13 to 11 rows); removed auto toggle properties (AutoChiefComplaintProofread, AutoPatientHistoryProofread) from settings; cleaned up navigation setup and ViewModel properties; only Findings (PR) and Conclusion (PR) remain as proofread fields; reduces UI clutter and improves workflow efficiency
+
+- [NEW] **[BUGFIX_2025-02-10_ComparisonFieldFirstLoad.md](BUGFIX_2025-02-10_ComparisonFieldFirstLoad.md)** - ✅ **BUG FIX** - Fixed comparison field not loading on first tab navigation when patient loaded; root cause was comparison being loaded AFTER tab selection event fired, causing tab to see empty comparison string; solution moves comparison load to run BEFORE tab population so comparison is available for comparison string computation when EditComparisonViewModel initializes; now switching to previous study tabs immediately shows correct comparison field with proper study selection state; completes previous study comparison field feature chain
+
+- [NEW] **[ENHANCEMENT_2025-02-10_CopyStudyRemarkToggle.md](ENHANCEMENT_2025-02-10_CopyStudyRemarkToggle.md)** - ✅ **UI ENHANCEMENT** - Added "copy" toggle button to Chief Complaint field that copies Study Remark text to Chief Complaint; mutually exclusive with "auto" toggle (turning one ON turns the other OFF); provides quick way to use Study Remark as Chief Complaint without manual copy-paste; toggle state persists in local settings; implements efficient one-way copy operation that preserves user edits
 
 ### Recent Major Features (2025-02-09)
 

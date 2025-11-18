@@ -112,27 +112,23 @@
                         <RowDefinition Height="Auto"/>
                         <!-- Row1: Study Remark -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Row2: Chief Complaint label -->
+                        <!-- Row2: Patient Remark -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Row3: Chief Complaint textboxes -->
+                        <!-- Row3: Patient History label -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Row4: Patient Remark -->
+                        <!-- Row4: Patient History textboxes -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Row5: Patient History label -->
+                        <!-- Row5: Findings label -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Row6: Patient History textboxes -->
+                        <!-- Row6: Findings textboxes -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Row7: Findings label -->
+                        <!-- Row7: Findings Diff Viewer (collapsible) -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Row8: Findings textboxes -->
+                        <!-- Row8: Conclusion label -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Row9: Findings Diff Viewer (collapsible) -->
+                        <!-- Row9: Conclusion textboxes -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Row10: Conclusion label -->
-                        <RowDefinition Height="Auto"/>
-                        <!-- Row11: Conclusion textboxes -->
-                        <RowDefinition Height="Auto"/>
-                        <!-- Row12: Conclusion Diff Viewer (collapsible) -->
+                        <!-- Row10: Conclusion Diff Viewer (collapsible) -->
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
@@ -142,10 +138,7 @@
                         <ColumnDefinition Width="1*" MinWidth="200"/>
                     </Grid.ColumnDefinitions>
 
-                    
-                    
-
-                    <!-- Row1: Study Remark (main column only) -->
+                    <!-- Row0: Headers - Study Remark and Chief Complaint -->
                     <StackPanel Grid.Row="0" Grid.Column="0" Margin="4,4,0,0">
                         <TextBlock Text="Study Remark" />                    
                     </StackPanel>
@@ -159,10 +152,11 @@
                                       Margin="4,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
                                       IsChecked="{Binding AutoChiefComplaint, Mode=TwoWay}"/>
                         <Button Content="generate" Margin="4,0,0,0" Width="72"
-Command="{Binding GenerateFieldCommand}"
-CommandParameter="chief_complaint"/>
+                                Command="{Binding GenerateFieldCommand}"
+                                CommandParameter="chief_complaint"/>
                     </StackPanel>
 
+                    <!-- Row1: Study Remark and Chief Complaint textboxes -->
                     <StackPanel Grid.Row="1" Grid.Column="0">                        
                         <TextBox x:Name="txtStudyRemark" 
                                  Text="{Binding StudyRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -175,39 +169,15 @@ CommandParameter="chief_complaint"/>
                                TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
                     </StackPanel>
 
-
-
-                    <!-- Row2: Chief Complaint Labels -->
-                    <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
-                        <TextBlock Text="Chief Complaint" VerticalAlignment="Center"/>
-                       
-                    </StackPanel>
-                    
-                    <StackPanel Grid.Row="2" Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,4">
-                        <TextBlock Text="Chief Complaint (PR)" VerticalAlignment="Center" FontSize="11"/>
-                        <ToggleButton Content="auto" Margin="6,0,0,0" Width="42" FontSize="10" Style="{StaticResource DarkToggleButtonStyle}"
-                                      IsChecked="{Binding AutoChiefComplaintProofread, Mode=TwoWay}"/>
-                        <Button Content="gen" Margin="3,0,0,0" Width="42" FontSize="10"
-                                Command="{Binding GenerateFieldCommand}"
-                                CommandParameter="chief_complaint_proofread"/>
-                    </StackPanel>
-
-                    <!-- Row3: Chief Complaint Textboxes -->
-                  
-                    
-                    <TextBox x:Name="txtChiefComplaintProofread" Grid.Row="3" Grid.Column="2"
-                             Text="{Binding ChiefComplaintProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
-
-                    <!-- Row4: Patient Remark (main column only) -->
-                    <StackPanel Grid.Row="4" Grid.Column="0">
+                    <!-- Row2: Patient Remark (main column only) -->
+                    <StackPanel Grid.Row="2" Grid.Column="0">
                         <TextBlock Text="Patient Remark" Margin="4,0,0,4"/>
                         <TextBox x:Name="txtPatientRemark" Text="{Binding PatientRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
                     </StackPanel>
 
-                    <!-- Row5: Patient History Labels -->
-                    <StackPanel Grid.Row="5" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
+                    <!-- Row3: Patient History Labels -->
+                    <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
                         <TextBlock Text="Patient History" VerticalAlignment="Center"/>
                         <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
                                       IsChecked="{Binding AutoPatientHistory, Mode=TwoWay}"/>
@@ -215,29 +185,16 @@ CommandParameter="chief_complaint"/>
                                 Command="{Binding GenerateFieldCommand}"
                                 CommandParameter="patient_history"/>
                     </StackPanel>
-                    
-                    <StackPanel Grid.Row="5" Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,4">
-                        <TextBlock Text="Patient History (PR)" VerticalAlignment="Center" FontSize="11"/>
-                        <ToggleButton Content="auto" Margin="6,0,0,0" Width="42" FontSize="10" Style="{StaticResource DarkToggleButtonStyle}"
-                                      IsChecked="{Binding AutoPatientHistoryProofread, Mode=TwoWay}"/>
-                        <Button Content="gen" Margin="3,0,0,0" Width="42" FontSize="10"
-                                Command="{Binding GenerateFieldCommand}"
-                                CommandParameter="patient_history_proofread"/>
-                    </StackPanel>
 
-                    <!-- Row6: Patient History Textboxes -->
-                    <TextBox x:Name="txtPatientHistory" Grid.Row="6" Grid.Column="0"
+                    <!-- Row4: Patient History textbox (left column only) -->
+                    <TextBox x:Name="txtPatientHistory" Grid.Row="4" Grid.Column="0"
                              Text="{Binding PatientHistory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
-                    
-                    <TextBox x:Name="txtPatientHistoryProofread" Grid.Row="6" Grid.Column="2"
-                             Text="{Binding PatientHistoryProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
-                    <!-- Row7: Findings Labels -->
-                    <TextBlock Grid.Row="7" Grid.Column="0" Text="Findings" Margin="4,0,0,4"/>
+                    <!-- Row5: Findings Labels -->
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Findings" Margin="4,0,0,4"/>
                     
-                    <StackPanel Grid.Row="7" Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,4">
+                    <StackPanel Grid.Row="5" Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,4">
                         <TextBlock Text="Findings (PR)" VerticalAlignment="Center" FontSize="11"/>
                         <ToggleButton Content="auto" Margin="6,0,0,0" Width="42" FontSize="10" Style="{StaticResource DarkToggleButtonStyle}"
                                       IsChecked="{Binding AutoFindingsProofread, Mode=TwoWay}"/>
@@ -246,17 +203,17 @@ CommandParameter="chief_complaint"/>
                                 CommandParameter="findings_proofread"/>
                     </StackPanel>
 
-                    <!-- Row8: Findings Textboxes -->
-                    <TextBox x:Name="txtFindings" Grid.Row="8" Grid.Column="0"
+                    <!-- Row6: Findings Textboxes -->
+                    <TextBox x:Name="txtFindings" Grid.Row="6" Grid.Column="0"
                              Text="{Binding RawFindingsTextEditable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
                     
-                    <TextBox x:Name="txtFindingsProofread" Grid.Row="8" Grid.Column="2"
+                    <TextBox x:Name="txtFindingsProofread" Grid.Row="6" Grid.Column="2"
                              Text="{Binding FindingsProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
-                    <!-- Row9: Findings Diff Viewer (collapsible, spans all 3 columns) -->
-                    <StackPanel Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,8">
+                    <!-- Row7: Findings Diff Viewer (collapsible, spans all 3 columns) -->
+                    <StackPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal" Margin="4,0,0,4" VerticalAlignment="Center">
                             <ToggleButton x:Name="btnToggleFindingsDiff" 
                                           Content="&#9660;" 
@@ -288,8 +245,8 @@ CommandParameter="chief_complaint"/>
                                                      Visibility="{Binding IsChecked, ElementName=btnToggleFindingsDiff, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     </StackPanel>
 
-                    <!-- Row10: Conclusion Labels -->
-                    <StackPanel Grid.Row="10" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
+                    <!-- Row8: Conclusion Labels -->
+                    <StackPanel Grid.Row="8" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
                         <TextBlock Text="Conclusion" VerticalAlignment="Center"/>
                         <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
                                       IsChecked="{Binding AutoConclusion, Mode=TwoWay}"/>
@@ -298,7 +255,7 @@ CommandParameter="chief_complaint"/>
                                 CommandParameter="conclusion"/>
                     </StackPanel>
                     
-                    <StackPanel Grid.Row="10" Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,4">
+                    <StackPanel Grid.Row="8" Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,4">
                         <TextBlock Text="Conclusion (PR)" VerticalAlignment="Center" FontSize="11"/>
                         <ToggleButton Content="auto" Margin="6,0,0,0" Width="42" FontSize="10" Style="{StaticResource DarkToggleButtonStyle}"
                                       IsChecked="{Binding AutoConclusionProofread, Mode=TwoWay}"/>
@@ -307,17 +264,17 @@ CommandParameter="chief_complaint"/>
                                 CommandParameter="conclusion_proofread"/>
                     </StackPanel>
 
-                    <!-- Row11: Conclusion Textboxes -->
-                    <TextBox x:Name="txtConclusion" Grid.Row="11" Grid.Column="0"
+                    <!-- Row9: Conclusion Textboxes -->
+                    <TextBox x:Name="txtConclusion" Grid.Row="9" Grid.Column="0"
                              Text="{Binding RawConclusionTextEditable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
                     
-                    <TextBox x:Name="txtConclusionProofread" Grid.Row="11" Grid.Column="2"
+                    <TextBox x:Name="txtConclusionProofread" Grid.Row="9" Grid.Column="2"
                              Text="{Binding ConclusionProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
-                    <!-- Row12: Conclusion Diff Viewer (collapsible, spans all 3 columns) -->
-                    <StackPanel Grid.Row="12" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,8">
+                    <!-- Row10: Conclusion Diff Viewer (collapsible, spans all 3 columns) -->
+                    <StackPanel Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal" Margin="4,0,0,4" VerticalAlignment="Center">
                             <ToggleButton x:Name="btnToggleConclusionDiff"
                                           Content="&#9660;"
@@ -350,7 +307,7 @@ CommandParameter="chief_complaint"/>
                     </StackPanel>
 
                     <!-- Inner GridSplitter between Main and Proofread columns -->
-                    <GridSplitter Grid.Row="0" Grid.RowSpan="13" Grid.Column="1" 
+                    <GridSplitter Grid.Row="0" Grid.RowSpan="11" Grid.Column="1" 
                                   HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
                 </Grid>
             </ScrollViewer>

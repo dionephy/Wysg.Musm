@@ -49,10 +49,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         string comparison = string.Empty;
                         
                         // Proofread fields from JSON
-                        string chiefComplaintProofread = string.Empty;
-                        string patientHistoryProofread = string.Empty;
-                        string studyTechniquesProofread = string.Empty;
-                        string comparisonProofread = string.Empty;
+                        // NOTE: All header component proofread fields removed as per user request
                         string findingsProofread = string.Empty;
                         string conclusionProofread = string.Empty;
                         
@@ -104,10 +101,7 @@ namespace Wysg.Musm.Radium.ViewModels
                             if (root.TryGetProperty("comparison", out var cmp)) comparison = cmp.GetString() ?? string.Empty;
                             
                             // Read proofread fields
-                            if (root.TryGetProperty("chief_complaint_proofread", out var ccpr)) chiefComplaintProofread = ccpr.GetString() ?? string.Empty;
-                            if (root.TryGetProperty("patient_history_proofread", out var phpr)) patientHistoryProofread = phpr.GetString() ?? string.Empty;
-                            if (root.TryGetProperty("study_techniques_proofread", out var stpr)) studyTechniquesProofread = stpr.GetString() ?? string.Empty;
-                            if (root.TryGetProperty("comparison_proofread", out var cmppr)) comparisonProofread = cmppr.GetString() ?? string.Empty;
+                            // NOTE: All header component proofread fields removed as per user request
                             if (root.TryGetProperty("findings_proofread", out var fpr)) findingsProofread = fpr.GetString() ?? string.Empty;
                             if (root.TryGetProperty("conclusion_proofread", out var cnpr)) conclusionProofread = cnpr.GetString() ?? string.Empty;
                     
@@ -159,10 +153,7 @@ namespace Wysg.Musm.Radium.ViewModels
                             tab.Comparison = comparison;
                             
                             // Populate proofread fields in the tab
-                            tab.ChiefComplaintProofread = chiefComplaintProofread;
-                            tab.PatientHistoryProofread = patientHistoryProofread;
-                            tab.StudyTechniquesProofread = studyTechniquesProofread;
-                            tab.ComparisonProofread = comparisonProofread;
+                            // NOTE: All header component proofread fields removed as per user request
                             tab.FindingsProofread = findingsProofread;
                             tab.ConclusionProofread = conclusionProofread;
                             

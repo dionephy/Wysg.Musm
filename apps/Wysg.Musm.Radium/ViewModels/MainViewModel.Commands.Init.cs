@@ -32,14 +32,10 @@ namespace Wysg.Musm.Radium.ViewModels
             { 
                 if (SetProperty(ref _proofreadMode, value))
                 {
-                    // Notify computed display properties for editors (Findings, Conclusion, and Header components)
+                    // Notify computed display properties for editors (Findings and Conclusion only)
+                    // NOTE: Header components have no proofread versions
                     OnPropertyChanged(nameof(FindingsDisplay));
                     OnPropertyChanged(nameof(ConclusionDisplay));
-                    // NEW: Notify header component display properties and HeaderDisplay
-                    OnPropertyChanged(nameof(ChiefComplaintDisplay));
-                    OnPropertyChanged(nameof(PatientHistoryDisplay));
-                    OnPropertyChanged(nameof(StudyTechniquesDisplay));
-                    OnPropertyChanged(nameof(ComparisonDisplay));
                     OnPropertyChanged(nameof(HeaderDisplay));
                 }
             } 
@@ -56,10 +52,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     Debug.WriteLine($"[PreviousProofreadMode] Changed to: {value}");
                     
                     // Notify all previous report computed display properties
-                    OnPropertyChanged(nameof(PreviousChiefComplaintDisplay));
-                    OnPropertyChanged(nameof(PreviousPatientHistoryDisplay));
-                    OnPropertyChanged(nameof(PreviousStudyTechniquesDisplay));
-                    OnPropertyChanged(nameof(PreviousComparisonDisplay));
+                    // NOTE: Header component display properties removed - only Findings and Conclusion have proofread support
                     OnPropertyChanged(nameof(PreviousFindingsDisplay));
                     OnPropertyChanged(nameof(PreviousConclusionDisplay));
                     
@@ -150,32 +143,6 @@ namespace Wysg.Musm.Radium.ViewModels
         public bool AutoComparison { get => _autoComparison; set => SetProperty(ref _autoComparison, value); }
 
         // Auto toggles for proofread fields
-        private bool _autoChiefComplaintProofread; 
-        public bool AutoChiefComplaintProofread 
-        { 
-            get => _autoChiefComplaintProofread; 
-            set 
-            { 
-                if (SetProperty(ref _autoChiefComplaintProofread, value))
-                {
-                    SaveToggleSettings();
-                }
-            } 
-        }
-        
-        private bool _autoPatientHistoryProofread; 
-        public bool AutoPatientHistoryProofread 
-        { 
-            get => _autoPatientHistoryProofread; 
-            set 
-            { 
-                if (SetProperty(ref _autoPatientHistoryProofread, value))
-                {
-                    SaveToggleSettings();
-                }
-            } 
-        }
-        
         private bool _autoStudyTechniquesProofread; 
         public bool AutoStudyTechniquesProofread { get => _autoStudyTechniquesProofread; set => SetProperty(ref _autoStudyTechniquesProofread, value); }
         private bool _autoComparisonProofread; 
@@ -254,8 +221,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 _localSettings.AutoChiefComplaint = _autoChiefComplaint;
                 _localSettings.AutoPatientHistory = _autoPatientHistory;
                 _localSettings.AutoConclusion = _autoConclusion;
-                _localSettings.AutoChiefComplaintProofread = _autoChiefComplaintProofread;
-                _localSettings.AutoPatientHistoryProofread = _autoPatientHistoryProofread;
+                // NOTE: AutoChiefComplaintProofread and AutoPatientHistoryProofread removed
                 _localSettings.AutoFindingsProofread = _autoFindingsProofread;
                 _localSettings.AutoConclusionProofread = _autoConclusionProofread;
                 
@@ -280,8 +246,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 _autoChiefComplaint = _localSettings.AutoChiefComplaint;
                 _autoPatientHistory = _localSettings.AutoPatientHistory;
                 _autoConclusion = _localSettings.AutoConclusion;
-                _autoChiefComplaintProofread = _localSettings.AutoChiefComplaintProofread;
-                _autoPatientHistoryProofread = _localSettings.AutoPatientHistoryProofread;
+                // NOTE: AutoChiefComplaintProofread and AutoPatientHistoryProofread removed
                 _autoFindingsProofread = _localSettings.AutoFindingsProofread;
                 _autoConclusionProofread = _localSettings.AutoConclusionProofread;
                 
@@ -290,8 +255,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 OnPropertyChanged(nameof(AutoChiefComplaint));
                 OnPropertyChanged(nameof(AutoPatientHistory));
                 OnPropertyChanged(nameof(AutoConclusion));
-                OnPropertyChanged(nameof(AutoChiefComplaintProofread));
-                OnPropertyChanged(nameof(AutoPatientHistoryProofread));
+                // NOTE: AutoChiefComplaintProofread and AutoPatientHistoryProofread removed
                 OnPropertyChanged(nameof(AutoFindingsProofread));
                 OnPropertyChanged(nameof(AutoConclusionProofread));
                 

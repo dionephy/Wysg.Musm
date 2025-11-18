@@ -70,8 +70,6 @@ namespace Wysg.Musm.Radium.Services
         public bool AutoChiefComplaint { get => ReadBool("auto_chief_complaint"); set => WriteBool("auto_chief_complaint", value); }
         public bool AutoPatientHistory { get => ReadBool("auto_patient_history"); set => WriteBool("auto_patient_history", value); }
         public bool AutoConclusion { get => ReadBool("auto_conclusion"); set => WriteBool("auto_conclusion", value); }
-        public bool AutoChiefComplaintProofread { get => ReadBool("auto_chief_complaint_proofread"); set => WriteBool("auto_chief_complaint_proofread", value); }
-        public bool AutoPatientHistoryProofread { get => ReadBool("auto_patient_history_proofread"); set => WriteBool("auto_patient_history_proofread", value); }
         public bool AutoFindingsProofread { get => ReadBool("auto_findings_proofread"); set => WriteBool("auto_findings_proofread", value); }
         public bool AutoConclusionProofread { get => ReadBool("auto_conclusion_proofread"); set => WriteBool("auto_conclusion_proofread", value); }
 
