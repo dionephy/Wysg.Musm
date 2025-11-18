@@ -134,7 +134,7 @@
 
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1*" MinWidth="200"/>
-                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="6"/>
                         <ColumnDefinition Width="1*" MinWidth="200"/>
                     </Grid.ColumnDefinitions>
 
@@ -157,7 +157,7 @@
                     </StackPanel>
 
                     <!-- Row1: Study Remark and Chief Complaint textboxes -->
-                    <StackPanel Grid.Row="1" Grid.Column="0">                        
+                    <StackPanel Grid.Row="1" Grid.Column="0" Grid.RowSpan="4">                        
                         <TextBox x:Name="txtStudyRemark" 
                                  Text="{Binding StudyRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                   TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
@@ -170,14 +170,10 @@
                     </StackPanel>
 
                     <!-- Row2: Patient Remark (main column only) -->
-                    <StackPanel Grid.Row="2" Grid.Column="0">
-                        <TextBlock Text="Patient Remark" Margin="4,0,0,4"/>
-                        <TextBox x:Name="txtPatientRemark" Text="{Binding PatientRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
-                    </StackPanel>
+                   
 
                     <!-- Row3: Patient History Labels -->
-                    <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
+                    <StackPanel Grid.Row="2" Grid.Column="2" Orientation="Horizontal" Margin="4,4,0,0">
                         <TextBlock Text="Patient History" VerticalAlignment="Center"/>
                         <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
                                       IsChecked="{Binding AutoPatientHistory, Mode=TwoWay}"/>
@@ -187,14 +183,14 @@
                     </StackPanel>
 
                     <!-- Row4: Patient History textbox (left column only) -->
-                    <TextBox x:Name="txtPatientHistory" Grid.Row="4" Grid.Column="0"
+                    <TextBox x:Name="txtPatientHistory" Grid.Row="3" Grid.Column="2"
                              Text="{Binding PatientHistory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+                             Margin="0,0,0,0" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
                     <!-- Row5: Findings Labels -->
-                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Findings" Margin="4,0,0,4"/>
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Findings" Margin="4,4,0,0"/>
                     
-                    <StackPanel Grid.Row="5" Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,4">
+                    <StackPanel Grid.Row="5" Grid.Column="2" Orientation="Horizontal" Margin="4,4,0,0">
                         <TextBlock Text="Findings (PR)" VerticalAlignment="Center" FontSize="11"/>
                         <ToggleButton Content="auto" Margin="6,0,0,0" Width="42" FontSize="10" Style="{StaticResource DarkToggleButtonStyle}"
                                       IsChecked="{Binding AutoFindingsProofread, Mode=TwoWay}"/>
@@ -206,19 +202,19 @@
                     <!-- Row6: Findings Textboxes -->
                     <TextBox x:Name="txtFindings" Grid.Row="6" Grid.Column="0"
                              Text="{Binding RawFindingsTextEditable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+                             Margin="0,0,0,0" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
                     
                     <TextBox x:Name="txtFindingsProofread" Grid.Row="6" Grid.Column="2"
                              Text="{Binding FindingsProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+                             Margin="0,0,0,0" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
                     <!-- Row7: Findings Diff Viewer (collapsible, spans all 3 columns) -->
                     <StackPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,8">
-                        <StackPanel Orientation="Horizontal" Margin="4,0,0,4" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="4,4,0,0" VerticalAlignment="Center">
                             <ToggleButton x:Name="btnToggleFindingsDiff" 
                                           Content="&#9660;" 
-                                          Width="24" 
-                                          Height="24" 
+                                          Width="12" 
+                                          Height="12" 
                                           FontSize="10" 
                                           Padding="2"
                                           Style="{StaticResource DarkToggleButtonStyle}"
@@ -226,14 +222,10 @@
                                           ToolTip="Toggle Findings diff viewer"/>
                             <TextBlock Text="Show Changes (Side-by-Side)" 
                                        FontSize="11" 
-                                       FontWeight="Bold" 
+                                       
                                        VerticalAlignment="Center" 
-                                       Margin="8,0,0,0"/>
-                            <TextBlock Text="(character/word/line-level diff)" 
-                                       FontSize="10" 
-                                       Foreground="#808080" 
-                                       VerticalAlignment="Center" 
-                                       Margin="8,0,0,0"/>
+                                       Margin="4,0,0,0"/>
+                           
                         </StackPanel>
                         
                         <local:SideBySideDiffViewer x:Name="diffViewerFindings"
@@ -246,7 +238,7 @@
                     </StackPanel>
 
                     <!-- Row8: Conclusion Labels -->
-                    <StackPanel Grid.Row="8" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
+                    <StackPanel Grid.Row="8" Grid.Column="0" Orientation="Horizontal" Margin="4,4,0,0">
                         <TextBlock Text="Conclusion" VerticalAlignment="Center"/>
                         <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
                                       IsChecked="{Binding AutoConclusion, Mode=TwoWay}"/>
@@ -255,7 +247,7 @@
                                 CommandParameter="conclusion"/>
                     </StackPanel>
                     
-                    <StackPanel Grid.Row="8" Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,4">
+                    <StackPanel Grid.Row="8" Grid.Column="2" Orientation="Horizontal" Margin="4,4,0,0">
                         <TextBlock Text="Conclusion (PR)" VerticalAlignment="Center" FontSize="11"/>
                         <ToggleButton Content="auto" Margin="6,0,0,0" Width="42" FontSize="10" Style="{StaticResource DarkToggleButtonStyle}"
                                       IsChecked="{Binding AutoConclusionProofread, Mode=TwoWay}"/>
@@ -267,19 +259,19 @@
                     <!-- Row9: Conclusion Textboxes -->
                     <TextBox x:Name="txtConclusion" Grid.Row="9" Grid.Column="0"
                              Text="{Binding RawConclusionTextEditable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+                             Margin="0,0,0,0" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
                     
                     <TextBox x:Name="txtConclusionProofread" Grid.Row="9" Grid.Column="2"
                              Text="{Binding ConclusionProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+                             Margin="0,0,0,0" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
 
                     <!-- Row10: Conclusion Diff Viewer (collapsible, spans all 3 columns) -->
                     <StackPanel Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal" Margin="4,0,0,4" VerticalAlignment="Center">
                             <ToggleButton x:Name="btnToggleConclusionDiff"
                                           Content="&#9660;"
-                                          Width="24"
-                                          Height="24"
+                                          Width="12"
+                                          Height="12"
                                           FontSize="10"
                                           Padding="2"
                                           Style="{StaticResource DarkToggleButtonStyle}"
@@ -287,14 +279,10 @@
                                           ToolTip="Toggle Conclusion diff viewer"/>
                             <TextBlock Text="Show Changes (Side-by-Side)"
                                        FontSize="11"
-                                       FontWeight="Bold"
+                                       
                                        VerticalAlignment="Center"
-                                       Margin="8,0,0,0"/>
-                            <TextBlock Text="(character/word/line-level diff)"
-                                       FontSize="10"
-                                       Foreground="#808080"
-                                       VerticalAlignment="Center"
-                                       Margin="8,0,0,0"/>
+                                       Margin="4,0,0,0"/>
+                         
                         </StackPanel>
 
                         <local:SideBySideDiffViewer x:Name="diffViewerConclusion"
@@ -319,6 +307,14 @@
             <!-- Column 2: JSON with independent scrolling -->
             <Grid Grid.Row="0" Grid.Column="2">
                 <TabControl Style="{StaticResource DarkTabControlStyle}">
+                    <TabItem Header="Patient Remark" Style="{StaticResource DarkTabItemStyle}">
+                        <TextBox x:Name="txtPatientRemark" Text="{Binding PatientRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             Padding="6" Margin="0" TextWrapping="Wrap" AcceptsReturn="True"
+                            VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled"
+                            Background="Transparent"
+                            BorderThickness="0"/>           
+                    </TabItem>
                     <TabItem Header="Report JSON" Style="{StaticResource DarkTabItemStyle}">
                         <TextBox x:Name="txtCurrentJson"
                                  Text="{Binding CurrentReportJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -328,8 +324,7 @@
                                  Background="Transparent"
                                  BorderThickness="0"/>
                     </TabItem>
-                    <TabItem Header="Not Implemented" Style="{StaticResource DarkTabItemStyle}">
-                    </TabItem>
+                    
                 </TabControl>
             </Grid>
         </Grid>
