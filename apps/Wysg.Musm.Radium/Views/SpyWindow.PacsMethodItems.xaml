@@ -61,7 +61,7 @@
         
         <!-- Send Report Actions -->
         <ComboBoxItem Tag="InvokeSendReport">Invoke send report</ComboBoxItem>
-        <ComboBoxItem Tag="SendReportRetry">Send report retry</ComboBoxItem>
+        <ComboBoxItem Tag="SendReportWithoutHeader">Send report without header</ComboBoxItem>
         
         <!-- Report Actions -->
         <ComboBoxItem Tag="ClearReport">Clear report</ComboBoxItem>

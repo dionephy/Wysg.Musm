@@ -165,14 +165,14 @@
 - FR-660 Application registers a global hotkey from Settings (Keyboard → Open study). When pressed, it MUST invoke `MainViewModel.RunOpenStudyShortcut()`.
 - FR-661 The invoked shortcut sequence MUST honor the PACS-scoped `automation.json` panes (new/add/after open). Modules like `ShowTestMessage` must execute if present.
 
-## Update: New PACS Method Items - InvokeSendReport and SendReportRetry (2025-02-09)
+## Update: New PACS Method Items - InvokeSendReport and SendReportWithoutHeader (2025-02-09, updated 2025-02-10)
 - FR-1190 Add new PACS method "Invoke send report" (`InvokeSendReport`) to SpyWindow Custom Procedures dropdown for primary send report automation.
-- FR-1191 Add new PACS method "Send report retry" (`SendReportRetry`) to SpyWindow Custom Procedures dropdown for retry-based send report workflows.
+- FR-1191 Add new PACS method "Send report without header" (`SendReportWithoutHeader`) to SpyWindow Custom Procedures dropdown for sending reports without header information (replaced SendReportRetry on 2025-02-10).
 - FR-1192 `PacsService` MUST expose `InvokeSendReportAsync()` wrapper that executes the `InvokeSendReport` custom procedure tag.
-- FR-1193 `PacsService` MUST expose `SendReportRetryAsync()` wrapper that executes the `SendReportRetry` custom procedure tag.
+- FR-1193 `PacsService` MUST expose `SendReportWithoutHeaderAsync()` wrapper that executes the `SendReportWithoutHeader` custom procedure tag (replaced SendReportRetryAsync on 2025-02-10).
 - FR-1194 Both methods MUST return `Task<bool>` and always return `true` after procedure execution (success/failure determined by PACS state validation).
 - FR-1195 Custom procedures for both methods MUST be configured per-PACS profile in SpyWindow (no auto-seeded defaults provided).
-- FR-1196 Rationale: Separate methods allow distinct configurations for initial send vs. retry scenarios; users can configure different UI interaction sequences for each case.
+- FR-1196 Rationale: InvokeSendReport provides primary send report entry point; SendReportWithoutHeader enables sending reports without header component, which is commonly needed for certain PACS workflows.
 - FR-1197 User workflow: Configure procedures in SpyWindow using bookmark resolution, click operations, delays, and validation checks; test using Run button before deployment.
 - FR-1198 These methods complement existing `SendReport` method (which accepts findings/conclusion parameters) and provide alternative entry points for PACS-specific automation.
 

@@ -36,11 +36,14 @@
             <TextBlock Text="PACS: " Foreground="{DynamicResource BrushTextSecondary}"/>
             <TextBlock x:Name="txtCurrentPacsKey" Foreground="{DynamicResource BrushTextPrimary}"/>
             <TextBlock Text="  |  " Margin="8,0" Foreground="{DynamicResource BrushTextSecondary}"/>
-            <CheckBox Content="Do not update header in XR" 
-                      IsChecked="{Binding DataContext.DoNotUpdateHeaderInXR, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}" 
+            <TextBlock Text="Following modalities don't send header (separated by comma):" 
                       VerticalAlignment="Center" 
                       Foreground="{DynamicResource BrushTextPrimary}" 
-                      ToolTip="When checked, header fields will not be updated for studies with XR modality"/>
+                      Margin="0,0,8,0"/>
+            <TextBox Text="{Binding DataContext.ModalitiesNoHeaderUpdate, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                     VerticalAlignment="Center" 
+                     Width="150" 
+                     ToolTip="Enter comma-separated modality codes (e.g., XR,CR,DX) that should not update header fields"/>
         </StackPanel>
         
         <!-- Top grid for module lists and shortcuts -->

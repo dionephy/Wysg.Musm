@@ -215,10 +215,10 @@ namespace Wysg.Musm.Radium.Services
             return true;
         }
 
-        // NEW: Send report with retry (runs SendReportRetry custom procedure)
-        public async Task<bool> SendReportRetryAsync()
+        // NEW: Send report without header (runs SendReportWithoutHeader custom procedure)
+        public async Task<bool> SendReportWithoutHeaderAsync()
         {
-            await ExecCustom("SendReportRetry");
+            await ExecCustom("SendReportWithoutHeader");
             return true;
         }
 

@@ -62,8 +62,8 @@ namespace Wysg.Musm.Radium.Services
         // Window placement (left,top,width,height,state)
         public string? MainWindowPlacement { get => ReadSecret("main_window_placement"); set => WriteSecret("main_window_placement", value ?? string.Empty); }
 
-        // NEW: Do not update header in XR modality (global setting, not PACS-specific)
-        public string? DoNotUpdateHeaderInXR { get => ReadSecret("do_not_update_header_in_xr"); set => WriteSecret("do_not_update_header_in_xr", value ?? string.Empty); }
+        // Comma-separated list of modalities that should not update header fields (e.g., "XR,CR,DX")
+        public string? ModalitiesNoHeaderUpdate { get => ReadSecret("modalities_no_header_update"); set => WriteSecret("modalities_no_header_update", value ?? string.Empty); }
 
         /// <summary>
         /// Decrypts settings file (if present) and returns the value for a key. Failures are swallowed to avoid

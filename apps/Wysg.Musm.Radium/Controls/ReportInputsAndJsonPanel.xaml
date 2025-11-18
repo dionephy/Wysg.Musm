@@ -142,33 +142,42 @@
                         <ColumnDefinition Width="1*" MinWidth="200"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Row0: Column Headers with Edit Buttons -->
-                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,8">
-                        <TextBlock Text="Main Input" FontWeight="Bold" VerticalAlignment="Center"/>
-                        <Button Content="Edit Study Technique" Margin="12,0,8,0"
-                                Command="{Binding EditStudyTechniqueCommand}"/>
-                        <Button Content="Edit Comparison" Margin="0,0,0,0"
-                                Command="{Binding EditComparisonCommand}"/>
-                    </StackPanel>
                     
-                    <!-- Proofread column header -->
-                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Proofread" FontWeight="Bold" Margin="4,0,4,8"/>
+                    
 
                     <!-- Row1: Study Remark (main column only) -->
-                    <StackPanel Grid.Row="1" Grid.Column="0">
-                        <TextBlock Text="Study Remark" Margin="4,0,0,4"/>
-                        <TextBox x:Name="txtStudyRemark" Text="{Binding StudyRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Padding="4" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="4,4,0,0">
+                        <TextBlock Text="Study Remark" />                    
                     </StackPanel>
+
+                    <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="4,4,0,0">
+                        <TextBlock Text="Chief Complaint"/>
+                        <ToggleButton Content="auto" 
+                                      Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
+                                      IsChecked="{Binding AutoChiefComplaint, Mode=TwoWay}"/>
+                        <Button Content="generate" Margin="4,0,0,0" Width="72"
+Command="{Binding GenerateFieldCommand}"
+CommandParameter="chief_complaint"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Grid.Column="0">                        
+                        <TextBox x:Name="txtStudyRemark" 
+                                 Text="{Binding StudyRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Grid.Column="2">
+                        <TextBox x:Name="txtChiefComplaint" 
+                               Text="{Binding ChiefComplaint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                               TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+                    </StackPanel>
+
+
 
                     <!-- Row2: Chief Complaint Labels -->
                     <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,4">
                         <TextBlock Text="Chief Complaint" VerticalAlignment="Center"/>
-                        <ToggleButton Content="auto" Margin="8,0,0,0" Width="48" Style="{StaticResource DarkToggleButtonStyle}"
-                                      IsChecked="{Binding AutoChiefComplaint, Mode=TwoWay}"/>
-                        <Button Content="generate" Margin="4,0,0,0" Width="72"
-                                Command="{Binding GenerateFieldCommand}"
-                                CommandParameter="chief_complaint"/>
+                       
                     </StackPanel>
                     
                     <StackPanel Grid.Row="2" Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,4">
@@ -181,9 +190,7 @@
                     </StackPanel>
 
                     <!-- Row3: Chief Complaint Textboxes -->
-                    <TextBox x:Name="txtChiefComplaint" Grid.Row="3" Grid.Column="0"
-                             Text="{Binding ChiefComplaint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Padding="4" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12"/>
+                  
                     
                     <TextBox x:Name="txtChiefComplaintProofread" Grid.Row="3" Grid.Column="2"
                              Text="{Binding ChiefComplaintProofread, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"

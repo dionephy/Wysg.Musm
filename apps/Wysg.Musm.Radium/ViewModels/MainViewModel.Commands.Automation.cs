@@ -584,7 +584,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
         /// <summary>
         /// SendReport module with retry logic:
-        /// 1. Run SendReport custom procedure
+        /// 1. Run SendReport custom procedure (or SendReportWithoutHeader if modality is in exclusion list)
         /// 2. If result is "true", run InvokeSendReport and succeed
         /// 3. If result is "false", show "Send failed. Retry?" messagebox
         /// 4. If user clicks OK, run ClearReport custom procedure
@@ -592,24 +592,30 @@ namespace Wysg.Musm.Radium.ViewModels
         /// 6. If ClearReport returns "false", show "Clear Report failed. Retry?" messagebox
         /// 7. If user clicks OK, go back to step 4
         /// 8. If user clicks Cancel, abort procedure
+        /// 
+        /// NEW: If current study modality is in ModalitiesNoHeaderUpdate list, uses SendReportWithoutHeader instead of SendReport
         /// </summary>
         private async Task RunSendReportModuleWithRetryAsync()
         {
+            // Determine which send procedure to use based on modality
+            string sendProcedureName = await DetermineSendReportProcedureAsync();
+            Debug.WriteLine($"[SendReportModule] Using procedure: {sendProcedureName}");
+            
             while (true)  // Main retry loop for SendReport
             {
-                // Step 1: Run SendReport custom procedure
-                Debug.WriteLine("[SendReportModule] Step 1: Running SendReport custom procedure");
+                // Step 1: Run SendReport (or SendReportWithoutHeader) custom procedure
+                Debug.WriteLine($"[SendReportModule] Step 1: Running {sendProcedureName} custom procedure");
                 SetStatus("Sending report to PACS...");
                 
                 string? sendReportResult = null;
                 try
                 {
-                    sendReportResult = await Services.ProcedureExecutor.ExecuteAsync("SendReport");
-                    Debug.WriteLine($"[SendReportModule] SendReport result: '{sendReportResult}'");
+                    sendReportResult = await Services.ProcedureExecutor.ExecuteAsync(sendProcedureName);
+                    Debug.WriteLine($"[SendReportModule] {sendProcedureName} result: '{sendReportResult}'");
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[SendReportModule] SendReport EXCEPTION: {ex.Message}");
+                    Debug.WriteLine($"[SendReportModule] {sendProcedureName} EXCEPTION: {ex.Message}");
                     sendReportResult = "false";  // Treat exception as failure
                 }
 
@@ -617,7 +623,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 if (string.Equals(sendReportResult, "true", StringComparison.OrdinalIgnoreCase))
                 {
                     // Success - run InvokeSendReport and end
-                    Debug.WriteLine("[SendReportModule] Step 2: SendReport succeeded, running InvokeSendReport");
+                    Debug.WriteLine($"[SendReportModule] Step 2: {sendProcedureName} succeeded, running InvokeSendReport");
                     SetStatus("Report sent successfully, finalizing...");
                     
                     try
@@ -637,7 +643,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 else
                 {
                     // Step 3: SendReport failed - show retry dialog
-                    Debug.WriteLine("[SendReportModule] Step 3: SendReport failed, showing retry dialog");
+                    Debug.WriteLine($"[SendReportModule] Step 3: {sendProcedureName} failed, showing retry dialog");
                     SetStatus("Report send failed", true);
                     
                     bool retrySend = false;
@@ -718,6 +724,62 @@ namespace Wysg.Musm.Radium.ViewModels
                     }  // End inner ClearReport retry loop
                 }
             }  // End main SendReport retry loop
+        }
+
+        /// <summary>
+        /// Determines which send report procedure to use based on current study modality and settings.
+        /// Returns "SendReportWithoutHeader" if modality is in ModalitiesNoHeaderUpdate list, otherwise "SendReport".
+        /// </summary>
+        private async Task<string> DetermineSendReportProcedureAsync()
+        {
+            try
+            {
+                // Extract modality from current study
+                string? currentModality = null;
+                if (!string.IsNullOrWhiteSpace(StudyName))
+                {
+                    // Try to extract modality from studyname using LOINC mapping
+                    currentModality = await ExtractModalityAsync(StudyName);
+                    Debug.WriteLine($"[DetermineSendReportProcedure] Current study modality: '{currentModality}', StudyName: '{StudyName}'");
+                }
+                
+                // Check ModalitiesNoHeaderUpdate setting
+                if (_localSettings != null && !string.IsNullOrWhiteSpace(currentModality))
+                {
+                    var modalitiesNoHeaderUpdate = _localSettings.ModalitiesNoHeaderUpdate ?? string.Empty;
+                    Debug.WriteLine($"[DetermineSendReportProcedure] ModalitiesNoHeaderUpdate setting: '{modalitiesNoHeaderUpdate}'");
+                    
+                    if (!string.IsNullOrWhiteSpace(modalitiesNoHeaderUpdate))
+                    {
+                        // Parse comma-separated list and check if current modality is in the list
+                        var excludedModalities = modalitiesNoHeaderUpdate
+                            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(m => m.Trim().ToUpperInvariant())
+                            .Where(m => !string.IsNullOrEmpty(m))
+                            .ToHashSet();
+                        
+                        bool shouldSendWithoutHeader = excludedModalities.Contains(currentModality.ToUpperInvariant());
+                        Debug.WriteLine($"[DetermineSendReportProcedure] Excluded modalities: [{string.Join(", ", excludedModalities)}]");
+                        Debug.WriteLine($"[DetermineSendReportProcedure] Should send without header: {shouldSendWithoutHeader}");
+                        
+                        if (shouldSendWithoutHeader)
+                        {
+                            Debug.WriteLine($"[DetermineSendReportProcedure] Using SendReportWithoutHeader - modality '{currentModality}' is in exclusion list");
+                            SetStatus($"Using send without header (modality '{currentModality}' configured for header-less send)");
+                            return "SendReportWithoutHeader";
+                        }
+                    }
+                }
+                
+                Debug.WriteLine("[DetermineSendReportProcedure] Using standard SendReport procedure");
+                return "SendReport";
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[DetermineSendReportProcedure] ERROR: {ex.Message}");
+                Debug.WriteLine($"[DetermineSendReportProcedure] Falling back to standard SendReport procedure");
+                return "SendReport"; // Fallback to standard procedure on error
+            }
         }
 
         private async Task RunSaveCurrentStudyToDBAsync()

@@ -404,7 +404,7 @@ namespace Wysg.Musm.Radium.ViewModels
 
         /// <summary>
         /// Updates the Comparison field from a previous study.
-        /// Skips update if current study is XR and "Do not update header in XR" setting is checked.
+        /// Skips update if current study modality is in the ModalitiesNoHeaderUpdate list.
         /// </summary>
         private async Task UpdateComparisonFromPreviousStudyAsync(PreviousStudyTab? previousStudy)
         {
@@ -420,30 +420,42 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] Using study for comparison: {previousStudy.Title}");
                 
-                // Check if current study is XR modality
-                bool isXRModality = false;
+                // Extract modality from current study
+                string? currentModality = null;
                 if (!string.IsNullOrWhiteSpace(StudyName))
                 {
-                    // Extract modality from studyname (typically first word or first few characters)
-                    var studyNameUpper = StudyName.ToUpperInvariant();
-                    isXRModality = studyNameUpper.StartsWith("XR") || studyNameUpper.Contains(" XR ");
-                    Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] Current study modality check: isXR={isXRModality}, StudyName='{StudyName}'");
+                    // Try to extract modality from studyname using LOINC mapping
+                    currentModality = await ExtractModalityAsync(StudyName);
+                    Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] Current study modality: '{currentModality}', StudyName: '{StudyName}'");
                 }
                 
-                // Check "Do not update header in XR" setting
-                bool doNotUpdateHeaderInXR = false;
-                if (_localSettings != null)
+                // Check ModalitiesNoHeaderUpdate setting
+                bool shouldSkipUpdate = false;
+                if (_localSettings != null && !string.IsNullOrWhiteSpace(currentModality))
                 {
-                    var settingValue = _localSettings.DoNotUpdateHeaderInXR;
-                    doNotUpdateHeaderInXR = string.Equals(settingValue, "true", StringComparison.OrdinalIgnoreCase);
-                    Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] DoNotUpdateHeaderInXR setting: '{settingValue}' -> {doNotUpdateHeaderInXR}");
+                    var modalitiesNoHeaderUpdate = _localSettings.ModalitiesNoHeaderUpdate ?? string.Empty;
+                    Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] ModalitiesNoHeaderUpdate setting: '{modalitiesNoHeaderUpdate}'");
+                    
+                    if (!string.IsNullOrWhiteSpace(modalitiesNoHeaderUpdate))
+                    {
+                        // Parse comma-separated list and check if current modality is in the list
+                        var excludedModalities = modalitiesNoHeaderUpdate
+                            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(m => m.Trim().ToUpperInvariant())
+                            .Where(m => !string.IsNullOrEmpty(m))
+                            .ToList();
+                        
+                        shouldSkipUpdate = excludedModalities.Contains(currentModality.ToUpperInvariant());
+                        Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] Excluded modalities: [{string.Join(", ", excludedModalities)}]");
+                        Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] Should skip update: {shouldSkipUpdate}");
+                    }
                 }
                 
-                // Skip update if XR and setting is enabled
-                if (isXRModality && doNotUpdateHeaderInXR)
+                // Skip update if modality is in exclusion list
+                if (shouldSkipUpdate)
                 {
-                    Debug.WriteLine("[UpdateComparisonFromPreviousStudy] Skipping comparison update - XR modality and DoNotUpdateHeaderInXR is enabled");
-                    SetStatus("Comparison not updated (XR modality with 'Do not update header in XR' enabled)");
+                    Debug.WriteLine($"[UpdateComparisonFromPreviousStudy] Skipping comparison update - modality '{currentModality}' is in ModalitiesNoHeaderUpdate list");
+                    SetStatus($"Comparison not updated (modality '{currentModality}' excluded by settings)");
                     return;
                 }
                 

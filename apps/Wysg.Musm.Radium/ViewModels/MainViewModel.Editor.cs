@@ -1112,41 +1112,58 @@ namespace Wysg.Musm.Radium.ViewModels
         }
         
         /// <summary>
-        /// Checks if header updates should be skipped based on modality and automation settings.
-        /// Returns true if current study is XR modality AND "Do not update header in XR" setting is enabled.
+        /// Returns true if current study modality is in the ModalitiesNoHeaderUpdate exclusion list.
         /// </summary>
         private bool ShouldSkipHeaderUpdateForXR()
         {
             try
             {
-                // Check if the setting is enabled
-                if (!GetDoNotUpdateHeaderInXRSetting())
+                // Get the comma-separated list of excluded modalities
+                var modalitiesNoHeaderUpdate = _localSettings?.ModalitiesNoHeaderUpdate ?? string.Empty;
+                
+                if (string.IsNullOrWhiteSpace(modalitiesNoHeaderUpdate))
                 {
-                    return false; // Setting is OFF, allow header updates
+                    return false; // No exclusions, allow header updates
                 }
                 
-                // Check if current study modality is XR (case-insensitive)
+                // Parse comma-separated list
+                var excludedModalities = modalitiesNoHeaderUpdate
+                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(m => m.Trim().ToUpperInvariant())
+                    .Where(m => !string.IsNullOrEmpty(m))
+                    .ToList();
+                
+                if (excludedModalities.Count == 0)
+                {
+                    return false; // No valid exclusions, allow header updates
+                }
+                
+                // Check if current study modality is in the exclusion list
                 var modality = ExtractModalityFromStudyName(StudyName);
-                bool isXR = string.Equals(modality, "XR", StringComparison.OrdinalIgnoreCase);
                 
-                if (isXR)
+                if (string.IsNullOrWhiteSpace(modality))
                 {
-                    Debug.WriteLine($"[Editor] Detected XR modality from StudyName: '{StudyName}', skipping header update");
+                    return false; // Cannot determine modality, allow header updates
                 }
                 
-                return isXR;
+                bool isExcluded = excludedModalities.Contains(modality.ToUpperInvariant());
+                
+                if (isExcluded)
+                {
+                    Debug.WriteLine($"[Editor] Modality '{modality}' is in exclusion list, skipping header update");
+                }
+                
+                return isExcluded;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Editor] Error checking XR modality: {ex.Message}");
+                Debug.WriteLine($"[Editor] Error checking modality exclusion: {ex.Message}");
                 return false; // On error, allow header updates (safe fallback)
             }
         }
         
-        /// <summary>
-        /// Extracts modality from study name. Assumes modality is the first word.
-        /// Examples: "XR Chest PA" ¡æ "XR", "CT Brain" ¡æ "CT", "MR Brain" ¡æ "MR"
-        /// </summary>
+        // ...existing ExtractModalityFromStudyName method...
+        
         private static string ExtractModalityFromStudyName(string? studyName)
         {
             if (string.IsNullOrWhiteSpace(studyName))
@@ -1154,24 +1171,6 @@ namespace Wysg.Musm.Radium.ViewModels
             
             var parts = studyName.Trim().Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
             return parts.Length > 0 ? parts[0].Trim() : string.Empty;
-        }
-        
-        /// <summary>
-        /// Reads the "Do not update header in XR" setting from the local settings file.
-        /// </summary>
-        private bool GetDoNotUpdateHeaderInXRSetting()
-        {
-            try
-            {
-                // Read from local settings instead of PACS automation file
-                var setting = _localSettings?.DoNotUpdateHeaderInXR ?? "false";
-                return setting == "true";
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Editor] Error reading DoNotUpdateHeaderInXR setting: {ex.Message}");
-                return false; // On error, allow header updates (safe fallback)
-            }
         }
     }
 }
