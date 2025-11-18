@@ -15,6 +15,7 @@ namespace Wysg.Musm.Editor.Ui
     /// - Numbers (integers and decimals): use existingBrush
     /// - Dates (0000-00-00 format): use existingBrush
     /// - Missing phrases: use missingBrush (default Red)
+    /// - Compound words with connectors (-, /): Tries whole phrase first, then falls back to individual parts
     /// Matching is case-insensitive; supports multi-word phrases up to 10 words.
     /// </summary>
     public sealed class PhraseColorizer : DocumentColorizingTransformer
@@ -35,6 +36,9 @@ namespace Wysg.Musm.Editor.Ui
         // Regex patterns for numbers and dates
         private static readonly Regex NumberPattern = new Regex(@"^\d+(\.\d+)?$", RegexOptions.Compiled);
         private static readonly Regex DatePattern = new Regex(@"^\d{4}-\d{2}-\d{2}$", RegexOptions.Compiled);
+        
+        // Word connectors that trigger fallback behavior
+        private static readonly char[] WordConnectors = { '-', '/' };
 
         public PhraseColorizer(Func<IReadOnlyList<string>> getSnapshot,
                                Func<IReadOnlyDictionary<string, string?>>? getSemanticTags = null,
@@ -231,7 +235,70 @@ namespace Wysg.Musm.Editor.Ui
                 int matchLen = bestLen - trailingPeriodsCount;
                 if (matchLen > 0)
                 {
-                    yield return new PhraseMatch(wordStart, matchLen, bestExists, tokenForMatching);
+                    // Check if we need to apply fallback for compound words with connectors
+                    if (!bestExists && !isNumberOrDate && ContainsWordConnector(tokenForMatching))
+                    {
+                        // Try fallback: split on connectors and check each part
+                        foreach (var part in SplitAndColorizeCompoundWord(tokenForMatching, wordStart, set))
+                        {
+                            yield return part;
+                        }
+                    }
+                    else
+                    {
+                        yield return new PhraseMatch(wordStart, matchLen, bestExists, tokenForMatching);
+                    }
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Checks if a token contains any word connectors (-, /)
+        /// </summary>
+        private static bool ContainsWordConnector(string token)
+        {
+            return token.IndexOfAny(WordConnectors) >= 0;
+        }
+        
+        /// <summary>
+        /// Splits a compound word on connectors and colorizes each part independently.
+        /// For example, "existing-word" becomes ["existing", "word"] each checked separately.
+        /// The connector itself is yielded as a separate match with existing status.
+        /// </summary>
+        private static IEnumerable<PhraseMatch> SplitAndColorizeCompoundWord(string token, int baseOffset, HashSet<string> set)
+        {
+            int currentPos = 0;
+            
+            while (currentPos < token.Length)
+            {
+                // Find the next connector or end of string
+                int connectorPos = token.IndexOfAny(WordConnectors, currentPos);
+                
+                if (connectorPos == -1)
+                {
+                    // No more connectors, handle the remaining part
+                    string part = token.Substring(currentPos);
+                    if (part.Length > 0)
+                    {
+                        bool partExists = set.Contains(part);
+                        yield return new PhraseMatch(baseOffset + currentPos, part.Length, partExists, part);
+                    }
+                    break;
+                }
+                else
+                {
+                    // Handle the part before the connector
+                    if (connectorPos > currentPos)
+                    {
+                        string part = token.Substring(currentPos, connectorPos - currentPos);
+                        bool partExists = set.Contains(part);
+                        yield return new PhraseMatch(baseOffset + currentPos, part.Length, partExists, part);
+                    }
+                    
+                    // Handle the connector itself (treat as existing to avoid red highlighting)
+                    yield return new PhraseMatch(baseOffset + connectorPos, 1, true, token[connectorPos].ToString());
+                    
+                    currentPos = connectorPos + 1;
                 }
             }
         }
