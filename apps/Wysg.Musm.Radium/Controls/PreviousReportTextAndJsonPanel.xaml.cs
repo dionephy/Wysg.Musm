@@ -98,47 +98,18 @@ namespace Wysg.Musm.Radium.Controls
                 new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
         public string ConclusionProofread { get => (string)GetValue(ConclusionProofreadProperty); set => SetValue(ConclusionProofreadProperty, value); }
 
-        // NEW: IsJsonCollapsed dependency property with default value true
+        // NEW: IsJsonCollapsed dependency property - kept for backward compatibility but has no effect
         public static readonly DependencyProperty IsJsonCollapsedProperty =
             DependencyProperty.Register(
                 nameof(IsJsonCollapsed),
                 typeof(bool),
                 typeof(PreviousReportTextAndJsonPanel),
-                new PropertyMetadata(true, OnIsJsonCollapsedChanged));
+                new PropertyMetadata(false)); // Changed default to false (not collapsed)
 
         public bool IsJsonCollapsed
         {
             get => (bool)GetValue(IsJsonCollapsedProperty);
             set => SetValue(IsJsonCollapsedProperty, value);
-        }
-
-        private static void OnIsJsonCollapsedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            if (d is PreviousReportTextAndJsonPanel self && e.NewValue is bool collapsed)
-            {
-                self.UpdateJsonColumnVisibility(collapsed);
-            }
-        }
-
-        private void UpdateJsonColumnVisibility(bool collapsed)
-        {
-            if (JsonSplitter == null || txtJson == null || btnToggleJson == null)
-                return;
-
-            if (collapsed)
-            {
-                // Collapsed: just hide the TextBox and splitter, leave column structure intact
-                JsonSplitter.Visibility = Visibility.Collapsed;
-                txtJson.Visibility = Visibility.Collapsed;
-                btnToggleJson.Content = "\u25B6"; // Right arrow (expand)
-            }
-            else
-            {
-                // Expanded: show the TextBox and splitter
-                JsonSplitter.Visibility = Visibility.Visible;
-                txtJson.Visibility = Visibility.Visible;
-                btnToggleJson.Content = "\u25C0"; // Left arrow (collapse)
-            }
         }
 
         // Dependency Property for Reverse layout (optional, for future use)
@@ -170,8 +141,7 @@ namespace Wysg.Musm.Radium.Controls
             {
                 Debug.WriteLine("[PreviousReportTextAndJsonPanel] Loaded: initializing layout + scroll fixes");
                 ApplyReverse(Reverse);
-                // Apply default collapsed state after control is loaded
-                UpdateJsonColumnVisibility(IsJsonCollapsed);
+                // JSON panel is now always visible, no need to update visibility
                 // Legacy per-TextBox hook and robust root interceptor
                 AttachMouseWheelScrollFix2();
                 AttachRootWheelInterceptor();
@@ -198,6 +168,12 @@ namespace Wysg.Musm.Radium.Controls
                 Grid.SetColumn(scrollViewer, 0);
                 Grid.SetColumn(jsonBox, 4);
             }
+        }
+
+        private void UpdateJsonColumnVisibility(bool collapsed)
+        {
+            // Method kept for backward compatibility but does nothing
+            // JSON panel is now always visible
         }
 
         /// <summary>

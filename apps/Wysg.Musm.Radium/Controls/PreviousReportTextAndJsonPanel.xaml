@@ -9,8 +9,57 @@
 
  <UserControl.Resources>
  <FontFamily x:Key="UiMonospaceFont">pack://application:,,,/Wysg.Musm.Radium;component/Fonts/#D2Coding</FontFamily>
- 
- <Style x:Key="DarkToggleButtonStyle" TargetType="ToggleButton">
+
+        <Style x:Key="DarkTabControlStyle" TargetType="TabControl">
+            <Setter Property="Background" Value="#1E1E1E"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <Style x:Key="DarkTabItemStyle" TargetType="TabItem">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#D0D0D0"/>
+            <Setter Property="BorderBrush" Value="#3C3C3C"/>
+            <Setter Property="BorderThickness" Value="1,1,1,0"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="Margin" Value="0,0,2,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Border"
+                          Background="{TemplateBinding Background}"
+                          BorderBrush="{TemplateBinding BorderBrush}"
+                          BorderThickness="{TemplateBinding BorderThickness}"
+                          CornerRadius="2,2,0,0"
+                          Padding="{TemplateBinding Padding}">
+                            <ContentPresenter x:Name="ContentSite"
+                                      ContentSource="Header"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- Selected state: darker background, blue accent -->
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#1E1E1E"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#2F65C8"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                            <!-- Hover state -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#3C3C3C"/>
+                            </Trigger>
+                            <!-- Disabled state -->
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#808080"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DarkToggleButtonStyle" TargetType="ToggleButton">
  <Setter Property="Background" Value="#2D2D30"/>
  <Setter Property="Foreground" Value="#D0D0D0"/>
  <Setter Property="BorderBrush" Value="#3C3C3C"/>
@@ -45,265 +94,259 @@
  </Setter>
  </Style>
  </UserControl.Resources>
- 
- <!-- True Grid-Based Row Layout for Previous Reports -->
- <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
- <Border BorderBrush="#3F3F46" BorderThickness="3" CornerRadius="2">
- <Grid>
- <Grid.ColumnDefinitions>
- <ColumnDefinition Width="1*" MinWidth="200"/>
- <ColumnDefinition Width="2"/>
- <ColumnDefinition Width="1*" MinWidth="200"/>
- <ColumnDefinition Width="2"/>
- <ColumnDefinition Width="1*" MinWidth="200"/>
- </Grid.ColumnDefinitions>
- 
- <Grid.RowDefinitions>
- <!-- Row0: Headers -->
- <RowDefinition Height="Auto"/>
- <!-- Row1: Header and Findings / Proofread header section -->
- <RowDefinition Height="Auto"/>
- <!-- Row2: Header and Findings textboxes -->
- <RowDefinition Height="Auto"/>
- <!-- Row3: Split controls -->
- <RowDefinition Height="Auto"/>
- <!-- Row4: Final Conclusion label -->
- <RowDefinition Height="Auto"/>
- <!-- Row5: Final Conclusion textboxes -->
- <RowDefinition Height="Auto"/>
- <!-- Row6: Second split controls -->
- <RowDefinition Height="Auto"/>
- <!-- Row7: Header temp label -->
- <RowDefinition Height="Auto"/>
- <!-- Row8: Header temp textboxes -->
- <RowDefinition Height="Auto"/>
- <!-- Row9: Findings split label -->
- <RowDefinition Height="Auto"/>
- <!-- Row10: Findings split textboxes -->
- <RowDefinition Height="Auto"/>
- <!-- Row11: Findings split diff viewer -->
- <RowDefinition Height="Auto"/>
- <!-- Row12: Conclusion split label -->
- <RowDefinition Height="Auto"/>
- <!-- Row13: Conclusion split textboxes -->
- <RowDefinition Height="Auto"/>
- <!-- Row14: Conclusion split diff viewer -->
- <RowDefinition Height="Auto"/>
- </Grid.RowDefinitions>
 
- <!-- Row0: Column Headers -->
- <Grid Grid.Row="0" Grid.Column="0" Margin="6,0,0,8">
- <Grid.ColumnDefinitions>
- <ColumnDefinition Width="Auto"/>
- <ColumnDefinition Width="*"/>
- <ColumnDefinition Width="Auto"/>
- </Grid.ColumnDefinitions>
- <TextBlock Grid.Column="0" Text="Previous Report" FontWeight="Bold"/>
- <Button Grid.Column="2" Content="Save" FontSize="10" Padding="6,2" 
+
+
+    <TabControl Style="{StaticResource DarkTabControlStyle}">
+        <TabItem Header="Previous Report" Style="{StaticResource DarkTabItemStyle}">
+
+
+            <!-- True Grid-Based Row Layout for Previous Reports -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <Border BorderBrush="#3F3F46" BorderThickness="3" CornerRadius="2">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1*" MinWidth="200"/>
+                            <ColumnDefinition Width="2"/>
+                            <ColumnDefinition Width="1*" MinWidth="200"/>
+                            <ColumnDefinition Width="2"/>
+                            <ColumnDefinition Width="1*" MinWidth="200"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Grid.RowDefinitions>
+                            <!-- Row0: Headers -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row1: Header and Findings / Proofread header section -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row2: Header and Findings textboxes -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row3: Split controls -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row4: Final Conclusion label -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row5: Final Conclusion textboxes -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row6: Second split controls -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row7: Header temp label -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row8: Header temp textboxes -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row9: Findings split label -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row10: Findings split textboxes -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row11: Findings split diff viewer -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row12: Conclusion split label -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row13: Conclusion split textboxes -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Row14: Conclusion split diff viewer -->
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Row0: Column Headers -->
+                        <Grid Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Margin="0,0,0,0">
+                                                        
+                            <Button Content="Save"  
  Command="{Binding DataContext.SavePreviousStudyToDBCommand, RelativeSource={RelativeSource AncestorType=Window}}"
  ToolTip="Save current previous report to database"/>
- </Grid>
- 
- <!-- Proofread column header with toggle button - using Grid layout -->
- <Grid Grid.Row="0" Grid.Column="2" Margin="6,0,6,8">
- <Grid.ColumnDefinitions>
- <ColumnDefinition Width="Auto"/>
- <ColumnDefinition Width="*"/>
- <ColumnDefinition Width="Auto"/>
- </Grid.ColumnDefinitions>
- <TextBlock Grid.Column="0" Text="Proofread" FontWeight="Bold"/>
- <StackPanel Grid.Column="2" Orientation="Horizontal">
- <ToggleButton x:Name="btnToggleJson" Content="&#9654;" Width="24" Height="24" FontSize="10" Padding="2"
- Style="{StaticResource DarkToggleButtonStyle}"
- IsChecked="{Binding IsJsonCollapsed, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, Converter={StaticResource InverseBooleanConverter}}"
- ToolTip="Toggle JSON panel visibility"/>
- <TextBlock Text="JSON" FontWeight="Bold" VerticalAlignment="Center" Margin="4,0,0,0" FontSize="10"/>
- </StackPanel>
- </Grid>
- 
- <!-- Row1: Header and Findings / Proofread header section -->
- <TextBlock Grid.Row="1" Grid.Column="0" Text="Previous Header and Findings" Margin="6,0,0,2"/>
- 
- <!-- Row2: Header and Findings Textboxes -->
- <TextBox x:Name="txtHeaderAndFindings" Grid.Row="2" Grid.Column="0"
+                        </Grid>
+
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Header (temp)" Margin="4,4,0,0"/>
+
+                        <TextBox Grid.Row="1" Grid.Column="2" Margin="0,0,0,0" TextWrapping="Wrap" AcceptsReturn="True"
+Text="{Binding HeaderTemp, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+
+                        <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="4,4,0,0">
+                            <TextBlock  Text="Header+Findings"  />
+
+                            <Button Content="header" FontSize="10" Margin="8,0,0,0" 
+Command="{Binding SplitHeaderTopCommand}"
+CommandParameter="{Binding ElementName=txtHeaderAndFindings}"/>
+                            <Button Content="conclusion" FontSize="10"  Margin="4,0,0,0" 
+Command="{Binding SplitConclusionCommand}"
+CommandParameter="{Binding ElementName=txtHeaderAndFindings}"/>
+                            <ToggleButton Content="auto" FontSize="10"
+Style="{StaticResource DarkToggleButtonStyle}"
+IsChecked="{Binding AutoSplit, Mode=TwoWay}"/>
+                        </StackPanel>
+
+                       
+                        <TextBox x:Name="txtHeaderAndFindings" Grid.Row="3" Grid.Column="0"
  Text="{Binding HeaderAndFindingsText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
- Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"/>
+ Margin="0,0,0,0" TextWrapping="Wrap" AcceptsReturn="True"/>
 
- <!-- Row3: Split Controls (main column only) -->
- <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" Margin="6,2,0,8">
- <Button Content="Split Header" FontSize="10" Padding="4,2" Margin="0,0,0,0" 
- Command="{Binding SplitHeaderTopCommand}"
- CommandParameter="{Binding ElementName=txtHeaderAndFindings}"/>
- <Button Content="Split Conclusion" FontSize="10" Padding="4,2" Margin="4,0,0,0" 
- Command="{Binding SplitConclusionCommand}"
- CommandParameter="{Binding ElementName=txtHeaderAndFindings}"/>
- <ToggleButton Content="Auto Split" FontSize="10" Padding="4,2" 
- Style="{StaticResource DarkToggleButtonStyle}"
- IsChecked="{Binding AutoSplit, Mode=TwoWay}"/>
- </StackPanel>
+                        
+                        <StackPanel Grid.Row="5" Grid.Column="0" Orientation="Horizontal" Margin="4,4,0,0">
+                            <TextBlock  Text="Final Conclusion"/>
+                            <Button Content="header" FontSize="10" Margin="8,0,0,0" 
+Command="{Binding SplitHeaderBottomCommand}"
+CommandParameter="{Binding ElementName=txtFinalConclusion}"/>
+                            <Button Content="findings" FontSize="10" Margin="4,0,0,0" 
+Command="{Binding SplitFindingsCommand}"
+CommandParameter="{Binding ElementName=txtFinalConclusion}"/>
+                            <ToggleButton Content="auto" FontSize="10" 
+Style="{StaticResource DarkToggleButtonStyle}"
+IsChecked="{Binding AutoSplit, Mode=TwoWay}"/>
+                        </StackPanel>
 
- <!-- Row4: Final Conclusion Label -->
- <TextBlock Grid.Row="4" Grid.Column="0" Text="Final Conclusion" Margin="6,4,0,2"/>
- 
- <!-- Row5: Final Conclusion Textboxes -->
- <TextBox x:Name="txtFinalConclusion" Grid.Row="5" Grid.Column="0"
+
+                        <!-- Row5: Final Conclusion Textboxes -->
+                        <TextBox x:Name="txtFinalConclusion" Grid.Row="6" Grid.Column="0"
  Text="{Binding FinalConclusionText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
- Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"/>
- 
- <!-- Row6: Second Split Controls (main column only) -->
- <StackPanel Grid.Row="6" Grid.Column="0" Orientation="Horizontal" Margin="6,2,0,8">
- <Button Content="Split Header" FontSize="10" Padding="4,2" Margin="0,0,0,0" 
- Command="{Binding SplitHeaderBottomCommand}"
- CommandParameter="{Binding ElementName=txtFinalConclusion}"/>
- <Button Content="Split Findings" FontSize="10" Padding="4,2" Margin="4,0,0,0" 
- Command="{Binding SplitFindingsCommand}"
- CommandParameter="{Binding ElementName=txtFinalConclusion}"/>
- <ToggleButton Content="Auto Split" FontSize="10" Padding="4,2" 
- Style="{StaticResource DarkToggleButtonStyle}"
- IsChecked="{Binding AutoSplit, Mode=TwoWay}"/>
- </StackPanel>
+  Margin="0,0,0,0" TextWrapping="Wrap" AcceptsReturn="True"/>
 
- <!-- Row7: Header temp Label -->
- <TextBlock Grid.Row="7" Grid.Column="0" Text="Header (temp)" Margin="6,6,0,2"/>
- 
- <!-- Row8: Header temp Textboxes -->
- <TextBox Grid.Row="8" Grid.Column="0" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
- Text="{Binding HeaderTemp, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        
+                        
+                        <!-- Row6: Second Split Controls (main column only) -->
+                    
 
- <!-- Row9: Findings split Labels -->
- <TextBlock Grid.Row="9" Grid.Column="0" Text="Findings (split)" Margin="6,6,0,2"/>
- 
- <StackPanel Grid.Row="9" Grid.Column="2" Orientation="Horizontal" Margin="6,6,0,2">
- <TextBlock Text="Findings (PR)" VerticalAlignment="Center" FontSize="11"/>
- <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="6,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
- IsChecked="{Binding DataContext.AutoFindingsProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
- <Button Content="gen" FontSize="10" Padding="4,2" Margin="3,0,0,0"
+                        <!-- Row7: Header temp Label -->
+                        
+
+                        <!-- Row8: Header temp Textboxes -->
+                       
+
+                        <!-- Row9: Findings split Labels -->
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="Findings (split)" Margin="4,4,0,0"/>
+
+                        <StackPanel Grid.Row="2" Grid.Column="4" Orientation="Horizontal" Margin="4,4,0,0">
+                            <TextBlock Text="Findings (PR)" VerticalAlignment="Center" FontSize="11"/>
+                            
+                            <Button Content="gen" FontSize="10" Margin="8,0,0,0"
  Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
  CommandParameter="findings_proofread"/>
- </StackPanel>
- 
- <!-- Row10: Findings split Textboxes -->
- <TextBox Grid.Row="10" Grid.Column="0" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+
+                            <ToggleButton Content="auto" FontSize="10" Margin="6,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
+IsChecked="{Binding DataContext.AutoFindingsProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
+                        </StackPanel>
+
+                        <!-- Row10: Findings split Textboxes -->
+                        <TextBox Grid.Row="3" Grid.Column="2"  Margin="0,0,0,0" TextWrapping="Wrap" AcceptsReturn="True"
  VerticalScrollBarVisibility="Disabled" MinLines="1" MaxLines="50"
  Text="{Binding SplitFindings, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
- 
- <TextBox Grid.Row="10" Grid.Column="2" Padding="6" Margin="0,0,0,4" TextWrapping="Wrap" AcceptsReturn="True"
+
+                        <TextBox Grid.Row="3" Grid.Column="4" Margin="0,0,0,0" TextWrapping="Wrap" AcceptsReturn="True"
  VerticalScrollBarVisibility="Disabled" MinLines="1" MaxLines="50">
- <TextBox.Style>
- <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
- <Setter Property="Text" Value="{Binding FindingsProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
- <Setter Property="IsReadOnly" Value="False"/>
- <Style.Triggers>
- <DataTrigger Binding="{Binding DataContext.ProofreadMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
- <Setter Property="Text" Value="{Binding DataContext.FindingsProofreadDisplay, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"/>
- <Setter Property="IsReadOnly" Value="True"/>
- </DataTrigger>
- </Style.Triggers>
- </Style>
- </TextBox.Style>
- </TextBox>
- 
- <!-- Row11: Findings split diff viewer (collapsible, spans all3 columns) -->
- <StackPanel Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,8">
- <StackPanel Orientation="Horizontal" Margin="6,0,0,4" VerticalAlignment="Center">
- <ToggleButton x:Name="btnTogglePrevFindingsDiff" 
+                            <TextBox.Style>
+                                <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                    <Setter Property="Text" Value="{Binding FindingsProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <Setter Property="IsReadOnly" Value="False"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DataContext.ProofreadMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                            <Setter Property="Text" Value="{Binding DataContext.FindingsProofreadDisplay, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"/>
+                                            <Setter Property="IsReadOnly" Value="True"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
+
+                        <!-- Row11: Findings split diff viewer (collapsible, spans all3 columns) -->
+                        <StackPanel Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="3" Margin="4,4,0,0">
+                            <StackPanel Orientation="Horizontal" >
+                                <ToggleButton x:Name="btnTogglePrevFindingsDiff" 
  Content="&#9660;" 
- Width="24" 
- Height="24" 
+ Width="12" 
+ Height="12" 
  FontSize="10" 
  Padding="2"
  Style="{StaticResource DarkToggleButtonStyle}"
  IsChecked="False"
  ToolTip="Toggle Findings (split) vs Findings (PR) diff viewer"/>
- <TextBlock Text="Show Changes (Side-by-Side)" 
+                                <TextBlock Text="Show Changes (Side-by-Side)" 
  FontSize="11" 
- FontWeight="Bold"
- VerticalAlignment="Center" 
- Margin="8,0,0,0"/>
- <TextBlock Text="(character/word/line-level diff)" 
- FontSize="10" 
- Foreground="#808080"
- VerticalAlignment="Center" 
- Margin="8,0,0,0"/>
- </StackPanel>
  
- <local:SideBySideDiffViewer x:Name="diffViewerPrevFindings"
+ VerticalAlignment="Center" 
+ Margin="8,0,0,0"/>
+                                
+                            </StackPanel>
+
+                            <local:SideBySideDiffViewer x:Name="diffViewerPrevFindings"
  OriginalText="{Binding SplitFindings, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
  ModifiedText="{Binding FindingsProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
  UseHighContrastDiff="True" MinHeight="200" MaxHeight="400"
  Visibility="{Binding IsChecked, ElementName=btnTogglePrevFindingsDiff, Converter={StaticResource BooleanToVisibilityConverter}}"/>
- </StackPanel>
+                        </StackPanel>
 
- <!-- Row12: Conclusion split Labels -->
- <TextBlock Grid.Row="12" Grid.Column="0" Text="Conclusion (split)" Margin="6,6,0,2"/>
- 
- <StackPanel Grid.Row="12" Grid.Column="2" Orientation="Horizontal" Margin="6,6,0,2">
- <TextBlock Text="Conclusion (PR)" VerticalAlignment="Center" FontSize="11"/>
- <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="6,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
+                        <!-- Row12: Conclusion split Labels -->
+                        <TextBlock Grid.Row="5" Grid.Column="2" Text="Conclusion (split)" Margin="4,4,0,0"/>
+
+                        <StackPanel Grid.Row="5" Grid.Column="4" Orientation="Horizontal" Margin="4,4,0,0">
+                            <TextBlock Text="Conclusion (PR)" VerticalAlignment="Center" FontSize="11"/>
+                            <Button Content="gen" FontSize="10" Padding="4,2" Margin="8,0,0,0"
+Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+CommandParameter="conclusion_proofread"/>
+                            <ToggleButton Content="auto" FontSize="10" Padding="4,2" Margin="4,0,0,0" Style="{StaticResource DarkToggleButtonStyle}"
  IsChecked="{Binding DataContext.AutoConclusionProofread, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"/>
- <Button Content="gen" FontSize="10" Padding="4,2" Margin="3,0,0,0"
- Command="{Binding DataContext.GenerateFieldCommand, RelativeSource={RelativeSource AncestorType=Window}}"
- CommandParameter="conclusion_proofread"/>
- </StackPanel>
- 
- <!-- Row13: Conclusion split Textboxes -->
- <TextBox Grid.Row="13" Grid.Column="0" Padding="6" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True"
- VerticalScrollBarVisibility="Disabled" MinLines="1" MaxLines="50"
- Text="{Binding SplitConclusion, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
- 
- <TextBox Grid.Row="13" Grid.Column="2" Padding="6" Margin="0,0,0,8" TextWrapping="Wrap" AcceptsReturn="True"
+                            
+                        </StackPanel>
+
+                        <!-- Row13: Conclusion split Textboxes -->
+                        <TextBox Grid.Row="6" Grid.Column="2" Margin="0,0,0,0" TextWrapping="Wrap" AcceptsReturn="True"
+VerticalScrollBarVisibility="Disabled" MinLines="1" MaxLines="50"
+Text="{Binding SplitConclusion, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBox Grid.Row="6" Grid.Column="4" Margin="0,0,0,0" TextWrapping="Wrap" AcceptsReturn="True"
  VerticalScrollBarVisibility="Disabled" MinLines="1" MaxLines="50">
- <TextBox.Style>
-<Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
- <Setter Property="Text" Value="{Binding ConclusionProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-<Setter Property="IsReadOnly" Value="False"/>
- <Style.Triggers>
- <DataTrigger Binding="{Binding DataContext.ProofreadMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
- <Setter Property="Text" Value="{Binding DataContext.ConclusionProofreadDisplay, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"/>
- <Setter Property="IsReadOnly" Value="True"/>
- </DataTrigger>
- </Style.Triggers>
- </Style>
- </TextBox.Style>
- </TextBox>
- <!-- Row14: Conclusion split diff viewer (collapsible, spans all3 columns) -->
- <StackPanel Grid.Row="14" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,8">
- <StackPanel Orientation="Horizontal" Margin="6,0,0,4" VerticalAlignment="Center">
- <ToggleButton x:Name="btnTogglePrevConclusionDiff" 
+                            <TextBox.Style>
+                                <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                    <Setter Property="Text" Value="{Binding ConclusionProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <Setter Property="IsReadOnly" Value="False"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DataContext.ProofreadMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                            <Setter Property="Text" Value="{Binding DataContext.ConclusionProofreadDisplay, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"/>
+                                            <Setter Property="IsReadOnly" Value="True"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
+                        <!-- Row14: Conclusion split diff viewer (collapsible, spans all3 columns) -->
+                        <StackPanel Grid.Row="7" Grid.Column="2" Grid.ColumnSpan="3" Margin="4,4,0,0">
+                            <StackPanel Orientation="Horizontal" >
+                                <ToggleButton x:Name="btnTogglePrevConclusionDiff" 
  Content="&#9660;" 
- Width="24" Height="24" FontSize="10" Padding="2"
+ Width="12" Height="12" FontSize="10" 
  Style="{StaticResource DarkToggleButtonStyle}"
  IsChecked="False"
  ToolTip="Toggle Conclusion (split) vs Conclusion (PR) diff viewer"/>
- <TextBlock Text="Show Changes (Side-by-Side)" 
+                                <TextBlock Text="Show Changes (Side-by-Side)" 
  FontSize="11" 
- FontWeight="Bold"
- VerticalAlignment="Center" 
- Margin="8,0,0,0"/>
- <TextBlock Text="(character/word/line-level diff)" 
- FontSize="10" 
- Foreground="#808080"
- VerticalAlignment="Center" 
- Margin="8,0,0,0"/>
- </StackPanel>
  
- <local:SideBySideDiffViewer x:Name="diffViewerPrevConclusion"
+ VerticalAlignment="Center" 
+ Margin="8,0,0,0"/>
+                                
+                            </StackPanel>
+
+                            <local:SideBySideDiffViewer x:Name="diffViewerPrevConclusion"
  OriginalText="{Binding SplitConclusion, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
  ModifiedText="{Binding ConclusionProofread, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
  UseHighContrastDiff="True" MinHeight="200" MaxHeight="400"
  Visibility="{Binding IsChecked, ElementName=btnTogglePrevConclusionDiff, Converter={StaticResource BooleanToVisibilityConverter}}"/>
- </StackPanel>
+                        </StackPanel>
 
- <!-- GridSplitters -->
- <GridSplitter Grid.Row="0" Grid.RowSpan="15" Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
- <GridSplitter x:Name="JsonSplitter" Grid.Row="0" Grid.RowSpan="15" Grid.Column="3" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+                        <!-- GridSplitters -->
+                        <GridSplitter Grid.Row="0" Grid.RowSpan="15" Grid.Column="1" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
+                        <GridSplitter x:Name="JsonSplitter" Grid.Row="0" Grid.RowSpan="15" Grid.Column="3" HorizontalAlignment="Stretch" Width="2" Background="#2D2D30"/>
 
- <!-- Column4: JSON (spans all rows) -->
- <TextBox x:Name="txtJson" Grid.Row="0" Grid.RowSpan="15" Grid.Column="4" 
- Text="{Binding JsonText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
- Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" 
- AcceptsReturn="True" VerticalAlignment="Stretch"/>
- </Grid>
- </Border>
- </ScrollViewer>
+                        <!-- Column4: JSON (spans all rows) -->
+                       
+                    </Grid>
+                </Border>
+            </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Report JSON" Style="{StaticResource DarkTabItemStyle}">
+            <TextBox x:Name="txtJson" 
+Text="{Binding JsonText, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+Padding="6" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" 
+AcceptsReturn="True" VerticalAlignment="Stretch"/>
+        </TabItem>
+
+    </TabControl>
+
+
 </UserControl>
