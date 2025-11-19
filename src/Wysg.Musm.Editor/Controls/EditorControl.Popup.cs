@@ -106,6 +106,24 @@ namespace Wysg.Musm.Editor.Controls
 
         private void OnTextEntering(object? s, System.Windows.Input.TextCompositionEventArgs e)
         {
+            // FIXED: Delete selection before inserting character (normal text editor behavior)
+            if (!string.IsNullOrEmpty(e.Text))
+            {
+                var selection = Editor.TextArea?.Selection;
+                if (selection != null && !selection.IsEmpty)
+                {
+                    var segment = selection.SurroundingSegment;
+                    if (segment != null && segment.Length > 0)
+                    {
+                        // Delete selected text
+                        Editor.Document.Remove(segment.Offset, segment.Length);
+                        Editor.CaretOffset = segment.Offset;
+                        // Clear selection
+                        Editor.TextArea.ClearSelection();
+                    }
+                }
+            }
+
             if (_completionWindow != null && e.Text.Length > 0 && !char.IsLetterOrDigit(e.Text[0]))
             {
                 _completionWindow.CompletionList.RequestInsertion(e);
@@ -148,10 +166,28 @@ namespace Wysg.Musm.Editor.Controls
                     }
                     e.Handled = true;
                     CloseCompletionWindow();
-                    var off = Editor.CaretOffset;
+                    
+                    // FIXED: Check if there's a selection and delete it before inserting newline
+                    var selection = Editor.TextArea?.Selection;
+                    int insertOffset = Editor.CaretOffset;
+                    
+                    if (selection != null && !selection.IsEmpty)
+                    {
+                        var segment = selection.SurroundingSegment;
+                        if (segment != null && segment.Length > 0)
+                        {
+                            // Delete selected text
+                            Editor.Document.Remove(segment.Offset, segment.Length);
+                            insertOffset = segment.Offset;
+                            // Clear selection
+                            Editor.TextArea.ClearSelection();
+                        }
+                    }
+                    
+                    // Insert newline at the correct position
                     var nl = Environment.NewLine;
-                    Editor.Document.Insert(off, nl);
-                    Editor.CaretOffset = off + nl.Length;
+                    Editor.Document.Insert(insertOffset, nl);
+                    Editor.CaretOffset = insertOffset + nl.Length;
                     return;
                 }
             }
@@ -171,9 +207,27 @@ namespace Wysg.Musm.Editor.Controls
                     {
                         // no selection: insert literal space and close popup
                         CloseCompletionWindow();
-                        var off = Editor.CaretOffset;
-                        Editor.Document.Insert(off, " ");
-                        Editor.CaretOffset = off + 1;
+                        
+                        // FIXED: Check if there's a selection and delete it before inserting space
+                        var selection = Editor.TextArea?.Selection;
+                        int insertOffset = Editor.CaretOffset;
+                        
+                        if (selection != null && !selection.IsEmpty)
+                        {
+                            var segment = selection.SurroundingSegment;
+                            if (segment != null && segment.Length > 0)
+                            {
+                                // Delete selected text
+                                Editor.Document.Remove(segment.Offset, segment.Length);
+                                insertOffset = segment.Offset;
+                                // Clear selection
+                                Editor.TextArea.ClearSelection();
+                            }
+                        }
+                        
+                        // Insert space at the correct position
+                        Editor.Document.Insert(insertOffset, " ");
+                        Editor.CaretOffset = insertOffset + 1;
                     }
                     return;
                 }
