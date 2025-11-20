@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using FlaUI.Core.AutomationElements;
 
@@ -10,7 +11,7 @@ namespace Wysg.Musm.Radium.Services
     /// <summary>
     /// OperationExecutor partial class: UI element interaction operations.
     /// Contains operations for reading, clicking, focusing, and manipulating UI automation elements.
-    /// </summary>
+    /// /// </summary>
     internal static partial class OperationExecutor
     {
         #region Element Operations
@@ -351,6 +352,129 @@ namespace Wysg.Musm.Radium.Services
                 Debug.WriteLine($"[SetValue] Exception message: {ex.Message}");
                 return ($"(error: {ex.Message})", null);
             }
+        }
+
+        private static (string preview, string? value) ExecuteSetValueWeb(AutomationElement? el, string? valueToSet)
+        {
+            if (el == null)
+            {
+                Debug.WriteLine("[SetValueWeb] FAIL: Element resolution returned null");
+                return ("(no element)", null);
+            }
+
+            if (valueToSet == null)
+            {
+                Debug.WriteLine("[SetValueWeb] WARN: Value to set is null, treating as empty string");
+                valueToSet = string.Empty;
+            }
+
+            Debug.WriteLine($"[SetValueWeb] Element resolved: Name='{el.Name}', AutomationId='{el.AutomationId}'");
+            Debug.WriteLine($"[SetValueWeb] Value to set: '{valueToSet}' (length={valueToSet.Length})");
+
+            try
+            {
+                // Step 1: Focus the element
+                Debug.WriteLine("[SetValueWeb] Step 1: Setting focus to element...");
+                try
+                {
+                    el.Focus();
+                    Debug.WriteLine("[SetValueWeb] Focus set successfully");
+                }
+                catch (Exception focusEx)
+                {
+                    Debug.WriteLine($"[SetValueWeb] WARN: Focus failed: {focusEx.Message}");
+                    // Continue anyway - some web elements don't need explicit focus
+                }
+
+                // Step 2: Small delay for focus to settle
+                System.Threading.Thread.Sleep(50);
+
+                // Step 3: Select all existing text (Ctrl+A)
+                Debug.WriteLine("[SetValueWeb] Step 2: Selecting all text (Ctrl+A)...");
+                try
+                {
+                    System.Windows.Forms.SendKeys.SendWait("^a");
+                    Debug.WriteLine("[SetValueWeb] Select all sent");
+                    System.Threading.Thread.Sleep(20); // Small delay for selection
+                }
+                catch (Exception selectEx)
+                {
+                    Debug.WriteLine($"[SetValueWeb] WARN: Select all failed: {selectEx.Message}");
+                }
+
+                // Step 4: Send the new text (typing simulation)
+                Debug.WriteLine($"[SetValueWeb] Step 3: Typing text via SendKeys...");
+                
+                // Escape special characters for SendKeys
+                var escapedText = EscapeTextForSendKeys(valueToSet);
+                Debug.WriteLine($"[SetValueWeb] Escaped text: '{escapedText}'");
+                
+                System.Windows.Forms.SendKeys.SendWait(escapedText);
+                Debug.WriteLine("[SetValueWeb] Text typed successfully");
+
+                // Step 5: Small delay for text to be processed
+                System.Threading.Thread.Sleep(50);
+
+                Debug.WriteLine($"[SetValueWeb] SUCCESS: Value set via typing simulation");
+                return ($"(web value set, {valueToSet.Length} chars)", null);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SetValueWeb] EXCEPTION: {ex.GetType().Name}");
+                Debug.WriteLine($"[SetValueWeb] Exception message: {ex.Message}");
+                return ($"(error: {ex.Message})", null);
+            }
+        }
+
+        /// <summary>
+        /// Escape special characters for SendKeys.
+        /// SendKeys uses special syntax: +, ^, %, ~, {, }, [, ] must be escaped with braces.
+        /// </summary>
+        private static string EscapeTextForSendKeys(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+
+            var sb = new StringBuilder(text.Length * 2);
+            foreach (char c in text)
+            {
+                switch (c)
+                {
+                    case '+':
+                        sb.Append("{+}");
+                        break;
+                    case '^':
+                        sb.Append("{^}");
+                        break;
+                    case '%':
+                        sb.Append("{%}");
+                        break;
+                    case '~':
+                        sb.Append("{~}");
+                        break;
+                    case '(':
+                        sb.Append("{(}");
+                        break;
+                    case ')':
+                        sb.Append("{)}");
+                        break;
+                    case '{':
+                        sb.Append("{{}");
+                        break;
+                    case '}':
+                        sb.Append("{}}");
+                        break;
+                    case '[':
+                        sb.Append("{[}");
+                        break;
+                    case ']':
+                        sb.Append("{]}");
+                        break;
+                    default:
+                        sb.Append(c);
+                        break;
+                }
+            }
+            return sb.ToString();
         }
 
         private static (string preview, string? value) ExecuteClickElement(AutomationElement? el, bool restoreCursor)

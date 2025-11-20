@@ -9,9 +9,12 @@ using System.Windows;
 using System.Windows.Controls; // WPF
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.Windows.Media; // Added for SolidColorBrush, Color, Colors
 using FlaUI.Core.AutomationElements;
 using SWA = System.Windows.Automation;
 using Wysg.Musm.Radium.Services; // UiBookmarks
+using WpfGrid = System.Windows.Controls.Grid; // Alias for WPF Grid
+using WpfButton = System.Windows.Controls.Button; // Alias for WPF Button
 
 namespace Wysg.Musm.Radium.Views
 {
@@ -206,6 +209,172 @@ namespace Wysg.Musm.Radium.Views
             GridChain.ItemsSource = null; GridChain.ItemsSource = b.Chain;
             try { if (FindName("txtPickedPoint") is System.Windows.Controls.TextBox tb) tb.Text = $"{pt.X},{pt.Y}"; } catch { }
         }
+
+        // Pick web browser element (optimized for web stability, no auto-save)
+        private async void OnPickWeb(object sender, RoutedEventArgs e)
+        {
+            if (!int.TryParse(txtDelay.Text?.Trim(), out var delay)) delay = 1500;
+            txtStatus.Text = $"Pick Web arming... move mouse to web browser element ({delay}ms)";
+            await Task.Delay(delay);
+            GetCursorPos(out var pt);
+            
+            // Capture element and window information
+            var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: true);
+            
+            txtStatus.Text = msg;
+            if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName;
+            if (b == null) return;
+
+            // Set bookmark metadata
+            b.ProcessName = string.IsNullOrWhiteSpace(procName) ? "browser" : procName;
+            
+            // FIX: Optimize web bookmarks for stability
+            // 1. Disable Name matching for browser window nodes (titles change with tabs)
+            // 2. Keep ClassName and ControlTypeId for structural matching
+            // 3. Enable AutomationId when available (most stable for web elements)
+            // 4. Change to Descendants scope for faster search
+            
+            for (int i = 0; i < b.Chain.Count; i++)
+            {
+                var node = b.Chain[i];
+                
+                // Browser window nodes (first 2-3 levels) - disable Name, keep structure
+                if (i < 3)
+                {
+                    node.UseName = false; // Window title changes with tabs
+                    node.UseClassName = !string.IsNullOrEmpty(node.ClassName); // Keep class
+                    node.UseControlTypeId = node.ControlTypeId.HasValue; // Keep control type
+                    node.UseAutomationId = false; // Top-level windows don't have stable AutomationId
+                    node.UseIndex = false; // Disable index for stability
+                }
+                // Web content nodes (deeper levels) - prioritize AutomationId
+                else
+                {
+                    node.UseName = false; // Web content names can be dynamic
+                    node.UseClassName = !string.IsNullOrEmpty(node.ClassName);
+                    node.UseControlTypeId = node.ControlTypeId.HasValue;
+                    node.UseAutomationId = !string.IsNullOrEmpty(node.AutomationId); // Best for web elements
+                    node.UseIndex = false; // Disable index unless needed
+                }
+                
+                // Always use Descendants scope for web elements (faster search)
+                if (i > 0)
+                {
+                    node.Scope = UiBookmarks.SearchScope.Descendants;
+                }
+            }
+
+            // Display captured bookmark (DO NOT auto-save - user must select bookmark and click Save)
+            Tag = b;
+            ShowBookmarkDetails(b, "Captured web element (optimized for stability)");
+            GridChain.ItemsSource = null; GridChain.ItemsSource = b.Chain;
+            
+            txtStatus.Text = $"Captured web element from '{procName}' (optimized for web stability). Select bookmark from dropdown and click Save to map.";
+            try { if (FindName("txtPickedPoint") is System.Windows.Controls.TextBox tb) tb.Text = $"{pt.X},{pt.Y}"; } catch { }
+        }
+
+        // Prompt user for bookmark name with window title as context
+        private string? PromptForBookmarkName(string windowTitle)
+        {
+            var dialog = new System.Windows.Window
+            {
+                Title = "Save Web Element Bookmark",
+                Width = 500,
+                Height = 200,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1E1E1E")!),
+                Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D0D0D0")!),
+                ResizeMode = ResizeMode.NoResize,
+                WindowStyle = WindowStyle.SingleBorderWindow
+            };
+
+            var grid = new WpfGrid { Margin = new Thickness(20) };
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var lblContext = new TextBlock
+            {
+                Text = $"Browser Window: {windowTitle}",
+                Margin = new Thickness(0, 0, 0, 15),
+                FontWeight = FontWeights.Bold,
+                TextWrapping = TextWrapping.Wrap
+            };
+            WpfGrid.SetRow(lblContext, 0);
+            grid.Children.Add(lblContext);
+
+            var lblPrompt = new TextBlock
+            {
+                Text = "Enter a name for this web element bookmark:",
+                Margin = new Thickness(0, 0, 0, 10),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            WpfGrid.SetRow(lblPrompt, 1);
+            grid.Children.Add(lblPrompt);
+
+            var txtName = new System.Windows.Controls.TextBox
+            {
+                Margin = new Thickness(0, 0, 0, 15),
+                Padding = new Thickness(6, 4, 6, 4),
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2D2D30")!),
+                Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D0D0D0")!),
+                BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3C3C3C")!),
+                BorderThickness = new Thickness(1),
+                CaretBrush = new SolidColorBrush(Colors.White)
+            };
+            WpfGrid.SetRow(txtName, 2);
+            grid.Children.Add(txtName);
+
+            var buttonPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            WpfGrid.SetRow(buttonPanel, 3);
+
+            var btnOk = new WpfButton
+            {
+                Content = "Save",
+                Width = 80,
+                Margin = new Thickness(0, 0, 10, 0),
+                Padding = new Thickness(10, 5, 10, 5),
+                IsDefault = true
+            };
+            btnOk.Click += (s, e) => { dialog.DialogResult = true; dialog.Close(); };
+            buttonPanel.Children.Add(btnOk);
+
+            var btnCancel = new WpfButton
+            {
+                Content = "Cancel",
+                Width = 80,
+                Padding = new Thickness(10, 5, 10, 5),
+                IsCancel = true
+            };
+            btnCancel.Click += (s, e) => { dialog.DialogResult = false; dialog.Close(); };
+            buttonPanel.Children.Add(btnCancel);
+
+            grid.Children.Add(buttonPanel);
+            dialog.Content = grid;
+
+            // Focus textbox when dialog opens
+            dialog.Loaded += (s, e) => txtName.Focus();
+
+            // Handle Enter key
+            txtName.KeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Enter)
+                {
+                    dialog.DialogResult = true;
+                    dialog.Close();
+                }
+            };
+
+            var result = dialog.ShowDialog();
+            return result == true ? txtName.Text?.Trim() : null;
+        }
+
         private (UiBookmarks.Bookmark? bookmark, string? procName, string message) CaptureUnderMouse(bool preferAutomationId)
         {
             try

@@ -36,6 +36,7 @@
             <TextBlock Text="Delay(ms):" VerticalAlignment="Center" Margin="8,0,4,0"/>
             <TextBox x:Name="txtDelay" Width="60" Text="1500" Style="{StaticResource DarkTextBox}"/>
             <Button Content="Pick" Margin="8,0,0,0" Click="OnPick" Style="{StaticResource SpyWindowButtonStyle}"/>
+            <Button Content="Pick Web" Margin="6,0,0,0" Click="OnPickWeb" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Pick element from web browser and save with window name"/>
             <TextBlock Text="Bookmark:" Margin="12,0,6,0" VerticalAlignment="Center"/>
             <ComboBox x:Name="cmbKnown" Width="300" SelectionChanged="OnKnownSelectionChanged" SelectedValuePath="Tag"
                       Style="{StaticResource SpyWindowComboBoxStyle}" ItemsSource="{StaticResource KnownControlItems}"/>

@@ -24,6 +24,7 @@
         <ComboBoxItem Content="IsVisible"/>
         <ComboBoxItem Content="SetFocus"/>
         <ComboBoxItem Content="SetValue"/>
+        <ComboBoxItem Content="SetValueWeb"/>
         <ComboBoxItem Content="SetClipboard"/>
         <ComboBoxItem Content="SimulateTab"/>
         <ComboBoxItem Content="SimulatePaste"/>

@@ -52,6 +52,12 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg2Enabled = true; // Allow String or Var
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
+                        case "SetValueWeb":
+                            // SetValueWeb: Arg1=Element (target control), Arg2=String or Var (value to set)
+                            row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
+                            row.Arg2Enabled = true; // Allow String or Var
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
+                            break;
                         case "ClickElement":
                             // ClickElement accepts both Element (bookmark) and Var (from GetSelectedElement output)
                             // Don't reset Type if already set by user - only enable/disable args

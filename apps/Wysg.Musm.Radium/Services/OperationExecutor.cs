@@ -127,6 +127,8 @@ namespace Wysg.Musm.Radium.Services
                     return ExecuteSetFocus(resolveArg1Element());
                 case "SetValue":
                     return ExecuteSetValue(resolveArg1Element(), resolveArg2String());
+                case "SetValueWeb":
+                    return ExecuteSetValueWeb(resolveArg1Element(), resolveArg2String());
                 case "ClickElement":
                     return ExecuteClickElement(resolveArg1Element(), restoreCursor: true);
                 case "ClickElementAndStay":
