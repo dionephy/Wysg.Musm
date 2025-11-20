@@ -8,9 +8,38 @@ using Wysg.Musm.Radium.Services;
 using System.Text.Json;
 using System.Collections.Generic;
 using Microsoft.Data.SqlClient; // added for Azure SQL
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace Wysg.Musm.Radium.ViewModels
 {
+    /// <summary>
+    /// Helper class for key type multiselect options in editor autofocus settings.
+    /// </summary>
+    public class KeyTypeOption : INotifyPropertyChanged
+    {
+        private string _name = string.Empty;
+        public string Name { get => _name; set => SetProperty(ref _name, value); }
+        
+        private bool _isChecked;
+        public bool IsChecked { get => _isChecked; set => SetProperty(ref _isChecked, value); }
+        
+        public event PropertyChangedEventHandler? PropertyChanged;
+        
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+        
+        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+        {
+            if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+            field = value;
+            OnPropertyChanged(propertyName);
+            return true;
+        }
+    }
+    
     public partial class SettingsViewModel : ObservableObject
     {
         private readonly IRadiumLocalSettings _local;
@@ -111,6 +140,33 @@ namespace Wysg.Musm.Radium.ViewModels
         public string? SendStudyHotkey { get => _sendStudyHotkey; set => SetProperty(ref _sendStudyHotkey, value); }
         private string? _toggleSyncTextHotkey;
         public string? ToggleSyncTextHotkey { get => _toggleSyncTextHotkey; set => SetProperty(ref _toggleSyncTextHotkey, value); }
+        
+        // NEW: Editor autofocus settings
+        private bool _editorAutofocusEnabled;
+        public bool EditorAutofocusEnabled { get => _editorAutofocusEnabled; set => SetProperty(ref _editorAutofocusEnabled, value); }
+        
+        private string? _editorAutofocusBookmark;
+        public string? EditorAutofocusBookmark { get => _editorAutofocusBookmark; set => SetProperty(ref _editorAutofocusBookmark, value); }
+        
+        private string _editorAutofocusKeyTypes = string.Empty;
+        public string EditorAutofocusKeyTypes { get => _editorAutofocusKeyTypes; set => SetProperty(ref _editorAutofocusKeyTypes, value); }
+        
+        private string? _editorAutofocusWindowTitle;
+        public string? EditorAutofocusWindowTitle { get => _editorAutofocusWindowTitle; set => SetProperty(ref _editorAutofocusWindowTitle, value); }
+        
+        // NEW: Available UI bookmarks for autofocus target selection
+        public ObservableCollection<string> AvailableBookmarks { get; } = new ObservableCollection<string>(
+            Enum.GetNames(typeof(UiBookmarks.KnownControl)).OrderBy(n => n));
+        
+        // NEW: Available key types for autofocus trigger selection (multiselect via checkboxes)
+        public ObservableCollection<KeyTypeOption> AvailableKeyTypes { get; } = new ObservableCollection<KeyTypeOption>
+        {
+            new KeyTypeOption { Name = "Alphabet", IsChecked = false },
+            new KeyTypeOption { Name = "Numbers", IsChecked = false },
+            new KeyTypeOption { Name = "Space", IsChecked = false },
+            new KeyTypeOption { Name = "Tab", IsChecked = false },
+            new KeyTypeOption { Name = "Symbols", IsChecked = false }
+        };
 
         private readonly IReportifySettingsService? _reportifySvc;
         private readonly ITenantContext? _tenant;
@@ -153,6 +209,12 @@ namespace Wysg.Musm.Radium.ViewModels
             OpenStudyHotkey = _local.GlobalHotkeyOpenStudy;
             SendStudyHotkey = _local.GlobalHotkeySendStudy;
             ToggleSyncTextHotkey = _local.GlobalHotkeyToggleSyncText;
+            
+            // NEW: Load editor autofocus settings from local settings
+            EditorAutofocusEnabled = _local.EditorAutofocusEnabled;
+            EditorAutofocusBookmark = _local.EditorAutofocusBookmark ?? string.Empty;
+            EditorAutofocusWindowTitle = _local.EditorAutofocusWindowTitle ?? string.Empty;
+            LoadKeyTypesFromString(_local.EditorAutofocusKeyTypes ?? string.Empty);
 
             // Initialize PACS profile commands and load from DB if repository is available
             InitializePacsProfileCommands();
@@ -269,7 +331,65 @@ namespace Wysg.Musm.Radium.ViewModels
             _local.GlobalHotkeyOpenStudy = OpenStudyHotkey ?? string.Empty;
             _local.GlobalHotkeySendStudy = SendStudyHotkey ?? string.Empty;
             _local.GlobalHotkeyToggleSyncText = ToggleSyncTextHotkey ?? string.Empty;
-            MessageBox.Show("Keyboard hotkeys saved.", "Keyboard", MessageBoxButton.OK, MessageBoxImage.Information);
+            
+            // NEW: Save editor autofocus settings
+            _local.EditorAutofocusEnabled = EditorAutofocusEnabled;
+            _local.EditorAutofocusBookmark = EditorAutofocusBookmark ?? string.Empty;
+            _local.EditorAutofocusKeyTypes = GetKeyTypesAsString();
+            _local.EditorAutofocusWindowTitle = EditorAutofocusWindowTitle ?? string.Empty;
+            
+            // NEW: Try to immediately re-register hotkeys without restart
+            try
+            {
+                // Find MainWindow and trigger hotkey re-registration
+                var mainWindow = Application.Current.MainWindow as Views.MainWindow;
+                if (mainWindow != null)
+                {
+                    // Call a public method on MainWindow to re-register hotkeys
+                    mainWindow.ReregisterGlobalHotkeys();
+                    MessageBox.Show("Keyboard hotkeys saved and applied immediately.", "Keyboard", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("Keyboard hotkeys saved. Please restart the application to apply changes.", "Keyboard", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SettingsVM] Failed to re-register hotkeys: {ex.Message}");
+                MessageBox.Show("Keyboard hotkeys saved, but failed to apply immediately. Please restart the application.", "Keyboard", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        
+        /// <summary>
+        /// Parses comma-separated key types string and sets checkboxes.
+        /// </summary>
+        private void LoadKeyTypesFromString(string keyTypes)
+        {
+            if (string.IsNullOrWhiteSpace(keyTypes))
+            {
+                // Default: uncheck all
+                foreach (var kt in AvailableKeyTypes)
+                    kt.IsChecked = false;
+                return;
+            }
+            
+            var selectedTypes = keyTypes.Split(',', System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
+            var selectedSet = new System.Collections.Generic.HashSet<string>(selectedTypes, System.StringComparer.OrdinalIgnoreCase);
+            
+            foreach (var kt in AvailableKeyTypes)
+            {
+                kt.IsChecked = selectedSet.Contains(kt.Name);
+            }
+        }
+        
+        /// <summary>
+        /// Returns comma-separated string of checked key types.
+        /// </summary>
+        private string GetKeyTypesAsString()
+        {
+            var checkedTypes = AvailableKeyTypes.Where(kt => kt.IsChecked).Select(kt => kt.Name);
+            return string.Join(",", checkedTypes);
         }
 
         private async Task TestLocalAsync() => await TestAsync(LocalConnectionString, "Local");

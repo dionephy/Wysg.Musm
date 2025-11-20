@@ -73,6 +73,12 @@ namespace Wysg.Musm.Radium.Services
         public bool AutoFindingsProofread { get => ReadBool("auto_findings_proofread"); set => WriteBool("auto_findings_proofread", value); }
         public bool AutoConclusionProofread { get => ReadBool("auto_conclusion_proofread"); set => WriteBool("auto_conclusion_proofread", value); }
 
+        // NEW: Editor autofocus configuration
+        public bool EditorAutofocusEnabled { get => ReadBool("editor_autofocus_enabled"); set => WriteBool("editor_autofocus_enabled", value); }
+        public string? EditorAutofocusBookmark { get => ReadSecret("editor_autofocus_bookmark"); set => WriteSecret("editor_autofocus_bookmark", value ?? string.Empty); }
+        public string? EditorAutofocusKeyTypes { get => ReadSecret("editor_autofocus_key_types"); set => WriteSecret("editor_autofocus_key_types", value ?? string.Empty); }
+        public string? EditorAutofocusWindowTitle { get => ReadSecret("editor_autofocus_window_title"); set => WriteSecret("editor_autofocus_window_title", value ?? string.Empty); }
+
         /// <summary>
         /// Decrypts settings file (if present) and returns the value for a key. Failures are swallowed to avoid
         /// disruptive UX (caller sees null and can prompt for settings).

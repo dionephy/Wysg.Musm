@@ -258,3 +258,11 @@
 - FR-1287 Implementation: New `RunSendReportModuleWithRetryAsync()` method with nested retry loops; outer loop for SendReport retry, inner loop for ClearReport retry.
 - FR-1288 User experience: Clear prompts for each failure scenario; OK/Cancel buttons for user control; status messages reflect current operation state.
 - FR-1289 Debug logging: Comprehensive logging at each step for troubleshooting; logs procedure results, user choices, and exception details.
+
+## Update: Keyboard Hotkey Shift Modifier Support (2025-02-11)
+- FR-1400 The Keyboard settings tab MUST allow capturing the Shift key as a modifier along with Ctrl / Alt / Win.
+- FR-1401 When user presses any combination including Shift (e.g., Ctrl+Shift+O, Shift+Alt+T), the captured text MUST include "Shift" exactly once even if both LeftShift and RightShift are held.
+- FR-1402 Pressing only Shift (without a non-modifier key) MUST update the textbox to show just "Shift" (consistent with existing behavior for single modifiers) until an additional key is pressed.
+- FR-1403 Existing parsing / registration logic already supports MOD_SHIFT; no changes required beyond capture layer.
+- FR-1404 Persistence format unchanged; saved strings may now include the "Shift" token. Backward compatibility: previously saved hotkeys lacking Shift remain valid.
+- FR-1405 No UI changes required; hint text remains applicable.

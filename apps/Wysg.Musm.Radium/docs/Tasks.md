@@ -705,4 +705,14 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [X] V394 Verify debug output shows correct split range loading order
 
 ## Changed
-...existing code...
+
+## Added
+- [X] T1400 Add Shift modifier capture to SettingsWindow.OnHotkeyTextBoxPreviewKeyDown (FR-1400)
+- [X] T1401 Ensure single-display of "Shift" when either LeftShift or RightShift pressed (FR-1401)
+- [X] T1402 Add Shift modifier parsing to MainWindow.TryParseHotkey method (FR-1403)
+- [X] T1403 Update README.md and Spec.md with Shift modifier support entries (FR-1404)
+- [X] T1404 Add immediate hotkey re-registration in SaveKeyboard command (FR-1405)
+- [X] T1405 Add ReregisterGlobalHotkeys public method to MainWindow (FR-1405)
+- [X] V1400 Build successful after adding Shift support and immediate re-registration
+
+## Changed

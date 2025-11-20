@@ -54,5 +54,15 @@ namespace Wysg.Musm.Radium.Services
         bool AutoConclusion { get; set; }
         bool AutoFindingsProofread { get; set; }
         bool AutoConclusionProofread { get; set; }
+        
+        // NEW: Editor autofocus configuration
+        /// <summary>Enable automatic focus to EditorFindings when configured keys are pressed while target element has focus.</summary>
+        bool EditorAutofocusEnabled { get; set; }
+        /// <summary>UI element bookmark name that triggers autofocus (e.g., "PacsViewerWindow").</summary>
+        string? EditorAutofocusBookmark { get; set; }
+        /// <summary>Comma-separated list of key types that trigger autofocus (e.g., "Alphabet,Numbers,Space").</summary>
+        string? EditorAutofocusKeyTypes { get; set; }
+        /// <summary>Window title that triggers autofocus (e.g., "INFINITT PACS"). If empty, uses bookmark-based detection.</summary>
+        string? EditorAutofocusWindowTitle { get; set; }
     }
 }

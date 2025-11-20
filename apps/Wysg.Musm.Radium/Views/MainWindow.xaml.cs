@@ -22,6 +22,9 @@ namespace Wysg.Musm.Radium.Views
         private bool _reportsReversed = false;
         private bool _alignRight = false;
         private PacsService? _pacs;
+        
+        // NEW: Editor autofocus service
+        private EditorAutofocusService? _autofocusService;
 
         // Global hotkeys (system-wide)
         private const int HOTKEY_ID_OPEN_STUDY = 0xB001;
@@ -191,6 +194,56 @@ if (isLandscape)
             }
 
             System.Diagnostics.Debug.WriteLine("[MainWindow] OnLoaded COMPLETE");
+            
+            // NEW: Initialize editor autofocus service
+            try
+            {
+                var app = (App)Application.Current;
+                var localSettings = app.Services.GetService<IRadiumLocalSettings>();
+                if (localSettings != null && localSettings.EditorAutofocusEnabled)
+                {
+                    _autofocusService = new EditorAutofocusService(
+                        localSettings,
+                        () =>
+                        {
+                            // Focus callback: focus the Findings editor
+                            System.Diagnostics.Debug.WriteLine("[MainWindow] Autofocus callback triggered - focusing EditorFindings");
+                            
+                            // Activate window first
+                            if (!this.IsActive)
+                            {
+                                this.Activate();
+                            }
+                            
+                            // Focus the underlying MusmEditor
+                            var editorControl = gridCenter.EditorFindings;
+                            if (editorControl != null)
+                            {
+                                var musmEditor = editorControl.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
+                                if (musmEditor != null)
+                                {
+                                    musmEditor.Focus();
+                                    musmEditor.TextArea?.Caret.BringCaretToView();
+                                }
+                                else
+                                {
+                                    editorControl.Focus();
+                                }
+                            }
+                        });
+                    
+                    _autofocusService.Start();
+                    System.Diagnostics.Debug.WriteLine("[MainWindow] EditorAutofocusService started");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[MainWindow] EditorAutofocusService not started (disabled in settings)");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] Failed to initialize EditorAutofocusService: {ex.Message}");
+            }
         }
         
         private async void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -751,7 +804,7 @@ if (isLandscape)
                     var p = parts[i];
                     if (p.Equals("Ctrl", StringComparison.OrdinalIgnoreCase) || p.Equals("Control", StringComparison.OrdinalIgnoreCase)) mods |= MOD_CONTROL;
                     else if (p.Equals("Alt", StringComparison.OrdinalIgnoreCase)) mods |= MOD_ALT;
-                    else if (p.Equals("Shift", StringComparison.OrdinalIgnoreCase)) mods |= MOD_SHIFT;
+                    else if (p.Equals("Shift", StringComparison.OrdinalIgnoreCase)) mods |= MOD_SHIFT; // NEW: Support Shift modifier
                     else if (p.Equals("Win", StringComparison.OrdinalIgnoreCase) || p.Equals("Windows", StringComparison.OrdinalIgnoreCase)) mods |= MOD_WIN;
                 }
                 // Convert key string to virtual key code
@@ -880,7 +933,103 @@ if (isLandscape)
                 }
             }
             catch { }
+            
+            // NEW: Dispose autofocus service
+            try
+            {
+                _autofocusService?.Dispose();
+                System.Diagnostics.Debug.WriteLine("[MainWindow] EditorAutofocusService disposed");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] Error disposing autofocus service: {ex.Message}");
+            }
+            
             base.OnClosed(e);
+        }
+
+        /// <summary>
+        /// Public method to re-register global hotkeys without restart.
+        /// Called from SettingsViewModel after saving new hotkey combinations.
+        /// </summary>
+        public void ReregisterGlobalHotkeys()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] Re-registering global hotkeys...");
+                
+                // Unregister existing hotkeys first
+                if (_hotkeyHwndSource != null)
+                {
+                    try { UnregisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_OPEN_STUDY); } catch { }
+                    try { UnregisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_TOGGLE_SYNC_TEXT); } catch { }
+                    try { UnregisterHotKey(_hotkeyHwndSource.Handle, HOTKEY_ID_SEND_REPORT); } catch { }
+                }
+                
+                // Re-register with new values
+                TryRegisterOpenStudyHotkey();
+                TryRegisterToggleSyncTextHotkey();
+                TryRegisterSendReportHotkey();
+                
+                System.Diagnostics.Debug.WriteLine("[MainWindow] Global hotkeys re-registered successfully");
+                
+                // NEW: Restart autofocus service with new settings
+                try
+                {
+                    var app = (App)Application.Current;
+                    var localSettings = app.Services.GetService<IRadiumLocalSettings>();
+                    if (localSettings != null)
+                    {
+                        // Stop existing service
+                        _autofocusService?.Dispose();
+                        _autofocusService = null;
+                        
+                        // Start new service if enabled
+                        if (localSettings.EditorAutofocusEnabled)
+                        {
+                            _autofocusService = new EditorAutofocusService(
+                                localSettings,
+                                () =>
+                                {
+                                    // Focus callback
+                                    System.Diagnostics.Debug.WriteLine("[MainWindow] Autofocus callback triggered");
+                                    if (!this.IsActive) this.Activate();
+                                    
+                                    var editorControl = gridCenter.EditorFindings;
+                                    if (editorControl != null)
+                                    {
+                                        var musmEditor = editorControl.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
+                                        if (musmEditor != null)
+                                        {
+                                            musmEditor.Focus();
+                                            musmEditor.TextArea?.Caret.BringCaretToView();
+                                        }
+                                        else
+                                        {
+                                            editorControl.Focus();
+                                        }
+                                    }
+                                });
+                        
+                            _autofocusService.Start();
+                            System.Diagnostics.Debug.WriteLine("[MainWindow] EditorAutofocusService restarted");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("[MainWindow] EditorAutofocusService disabled");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] Failed to restart EditorAutofocusService: {ex.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] Failed to re-register hotkeys: {ex.Message}");
+                throw; // Let caller handle the error
+            }
         }
 
         private void InitializeTripleClickSupport()

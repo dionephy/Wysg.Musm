@@ -15,6 +15,8 @@
 
 - [NEW] **[ENHANCEMENT_2025-02-11_AltLeftCopyToCaretPosition.md](ENHANCEMENT_2025-02-11_AltLeftCopyToCaretPosition.md)** - ✅ **UI ENHANCEMENT** - Modified Alt+Left navigation from previous report editors (editorPreviousFindings, editorPreviousConclusion, editorPreviousHeader) to current findings editor to paste copied text at current caret position instead of appending at end; uses AvalonEdit Document.Insert() for atomic insertion; caret positioned immediately after inserted text for continued typing; matches standard editor behavior (VS Code, Word, etc.); improves workflow efficiency by eliminating manual repositioning steps
 
+- [NEW] **Keyboard Hotkey Shift Modifier Support (2025-02-11)** - ✅ **USABILITY ENHANCEMENT** - Added Shift key recognition to Settings → Keyboard tab hotkey capture. Users can now configure combinations including Shift (e.g., Ctrl+Shift+O, Shift+Alt+T) for Open Study, Send Study, and Toggle Sync Text global hotkeys. Implementation extends capture logic to include LeftShift/RightShift state; parsing and registration logic already supported Shift flag (MOD_SHIFT) so only capture UI needed update. No breaking changes; existing saved hotkeys without Shift unaffected.
+
 - [NEW] **[ENHANCEMENT_2025-02-11_AltArrowNavigationDirectionChanges.md](ENHANCEMENT_2025-02-11_AltArrowNavigationDirectionChanges.md)** - ✅ **UI ENHANCEMENT** - Reorganized Alt+Arrow navigation directions in ReportInputsAndJsonPanel for more intuitive and workflow-optimized navigation; implemented bidirectional navigation where appropriate with clear copyable vs non-copyable transitions; horizontal navigation (Left/Right) for related fields, vertical navigation (Up/Down) for sequential fields; copyable transitions on key workflows (Study Remark → Chief Complaint, Patient Remark → Patient History, Findings → Findings PR); all textboxes now have clearly defined navigation targets for each direction
 
 ### Recent Major Features (2025-01-21)
@@ -933,4 +935,72 @@ Phrase: "anterior descending branch of left coronary artery" (8 words)
 - No regression in completion window speed
 
 **Key File Changes:**
-- `apps\Wyg
+- `apps\Wysg.Musm.Radium\Services\PhraseService.cs` - Updated usage of GetAllPhrasesForHighlightingAsync()
+
+**Documentation:**
+- See `FIX_2025-01-29_GlobalPhraseHighlightingFilterFix.md` for complete details
+
+---
+
+### UI Spy Admin Privilege Support (2025-01-28)
+
+**What Changed:**
+- Improved UI Spy "Pick" feature to support targeting applications with administrator privileges
+- Added application manifest request for `highestAvailable` execution level
+- Now prompts for admin credentials only when accessing elevated PACS applications
+
+**Why This Matters:**
+- **Full Automation** - Enables UI automation for medical imaging workflows requiring elevated privileges
+- **Seamless Integration** - Works with both standard and elevated PACS applications
+- **Improved Usability** - Users with admin rights will see a UAC prompt on launch, matching standard Windows behavior
+
+**Key Technical Details:**
+- Application manifest updated with requestedExecutionLevel `highestAvailable`
+- No changes to existing functionality for standard user scenarios
+
+**Documentation:**
+- See `BUGFIX_2025-01-21_UISpyAdminPrivilegeSupport.md` for complete details
+
+---
+
+### Web Browser Element Picker Stability Enhancements (2025-01-27)
+
+**What Changed:**
+- Enhanced web browser element picker logic to improve stability and robustness
+- Disabled Name matching for first 3 levels (browser chrome structure) where titles are dynamic
+- Kept structural matching (ClassName + ControlTypeId) for browser nodes
+- Used AutomationId for web content nodes (level 3+)
+- Changed all searches to use Descendants scope for faster resolution
+- Optimized bookmark creation logic to be more resilient to tab title changes
+
+**Why This Matters:**
+- **Reliability** - Bookmarks created by the element picker are now robust against tab title changes
+- **Performance** - Faster resolution times (~45ms) and uses best identifiers (AutomationId for web elements, ClassName for browser structure)
+- **Improved Workflow** - Status message now indicates "optimized for web stability"
+
+**Key Technical Details:**
+- Changes applied to `BUGFIX_2025-02-10_WebBrowserElementPickerRobustness.md` implementation
+
+**Documentation:**
+- See `BUGFIX_2025-02-10_WebBrowserElementPickerRobustness.md` for complete details
+
+---
+
+### Proofread UI Cleanup (2025-01-26)
+
+**What Changed:**
+- Removed unused Chief Complaint (PR), Patient History (PR), Study Techniques (PR), Comparison (PR) textboxes and associated logic from Previous Report panel
+- Cleaned up JSON components and navigation setup related to removed fields
+- Reduced UI clutter by removing 2 rows from ReportInputsAndJsonPanel (from 13 to 11 rows)
+
+**Why This Matters:**
+- **Simplified UI** - Removed rarely used fields and buttons, reducing clutter and simplifying the user interface
+- **Improved Workflow** - Users can focus on the core report content (findings and conclusion) without distraction
+- **Cleaner Code** - Removed unused dependency properties, bindings, and ViewModel properties
+
+**What Remains:**
+- Findings (PR) and Conclusion (PR) textboxes in Previous Report panel remain unchanged
+- Core functionality and data flow for existing features are unaffected
+
+**Documentation:**
+- Updated README.md with cumulative change entry

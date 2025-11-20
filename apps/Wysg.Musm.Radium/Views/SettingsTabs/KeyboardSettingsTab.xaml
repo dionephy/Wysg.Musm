@@ -1,17 +1,18 @@
 <UserControl x:Class="Wysg.Musm.Radium.Views.SettingsTabs.KeyboardSettingsTab"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid Margin="8">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <TextBlock Text="Global Hotkeys" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+        
+        <!-- Global Hotkeys Section -->
+        <TextBlock Grid.Row="0" Text="Global Hotkeys" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
         <StackPanel Grid.Row="1" Orientation="Vertical" Margin="0,8,0,0">
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                 <TextBlock Text="Open study:" Width="140" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextPrimary}"/>
@@ -25,10 +26,64 @@
                 <TextBlock Text="Toggle sync text:" Width="140" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextPrimary}"/>
                 <TextBox x:Name="txtHotkeyToggleSyncText" Width="220" Text="{Binding ToggleSyncTextHotkey, UpdateSourceTrigger=PropertyChanged}" PreviewKeyDown="OnHotkeyTextBoxPreviewKeyDown"/>
             </StackPanel>
-            <TextBlock Text="Tip: Click a box and press a key combination (Ctrl/Alt/Win + key)." Foreground="#9AA0A6"/>
+            <TextBlock Text="Tip: Click a box and press a key combination (Ctrl/Alt/Shift/Win + key)." Foreground="#9AA0A6" Margin="0,0,0,16"/>
         </StackPanel>
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Save" Width="100" Command="{Binding SaveKeyboardCommand}"/>
+        
+        <!-- Separator -->
+        <Border Grid.Row="2" Height="1" Background="#3E3E42" Margin="0,8,0,8"/>
+        
+        <!-- Editor Autofocus Section -->
+        <TextBlock Grid.Row="3" Text="Editor Autofocus" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,8"/>
+        <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
+            <StackPanel Orientation="Vertical">
+                <!-- Master Enable Checkbox -->
+                <CheckBox IsChecked="{Binding EditorAutofocusEnabled, Mode=TwoWay}" Margin="0,0,0,12">
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource BrushTextPrimary}">
+                        <Run Text="Enable editor autofocus"/>
+                        <LineBreak/>
+                        <Run Text="(this may disable shortcut keys for PACS viewer)" FontSize="11" Foreground="#9AA0A6"/>
+                    </TextBlock>
+                </CheckBox>
+                
+                <!-- UI Bookmark Selector -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,12" IsEnabled="{Binding EditorAutofocusEnabled}">
+                    <TextBlock Text="Target UI element:" Width="140" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextPrimary}"/>
+                    <ComboBox x:Name="cmbAutofocusBookmark" Width="220" 
+                              ItemsSource="{Binding AvailableBookmarks}"
+                              SelectedItem="{Binding EditorAutofocusBookmark, Mode=TwoWay}"/>
+                </StackPanel>
+                
+                <!-- Window Title Filter -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,12" IsEnabled="{Binding EditorAutofocusEnabled}">
+                    <TextBlock Text="Window title filter:" Width="140" VerticalAlignment="Center"/>
+                    <TextBox x:Name="txtAutofocusWindowTitle" Width="220" 
+                             Text="{Binding EditorAutofocusWindowTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Optional: Filter by window title (e.g., 'INFINITT PACS'). If empty, uses bookmark-based detection."/>
+                </StackPanel>
+                
+                <!-- Key Types Multiselect -->
+                <TextBlock Text="Trigger on key types:" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,4" FontWeight="SemiBold"/>
+                <ItemsControl ItemsSource="{Binding AvailableKeyTypes}" Margin="140,0,0,0" IsEnabled="{Binding EditorAutofocusEnabled}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Content="{Binding Name}" Margin="0,2,0,2" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                
+                <!-- Help Text -->
+                <TextBlock TextWrapping="Wrap" Foreground="#9AA0A6" Margin="0,12,0,0">
+                    <Run Text="When the target UI element has focus and one of the selected key types is pressed, the Findings editor will automatically gain focus."/>
+                    <LineBreak/>
+                    <LineBreak/>
+                    <Run Text="Use UI Spy window to map bookmarks to specific UI elements (e.g., PACS viewer window)."/>
+                </TextBlock>
+            </StackPanel>
+        </ScrollViewer>
+        
+        <!-- Action Buttons -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="Save Keyboard" Width="120" Command="{Binding SaveKeyboardCommand}"/>
             <Button Content="Close" Width="90" IsCancel="True" Margin="8,0,0,0"/>
         </StackPanel>
     </Grid>
