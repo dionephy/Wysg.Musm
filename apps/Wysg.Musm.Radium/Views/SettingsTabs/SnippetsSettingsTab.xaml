@@ -44,8 +44,8 @@ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
             <Setter Property="Background" Value="#2F343A"/>
             <Setter Property="Foreground" Value="#E0E0E0"/>
             <Setter Property="BorderBrush" Value="#41474F"/>
-            <Setter Property="Margin" Value="6 0 0 0"/>
-            <Setter Property="Padding" Value="8 4"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="Padding" Value="8,4"/>
         </Style>
     </UserControl.Resources>
     
@@ -65,20 +65,24 @@ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <TextBlock Grid.Row="0" Grid.Column="0" Text="Trigger:" VerticalAlignment="Center" Margin="0,0,8,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding TriggerText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SnippetInputBox}" Margin="0,0,0,4"/>
-            <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource SnippetButton}" Content="Add" Command="{Binding AddCommand}" Margin="6,0,0,4"/>
+            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding TriggerText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SnippetInputBox}" Margin="0,0,0,4" IsReadOnly="{Binding IsEditMode}"/>
+            <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource SnippetButton}" Content="{Binding AddButtonText}" Command="{Binding AddCommand}" Margin="6,0,0,4"/>
+            <Button Grid.Row="0" Grid.Column="3" Style="{StaticResource SnippetButton}" Content="Edit Selected" Command="{Binding EditCommand}" Margin="6,0,0,4"/>
 
             <TextBlock Grid.Row="1" Grid.Column="0" Text="Template:" VerticalAlignment="Top" Margin="0,0,8,0" Foreground="{DynamicResource BrushTextPrimary}"/>
             <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SnippetText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="60" VerticalScrollBarVisibility="Auto" Style="{StaticResource SnippetInputBox}"/>
-            <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource SnippetButton}" Content="Delete Selected" Command="{Binding DeleteCommand}" VerticalAlignment="Top"/>
+            <Button Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Style="{StaticResource SnippetButton}" Content="Delete Selected" Command="{Binding DeleteCommand}" VerticalAlignment="Top"/>
+            <Button Grid.Row="1" Grid.Column="3" Style="{StaticResource SnippetButton}" Content="Cancel" Command="{Binding CancelEditCommand}" VerticalAlignment="Top"/>
 
             <TextBlock Grid.Row="2" Grid.Column="0" Text="AST (JSON):" VerticalAlignment="Top" Margin="0,4,8,0" Foreground="{DynamicResource BrushTextPrimary}"/>
             <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SnippetAstText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="60" VerticalScrollBarVisibility="Auto" Style="{StaticResource SnippetInputBox}"/>
@@ -86,7 +90,7 @@ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
             <TextBlock Grid.Row="3" Grid.Column="0" Text="Description:" VerticalAlignment="Center" Margin="0,4,8,0" Foreground="{DynamicResource BrushTextPrimary}"/>
             <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding DescriptionText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SnippetInputBox}"/>
 
-            <Border Grid.Row="4" Grid.ColumnSpan="3" Margin="0,8,0,0" Padding="8" Background="{StaticResource SnippetPanelAlt}" BorderBrush="{StaticResource SnippetBorder}" BorderThickness="1" CornerRadius="4">
+            <Border Grid.Row="4" Grid.ColumnSpan="4" Margin="0,8,0,0" Padding="8" Background="{StaticResource SnippetPanelAlt}" BorderBrush="{StaticResource SnippetBorder}" BorderThickness="1" CornerRadius="4">
                 <StackPanel>
                     <TextBlock Text="Sample Snippet" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
                     <TextBox IsReadOnly="True" Style="{StaticResource SnippetInputBox}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto">
@@ -99,6 +103,7 @@ ${3^single replace=a^apple|b^banana|3^pear}
 i have ${1^fruit=a^apple|b^bannana|3^watermelon} and ${2^juices=a^cola|b^cider}, and i want to eat with ${friend}, but ${3^family=mm^mom|dd^dad} said no...
                         </TextBox.Text>
                     </TextBox>
+                    <TextBlock Text="Tip: Click 'Edit Selected' to modify an existing snippet." Foreground="#9AA0A6" Margin="0,4,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
         </Grid>

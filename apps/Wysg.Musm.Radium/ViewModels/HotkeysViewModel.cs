@@ -27,8 +27,10 @@ namespace Wysg.Musm.Radium.ViewModels
             _tenant = tenant ?? throw new ArgumentNullException(nameof(tenant));
             
             RefreshCommand = new DelegateCommand(async _ => await RefreshAsync());
-            AddCommand = new DelegateCommand(async _ => await AddAsync(), _ => CanAdd());
-            DeleteCommand = new DelegateCommand(async _ => await DeleteAsync(), _ => SelectedItem != null);
+            AddCommand = new DelegateCommand(async _ => await AddOrUpdateAsync(), _ => CanAdd());
+            EditCommand = new DelegateCommand(_ => { StartEdit(); return Task.CompletedTask; }, _ => SelectedItem != null && !IsEditMode);
+            CancelEditCommand = new DelegateCommand(_ => { CancelEdit(); return Task.CompletedTask; }, _ => IsEditMode);
+            DeleteCommand = new DelegateCommand(async _ => await DeleteAsync(), _ => SelectedItem != null && !IsEditMode);
             
             _tenant.AccountIdChanged += OnAccountIdChanged;
             _ = RefreshAsync();
@@ -91,17 +93,68 @@ namespace Wysg.Musm.Radium.ViewModels
             set
             {
                 if (SetProperty(ref _selectedItem, value))
+                {
                     (DeleteCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (EditCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                }
             }
         }
 
+        private bool _isEditMode;
+        public bool IsEditMode
+        {
+            get => _isEditMode;
+            set
+            {
+                if (SetProperty(ref _isEditMode, value))
+                {
+                    (AddCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (EditCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (CancelEditCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (DeleteCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    OnPropertyChanged(nameof(AddButtonText));
+                }
+            }
+        }
+
+        private HotkeyRow? _editingItem;
+
+        public string AddButtonText => IsEditMode ? "Update" : "Add";
+
         public ICommand RefreshCommand { get; }
         public ICommand AddCommand { get; }
+        public ICommand EditCommand { get; }
+        public ICommand CancelEditCommand { get; }
         public ICommand DeleteCommand { get; }
 
         private bool CanAdd() =>
             !string.IsNullOrWhiteSpace(TriggerText) &&
             !string.IsNullOrWhiteSpace(ExpansionText);
+
+        private void StartEdit()
+        {
+            var item = SelectedItem;
+            if (item == null) return;
+
+            _editingItem = item;
+            TriggerText = item.TriggerText;
+            ExpansionText = item.ExpansionText;
+            DescriptionText = item.Description;
+            IsEditMode = true;
+
+            Debug.WriteLine($"[HotkeysVM] Started editing hotkey id={item.HotkeyId}, trigger='{item.TriggerText}'");
+        }
+
+        private void CancelEdit()
+        {
+            _editingItem = null;
+            TriggerText = string.Empty;
+            ExpansionText = string.Empty;
+            DescriptionText = string.Empty;
+            IsEditMode = false;
+
+            Debug.WriteLine($"[HotkeysVM] Cancelled editing");
+        }
 
         public sealed class HotkeyRow : BaseViewModel
         {
@@ -224,7 +277,7 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
-        private async Task AddAsync()
+        private async Task AddOrUpdateAsync()
         {
             var accountId = _tenant.AccountId;
             if (accountId <= 0) return;
@@ -237,55 +290,28 @@ namespace Wysg.Musm.Radium.ViewModels
 
             try
             {
-                Debug.WriteLine($"[HotkeysVM] Adding hotkey: trigger='{trigger}'");
+                Debug.WriteLine($"[HotkeysVM] {(IsEditMode ? "Updating" : "Adding")} hotkey: trigger='{trigger}'");
                 IsBusy = true;
 
                 // Synchronous flow: DB -> snapshot -> UI
                 var newHotkey = await _hotkeys.UpsertHotkeyAsync(accountId, trigger, expansion, true, desc);
 
-                Debug.WriteLine($"[HotkeysVM] Hotkey added successfully: id={newHotkey.HotkeyId}");
+                Debug.WriteLine($"[HotkeysVM] Hotkey {(IsEditMode ? "updated" : "added")} successfully: id={newHotkey.HotkeyId}");
+                
+                var wasEditMode = IsEditMode;
                 
                 TriggerText = string.Empty;
                 ExpansionText = string.Empty;
                 DescriptionText = string.Empty;
+                IsEditMode = false;
+                _editingItem = null;
 
-                void AddToUI()
-                {
-                    // Check if already exists (upsert case)
-                    var existing = Items.FirstOrDefault(r => r.HotkeyId == newHotkey.HotkeyId);
-                    if (existing != null)
-                    {
-                        existing.TriggerText = newHotkey.TriggerText;
-                        existing.ExpansionText = newHotkey.ExpansionText;
-                        existing.Description = newHotkey.Description;
-                        existing.UpdateFromSnapshotSynchronous(newHotkey.IsActive, newHotkey.UpdatedAt, newHotkey.Rev);
-                    }
-                    else
-                    {
-                        var row = new HotkeyRow(this)
-                        {
-                            HotkeyId = newHotkey.HotkeyId,
-                            AccountId = newHotkey.AccountId,
-                            TriggerText = newHotkey.TriggerText,
-                            ExpansionText = newHotkey.ExpansionText,
-                            Description = newHotkey.Description,
-                            UpdatedAt = newHotkey.UpdatedAt,
-                            Rev = newHotkey.Rev
-                        };
-                        row.InitializeActive(newHotkey.IsActive);
-                        Items.Insert(0, row); // Add at top
-                    }
-                    Debug.WriteLine($"[HotkeysVM] Added/Updated hotkey id={newHotkey.HotkeyId} in UI from snapshot");
-                }
-
-                if (Application.Current?.Dispatcher.CheckAccess() == true)
-                    AddToUI();
-                else
-                    Application.Current?.Dispatcher.Invoke(AddToUI);
+                // Refresh the entire list to ensure proper ordering by UpdatedAt
+                await RefreshAsync();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[HotkeysVM] Add failed: {ex.Message}");
+                Debug.WriteLine($"[HotkeysVM] Add/Update failed: {ex.Message}");
                 await RefreshAsync();
             }
             finally

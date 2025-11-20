@@ -27,8 +27,10 @@ namespace Wysg.Musm.Radium.ViewModels
             _tenant = tenant ?? throw new ArgumentNullException(nameof(tenant));
 
             RefreshCommand = new DelegateCommand(async _ => await RefreshAsync());
-            AddCommand = new DelegateCommand(async _ => await AddAsync(), _ => CanAdd());
-            DeleteCommand = new DelegateCommand(async _ => await DeleteAsync(), _ => SelectedItem != null);
+            AddCommand = new DelegateCommand(async _ => await AddOrUpdateAsync(), _ => CanAdd());
+            EditCommand = new DelegateCommand(_ => { StartEdit(); return Task.CompletedTask; }, _ => SelectedItem != null && !IsEditMode);
+            CancelEditCommand = new DelegateCommand(_ => { CancelEdit(); return Task.CompletedTask; }, _ => IsEditMode);
+            DeleteCommand = new DelegateCommand(async _ => await DeleteAsync(), _ => SelectedItem != null && !IsEditMode);
 
             _tenant.AccountIdChanged += OnAccountIdChanged;
             _ = RefreshAsync();
@@ -60,13 +62,74 @@ namespace Wysg.Musm.Radium.ViewModels
         public string DescriptionText { get => _descriptionText; set { if (SetProperty(ref _descriptionText, value)) (AddCommand as DelegateCommand)?.RaiseCanExecuteChanged(); } }
 
         private SnippetRow? _selectedItem;
-        public SnippetRow? SelectedItem { get => _selectedItem; set { if (SetProperty(ref _selectedItem, value)) (DeleteCommand as DelegateCommand)?.RaiseCanExecuteChanged(); } }
+        public SnippetRow? SelectedItem 
+        { 
+            get => _selectedItem; 
+            set 
+            { 
+                if (SetProperty(ref _selectedItem, value))
+                {
+                    (DeleteCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (EditCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                }
+            } 
+        }
+
+        private bool _isEditMode;
+        public bool IsEditMode
+        {
+            get => _isEditMode;
+            set
+            {
+                if (SetProperty(ref _isEditMode, value))
+                {
+                    (AddCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (EditCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (CancelEditCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    (DeleteCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                    OnPropertyChanged(nameof(AddButtonText));
+                }
+            }
+        }
+
+        private SnippetRow? _editingItem;
+
+        public string AddButtonText => IsEditMode ? "Update" : "Add";
 
         public ICommand RefreshCommand { get; }
         public ICommand AddCommand { get; }
+        public ICommand EditCommand { get; }
+        public ICommand CancelEditCommand { get; }
         public ICommand DeleteCommand { get; }
 
         private bool CanAdd() => !string.IsNullOrWhiteSpace(TriggerText) && !string.IsNullOrWhiteSpace(SnippetText);
+
+        private void StartEdit()
+        {
+            var item = SelectedItem;
+            if (item == null) return;
+
+            _editingItem = item;
+            TriggerText = item.TriggerText;
+            SnippetText = item.SnippetText;
+            SnippetAstText = item.SnippetAst;
+            DescriptionText = item.Description;
+            IsEditMode = true;
+
+            Debug.WriteLine($"[SnippetsVM] Started editing snippet id={item.SnippetId}, trigger='{item.TriggerText}'");
+        }
+
+        private void CancelEdit()
+        {
+            _editingItem = null;
+            TriggerText = string.Empty;
+            SnippetText = string.Empty;
+            SnippetAstText = string.Empty;
+            DescriptionText = string.Empty;
+            IsEditMode = false;
+
+            Debug.WriteLine($"[SnippetsVM] Cancelled editing");
+        }
 
         public sealed class SnippetRow : BaseViewModel
         {
@@ -139,7 +202,7 @@ namespace Wysg.Musm.Radium.ViewModels
             catch (Exception ex) { Debug.WriteLine($"[SnippetsVM] Refresh failed: {ex.Message}"); }
         }
 
-        private async Task AddAsync()
+        private async Task AddOrUpdateAsync()
         {
             var aid = _tenant.AccountId; if (aid <= 0) return;
             var trigger = TriggerText.Trim(); var text = SnippetText.Trim(); var desc = string.IsNullOrWhiteSpace(DescriptionText) ? null : DescriptionText.Trim();
@@ -152,35 +215,20 @@ namespace Wysg.Musm.Radium.ViewModels
                 var builtAst = SnippetAstBuilder.BuildJson(text);
                 SnippetAstText = builtAst; // reflect in UI for preview
 
+                Debug.WriteLine($"[SnippetsVM] {(IsEditMode ? "Updating" : "Adding")} snippet: trigger='{trigger}'");
+
                 var info = await _snippets.UpsertSnippetAsync(aid, trigger, text, builtAst, true, desc);
 
+                Debug.WriteLine($"[SnippetsVM] Snippet {(IsEditMode ? "updated" : "added")} successfully: id={info.SnippetId}");
+
                 TriggerText = string.Empty; SnippetText = string.Empty; SnippetAstText = string.Empty; DescriptionText = string.Empty;
-                void AddToUI()
-                {
-                    var existing = Items.FirstOrDefault(r => r.SnippetId == info.SnippetId);
-                    if (existing != null)
-                    {
-                        existing.TriggerText = info.TriggerText; existing.SnippetText = info.SnippetText; existing.SnippetAst = info.SnippetAst; existing.Description = info.Description; existing.UpdateFromSnapshotSynchronous(info.IsActive, info.UpdatedAt, info.Rev);
-                    }
-                    else
-                    {
-                        var row = new SnippetRow(this)
-                        {
-                            SnippetId = info.SnippetId,
-                            AccountId = info.AccountId,
-                            TriggerText = info.TriggerText,
-                            SnippetText = info.SnippetText,
-                            SnippetAst = info.SnippetAst,
-                            Description = info.Description,
-                            UpdatedAt = info.UpdatedAt,
-                            Rev = info.Rev
-                        };
-                        row.InitializeActive(info.IsActive); Items.Insert(0, row);
-                    }
-                }
-                if (Application.Current?.Dispatcher.CheckAccess() == true) AddToUI(); else Application.Current?.Dispatcher.Invoke(AddToUI);
+                IsEditMode = false;
+                _editingItem = null;
+
+                // Refresh the entire list to ensure proper ordering by UpdatedAt
+                await RefreshAsync();
             }
-            catch (Exception ex) { Debug.WriteLine($"[SnippetsVM] Add failed: {ex.Message}"); await RefreshAsync(); }
+            catch (Exception ex) { Debug.WriteLine($"[SnippetsVM] Add/Update failed: {ex.Message}"); await RefreshAsync(); }
             finally { IsBusy = false; }
         }
 

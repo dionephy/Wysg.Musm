@@ -48,8 +48,8 @@
             <Setter Property="Background" Value="#2F343A"/>
             <Setter Property="Foreground" Value="#E0E0E0"/>
             <Setter Property="BorderBrush" Value="#41474F"/>
-            <Setter Property="Margin" Value="6 0 0 0"/>
-            <Setter Property="Padding" Value="8 4"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="Padding" Value="8,4"/>
         </Style>
     </UserControl.Resources>
     
@@ -68,25 +68,29 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <TextBlock Grid.Row="0" Grid.Column="0" Text="Trigger:" VerticalAlignment="Center" Margin="0,0,8,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding TriggerText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource HotkeyInputBox}" Margin="0,0,0,4"/>
-            <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource HotkeyButton}" Content="Add" Command="{Binding AddCommand}" Margin="6,0,0,4"/>
+            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding TriggerText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource HotkeyInputBox}" Margin="0,0,0,4" IsReadOnly="{Binding IsEditMode}"/>
+            <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource HotkeyButton}" Content="{Binding AddButtonText}" Command="{Binding AddCommand}" Margin="6,0,0,4"/>
+            <Button Grid.Row="0" Grid.Column="3" Style="{StaticResource HotkeyButton}" Content="Edit Selected" Command="{Binding EditCommand}" Margin="6,0,0,4"/>
 
             <TextBlock Grid.Row="1" Grid.Column="0" Text="Expansion:" VerticalAlignment="Top" Margin="0,0,8,0" Foreground="{DynamicResource BrushTextPrimary}"/>
             <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ExpansionText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="60" VerticalScrollBarVisibility="Auto" Style="{StaticResource HotkeyInputBox}"/>
-            <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource HotkeyButton}" Content="Delete Selected" Command="{Binding DeleteCommand}" VerticalAlignment="Top"/>
+            <Button Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Style="{StaticResource HotkeyButton}" Content="Delete Selected" Command="{Binding DeleteCommand}" VerticalAlignment="Top"/>
+            <Button Grid.Row="1" Grid.Column="3" Style="{StaticResource HotkeyButton}" Content="Cancel" Command="{Binding CancelEditCommand}" VerticalAlignment="Top"/>
 
             <TextBlock Grid.Row="2" Grid.Column="0" Text="Description:" VerticalAlignment="Center" Margin="0,4,8,0" Foreground="{DynamicResource BrushTextPrimary}"/>
             <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding DescriptionText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource HotkeyInputBox}"/>
 
-            <TextBlock Grid.Row="3" Grid.ColumnSpan="3" Text="Tip: Type trigger text in editors followed by space or punctuation to expand. Example: 'bll' expands to 'bilateral leukoaraiosis'" Foreground="#9AA0A6" Margin="0,8,0,0" TextWrapping="Wrap"/>
+            <TextBlock Grid.Row="3" Grid.ColumnSpan="4" Text="Tip: Type trigger text in editors followed by space or punctuation to expand. Example: 'bll' expands to 'bilateral leukoaraiosis'. Click 'Edit Selected' to modify an existing hotkey." Foreground="#9AA0A6" Margin="0,8,0,0" TextWrapping="Wrap"/>
         </Grid>
 
         <DataGrid Grid.Row="2" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" IsReadOnly="False" RowHeaderWidth="0" Margin="0,0,0,8"
