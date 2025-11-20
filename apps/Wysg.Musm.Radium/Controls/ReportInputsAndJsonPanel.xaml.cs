@@ -244,29 +244,80 @@ self.ApplyReverse((bool)e.NewValue);
   return;
 }
 
- // Existing navigation pairs
-            SetupAltArrowPair(studyRemark, txtChiefComplaint, Key.Down, Key.Up);
+            // === txtStudyRemark Navigation ===
+            // Alt+Right (copyable) ¡æ txtChiefComplaint
+            SetupOneWayAltArrow(studyRemark, txtChiefComplaint, Key.Right, copyText: true);
+            // Alt+Down ¡æ txtFindings
+            SetupOneWayAltArrow(studyRemark, txtFindings, Key.Down, copyText: false);
 
-        // NEW: Additional vertical navigation through the form
-       // Study Remark -> Chief Complaint (already exists above)
-            // Chief Complaint -> Patient Remark
-         SetupOneWayAltArrow(txtChiefComplaint, patientRemark, Key.Down);
-        
-   // Patient Remark -> Chief Complaint
-          SetupOneWayAltArrow(patientRemark, txtChiefComplaint, Key.Up);
-          
-   // Patient Remark -> Patient History
-     SetupOneWayAltArrow(patientRemark, txtPatientHistory, Key.Down);
-     
-   // Patient History -> Patient Remark
-     SetupOneWayAltArrow(txtPatientHistory, patientRemark, Key.Up);
- 
-     // NEW: Navigation from Patient History to EditorFindings (if TargetEditor is set)
-       if (TargetEditor != null)
+            // === txtChiefComplaint Navigation ===
+            // Alt+Left ¡æ txtStudyRemark
+            SetupOneWayAltArrow(txtChiefComplaint, studyRemark, Key.Left, copyText: false);
+            // Alt+Right ¡æ txtPatientRemark
+            SetupOneWayAltArrow(txtChiefComplaint, patientRemark, Key.Right, copyText: false);
+            // Alt+Down ¡æ txtPatientHistory
+            SetupOneWayAltArrow(txtChiefComplaint, txtPatientHistory, Key.Down, copyText: false);
+
+            // === txtPatientRemark Navigation ===
+            // Alt+Left (copyable) ¡æ txtPatientHistory
+            SetupOneWayAltArrow(patientRemark, txtPatientHistory, Key.Left, copyText: true);
+            // Alt+Down ¡æ editorFindings (if TargetEditor is set)
+            if (TargetEditor != null)
             {
-         SetupTextBoxToEditorNavigation(txtPatientHistory, TargetEditor, Key.Down);
-                SetupEditorToTextBoxNavigation(TargetEditor, txtPatientHistory, Key.Up);
-}
+                SetupTextBoxToEditorNavigation(patientRemark, TargetEditor, Key.Down);
+            }
+
+            // === txtPatientHistory Navigation ===
+            // Alt+Up ¡æ txtChiefComplaint
+            SetupOneWayAltArrow(txtPatientHistory, txtChiefComplaint, Key.Up, copyText: false);
+            // Alt+Down ¡æ txtFindingsProofread
+            SetupOneWayAltArrow(txtPatientHistory, txtFindingsProofread, Key.Down, copyText: false);
+            // Alt+Left ¡æ txtStudyRemark
+            SetupOneWayAltArrow(txtPatientHistory, studyRemark, Key.Left, copyText: false);
+            // Alt+Right ¡æ txtPatientRemark
+            SetupOneWayAltArrow(txtPatientHistory, patientRemark, Key.Right, copyText: false);
+
+            // === txtFindings Navigation ===
+            // Alt+Up ¡æ txtStudyRemark
+            SetupOneWayAltArrow(txtFindings, studyRemark, Key.Up, copyText: false);
+            // Alt+Down ¡æ txtConclusion
+            SetupOneWayAltArrow(txtFindings, txtConclusion, Key.Down, copyText: false);
+            // Alt+Right (copyable) ¡æ txtFindingsProofread
+            SetupOneWayAltArrow(txtFindings, txtFindingsProofread, Key.Right, copyText: true);
+
+            // === txtFindingsProofread Navigation ===
+            // Alt+Up ¡æ txtPatientHistory
+            SetupOneWayAltArrow(txtFindingsProofread, txtPatientHistory, Key.Up, copyText: false);
+            // Alt+Down ¡æ txtConclusionProofread
+            SetupOneWayAltArrow(txtFindingsProofread, txtConclusionProofread, Key.Down, copyText: false);
+            // Alt+Left ¡æ txtFindings
+            SetupOneWayAltArrow(txtFindingsProofread, txtFindings, Key.Left, copyText: false);
+            // Alt+Right ¡æ txtPatientRemark
+            SetupOneWayAltArrow(txtFindingsProofread, patientRemark, Key.Right, copyText: false);
+
+            // === txtConclusion Navigation ===
+            // Alt+Up ¡æ txtFindings
+            SetupOneWayAltArrow(txtConclusion, txtFindings, Key.Up, copyText: false);
+            // Alt+Down ¡æ editorFindings (if TargetEditor is set)
+            if (TargetEditor != null)
+            {
+                SetupTextBoxToEditorNavigation(txtConclusion, TargetEditor, Key.Down);
+            }
+            // Alt+Right ¡æ txtConclusionProofread
+            SetupOneWayAltArrow(txtConclusion, txtConclusionProofread, Key.Right, copyText: false);
+
+            // === txtConclusionProofread Navigation ===
+            // Alt+Up ¡æ txtFindingsProofread
+            SetupOneWayAltArrow(txtConclusionProofread, txtFindingsProofread, Key.Up, copyText: false);
+            // Alt+Down ¡æ editorFindings (if TargetEditor is set)
+            if (TargetEditor != null)
+            {
+                SetupTextBoxToEditorNavigation(txtConclusionProofread, TargetEditor, Key.Down);
+            }
+            // Alt+Left ¡æ txtConclusion
+            SetupOneWayAltArrow(txtConclusionProofread, txtConclusion, Key.Left, copyText: false);
+            // Alt+Right ¡æ txtPatientRemark
+            SetupOneWayAltArrow(txtConclusionProofread, patientRemark, Key.Right, copyText: false);
   }
 
         private void SetupAltArrowPair(TextBox source, TextBox target, Key sourceKey, Key targetKey)
@@ -279,7 +330,7 @@ self.ApplyReverse((bool)e.NewValue);
    
   if (e.KeyboardDevice.Modifiers == ModifierKeys.Alt && actualKey == sourceKey)
      {
-              HandleAltArrowNavigation(source, target);
+              HandleAltArrowNavigation(source, target, copyText: false);
                e.Handled = true;
      }
             };
@@ -292,13 +343,13 @@ self.ApplyReverse((bool)e.NewValue);
   
           if (e.KeyboardDevice.Modifiers == ModifierKeys.Alt && actualKey == targetKey)
      {
-       HandleAltArrowNavigation(target, source);
+       HandleAltArrowNavigation(target, source, copyText: false);
           e.Handled = true;
      }
         };
         }
 
-        private void SetupOneWayAltArrow(TextBox source, TextBox target, Key key)
+        private void SetupOneWayAltArrow(TextBox source, TextBox target, Key key, bool copyText)
         {
  source.PreviewKeyDown += (s, e) =>
       {
@@ -306,7 +357,7 @@ self.ApplyReverse((bool)e.NewValue);
     
           if (e.KeyboardDevice.Modifiers == ModifierKeys.Alt && actualKey == key)
        {
-   HandleAltArrowNavigation(source, target);
+   HandleAltArrowNavigation(source, target, copyText);
            e.Handled = true;
             }
             };
@@ -344,17 +395,17 @@ self.ApplyReverse((bool)e.NewValue);
       };
      }
 
-        private void HandleAltArrowNavigation(TextBox source, TextBox target)
+        private void HandleAltArrowNavigation(TextBox source, TextBox target, bool copyText)
 {
-            if (string.IsNullOrEmpty(source.SelectedText))
+            if (!copyText || string.IsNullOrEmpty(source.SelectedText))
             {
-// No selection: just move focus
+// No selection or copying disabled: just move focus
          target.Focus();
       target.CaretIndex = target.Text?.Length ?? 0;
             }
  else
      {
-         // Has selection: copy to end of target and move focus
+         // Has selection and copying enabled: copy to end of target and move focus
     var selectedText = source.SelectedText;
        var targetText = target.Text ?? string.Empty;
   

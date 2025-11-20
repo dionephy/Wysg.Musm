@@ -167,21 +167,16 @@ SetupOneWayEditor(target, source, targetKey, copyText);
 
    if (copyText && !string.IsNullOrEmpty(sourceEditor.SelectedText))
         {
-          // Has selection and copying enabled: copy to end of target
+          // Has selection and copying enabled: insert at current caret position
       var selectedText = sourceEditor.SelectedText;
-      var targetText = targetEditor.Text ?? string.Empty;
+      int caretOffset = targetEditor.CaretOffset;
     
-       if (!string.IsNullOrEmpty(targetText))
-        {
-           targetEditor.Text = targetText + "\n" + selectedText;
-  }
-         else
-      {
-    targetEditor.Text = selectedText;
-      }
+       // Insert selected text at caret position
+       targetEditor.Document.Insert(caretOffset, selectedText);
          
-                targetEditor.Focus();
-      targetEditor.CaretOffset = targetEditor.Text.Length;
+       // Move focus to target and position caret after inserted text
+       targetEditor.Focus();
+       targetEditor.CaretOffset = caretOffset + selectedText.Length;
             }
         else
             {

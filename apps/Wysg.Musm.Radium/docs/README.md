@@ -1,6 +1,6 @@
 ﻿# Radium Documentation
 
-**Last Updated**: 2025-02-10
+**Last Updated**: 2025-02-11
 
 ---
 
@@ -10,6 +10,16 @@
 - **[Spec-active.md](Spec-active.md)** - Active feature specifications
 - **[Plan-active.md](Plan-active.md)** - Recent implementation plans  
 - **[Tasks.md](Tasks.md)** - Active and pending tasks
+
+### Recent Major Features (2025-02-11)
+
+- [NEW] **[ENHANCEMENT_2025-02-11_AltLeftCopyToCaretPosition.md](ENHANCEMENT_2025-02-11_AltLeftCopyToCaretPosition.md)** - ✅ **UI ENHANCEMENT** - Modified Alt+Left navigation from previous report editors (editorPreviousFindings, editorPreviousConclusion, editorPreviousHeader) to current findings editor to paste copied text at current caret position instead of appending at end; uses AvalonEdit Document.Insert() for atomic insertion; caret positioned immediately after inserted text for continued typing; matches standard editor behavior (VS Code, Word, etc.); improves workflow efficiency by eliminating manual repositioning steps
+
+- [NEW] **[ENHANCEMENT_2025-02-11_AltArrowNavigationDirectionChanges.md](ENHANCEMENT_2025-02-11_AltArrowNavigationDirectionChanges.md)** - ✅ **UI ENHANCEMENT** - Reorganized Alt+Arrow navigation directions in ReportInputsAndJsonPanel for more intuitive and workflow-optimized navigation; implemented bidirectional navigation where appropriate with clear copyable vs non-copyable transitions; horizontal navigation (Left/Right) for related fields, vertical navigation (Up/Down) for sequential fields; copyable transitions on key workflows (Study Remark → Chief Complaint, Patient Remark → Patient History, Findings → Findings PR); all textboxes now have clearly defined navigation targets for each direction
+
+### Recent Major Features (2025-01-21)
+
+- [NEW] **[BUGFIX_2025-01-21_UISpyAdminPrivilegeSupport.md](BUGFIX_2025-01-21_UISpyAdminPrivilegeSupport.md)** - ✅ **CRITICAL FIX** - Fixed UI Spy "Pick" feature throwing access denied when targeting applications running with administrator privileges; root cause was Windows UIPI (User Interface Privilege Isolation) blocking cross-privilege UI Automation access; solution adds application manifest (`app.manifest`) requesting `highestAvailable` execution level to enable UAC elevation when admin credentials available; now supports picking UI elements from both standard and elevated PACS applications; enables full automation capability for medical imaging workflows requiring elevated privileges; users with admin rights see UAC prompt on launch (standard Windows security behavior)
 
 ### Recent Major Features (2025-02-10)
 
@@ -39,7 +49,7 @@
 
 ### Recent Major Features (2025-02-08)
 
-- [NEW] **[FIX_2025-02-08_PreviousReportSplitRangesLoadingOrder.md](FIX_2025-02-08_PreviousReportSplitRangesLoadingOrder.md)** - ✅ **CRITICAL FIX** - Fixed conclusion editor showing concatenated content when switching between reports; root cause was split ranges being loaded AFTER setting `Findings`/`Conclusion` properties, causing split output computation to use stale/cleared split ranges from previously selected report (e.g., Report B with no split ranges leaves hfCTo=0, then switching to Report A computes splitConclusion with hfCTo=0 instead of 142); solution reorders `ApplyReportSelection()` to update `RawJson` and call `LoadProofreadFieldsFromRawJson()` BEFORE setting `Findings`/`Conclusion`, ensuring split ranges are correct when property change events fire; fixes issue where conclusion editor showed "header + findings + conclusion" instead of just conclusion when reselecting a report after viewing one without split ranges; completes the previous report selection feature chain
+- [NEW] **[FIX_2025-02-08_PreviousReportSplitRangesLoadingOrder.md](FIX_2025-02-08_PreviousReportSplitRangesLoadingOrder.md)** - ✅ **CRITICAL FIX** - Fixed conclusion editor showing concatenated content when switching between reports; root cause was split ranges being loaded AFTER setting `Findings`/`Conclusion` properties, causing split output computation to use stale/cleared split ranges from previously selected report (e.g., Report B with no split ranges leaves hfCTo=0, then switching to Report A computes splitConclusion with hfCTo=0 instead of 142); solution reorders `ApplyReportSelection()` to update `RawJson` and call `LoadProofreadFieldsFromRawJson()` BEFORE setting `Findings`/`Conclusion`, ensuring split ranges are correct when property change events fire; fixes issue where conclusion editor showed "header + findings + conclusion" instead of just conclusion when reselecting a report after viewing one with no split ranges; completes the previous report selection feature chain
 
 - [NEW] **[FIX_2025-02-08_ProofreadFieldsNotUpdatingOnReportChange.md](FIX_2025-02-08_ProofreadFieldsNotUpdatingOnReportChange.md)** - ✅ **CRITICAL FIX** - Fixed proofread textboxes not updating when changing report selection in Previous Report ComboBox; root cause was `ApplyReportSelection()` only updating original text fields (`Findings`, `Conclusion`) and not loading proofread fields from the newly selected report's JSON; solution stores JSON for each individual report in `PreviousReportChoice.ReportJson`, updates `RawJson` when selection changes, parses JSON to extract all 6 proofread fields and 8 split range properties, and notifies all property changes to update UI; now switching reports immediately shows the correct proofread data and split ranges for the selected report; completes the previous study report selection experience
 

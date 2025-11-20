@@ -10,6 +10,8 @@
     <ApplicationIcon>assets/radium.ico</ApplicationIcon>
     <!-- Fix for XLS0414 XAML build error in .NET 9 -->
     <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
+    <!-- Application manifest for elevated privileges -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
