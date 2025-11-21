@@ -39,6 +39,11 @@
                 <TextBlock Text="{Binding CurrentPacsDisplay, FallbackValue='PACS: default_pacs'}" 
                            VerticalAlignment="Center" Foreground="#C8C8C8" Margin="0,0,12,0"
                            FontSize="11"/>
+                <!-- Always on Top Checkbox -->
+                <CheckBox x:Name="chkAlwaysOnTop" Content="Always on Top" 
+                          VerticalAlignment="Center" Margin="0,0,12,0"
+                          Foreground="#C8C8C8" FontSize="11"
+                          Checked="OnAlwaysOnTop_Checked" Unchecked="OnAlwaysOnTop_Unchecked"/>
                 <Button Content="Log out" Click="OnLogout_Click" Margin="0,0,6,0"/>
             </StackPanel>
         </Grid>

@@ -79,6 +79,9 @@ namespace Wysg.Musm.Radium.Services
         public string? EditorAutofocusKeyTypes { get => ReadSecret("editor_autofocus_key_types"); set => WriteSecret("editor_autofocus_key_types", value ?? string.Empty); }
         public string? EditorAutofocusWindowTitle { get => ReadSecret("editor_autofocus_window_title"); set => WriteSecret("editor_autofocus_window_title", value ?? string.Empty); }
 
+        // NEW: Always on Top setting
+        public bool AlwaysOnTop { get => ReadBool("always_on_top"); set => WriteBool("always_on_top", value); }
+
         /// <summary>
         /// Decrypts settings file (if present) and returns the value for a key. Failures are swallowed to avoid
         /// disruptive UX (caller sees null and can prompt for settings).

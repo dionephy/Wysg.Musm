@@ -64,5 +64,9 @@ namespace Wysg.Musm.Radium.Services
         string? EditorAutofocusKeyTypes { get; set; }
         /// <summary>Window title that triggers autofocus (e.g., "INFINITT PACS"). If empty, uses bookmark-based detection.</summary>
         string? EditorAutofocusWindowTitle { get; set; }
+        
+        // NEW: Always on Top setting
+        /// <summary>Keep the main window always on top of other windows.</summary>
+        bool AlwaysOnTop { get; set; }
     }
 }

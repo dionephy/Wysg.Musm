@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Wysg.Musm.Radium.Controls
 {
@@ -21,6 +22,9 @@ namespace Wysg.Musm.Radium.Controls
                 var fallback = (Style)FindResource("_LocalDarkToggleButtonStyle");
                 ApplyFallbackStyle(this, fallback);
             }
+            
+            // Initialize Always on Top checkbox from settings
+            InitializeAlwaysOnTopCheckbox();
         }
 
         private static void ApplyFallbackStyle(DependencyObject root, Style style)
@@ -45,6 +49,8 @@ namespace Wysg.Musm.Radium.Controls
         private void OnAlignRight_Toggled(object sender, RoutedEventArgs e) => RaiseEventToWindow("OnAlignRightToggled", sender, e);
         private void OnReverseReports_Toggled(object sender, RoutedEventArgs e) => RaiseEventToWindow("OnReverseReportsChecked", sender, e);
         private void OnLogout_Click(object sender, RoutedEventArgs e) => RaiseEventToWindow("OnLogout", sender, e);
+        private void OnAlwaysOnTop_Checked(object sender, RoutedEventArgs e) => RaiseEventToWindow("OnAlwaysOnTopChecked", sender, e);
+        private void OnAlwaysOnTop_Unchecked(object sender, RoutedEventArgs e) => RaiseEventToWindow("OnAlwaysOnTopUnchecked", sender, e);
 
         private static void RaiseEventToWindow(string method, object sender, RoutedEventArgs e)
         {
@@ -52,6 +58,23 @@ namespace Wysg.Musm.Radium.Controls
             {
                 var mi = win.GetType().GetMethod(method, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
                 mi?.Invoke(win, new object[] { sender, e });
+            }
+        }
+        
+        private void InitializeAlwaysOnTopCheckbox()
+        {
+            try
+            {
+                var app = (App)Application.Current;
+                var local = app.Services.GetService<Services.IRadiumLocalSettings>();
+                if (local != null)
+                {
+                    chkAlwaysOnTop.IsChecked = local.AlwaysOnTop;
+                }
+            }
+            catch
+            {
+                // Silently fail - checkbox will remain unchecked
             }
         }
     }

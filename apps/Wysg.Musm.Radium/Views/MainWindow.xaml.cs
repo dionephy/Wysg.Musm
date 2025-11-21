@@ -244,6 +244,22 @@ if (isLandscape)
             {
                 System.Diagnostics.Debug.WriteLine($"[MainWindow] Failed to initialize EditorAutofocusService: {ex.Message}");
             }
+            
+            // NEW: Initialize Always on Top from settings
+            try
+            {
+                var app = (App)Application.Current;
+                var localSettings = app.Services.GetService<IRadiumLocalSettings>();
+                if (localSettings != null && localSettings.AlwaysOnTop)
+                {
+                    this.Topmost = true;
+                    System.Diagnostics.Debug.WriteLine("[MainWindow] Always on Top enabled from settings");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] Failed to initialize Always on Top: {ex.Message}");
+            }
         }
         
         private async void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -671,6 +687,51 @@ if (isLandscape)
             var appRef = (App)Application.Current;
             this.Close();
             await appRef.ShowSplashLoginAsync();
+        }
+        
+        // NEW: Always on Top event handlers
+        private void OnAlwaysOnTopChecked(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                this.Topmost = true;
+                
+                // Save setting
+                var app = (App)Application.Current;
+                var localSettings = app.Services.GetService<IRadiumLocalSettings>();
+                if (localSettings != null)
+                {
+                    localSettings.AlwaysOnTop = true;
+                }
+                
+                System.Diagnostics.Debug.WriteLine("[MainWindow] Always on Top enabled");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] Failed to enable Always on Top: {ex.Message}");
+            }
+        }
+        
+        private void OnAlwaysOnTopUnchecked(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                this.Topmost = false;
+                
+                // Save setting
+                var app = (App)Application.Current;
+                var localSettings = app.Services.GetService<IRadiumLocalSettings>();
+                if (localSettings != null)
+                {
+                    localSettings.AlwaysOnTop = false;
+                }
+                
+                System.Diagnostics.Debug.WriteLine("[MainWindow] Always on Top disabled");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] Failed to disable Always on Top: {ex.Message}");
+            }
         }
 
         // Try to enable dark title bar on supported Windows versions
