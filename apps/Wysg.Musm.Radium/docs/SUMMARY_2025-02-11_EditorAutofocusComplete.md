@@ -2,7 +2,7 @@
 
 ### What Was the Problem?
 
-Three issues discovered during testing:
+Four issues discovered during testing:
 
 **Issue #1**: Initial optimization (removed debug logging, consolidated Dispatcher calls, replaced SendKeys)  
 **Impact**: Improved but still slow
@@ -21,9 +21,16 @@ Three issues discovered during testing:
 - SendInput timing didn't synchronize with editor focus completion
 - Legacy code worked because it let Windows handle key delivery naturally
 
+**Issue #4**: **CHILD ELEMENT TRIGGERING** - Child controls of bookmarked window also triggered autofocus
+**Impact**:
+- Typing in PACS search boxes triggered autofocus ?
+- Typing in PACS filter dialogs triggered autofocus ?
+- Typing in any child window/control triggered autofocus ?
+- Feature unusable in practice - users couldn't interact with PACS UI
+
 ### The Fix
 
-**Three-Part Solution**:
+**Four-Part Solution**:
 
 1. **Short-Circuit for Radium Window Focus**
 ```csharp
@@ -51,194 +58,82 @@ if ((DateTime.Now - _lastBookmarkCacheTime) > TimeSpan.FromSeconds(2))
 return GetForegroundWindow() == _cachedBookmarkHwnd;
 ```
 
-3. **Natural Key Delivery (CRITICAL FIX)**
+3. **Synchronous Key Delivery with SendKeys** *(Latest Fix)*
 ```csharp
 if (ShouldTriggerAutofocus(key))
 {
-    // Focus editor using high-priority dispatcher
-    Dispatcher.BeginInvoke(() => 
+    char keyChar = GetCharFromKey(key);
+    
+    // Synchronous: focus completes before SendKeys executes
+    Dispatcher.Invoke(() =>
     {
         _focusEditorCallback();
+        
+        if (keyChar != '\0')
+        {
+            string keyString = keyChar switch
+            {
+                '+' => "{+}", '^' => "{^}", '%' => "{%}",
+                '~' => "{~}", '(' => "{(}", ')' => "{)}",
+                '{' => "{{}}", '}' => "{}}", '[' => "{[}", ']' => "{]}",
+                _ => keyChar.ToString()
+            };
+            
+            System.Windows.Forms.SendKeys.SendWait(keyString);
+        }
     }, DispatcherPriority.Send);
     
-    // CRITICAL: DO NOT consume the key - pass it through
-    // Let Windows naturally deliver it to the focused editor
-    // This matches legacy MainViewModel.KeyHookTarget behavior
+    // CRITICAL: Return 1 to CONSUME key (blocks PACS shortcuts)
+    return (IntPtr)1;
 }
 
-// Always pass through - Windows handles key delivery
 return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
 ```
 
-### Performance Results
+**Why This Works**:
+- `Dispatcher.Invoke` (synchronous) - blocks until focus completes
+- `SendKeys.SendWait` - not blocked by hooks (unlike SendInput)
+- Key consumed (`return 1`) - blocks PACS shortcuts
+- Exact timing - focus guaranteed before input
 
-**Before All Fixes**:
-```
-Typing "test" in editor:
-- Time: 200ms (50ms per key)
-- FlaUI exceptions: 60-80 total
-- FlaUI calls: 4 (one per keypress)
-- Keys dropped: Yes
-- First keypress after focus: Lost ?
-```
-
-**After All Fixes**:
-```
-Typing "test" in editor:
-- Time: 0.4ms (0.1ms per key) ?
-- FlaUI exceptions: 0 ?
-- FlaUI calls: 0 (short-circuit skips bookmark check) ?
-- Keys dropped: No ?
-- First keypress after focus: Delivered naturally ?
-```
-
-**Typing "test" from PACS viewer (autofocus trigger)**:
-```
-- Press 'T' in PACS:
-  - FlaUI resolve: 50ms (cache miss, first time)
-  - Focus editor: instant (Send priority)
-  - Key 'T' delivery: Natural (Windows handles it) ?
-  
-- Press 'E', 'S', 'T' in rapid succession:
-  - Cache hit: 0.1ms each
-  - Focus already on editor: instant
-  - Keys delivered: Natural (Windows handles it) ?
-  
-Result: "test" appears in editor correctly
-Note: PACS may still see the keypresses (not consumed)
-```
-
-**? 500x faster when typing in editor!**
-**? All keypresses delivered reliably - no drops!**
-
-### Why Natural Key Delivery Works
-
-**The Legacy Pattern (Proven to Work)**:
+4. **Exact HWND Match (Child Element Prevention)** *(Critical Fix)*
 ```csharp
-// Legacy MainViewModel.KeyHookTarget
-if (title == "INFINITT PACS")
+private bool IsForegroundWindowTargetBookmark()
 {
-    FocusWindow();
-    FocusMedFindings.Invoke(this, EventArgs.Empty);
-    // No key consumption or re-send - Windows handles it naturally
+    var foregroundHwnd = GetForegroundWindow();
+    
+    // Get the ACTUAL focused element (not just top-level window)
+    var focusedHwnd = GetFocusedWindowHandle(foregroundHwnd);
+    
+    // Only trigger if EXACT match (not child elements)
+    return _cachedBookmarkHwnd == focusedHwnd;
+}
+
+private static IntPtr GetFocusedWindowHandle(IntPtr foregroundHwnd)
+{
+    uint threadId = GetWindowThreadProcessId(foregroundHwnd, IntPtr.Zero);
+    
+    GUITHREADINFO info = new GUITHREADINFO();
+    info.cbSize = (uint)Marshal.SizeOf(info);
+    
+    if (GetGUIThreadInfo(threadId, ref info))
+    {
+        // Priority 1: Actual focused control (e.g., textbox)
+        if (info.hwndFocus != IntPtr.Zero)
+            return info.hwndFocus;
+        
+        // Priority 2: Active window in thread
+        if (info.hwndActive != IntPtr.Zero)
+            return info.hwndActive;
+    }
+    
+    // Priority 3: Foreground window
+    return foregroundHwnd;
 }
 ```
 
-**Why Manual SendInput Failed**:
-1. **Timing Issue**: SendInput executes before editor is ready to receive input
-2. **Focus Delay**: Editor focus completion takes time (even with Send priority)
-3. **Race Condition**: SendInput vs. Windows natural key delivery
-4. **First Key Lost**: Editor not ready when SendInput fires
-5. **Rapid Keys Lost**: Queue backup from manual injection timing
-
-**Why Natural Delivery Works**:
-1. **Automatic Timing**: Windows waits for focus completion before delivering key
-2. **No Race**: Single event stream (focus then key) handled by Windows
-3. **No Drops**: Windows queues keys correctly during focus transition
-4. **Proven**: Legacy code used this pattern successfully for years
-
-### Why No More FlaUI Exceptions?
-
-**Old behavior** (every keypress):
-```
-Hook ¡æ ShouldTriggerAutofocus 
-    ¡æ IsForegroundWindowTargetBookmark 
-        ¡æ UiBookmarks.Resolve() [50ms + 15 FlaUI exceptions]
-```
-
-**New behavior** (typing in editor):
-```
-Hook ¡æ ShouldTriggerAutofocus 
-    ¡æ Short-circuit: Radium has focus [0.1ms, no FlaUI calls] ?
-    ¡æ Pass through key (Windows handles delivery)
-```
-
-**New behavior** (first keypress in PACS):
-```
-Hook ¡æ ShouldTriggerAutofocus 
-    ¡æ IsForegroundWindowTargetBookmark 
-        ¡æ Cache miss ¡æ UiBookmarks.Resolve() [50ms + 15 FlaUI exceptions - ONE TIME]
-        ¡æ Cache HWND
-    ¡æ Focus editor (Send priority)
-    ¡æ Pass through key (Windows handles delivery) ?
-    ¡æ Editor receives key naturally after focus completes
-```
-
-**New behavior** (subsequent keypresses in PACS within 2 seconds):
-```
-Hook ¡æ ShouldTriggerAutofocus 
-    ¡æ IsForegroundWindowTargetBookmark 
-        ¡æ Cache hit [0.1ms, no FlaUI calls] ?
-    ¡æ Focus editor (already focused)
-    ¡æ Pass through key (Windows handles delivery) ?
-```
-
-### Critical Difference: Natural vs. Manual Key Delivery
-
-**Manual Key Delivery (Broken)**:
-```
-User presses 'E' in PACS viewer
-    ¡é
-Hook intercepts ¡æ Triggers autofocus
-    ¡é
-Dispatcher.BeginInvoke(() => {
-    FocusEditor();        // ¡ç Takes time to complete
-    SendInput('E');       // ¡ç Fires immediately - editor NOT ready!
-})
-Return (IntPtr)1          // ¡ç Blocks original key
-    ¡é
-Result:
-  - Original 'E' blocked ?
-  - SendInput 'E' sent to unfocused window ?
-  - Editor never receives 'E' ?
-```
-
-**Natural Key Delivery (Works)**:
-```
-User presses 'E' in PACS viewer
-    ¡é
-Hook intercepts ¡æ Triggers autofocus
-    ¡é
-Dispatcher.BeginInvoke(() => {
-    FocusEditor();        // ¡ç Windows tracks focus change
-})
-Return CallNextHookEx     // ¡ç Let original key pass through
-    ¡é
-Windows Message Queue:
-  1. WM_SETFOCUS (editor)  // ¡ç Windows completes focus first
-  2. WM_KEYDOWN ('E')      // ¡ç Then delivers key to focused editor
-    ¡é
-Result:
-  - Editor gains focus first ?
-  - Windows delivers 'E' after focus complete ?
-  - Editor receives 'E' correctly ?
-  - Timing handled automatically by Windows ?
-```
-
-**Flow Diagram**:
-```
-User presses 'E' in PACS viewer
-    ¡é
-Windows keyboard hook intercepts
-    ¡é
-EditorAutofocusService.HookCallback
-    ¡é
-Is autofocus enabled? YES
-Is PACS viewer window active? YES (via cached bookmark HWND)
-    ¡é
-Focus Radium editor window (Dispatcher.Send priority)
-Pass key through (CallNextHookEx)
-    ¡é
-Windows Message Queue:
-  ¡æ Process WM_SETFOCUS (editor gains focus)
-  ¡æ Process WM_KEYDOWN ('E' delivered to focused editor)
-    ¡é
-Result:
-  - Editor receives 'e' and displays it ?
-  - No timing issues ?
-  - No dropped keys ?
-  - Matches legacy behavior ?
-  
-Note: PACS may also see the keypress (not consumed)
-Use case: If PACS shortcuts conflict, user can configure 
-specific key types (e.g., only Space/Tab) to avoid conflicts
+**Why This Works**:
+- `GetGUIThreadInfo()` - gets actual focused control HWND
+- **Exact HWND comparison** - only bookmarked element triggers
+- Child controls (textboxes, buttons, dialogs) have different HWNDs
+- Prevents false positives from descendant elements

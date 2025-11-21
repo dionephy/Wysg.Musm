@@ -36,7 +36,7 @@ namespace Wysg.Musm.Radium.Services
         private int _isProcessingQueue = 0; // 0 = idle, 1 = processing
 
         // Diagnostic logging flag - set to true only when debugging performance issues
-        private const bool ENABLE_DIAGNOSTIC_LOGGING = false;
+        private const bool ENABLE_DIAGNOSTIC_LOGGING = true;
 
         // Windows hook constants
         private const int WH_KEYBOARD_LL = 13;
@@ -157,9 +157,15 @@ namespace Wysg.Musm.Radium.Services
                     var hookStruct = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
                     var key = KeyInterop.KeyFromVirtualKey((int)hookStruct.vkCode);
 
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[EditorAutofocus] Key pressed: {key}");
+
                     // Check if autofocus should trigger
                     if (ShouldTriggerAutofocus(key))
                     {
+                        if (ENABLE_DIAGNOSTIC_LOGGING)
+                            Debug.WriteLine($"[EditorAutofocus] ShouldTriggerAutofocus returned TRUE for key: {key}");
+                        
                         // Get character before any async operations
                         char keyChar = GetCharFromKey(key);
                         
@@ -198,9 +204,18 @@ namespace Wysg.Musm.Radium.Services
                         // CRITICAL: Return 1 to CONSUME the key
                         return (IntPtr)1;
                     }
+                    else
+                    {
+                        if (ENABLE_DIAGNOSTIC_LOGGING)
+                            Debug.WriteLine($"[EditorAutofocus] ShouldTriggerAutofocus returned FALSE for key: {key}");
+                    }
                 }
             }
-            catch { /* Silently fail - performance critical path */ }
+            catch (Exception ex)
+            {
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Exception in HookCallback: {ex.Message}");
+            }
 
             // Pass through only if autofocus NOT triggered
             return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
@@ -357,17 +372,32 @@ namespace Wysg.Musm.Radium.Services
         /// </summary>
         private bool ShouldTriggerAutofocus(Key key)
         {
+            if (ENABLE_DIAGNOSTIC_LOGGING)
+                Debug.WriteLine($"[EditorAutofocus] ShouldTriggerAutofocus called for key: {key}");
+            
             // Quick checks first (fastest to slowest)
             if (!_settings.EditorAutofocusEnabled)
+            {
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Feature disabled in settings");
                 return false;
+            }
 
             // Check for modifier keys - only trigger on plain keys
             if (Keyboard.Modifiers != ModifierKeys.None)
+            {
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Modifier keys pressed: {Keyboard.Modifiers}");
                 return false;
+            }
 
             // Check if key matches configured key types
             if (!IsKeyTypeEnabled(key))
+            {
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Key type not enabled for key: {key}");
                 return false;
+            }
 
             // SHORT-CIRCUIT: If Radium window already has focus, don't trigger autofocus
             // This prevents the expensive foreground window check when typing in the editor
@@ -379,56 +409,90 @@ namespace Wysg.Musm.Radium.Services
                 
                 if (currentForeground == radiumHwnd)
                 {
-                    // Radium already has focus - no need to autofocus
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[EditorAutofocus] Radium already has focus, skipping");
                     return false;
                 }
             }
             catch { /* Fall through to normal check */ }
 
             // Most expensive check last - foreground window matches bookmark
-            if (!IsForegroundWindowTargetBookmark())
-                return false;
-
-            return true;
+            bool matches = IsForegroundWindowTargetBookmark();
+            
+            if (ENABLE_DIAGNOSTIC_LOGGING)
+                Debug.WriteLine($"[EditorAutofocus] IsForegroundWindowTargetBookmark returned: {matches}");
+            
+            return matches;
         }
 
         /// <summary>
         /// Checks if the foreground window matches the configured bookmark.
         /// Uses cached bookmark HWND to avoid expensive FlaUI resolution on every keypress.
+        /// IMPORTANT: Only triggers if the EXACT bookmark element has focus, not its children/descendants.
+        /// 
+        /// Two-stage matching for performance:
+        /// 1. Fast: Check window title (rejects non-PACS apps immediately)
+        /// 2. Precise: Check bookmark HWND (rejects child elements within PACS)
         /// </summary>
         private bool IsForegroundWindowTargetBookmark()
         {
             var bookmarkName = _settings.EditorAutofocusBookmark;
             var windowTitle = _settings.EditorAutofocusWindowTitle;
             
-            // If window title is configured, use title-based detection (legacy pattern)
-            if (!string.IsNullOrWhiteSpace(windowTitle))
+            if (ENABLE_DIAGNOSTIC_LOGGING)
             {
-                try
-                {
-                    var foregroundHwnd = GetForegroundWindow();
-                    if (foregroundHwnd == IntPtr.Zero)
-                        return false;
-                    
-                    var title = GetWindowTitle(foregroundHwnd);
-                    return !string.IsNullOrWhiteSpace(title) && title.Contains(windowTitle, StringComparison.OrdinalIgnoreCase);
-                }
-                catch
-                {
-                    return false;
-                }
+                Debug.WriteLine($"[EditorAutofocus] IsForegroundWindowTargetBookmark called:");
+                Debug.WriteLine($"  BookmarkName: '{bookmarkName}'");
+                Debug.WriteLine($"  WindowTitle: '{windowTitle}'");
             }
             
-            // Otherwise use bookmark-based detection
-            if (string.IsNullOrWhiteSpace(bookmarkName))
+            var foregroundHwnd = GetForegroundWindow();
+            if (foregroundHwnd == IntPtr.Zero)
                 return false;
+            
+            // STAGE 1: Fast window title check (avoids expensive bookmark resolve for non-PACS apps)
+            // If window title is configured, check it FIRST as a gate
+            if (!string.IsNullOrWhiteSpace(windowTitle))
+            {
+                var title = GetWindowTitle(foregroundHwnd);
+                
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Stage 1 - Window title check: '{title}'");
+                
+                // If title doesn't match, reject immediately (not PACS app)
+                if (string.IsNullOrWhiteSpace(title) || !title.Contains(windowTitle, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[EditorAutofocus] Stage 1 REJECT - Title mismatch");
+                    return false;
+                }
+                
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Stage 1 PASS - Title matches, proceeding to Stage 2");
+            }
+            else
+            {
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Stage 1 SKIP - No window title configured");
+            }
+            
+            // STAGE 2: Precise bookmark HWND check (filters out child elements within PACS)
+            // If bookmark is configured, use exact HWND matching to exclude child controls
+            if (string.IsNullOrWhiteSpace(bookmarkName))
+            {
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Stage 2 SKIP - No bookmark configured, accepting based on title match");
+                
+                // If only title is configured (no bookmark), accept based on title alone
+                // This is legacy behavior but won't filter child elements
+                return !string.IsNullOrWhiteSpace(windowTitle);
+            }
 
             try
             {
-                var foregroundHwnd = GetForegroundWindow();
-                if (foregroundHwnd == IntPtr.Zero)
-                    return false;
-
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Stage 2 - Bookmark HWND check");
+                
                 // Check if we need to refresh the cached bookmark HWND
                 bool needRefresh = _cachedBookmarkName != bookmarkName ||
                                    _cachedBookmarkHwnd == IntPtr.Zero ||
@@ -446,13 +510,35 @@ namespace Wysg.Musm.Radium.Services
                     _cachedBookmarkHwnd = bookmarkHwnd;
                     _cachedBookmarkName = bookmarkName;
                     _lastBookmarkCacheTime = DateTime.Now;
+                    
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[EditorAutofocus] Bookmark '{bookmarkName}' resolved to HWND: 0x{bookmarkHwnd:X}");
                 }
 
-                // Fast HWND comparison using cached value
-                return _cachedBookmarkHwnd == foregroundHwnd;
+                // Get the actual focused element (not just top-level window)
+                var focusedHwnd = GetFocusedWindowHandle(foregroundHwnd);
+                
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                {
+                    Debug.WriteLine($"[EditorAutofocus] Stage 2 - HWND comparison:");
+                    Debug.WriteLine($"  Foreground HWND: 0x{foregroundHwnd:X}");
+                    Debug.WriteLine($"  Focused HWND:    0x{focusedHwnd:X}");
+                    Debug.WriteLine($"  Bookmark HWND:   0x{_cachedBookmarkHwnd:X}");
+                }
+                
+                // Exact HWND match: only the bookmarked element itself triggers
+                bool matches = _cachedBookmarkHwnd == focusedHwnd;
+                
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Stage 2 result: {(matches ? "ACCEPT" : "REJECT")} - HWND exact match: {matches}");
+                
+                return matches;
             }
-            catch
+            catch (Exception ex)
             {
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Stage 2 EXCEPTION: {ex.Message}");
+                
                 // Clear cache on error
                 _cachedBookmarkHwnd = IntPtr.Zero;
                 _cachedBookmarkName = null;
@@ -460,6 +546,96 @@ namespace Wysg.Musm.Radium.Services
             }
         }
         
+        /// <summary>
+        /// Gets the HWND of the currently focused element within the foreground window.
+        /// Uses GetGUIThreadInfo to get the actual focused control, not just the top-level window.
+        /// This allows us to distinguish between the parent window and its child controls.
+        /// </summary>
+        private static IntPtr GetFocusedWindowHandle(IntPtr foregroundHwnd)
+        {
+            try
+            {
+                // Get the thread ID of the foreground window
+                uint threadId = GetWindowThreadProcessId(foregroundHwnd, IntPtr.Zero);
+                if (threadId == 0)
+                {
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[EditorAutofocus] GetWindowThreadProcessId failed, using foreground HWND");
+                    return foregroundHwnd;
+                }
+                
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Thread ID: {threadId}");
+                
+                // Get GUI thread info to find the actual focused window
+                GUITHREADINFO info = new GUITHREADINFO();
+                info.cbSize = (uint)Marshal.SizeOf(info);
+                
+                if (GetGUIThreadInfo(threadId, ref info))
+                {
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                    {
+                        Debug.WriteLine($"[EditorAutofocus] GUI Thread Info:");
+                        Debug.WriteLine($"  hwndActive:  0x{info.hwndActive:X}");
+                        Debug.WriteLine($"  hwndFocus:   0x{info.hwndFocus:X}");
+                        Debug.WriteLine($"  hwndCapture: 0x{info.hwndCapture:X}");
+                    }
+                    
+                    // Priority 1: hwndFocus (actual focused control)
+                    if (info.hwndFocus != IntPtr.Zero)
+                    {
+                        if (ENABLE_DIAGNOSTIC_LOGGING)
+                            Debug.WriteLine($"[EditorAutofocus] Using hwndFocus: 0x{info.hwndFocus:X}");
+                        return info.hwndFocus;
+                    }
+                    
+                    // Priority 2: hwndActive (active window in thread)
+                    if (info.hwndActive != IntPtr.Zero)
+                    {
+                        if (ENABLE_DIAGNOSTIC_LOGGING)
+                            Debug.WriteLine($"[EditorAutofocus] Using hwndActive: 0x{info.hwndActive:X}");
+                        return info.hwndActive;
+                    }
+                }
+                else
+                {
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[EditorAutofocus] GetGUIThreadInfo failed");
+                }
+                
+                // Fallback: return the foreground window if we can't get focus info
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Using foreground HWND (fallback): 0x{foregroundHwnd:X}");
+                return foregroundHwnd;
+            }
+            catch (Exception ex)
+            {
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Exception in GetFocusedWindowHandle: {ex.Message}");
+                return foregroundHwnd;
+            }
+        }
+        
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
+        
+        [DllImport("user32.dll")]
+        private static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
+        
+        [StructLayout(LayoutKind.Sequential)]
+        private struct GUITHREADINFO
+        {
+            public uint cbSize;
+            public uint flags;
+            public IntPtr hwndActive;
+            public IntPtr hwndFocus;
+            public IntPtr hwndCapture;
+            public IntPtr hwndMenuOwner;
+            public IntPtr hwndMoveSize;
+            public IntPtr hwndCaret;
+            public System.Drawing.Rectangle rcCaret;
+        }
+
         /// <summary>
         /// Gets the window title for the given window handle.
         /// </summary>
