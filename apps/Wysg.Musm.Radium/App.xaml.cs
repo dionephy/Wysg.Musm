@@ -186,41 +186,83 @@ namespace Wysg.Musm.Radium
             services.AddSingleton<IAuthService, GoogleOAuthAuthService>();   // Google OAuth flow + token refresh
             services.AddSingleton<IAuthStorage, DpapiAuthStorage>();         // DPAPI-protected refresh token storage
 
+            // API client (for calling backend API instead of direct DB access) -----------------
+            services.AddSingleton<RadiumApiClient>(sp =>
+            {
+                // Use environment variable or appsettings for API URL
+                var apiUrl = Environment.GetEnvironmentVariable("RADIUM_API_URL") ?? "http://localhost:5205";
+                Debug.WriteLine($"[DI] Registering RadiumApiClient with base URL: {apiUrl}");
+                return new RadiumApiClient(apiUrl);
+            });
+
+            // Feature flag: USE_API=1 to use API, otherwise use direct DB (default)
+            var useApi = Environment.GetEnvironmentVariable("USE_API") == "1";
+            Debug.WriteLine($"[DI] API Mode: {(useApi ? "ENABLED (via API)" : "DISABLED (direct DB)")}");
+
             // Data access (central + local) ----------------------------------------------------
             services.AddSingleton<ICentralDataSourceProvider, CentralDataSourceProvider>(); // Shared NpgsqlDataSources (central)
             services.AddSingleton<ITenantRepository, TenantRepository>();    // Local tenant management (PACS profiles)
             services.AddSingleton<IPhraseService>(sp =>
             {
+                // Feature flag: USE_API=1 to use API for phrases
+                var useApiForPhrases = Environment.GetEnvironmentVariable("USE_API") == "1";
+                
+                if (useApiForPhrases)
+                {
+                    Debug.WriteLine("[DI] Using ApiPhraseServiceAdapter (API mode)");
+                    return new Wysg.Musm.Radium.Services.Adapters.ApiPhraseServiceAdapter(
+                        sp.GetRequiredService<RadiumApiClient>());
+                }
+                
+                // Otherwise use direct database access (current default)
                 var settings = sp.GetRequiredService<IRadiumLocalSettings>();
                 var cache = sp.GetRequiredService<IPhraseCache>();
                 var cs = settings.CentralConnectionString ?? string.Empty;
+                
                 if (cs.IndexOf("database.windows.net", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     Debug.WriteLine("[DI] Using AzureSqlPhraseService (detected Azure SQL connection string)");
                     return new AzureSqlPhraseService(settings, cache);
                 }
+                
                 Debug.WriteLine("[DI] Using Postgres PhraseService");
                 return new PhraseService(settings, sp.GetRequiredService<ICentralDataSourceProvider>(), cache);
             });
 
-            // Hotkey service (Azure SQL only, follows same pattern as phrases)
+            // Hotkey service - switchable between API and direct DB
             services.AddSingleton<IHotkeyService>(sp =>
             {
-                var settings = sp.GetRequiredService<IRadiumLocalSettings>();
-                Debug.WriteLine("[DI] Using AzureSqlHotkeyService");
-                return new AzureSqlHotkeyService(settings);
+                if (useApi)
+                {
+                    Debug.WriteLine("[DI] Using ApiHotkeyServiceAdapter (API mode)");
+                    return new Wysg.Musm.Radium.Services.Adapters.ApiHotkeyServiceAdapter(
+                        sp.GetRequiredService<RadiumApiClient>());
+                }
+                else
+                {
+                    Debug.WriteLine("[DI] Using AzureSqlHotkeyService (direct DB mode)");
+                    var settings = sp.GetRequiredService<IRadiumLocalSettings>();
+                    return new AzureSqlHotkeyService(settings);
+                }
             });
 
-            // Snippet service (Azure SQL)
+            // Snippet service - switchable between API and direct DB
             services.AddSingleton<ISnippetService>(sp =>
             {
-                var settings = sp.GetRequiredService<IRadiumLocalSettings>();
-                Debug.WriteLine("[DI] Using AzureSqlSnippetService");
-                return new AzureSqlSnippetService(settings);
+                if (useApi)
+                {
+                    Debug.WriteLine("[DI] Using ApiSnippetServiceAdapter (API mode)");
+                    return new Wysg.Musm.Radium.Services.Adapters.ApiSnippetServiceAdapter(
+                        sp.GetRequiredService<RadiumApiClient>());
+                }
+                else
+                {
+                    Debug.WriteLine("[DI] Using AzureSqlSnippetService (direct DB mode)");
+                    var settings = sp.GetRequiredService<IRadiumLocalSettings>();
+                    return new AzureSqlSnippetService(settings);
+                }
             });
 
-            // Central account / settings service (Azure SQL or legacy Postgres not supported anymore)
-            services.AddSingleton<AzureSqlCentralService>();
 
             services.AddSingleton<IReportifySettingsService>(sp =>
             {
@@ -238,10 +280,22 @@ namespace Wysg.Musm.Radium
             services.AddSingleton<ITechniqueRepository, TechniqueRepository>();              // Technique feature repository (Postgres)
             services.AddSingleton<PacsService>();                                             // PACS interaction abstraction
 
-            // SNOMED mapping (Azure SQL only). Safe to register unconditionally; uses CentralConnectionString
-            services.AddSingleton<ISnomedMapService>(sp => new AzureSqlSnomedMapService(sp.GetRequiredService<IRadiumLocalSettings>()));
-            services.AddSingleton<ISnowstormClient, SnowstormClient>();
-            services.AddSingleton<IPhraseSnomedBulkImporter, PhraseSnomedBulkImporter>();
+            // SNOMED mapping - switchable between API and direct DB
+            services.AddSingleton<ISnomedMapService>(sp =>
+            {
+                if (useApi)
+                {
+                    Debug.WriteLine("[DI] Using ApiSnomedMapService (API mode) - SNOMED via REST API");
+                    return new Wysg.Musm.Radium.Services.Adapters.ApiSnomedMapService(
+                        sp.GetRequiredService<RadiumApiClient>());
+                }
+                else
+                {
+                    Debug.WriteLine("[DI] Using AzureSqlSnomedMapService (direct DB mode)");
+                    return new AzureSqlSnomedMapService(sp.GetRequiredService<IRadiumLocalSettings>());
+                }
+            });
+
 
             // Procedures (automation) ----------------------------------------------------------
             services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.INewStudyProcedure, Wysg.Musm.Radium.Services.Procedures.NewStudyProcedure>();

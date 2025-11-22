@@ -1,0 +1,247 @@
+### Test Wysg.Musm.Radium.Api Endpoints
+### Use this file with Visual Studio's built-in HTTP testing (or REST Client extension)
+
+### Health Check
+GET http://localhost:5205/health
+
+###
+
+### ========== ACCOUNTS ==========
+
+### Ensure Account (Creates or updates + returns settings)
+POST http://localhost:5205/api/accounts/ensure
+Content-Type: application/json
+
+{
+  "uid": "dev-user-123",
+  "email": "test@example.com",
+  "displayName": "Test User"
+}
+
+###
+
+### Get Account by ID
+GET http://localhost:5205/api/accounts/2
+
+###
+
+### Update Last Login
+POST http://localhost:5205/api/accounts/2/login
+
+###
+
+### Get Account Settings
+GET http://localhost:5205/api/accounts/2/settings
+
+###
+
+### Update Account Settings
+PUT http://localhost:5205/api/accounts/2/settings
+Content-Type: application/json
+
+"{\"fontSize\": 14, \"theme\": \"dark\"}"
+
+###
+
+### ========== HOTKEYS ==========
+
+### Get All Hotkeys for Account 2
+GET http://localhost:5205/api/accounts/2/hotkeys
+
+###
+
+### Get Single Hotkey
+GET http://localhost:5205/api/accounts/2/hotkeys/1
+
+###
+
+### Create/Update Hotkey
+PUT http://localhost:5205/api/accounts/2/hotkeys
+Content-Type: application/json
+
+{
+  "triggerText": "test",
+  "expansionText": "This is a test expansion",
+  "description": "Test hotkey",
+  "isActive": true
+}
+
+###
+
+### Toggle Hotkey Active Status
+POST http://localhost:5205/api/accounts/2/hotkeys/1/toggle
+
+###
+
+### Delete Hotkey
+DELETE http://localhost:5205/api/accounts/2/hotkeys/1
+
+###
+
+### ========== SNIPPETS ==========
+
+### Get All Snippets for Account 2
+GET http://localhost:5205/api/accounts/2/snippets
+
+###
+
+### Get Single Snippet
+GET http://localhost:5205/api/accounts/2/snippets/1
+
+###
+
+### Create/Update Snippet
+PUT http://localhost:5205/api/accounts/2/snippets
+Content-Type: application/json
+
+{
+  "triggerText": "testsnip",
+  "snippetText": "This is a test snippet with placeholder",
+  "snippetAst": "snippet_ast_json",
+  "description": "Test snippet",
+  "isActive": true
+}
+
+###
+
+### Toggle Snippet Active Status
+POST http://localhost:5205/api/accounts/2/snippets/1/toggle
+
+###
+
+### Delete Snippet
+DELETE http://localhost:5205/api/accounts/2/snippets/1
+
+###
+
+### ========== PHRASES ==========
+
+### Get All Phrases for Account 2
+GET http://localhost:5205/api/accounts/2/phrases
+
+###
+
+### Get All Active Phrases Only
+GET http://localhost:5205/api/accounts/2/phrases?activeOnly=true
+
+###
+
+### Get Single Phrase
+GET http://localhost:5205/api/accounts/2/phrases/1
+
+###
+
+### Search Phrases
+GET http://localhost:5205/api/accounts/2/phrases/search?query=liver&activeOnly=true&maxResults=50
+
+###
+
+### Create/Update Phrase
+PUT http://localhost:5205/api/accounts/2/phrases
+Content-Type: application/json
+
+{
+  "text": "No acute intracranial abnormality",
+  "active": true
+}
+
+###
+
+### Batch Create/Update Phrases
+PUT http://localhost:5205/api/accounts/2/phrases/batch
+Content-Type: application/json
+
+{
+  "phrases": [
+    "Normal liver size and contour",
+    "No focal hepatic lesion",
+    "Unremarkable gallbladder",
+    "Normal pancreas",
+    "Both kidneys are normal in size"
+  ],
+  "active": true
+}
+
+###
+
+### Toggle Phrase Active Status
+POST http://localhost:5205/api/accounts/2/phrases/1/toggle
+
+###
+
+### Delete Phrase
+DELETE http://localhost:5205/api/accounts/2/phrases/1
+
+###
+
+### Get Max Revision (for sync)
+GET http://localhost:5205/api/accounts/2/phrases/revision
+
+###
+
+### ========== SNOMED CT ==========
+
+### Cache a SNOMED Concept
+POST http://localhost:5205/api/snomed/concepts
+Content-Type: application/json
+
+{
+  "conceptId": 80891009,
+  "conceptIdStr": "80891009",
+  "fsn": "Heart structure (body structure)",
+  "pt": "Heart structure",
+  "semanticTag": "body structure",
+  "moduleId": "900000000000207008",
+  "active": true
+}
+
+###
+
+### Get Cached Concept
+GET http://localhost:5205/api/snomed/concepts/80891009
+
+###
+
+### Create Phrase-SNOMED Mapping (Global Phrase)
+POST http://localhost:5205/api/snomed/mappings
+Content-Type: application/json
+
+{
+  "phraseId": 1,
+  "accountId": null,
+  "conceptId": 80891009,
+  "mappingType": "exact",
+  "confidence": 1.0,
+  "notes": "Manual mapping via API"
+}
+
+###
+
+### Create Phrase-SNOMED Mapping (Account Phrase)
+POST http://localhost:5205/api/snomed/mappings
+Content-Type: application/json
+
+{
+  "phraseId": 5,
+  "accountId": 2,
+  "conceptId": 80891009,
+  "mappingType": "exact",
+  "confidence": 0.95
+}
+
+###
+
+### Get Single Mapping
+GET http://localhost:5205/api/snomed/mappings/1
+
+###
+
+### Get Multiple Mappings (Batch - for syntax highlighting)
+GET http://localhost:5205/api/snomed/mappings?phraseIds=1&phraseIds=2&phraseIds=3&phraseIds=4&phraseIds=5
+
+###
+
+### Delete Mapping
+DELETE http://localhost:5205/api/snomed/mappings/1
+
+###

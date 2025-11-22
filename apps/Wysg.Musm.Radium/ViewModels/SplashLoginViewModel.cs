@@ -34,10 +34,10 @@ namespace Wysg.Musm.Radium.ViewModels
     public partial class SplashLoginViewModel : BaseViewModel
     {
         private readonly IAuthService _auth;
-        private readonly AzureSqlCentralService _central; // replaced ISupabaseService
         private readonly ITenantContext _tenantContext;
         private readonly IAuthStorage _storage;
         private readonly ITenantRepository _tenantRepo;
+        private readonly RadiumApiClient _apiClient; // API client for backend calls
 
         [ObservableProperty]
         private bool _isLoading = true;  // true while attempting silent restore
@@ -57,13 +57,13 @@ namespace Wysg.Musm.Radium.ViewModels
         public IRelayCommand SignUpCommand { get; }
         public IRelayCommand TestCentralCommand { get; }
 
-        public SplashLoginViewModel(IAuthService auth, AzureSqlCentralService central, ITenantContext tenantContext, IAuthStorage storage, ITenantRepository tenantRepo)
+        public SplashLoginViewModel(IAuthService auth, ITenantContext tenantContext, IAuthStorage storage, ITenantRepository tenantRepo, RadiumApiClient apiClient)
         {
             _auth = auth;
-            _central = central;
             _tenantContext = tenantContext;
             _storage = storage;
             _tenantRepo = tenantRepo;
+            _apiClient = apiClient;
 
             RememberMe = _storage.RememberMe || true; // ensure checkbox starts checked
             if (_storage.Email != null) Email = _storage.Email;
@@ -102,14 +102,25 @@ namespace Wysg.Musm.Radium.ViewModels
                     {
                         try
                         {
-                            // Ensure account
+                            // ? Set Firebase token in API client
+                            _apiClient.SetAuthToken(refreshed.IdToken);
+                            Debug.WriteLine("[Splash][Init] Firebase token set in API client");
+
+                            // ? Ensure account via API (replaces _central.EnsureAccountAndGetSettingsAsync)
                             swStage.Restart();
                             StatusMessage = "Ensuring account...";
                             Debug.WriteLine("[Splash][Init][Stage] EnsureAccount start user=" + refreshed.UserId);
-                            var combined = await _central.EnsureAccountAndGetSettingsAsync(refreshed.UserId, _storage.Email ?? string.Empty, _storage.DisplayName ?? string.Empty);
-                            var accountId = combined.accountId;
+                            
+                            var response = await _apiClient.EnsureAccountAsync(new EnsureAccountRequest
+                            {
+                                Uid = refreshed.UserId,
+                                Email = _storage.Email ?? string.Empty,
+                                DisplayName = _storage.DisplayName ?? string.Empty
+                            });
+                            
+                            var accountId = response.Account.AccountId;
                             swStage.Stop();
-                            Debug.WriteLine($"[Splash][Init][Stage] Ensure+Settings account={accountId} ms={swStage.ElapsedMilliseconds} settingsLen={(combined.settingsJson?.Length ?? 0)}");
+                            Debug.WriteLine($"[Splash][Init][Stage] Ensure+Settings account={accountId} ms={swStage.ElapsedMilliseconds} settingsLen={(response.SettingsJson?.Length ?? 0)}");
 
                             // Ensure local tenant (creates with default_pacs if missing)
                             swStage.Restart();
@@ -120,7 +131,7 @@ namespace Wysg.Musm.Radium.ViewModels
                             Debug.WriteLine($"[Splash][Init][Stage] EnsureTenant done tenant={tenant.Id} pacs={tenant.PacsKey} ms={swStage.ElapsedMilliseconds}");
 
                             // Apply settings immediately
-                            _tenantContext.ReportifySettingsJson = combined.settingsJson;
+                            _tenantContext.ReportifySettingsJson = response.SettingsJson;
 
                             // Set tenant context
                             StatusMessage = "Loading phrases...";
@@ -146,8 +157,13 @@ namespace Wysg.Musm.Radium.ViewModels
                             Debug.WriteLine($"[Splash][Init] Silent login success (tenant set) with PACS={tenant.PacsKey}");
                             LoginSuccess?.Invoke();
 
-                            // Background last login update
-                            BackgroundTask.Run("LastLoginUpdate", () => _central.UpdateLastLoginAsync(accountId, silent: true));
+                            // ? Background last login update via API (replaces _central.UpdateLastLoginAsync)
+                            // Note: Already updated in EnsureAccountAsync, but keeping for explicit tracking
+                            BackgroundTask.Run("LastLoginUpdate", async () =>
+                            {
+                                try { await _apiClient.UpdateLastLoginAsync(accountId); }
+                                catch (Exception ex) { Debug.WriteLine($"[LastLogin] Background update error: {ex.Message}"); }
+                            });
                             return;
                         }
                         catch (OperationCanceledException oce)
@@ -204,8 +220,23 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine("[Splash][Login] Auth success=" + auth.Success);
                 if (!auth.Success) { ErrorMessage = auth.Error; return; }
 
-                var accountId = await _central.EnsureAccountAsync(auth.UserId, auth.Email, auth.DisplayName);
-                await _central.UpdateLastLoginAsync(accountId); // interactive login keep errors visible
+                // ? Set Firebase token in API client
+                _apiClient.SetAuthToken(auth.IdToken);
+                Debug.WriteLine("[Splash][Login] Firebase token set in API client");
+
+                // ? Ensure account via API (replaces _central.EnsureAccountAsync + UpdateLastLoginAsync + EnsureAccountAndGetSettingsAsync)
+                var response = await _apiClient.EnsureAccountAsync(new EnsureAccountRequest
+                {
+                    Uid = auth.UserId,
+                    Email = auth.Email,
+                    DisplayName = auth.DisplayName ?? string.Empty
+                });
+                var accountId = response.Account.AccountId;
+                
+                // Apply settings immediately
+                _tenantContext.ReportifySettingsJson = response.SettingsJson;
+                
+                Debug.WriteLine($"[Splash][Login] Account ensured via API: accountId={accountId}");
 
                 // Ensure local tenant
                 StatusMessage = "Loading PACS profile...";
@@ -215,15 +246,6 @@ namespace Wysg.Musm.Radium.ViewModels
                 _tenantContext.TenantId = accountId;
                 _tenantContext.TenantCode = auth.UserId;
                 _tenantContext.CurrentPacsKey = tenant.PacsKey;
-
-                // Load reportify settings after login
-                try
-                {
-                    var combined = await _central.EnsureAccountAndGetSettingsAsync(auth.UserId, auth.Email, auth.DisplayName);
-                    _tenantContext.ReportifySettingsJson = combined.settingsJson;
-                    Debug.WriteLine("[Splash][Login] Loaded reportify settings len=" + (combined.settingsJson?.Length ?? 0));
-                }
-                catch { }
 
                 // Preload phrases before closing splash (requirement)
                 try
@@ -270,8 +292,23 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine("[Splash][Google] Auth success=" + auth.Success);
                 if (!auth.Success) { ErrorMessage = auth.Error; return; }
 
-                var accountId = await _central.EnsureAccountAsync(auth.UserId, auth.Email, auth.DisplayName);
-                await _central.UpdateLastLoginAsync(accountId); // interactive login keep errors visible
+                // ? Set Firebase token in API client
+                _apiClient.SetAuthToken(auth.IdToken);
+                Debug.WriteLine("[Splash][Google] Firebase token set in API client");
+
+                // ? Ensure account via API (replaces _central.EnsureAccountAsync + UpdateLastLoginAsync + EnsureAccountAndGetSettingsAsync)
+                var response = await _apiClient.EnsureAccountAsync(new EnsureAccountRequest
+                {
+                    Uid = auth.UserId,
+                    Email = auth.Email,
+                    DisplayName = auth.DisplayName ?? string.Empty
+                });
+                var accountId = response.Account.AccountId;
+                
+                // Apply settings immediately
+                _tenantContext.ReportifySettingsJson = response.SettingsJson;
+                
+                Debug.WriteLine($"[Splash][Google] Account ensured via API: accountId={accountId}");
 
                 // Ensure local tenant
                 StatusMessage = "Loading PACS profile...";
@@ -282,14 +319,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 _tenantContext.TenantCode = auth.UserId;
                 _tenantContext.CurrentPacsKey = tenant.PacsKey;
 
-                try
-                {
-                    var combined = await _central.EnsureAccountAndGetSettingsAsync(auth.UserId, auth.Email, auth.DisplayName);
-                    _tenantContext.ReportifySettingsJson = combined.settingsJson;
-                    Debug.WriteLine("[Splash][Login] Loaded reportify settings len=" + (combined.settingsJson?.Length ?? 0));
-                }
-                catch { }
-
+                // Preload phrases
                 try
                 {
                     StatusMessage = "Loading phrases...";
@@ -346,23 +376,41 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private async Task OnTestCentralAsync()
         {
-            IsBusy = true; ErrorMessage = string.Empty; StatusMessage = "Testing central DB...";
+            IsBusy = true; ErrorMessage = string.Empty; StatusMessage = "Testing API connection...";
             try
             {
-                Debug.WriteLine("[Splash][TestCentral] Start");
-                var (ok, msg) = await _central.TestConnectionAsync();
-                StatusMessage = ok ? msg : $"Central DB error: {msg}";
-                Debug.WriteLine($"[Splash][TestCentral] Done ok={ok} msg={msg}");
+                Debug.WriteLine("[Splash][TestAPI] Start");
+                
+                // Test API health endpoint
+                using var client = new System.Net.Http.HttpClient 
+                { 
+                    BaseAddress = new Uri(Environment.GetEnvironmentVariable("RADIUM_API_URL") ?? "http://localhost:5205"),
+                    Timeout = TimeSpan.FromSeconds(5)
+                };
+                
+                var response = await client.GetAsync("/health");
+                var content = await response.Content.ReadAsStringAsync();
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    StatusMessage = $"API connection OK! Status: {content}";
+                    Debug.WriteLine($"[Splash][TestAPI] Success: {content}");
+                }
+                else
+                {
+                    StatusMessage = $"API error: {response.StatusCode}";
+                    Debug.WriteLine($"[Splash][TestAPI] Error: {response.StatusCode}");
+                }
             }
             catch (OperationCanceledException oce)
             {
-                Debug.WriteLine("[Splash][TestCentral][CANCEL] " + oce);
-                StatusMessage = "Central test canceled";
+                Debug.WriteLine("[Splash][TestAPI][CANCEL] " + oce);
+                StatusMessage = "API test canceled";
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("[Splash][TestCentral][EX] " + ex);
-                StatusMessage = "Central test error: " + ex.Message;
+                Debug.WriteLine("[Splash][TestAPI][EX] " + ex);
+                StatusMessage = $"API test error: {ex.Message}";
             }
             finally { IsBusy = false; }
         }
