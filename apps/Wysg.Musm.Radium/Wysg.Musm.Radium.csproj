@@ -36,6 +36,13 @@
     <None Include="docs\db\db_central_azure_migration_20251019.sql" />
   </ItemGroup>
 
+  <!-- Exclude PostgreSQL migration script (Postgres dialect) from build to avoid SQL Server parser errors -->
+  <ItemGroup>
+    <Compile Remove="docs\db\migrations\20250122_rename_reportify_setting_to_user_setting_postgres.sql" />
+    <EmbeddedResource Remove="docs\db\migrations\20250122_rename_reportify_setting_to_user_setting_postgres.sql" />
+    <None Remove="docs\db\migrations\20250122_rename_reportify_setting_to_user_setting_postgres.sql" />
+  </ItemGroup>
+
   <!-- Exclude root-level PostgreSQL SQL file completely -->
   <ItemGroup>
     <Compile Remove="..\..\local_db(wysg_dev)_20251014_after.sql" />
@@ -52,6 +59,7 @@
     <PackageReference Include="DiffPlex" Version="1.9.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0" />
     <PackageReference Include="Npgsql" Version="9.0.3" />

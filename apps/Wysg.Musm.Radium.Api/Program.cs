@@ -22,10 +22,14 @@ builder.Services.AddScoped<IHotkeyRepository, HotkeyRepository>();
 builder.Services.AddScoped<ISnippetRepository, SnippetRepository>();
 builder.Services.AddScoped<IPhraseRepository, PhraseRepository>();
 builder.Services.AddScoped<ISnomedRepository, SnomedRepository>();
+builder.Services.AddScoped<IUserSettingRepository, UserSettingRepository>();
+builder.Services.AddScoped<IExportedReportRepository, ExportedReportRepository>();
 
 // Register services
 builder.Services.AddScoped<IHotkeyService, HotkeyService>();
 builder.Services.AddScoped<ISnippetService, SnippetService>();
+builder.Services.AddScoped<IUserSettingService, UserSettingService>();
+builder.Services.AddScoped<IExportedReportService, ExportedReportService>();
 
 // Add CORS (configure as needed for production)
 builder.Services.AddCors(options =>

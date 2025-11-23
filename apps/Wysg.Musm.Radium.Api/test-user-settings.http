@@ -1,0 +1,44 @@
+### User Settings API Tests
+### Requires Firebase authentication token
+
+@baseUrl = https://localhost:7001
+@accountId = 1
+@token = YOUR_FIREBASE_TOKEN_HERE
+
+### Get user settings for account
+GET {{baseUrl}}/api/accounts/{{accountId}}/settings
+Authorization: Bearer {{token}}
+
+### Upsert user settings (create or update)
+PUT {{baseUrl}}/api/accounts/{{accountId}}/settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "settingsJson": "{\"remove_excessive_blanks\":true,\"remove_excessive_blank_lines\":true,\"capitalize_sentence\":true,\"ensure_trailing_period\":true,\"space_before_arrows\":false,\"space_after_arrows\":true,\"space_before_bullets\":false,\"space_after_bullets\":true,\"space_after_punctuation\":true,\"normalize_parentheses\":true,\"space_number_unit\":true,\"collapse_whitespace\":true,\"number_conclusion_paragraphs\":true,\"indent_continuation_lines\":true,\"number_conclusion_lines_on_one_paragraph\":false,\"capitalize_after_bullet_or_number\":false,\"consider_arrow_bullet_continuation\":false,\"defaults\":{\"arrow\":\"-->\",\"conclusion_numbering\":\"1.\",\"detailing_prefix\":\"-\",\"differential_diagnosis\":\"DDx:\"}}"
+}
+
+### Upsert minimal user settings
+PUT {{baseUrl}}/api/accounts/{{accountId}}/settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "settingsJson": "{\"theme\":\"dark\",\"language\":\"en\"}"
+}
+
+### Delete user settings
+DELETE {{baseUrl}}/api/accounts/{{accountId}}/settings
+Authorization: Bearer {{token}}
+
+### Test with invalid JSON (should return 400)
+PUT {{baseUrl}}/api/accounts/{{accountId}}/settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "settingsJson": "not valid json"
+}
+
+### Test without authentication (should return 401)
+GET {{baseUrl}}/api/accounts/{{accountId}}/settings

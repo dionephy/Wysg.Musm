@@ -139,16 +139,17 @@ namespace Wysg.Musm.Radium.ViewModels
                             _tenantContext.TenantCode = refreshed.UserId;
                             _tenantContext.CurrentPacsKey = tenant.PacsKey;
 
-                            // Preload phrases BEFORE signaling success as requested
+                            // Preload phrases AFTER token is set
                             try
                             {
                                 var phraseSvc = ((App)Application.Current).Services.GetService(typeof(IPhraseService)) as IPhraseService;
                                 if (phraseSvc != null)
                                 {
                                     var swP = Stopwatch.StartNew();
-                                    await phraseSvc.PreloadAsync(accountId);
+                                    // Force refresh to load with auth token
+                                    await phraseSvc.RefreshPhrasesAsync(accountId);
                                     swP.Stop();
-                                    Debug.WriteLine($"[Splash][Init][Stage] Phrase preload ms={swP.ElapsedMilliseconds}");
+                                    Debug.WriteLine($"[Splash][Init][Stage] Phrase preload (with token) ms={swP.ElapsedMilliseconds}");
                                 }
                             }
                             catch (Exception pex) { Debug.WriteLine("[Splash][Init][Stage][PhrasePreload][WARN] " + pex.Message); }
@@ -247,13 +248,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 _tenantContext.TenantCode = auth.UserId;
                 _tenantContext.CurrentPacsKey = tenant.PacsKey;
 
-                // Preload phrases before closing splash (requirement)
+                // Preload phrases after token is set
                 try
                 {
                     StatusMessage = "Loading phrases...";
                     var phraseSvc = ((App)Application.Current).Services.GetService(typeof(IPhraseService)) as IPhraseService;
                     if (phraseSvc != null)
-                        await phraseSvc.PreloadAsync(accountId);
+                        await phraseSvc.RefreshPhrasesAsync(accountId); // Force refresh with auth token
                 }
                 catch (Exception px) { Debug.WriteLine("[Splash][Login][PhrasePreload][WARN] " + px.Message); }
 
@@ -319,13 +320,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 _tenantContext.TenantCode = auth.UserId;
                 _tenantContext.CurrentPacsKey = tenant.PacsKey;
 
-                // Preload phrases
+                // Preload phrases after token is set
                 try
                 {
                     StatusMessage = "Loading phrases...";
                     var phraseSvc = ((App)Application.Current).Services.GetService(typeof(IPhraseService)) as IPhraseService;
                     if (phraseSvc != null)
-                        await phraseSvc.PreloadAsync(accountId);
+                        await phraseSvc.RefreshPhrasesAsync(accountId); // Force refresh with auth token
                 }
                 catch (Exception px) { Debug.WriteLine("[Splash][Google][PhrasePreload][WARN] " + px.Message); }
 

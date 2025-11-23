@@ -24,22 +24,22 @@ namespace Wysg.Musm.Radium.Services
 
         // Snapshot-backed list (account scope)
         Task<IReadOnlyList<string>> GetPhrasesForAccountAsync(long accountId);
-        Task<IReadOnlyList<string>> GetPhrasesByPrefixAccountAsync(long accountId, string prefix, int limit = 50);
+        Task<IReadOnlyList<string>> GetPhrasesByPrefixAccountAsync(long accountId, string prefix, int limit = 15);
 
         // Global phrases (account_id IS NULL)
         Task<IReadOnlyList<string>> GetGlobalPhrasesAsync();
-        Task<IReadOnlyList<string>> GetGlobalPhrasesByPrefixAsync(string prefix, int limit = 50);
+        Task<IReadOnlyList<string>> GetGlobalPhrasesByPrefixAsync(string prefix, int limit = 15);
         
         // Combined phrases (global + account-specific)
         Task<IReadOnlyList<string>> GetCombinedPhrasesAsync(long accountId);
-        Task<IReadOnlyList<string>> GetCombinedPhrasesByPrefixAsync(long accountId, string prefix, int limit = 50);
+        Task<IReadOnlyList<string>> GetCombinedPhrasesByPrefixAsync(long accountId, string prefix, int limit = 15);
         
         // Unfiltered combined phrases for syntax highlighting (includes long phrases)
         Task<IReadOnlyList<string>> GetAllPhrasesForHighlightingAsync(long accountId);
 
         // Backward compatibility wrappers (deprecated)
         [Obsolete("Use GetPhrasesForAccountAsync")] Task<IReadOnlyList<string>> GetPhrasesForTenantAsync(long tenantId);
-        [Obsolete("Use GetPhrasesByPrefixAccountAsync")] Task<IReadOnlyList<string>> GetPhrasesByPrefixAsync(long tenantId, string prefix, int limit = 50);
+        [Obsolete("Use GetPhrasesByPrefixAccountAsync")] Task<IReadOnlyList<string>> GetPhrasesByPrefixAsync(long tenantId, string prefix, int limit = 15);
 
         Task<IReadOnlyList<PhraseInfo>> GetAllPhraseMetaAsync(long accountId);
         Task<IReadOnlyList<PhraseInfo>> GetAllGlobalPhraseMetaAsync();

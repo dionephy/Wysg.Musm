@@ -5,6 +5,7 @@ using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Http; // HttpClient factory
 using Serilog;
 using Serilog.Extensions.Hosting;
 using Wysg.Musm.Radium.Services;
@@ -19,6 +20,8 @@ using System.Drawing; // added
 using System.Text; // added for CodePagesEncodingProvider
 using System.IO; // added for path ops
 using System.Linq; // added
+using Wysg.Musm.Radium.Services.ApiClients; // API clients
+using Wysg.Musm.Radium.Configuration; // ApiSettings
 
 namespace Wysg.Musm.Radium
 {
@@ -67,6 +70,18 @@ namespace Wysg.Musm.Radium
         {
             // Register code page encodings (EUC-KR/CP949, etc.) for non-UTF8 HTML decoding
             try { Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); } catch { }
+
+            // Pipe Debug.WriteLine output to console so it appears in dotnet run (Option 2)
+            try
+            {
+                if (Trace.Listeners.OfType<TextWriterTraceListener>().All(l => l.Writer != Console.Out))
+                {
+                    Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
+                    Trace.AutoFlush = true;
+                    Debug.WriteLine("[App][DebugListener] Console listener (Trace) attached.");
+                }
+            }
+            catch { }
 
             // 1. Logging bootstrap -------------------------------------------------------------
             // Only configure if not already set (avoids duplicate sinks when re-hosted in tests)
@@ -177,6 +192,19 @@ namespace Wysg.Musm.Radium
         /// </summary>
         private void ConfigureServices(HostBuilderContext context, IServiceCollection services)
         {
+            // ✨ NEW: API Settings Configuration
+            var apiSettings = context.Configuration.GetSection("ApiSettings").Get<ApiSettings>() 
+                           ?? new ApiSettings();
+            services.AddSingleton(apiSettings);
+            Debug.WriteLine($"[DI] API Settings: BaseUrl={apiSettings.BaseUrl}");
+
+            // ✨ NEW: Register API Clients (6 clients)
+            RegisterApiClients(services, apiSettings.BaseUrl);
+
+            // ✨ NEW: Register API Helper Services
+            services.AddSingleton<ApiTokenManager>();
+            services.AddSingleton<ApiTestService>();
+
             // Core context & configuration ------------------------------------------------------
             services.AddSingleton<ITenantContext, TenantContext>();          // Holds current account/session; raises AccountIdChanged
             services.AddSingleton<IRadiumLocalSettings, RadiumLocalSettings>(); // Encrypted on-disk local & central connection strings
@@ -190,7 +218,7 @@ namespace Wysg.Musm.Radium
             services.AddSingleton<RadiumApiClient>(sp =>
             {
                 // Use environment variable or appsettings for API URL
-                var apiUrl = Environment.GetEnvironmentVariable("RADIUM_API_URL") ?? "http://localhost:5205";
+                var apiUrl = Environment.GetEnvironmentVariable("RADIUM_API_URL") ?? apiSettings.BaseUrl;
                 Debug.WriteLine($"[DI] Registering RadiumApiClient with base URL: {apiUrl}");
                 return new RadiumApiClient(apiUrl);
             });
@@ -285,9 +313,9 @@ namespace Wysg.Musm.Radium
             {
                 if (useApi)
                 {
-                    Debug.WriteLine("[DI] Using ApiSnomedMapService (API mode) - SNOMED via REST API");
-                    return new Wysg.Musm.Radium.Services.Adapters.ApiSnomedMapService(
-                        sp.GetRequiredService<RadiumApiClient>());
+                    Debug.WriteLine("[DI] Using ApiSnomedMapServiceAdapter (API mode) - SNOMED via REST API");
+                    return new Wysg.Musm.Radium.Services.Adapters.ApiSnomedMapServiceAdapter(
+                        sp.GetRequiredService<ISnomedApiClient>());
                 }
                 else
                 {
@@ -403,6 +431,89 @@ namespace Wysg.Musm.Radium
         {
             var invalid = Path.GetInvalidFileNameChars();
             return string.Join("_", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
+        }
+
+        /// <summary>
+        /// ✨ NEW: Register all 6 API clients for backend communication
+        /// These replace direct database access for account-specific operations
+        /// </summary>
+        private void RegisterApiClients(IServiceCollection services, string baseUrl)
+        {
+            Debug.WriteLine($"[DI] Registering API clients with base URL: {baseUrl}");
+
+            // User Settings API Client
+            services.AddScoped<IUserSettingsApiClient>(sp =>
+            {
+                var httpClient = new System.Net.Http.HttpClient
+                {
+                    BaseAddress = new Uri(baseUrl),
+                    Timeout = TimeSpan.FromSeconds(30)
+                };
+                httpClient.DefaultRequestHeaders.Add("User-Agent", "Wysg.Musm.Radium/1.0");
+                return new UserSettingsApiClient(httpClient, baseUrl);
+            });
+
+            // Phrases API Client
+            services.AddScoped<IPhrasesApiClient>(sp =>
+            {
+                var httpClient = new System.Net.Http.HttpClient
+                {
+                    BaseAddress = new Uri(baseUrl),
+                    Timeout = TimeSpan.FromSeconds(30)
+                };
+                httpClient.DefaultRequestHeaders.Add("User-Agent", "Wysg.Musm.Radium/1.0");
+                return new PhrasesApiClient(httpClient, baseUrl);
+            });
+
+            // Hotkeys API Client
+            services.AddScoped<IHotkeysApiClient>(sp =>
+            {
+                var httpClient = new System.Net.Http.HttpClient
+                {
+                    BaseAddress = new Uri(baseUrl),
+                    Timeout = TimeSpan.FromSeconds(30)
+                };
+                httpClient.DefaultRequestHeaders.Add("User-Agent", "Wysg.Musm.Radium/1.0");
+                return new HotkeysApiClient(httpClient, baseUrl);
+            });
+
+            // Snippets API Client
+            services.AddScoped<ISnippetsApiClient>(sp =>
+            {
+                var httpClient = new System.Net.Http.HttpClient
+                {
+                    BaseAddress = new Uri(baseUrl),
+                    Timeout = TimeSpan.FromSeconds(30)
+                };
+                httpClient.DefaultRequestHeaders.Add("User-Agent", "Wysg.Musm.Radium/1.0");
+                return new SnippetsApiClient(httpClient, baseUrl);
+            });
+
+            // SNOMED API Client - Singleton to match ISnomedMapService lifecycle
+            services.AddSingleton<ISnomedApiClient>(sp =>
+            {
+                var httpClient = new System.Net.Http.HttpClient
+                {
+                    BaseAddress = new Uri(baseUrl),
+                    Timeout = TimeSpan.FromSeconds(30)
+                };
+                httpClient.DefaultRequestHeaders.Add("User-Agent", "Wysg.Musm.Radium/1.0");
+                return new SnomedApiClient(httpClient, baseUrl);
+            });
+
+            // Exported Reports API Client
+            services.AddScoped<IExportedReportsApiClient>(sp =>
+            {
+                var httpClient = new System.Net.Http.HttpClient
+                {
+                    BaseAddress = new Uri(baseUrl),
+                    Timeout = TimeSpan.FromSeconds(30)
+                };
+                httpClient.DefaultRequestHeaders.Add("User-Agent", "Wysg.Musm.Radium/1.0");
+                return new ExportedReportsApiClient(httpClient, baseUrl);
+            });
+
+            Debug.WriteLine("[DI] ✅ All 6 API clients registered successfully");
         }
     }
 

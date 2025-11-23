@@ -64,18 +64,35 @@ namespace Wysg.Musm.Radium.ViewModels
                     // continue (we can still show hotkeys/snippets if available)
                 }
 
-                // 1) Phrases (tokens)
+                int phraseCount = 0;
+                const int MaxPhraseResults = 15; // Display limit for phrases only
+
+                // 1) Phrases (tokens) - yield ALL matching, but count to limit display
                 if (_cache.Has(accountId))
                 {
                     var list = _cache.Get(accountId);
-                    foreach (var t in list.Where(t => t.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                                          .OrderBy(t => t.Length).ThenBy(t => t))
+                    System.Diagnostics.Debug.WriteLine($"[CompositeProvider] Cache has {list.Count} phrases, filtering by prefix '{prefix}'");
+                    
+                    var matches = list.Where(t => t.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                                     .OrderBy(t => t.Length)
+                                     .ThenBy(t => t)
+                                     .ToList();
+                    
+                    System.Diagnostics.Debug.WriteLine($"[CompositeProvider] Found {matches.Count} total matches, limiting display to {MaxPhraseResults}");
+                    
+                    foreach (var t in matches)
                     {
+                        if (phraseCount >= MaxPhraseResults)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[CompositeProvider] Reached phrase limit ({MaxPhraseResults}), stopping");
+                            break;
+                        }
                         yield return Wysg.Musm.Editor.Snippets.MusmCompletionData.Token(t);
+                        phraseCount++;
                     }
                 }
 
-                // 2) Hotkeys
+                // 2) Hotkeys (no limit - these are user-defined shortcuts)
                 var metaTask = _hotkeys.GetAllHotkeyMetaAsync(accountId);
                 if (!metaTask.IsCompleted) metaTask.Wait(50);
                 var meta = metaTask.IsCompletedSuccessfully ? metaTask.Result : Array.Empty<HotkeyInfo>();
@@ -87,7 +104,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     yield return Wysg.Musm.Editor.Snippets.MusmCompletionData.Hotkey(hk.TriggerText, hk.ExpansionText, description: hk.Description);
                 }
 
-                // 3) Snippets (database-driven)
+                // 3) Snippets (database-driven, no limit - these are user-defined)
                 var snTask = _snippets.GetActiveSnippetsAsync(accountId);
                 if (!snTask.IsCompleted) snTask.Wait(75);
                 var snDict = snTask.IsCompletedSuccessfully ? snTask.Result : new Dictionary<string, (string text, string ast, string description)>(StringComparer.OrdinalIgnoreCase);

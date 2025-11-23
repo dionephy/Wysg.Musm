@@ -55,7 +55,11 @@ namespace Wysg.Musm.Radium.Services
         {
             var raw = _settings.CentralConnectionString?.Trim();
             if (string.IsNullOrWhiteSpace(raw))
-                throw new InvalidOperationException("Central DB is not configured. Open Settings and set IRadiumLocalSettings.CentralConnectionString.");
+            {
+                // First-run / API-only / settings edit: build placeholder instead of throwing to allow UI to load.
+                Debug.WriteLine("[CentralDataSourceProvider] Central connection string missing; using placeholder data source.");
+                return BuildPlaceholderDataSource();
+            }
 
             var tracePg = Environment.GetEnvironmentVariable("RAD_TRACE_PG") == "1";
 
@@ -89,7 +93,10 @@ namespace Wysg.Musm.Radium.Services
         {
             var raw = _settings.CentralConnectionString?.Trim();
             if (string.IsNullOrWhiteSpace(raw))
-                throw new InvalidOperationException("Central DB is not configured. Open Settings and set IRadiumLocalSettings.CentralConnectionString.");
+            {
+                Debug.WriteLine("[CentralDataSourceProvider] CentralMeta connection string missing; using placeholder data source.");
+                return BuildPlaceholderDataSource();
+            }
 
             var tracePg = Environment.GetEnvironmentVariable("RAD_TRACE_PG") == "1";
 
@@ -118,6 +125,24 @@ namespace Wysg.Musm.Radium.Services
 
             Debug.WriteLine($"[PG][DataSource] CentralMeta timeout={metaBuilder.CommandTimeout}s");
             return ds;
+        }
+
+        // Builds a lightweight placeholder data source that should not be used for real queries; exists only to satisfy
+        // early UI flows (eg. opening Settings before configuring the DB). Uses pooling disabled to avoid resource use.
+        private static NpgsqlDataSource BuildPlaceholderDataSource()
+        {
+            var placeholderBuilder = new NpgsqlConnectionStringBuilder
+            {
+                Host = "localhost",
+                Database = "placeholder",
+                Username = "placeholder",
+                Password = "placeholder",
+                Pooling = false,
+                IncludeErrorDetail = false,
+                Multiplexing = false
+            };
+            var dsBuilder = new NpgsqlDataSourceBuilder(placeholderBuilder.ConnectionString);
+            return dsBuilder.Build();
         }
 
         public void Dispose()

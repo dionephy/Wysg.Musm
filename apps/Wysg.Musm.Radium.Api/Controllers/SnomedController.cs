@@ -179,26 +179,34 @@ public class SnomedController : ControllerBase
     /// Efficiently retrieves mappings for multiple phrases in a single query.
     /// Used by the editor to load semantic tags for syntax highlighting.
     /// 
-    /// Example: GET /api/snomed/mappings?phraseIds=1&amp;phraseIds=2&amp;phraseIds=3
+    /// POST body: { "phraseIds": [1, 2, 3, ...] }
     /// </remarks>
-    [HttpGet("mappings")]
+    [HttpPost("mappings/batch")]
     [ProducesResponseType(typeof(Dictionary<long, PhraseSnomedMappingDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Dictionary<long, PhraseSnomedMappingDto>>> GetMappingsBatch([FromQuery] long[] phraseIds)
+    public async Task<ActionResult<Dictionary<long, PhraseSnomedMappingDto>>> GetMappingsBatch([FromBody] BatchMappingsRequest request)
     {
-        if (phraseIds == null || phraseIds.Length == 0)
+        if (request == null || request.PhraseIds == null || request.PhraseIds.Length == 0)
             return Ok(new Dictionary<long, PhraseSnomedMappingDto>());
 
         try
         {
-            var mappings = await _repository.GetMappingsBatchAsync(phraseIds);
-            _logger.LogInformation("Retrieved {Count} mappings for {Total} phrases", mappings.Count, phraseIds.Length);
+            var mappings = await _repository.GetMappingsBatchAsync(request.PhraseIds);
+            _logger.LogInformation("Retrieved {Count} mappings for {Total} phrases", mappings.Count, request.PhraseIds.Length);
             return Ok(mappings);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving batch mappings for {Count} phrases", phraseIds.Length);
+            _logger.LogError(ex, "Error retrieving batch mappings for {Count} phrases", request.PhraseIds.Length);
             return StatusCode(500, "Failed to retrieve mappings");
         }
+    }
+
+    /// <summary>
+    /// Request model for batch mappings retrieval.
+    /// </summary>
+    public class BatchMappingsRequest
+    {
+        public long[] PhraseIds { get; set; } = Array.Empty<long>();
     }
 
     /// <summary>

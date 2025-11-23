@@ -201,7 +201,7 @@ namespace Wysg.Musm.Radium.Api.Repositories
 
             const string sql = @"
                 SELECT settings_json
-                FROM radium.reportify_setting
+                FROM radium.user_setting
                 WHERE account_id = @accountId";
 
             await using var command = new SqlCommand(sql, connection);
@@ -222,7 +222,7 @@ namespace Wysg.Musm.Radium.Api.Repositories
             await connection.OpenAsync();
 
             const string sql = @"
-                MERGE radium.reportify_setting AS target
+                MERGE radium.user_setting AS target
                 USING (SELECT @accountId AS account_id, @settingsJson AS settings_json) AS source
                 ON (target.account_id = source.account_id)
                 WHEN MATCHED THEN

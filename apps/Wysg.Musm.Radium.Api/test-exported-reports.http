@@ -1,0 +1,55 @@
+### Exported Reports API Tests
+### Requires Firebase authentication token
+
+@baseUrl = https://localhost:7001
+@accountId = 1
+@token = YOUR_FIREBASE_TOKEN_HERE
+
+### Get all exported reports (paginated)
+GET {{baseUrl}}/api/accounts/{{accountId}}/exported-reports?page=1&pageSize=20
+Authorization: Bearer {{token}}
+
+### Get unresolved reports only
+GET {{baseUrl}}/api/accounts/{{accountId}}/exported-reports?unresolvedOnly=true
+Authorization: Bearer {{token}}
+
+### Get reports with date filter
+GET {{baseUrl}}/api/accounts/{{accountId}}/exported-reports?startDate=2025-01-01&endDate=2025-01-31
+Authorization: Bearer {{token}}
+
+### Get a specific exported report
+GET {{baseUrl}}/api/accounts/{{accountId}}/exported-reports/1
+Authorization: Bearer {{token}}
+
+### Create a new exported report
+POST {{baseUrl}}/api/accounts/{{accountId}}/exported-reports
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "report": "This is the full report content exported from the PACS system...",
+  "reportDateTime": "2025-01-22T14:30:00Z"
+}
+
+### Mark a report as resolved
+POST {{baseUrl}}/api/accounts/{{accountId}}/exported-reports/1/resolve
+Authorization: Bearer {{token}}
+
+### Get exported reports statistics
+GET {{baseUrl}}/api/accounts/{{accountId}}/exported-reports/stats
+Authorization: Bearer {{token}}
+
+### Delete an exported report
+DELETE {{baseUrl}}/api/accounts/{{accountId}}/exported-reports/1
+Authorization: Bearer {{token}}
+
+### Test pagination
+GET {{baseUrl}}/api/accounts/{{accountId}}/exported-reports?page=2&pageSize=10
+Authorization: Bearer {{token}}
+
+### Test with invalid account (should return 403)
+GET {{baseUrl}}/api/accounts/999/exported-reports
+Authorization: Bearer {{token}}
+
+### Test without authentication (should return 401)
+GET {{baseUrl}}/api/accounts/{{accountId}}/exported-reports

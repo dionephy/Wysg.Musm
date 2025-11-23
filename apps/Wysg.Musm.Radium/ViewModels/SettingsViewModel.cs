@@ -220,7 +220,16 @@ namespace Wysg.Musm.Radium.ViewModels
             InitializePacsProfileCommands();
             if (_tenantRepo != null)
             {
-                _ = LoadPacsProfilesAsync();
+                // Only load PACS profiles if we have a PostgreSQL connection configured
+                // (Skip if using API-only mode)
+                try
+                {
+                    _ = LoadPacsProfilesAsync();
+                }
+                catch (InvalidOperationException ex) when (ex.Message.Contains("Central DB is not configured"))
+                {
+                    System.Diagnostics.Debug.WriteLine("[SettingsVM] Skipping PACS profile load - no PostgreSQL configured (API mode)");
+                }
             }
             
             // Load ModalitiesNoHeaderUpdate from local settings (global setting, not PACS-specific)

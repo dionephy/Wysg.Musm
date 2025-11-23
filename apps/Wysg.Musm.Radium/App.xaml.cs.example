@@ -1,0 +1,165 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System;
+using System.IO;
+using System.Windows;
+using Wysg.Musm.Radium.Configuration;
+using Wysg.Musm.Radium.Services;
+using Wysg.Musm.Radium.Services.ApiClients;
+
+namespace Wysg.Musm.Radium
+{
+    /// <summary>
+    /// Example App.xaml.cs configuration for API client registration
+    /// Copy this code into your actual App.xaml.cs
+    /// </summary>
+    public partial class AppExample : Application
+    {
+        private IHost? _host;
+        public IServiceProvider Services => _host!.Services;
+
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            base.OnStartup(e);
+
+            _host = Host.CreateDefaultBuilder()
+                .ConfigureAppConfiguration((context, config) =>
+                {
+                    // Load configuration
+                    config.SetBasePath(Directory.GetCurrentDirectory());
+                    config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+                    config.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", 
+                                     optional: true, reloadOnChange: true);
+                    config.AddEnvironmentVariables();
+                })
+                .ConfigureServices((context, services) =>
+                {
+                    ConfigureServices(services, context.Configuration);
+                })
+                .Build();
+
+            _host.Start();
+
+            // For testing: Uncomment to run API tests on startup
+            // _ = TestApiConnectionAsync();
+
+            var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+            mainWindow.Show();
+        }
+
+        private void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+        {
+            // Register configuration
+            var apiSettings = configuration.GetSection("ApiSettings").Get<ApiSettings>() 
+                           ?? new ApiSettings();
+            services.AddSingleton(apiSettings);
+
+            // Configure HttpClient
+            services.AddHttpClient("RadiumApi", client =>
+            {
+                client.BaseAddress = new Uri(apiSettings.BaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(apiSettings.TimeoutSeconds);
+                client.DefaultRequestHeaders.Add("User-Agent", "Wysg.Musm.Radium/1.0");
+            });
+
+            // Register API Clients (? NO IAuthService parameter!)
+            RegisterApiClients(services, apiSettings.BaseUrl);
+
+            // Register existing services
+            services.AddSingleton<IAuthService, GoogleOAuthAuthService>();
+            services.AddSingleton<ITenantContext, TenantContext>();
+
+            // Register API helper services
+            services.AddSingleton<ApiTokenManager>();
+            services.AddSingleton<ApiTestService>();
+
+            // Replace old database services with API services
+            services.AddScoped<IReportifySettingsService, ApiReportifySettingsService>();
+            // Add more service replacements as you migrate...
+
+            // Register windows
+            services.AddTransient<MainWindow>();
+        }
+
+        private void RegisterApiClients(IServiceCollection services, string baseUrl)
+        {
+            // User Settings API Client
+            services.AddScoped<IUserSettingsApiClient>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient("RadiumApi");
+                return new UserSettingsApiClient(httpClient, baseUrl);
+            });
+
+            // Phrases API Client
+            services.AddScoped<IPhrasesApiClient>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient("RadiumApi");
+                return new PhrasesApiClient(httpClient, baseUrl);
+            });
+
+            // Hotkeys API Client
+            services.AddScoped<IHotkeysApiClient>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient("RadiumApi");
+                return new HotkeysApiClient(httpClient, baseUrl);
+            });
+
+            // Snippets API Client
+            services.AddScoped<ISnippetsApiClient>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient("RadiumApi");
+                return new SnippetsApiClient(httpClient, baseUrl);
+            });
+
+            // SNOMED API Client
+            services.AddScoped<ISnomedApiClient>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient("RadiumApi");
+                return new SnomedApiClient(httpClient, baseUrl);
+            });
+
+            // Exported Reports API Client
+            services.AddScoped<IExportedReportsApiClient>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient("RadiumApi");
+                return new ExportedReportsApiClient(httpClient, baseUrl);
+            });
+        }
+
+        /// <summary>
+        /// Example: Test API connection on startup (for development/debugging)
+        /// Uncomment the call in OnStartup to enable
+        /// </summary>
+        private async System.Threading.Tasks.Task TestApiConnectionAsync()
+        {
+            try
+            {
+                var testService = Services.GetRequiredService<ApiTestService>();
+                var success = await testService.QuickTestAsync();
+                
+                if (!success)
+                {
+                    System.Diagnostics.Debug.WriteLine("[App] ?? API not available at startup");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] API test error: {ex.Message}");
+            }
+        }
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            _host?.StopAsync().GetAwaiter().GetResult();
+            _host?.Dispose();
+            base.OnExit(e);
+        }
+    }
+}

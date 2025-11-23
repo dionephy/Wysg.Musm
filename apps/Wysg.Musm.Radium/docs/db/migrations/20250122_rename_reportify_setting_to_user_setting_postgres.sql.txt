@@ -1,0 +1,144 @@
+Original PostgreSQL migration script renamed to .txt to avoid .NET build SQL parsing errors.
+
+-- =====================================================
+-- Migration: Rename reportify_setting to user_setting (PostgreSQL)
+-- Date: 2025-01-22
+-- Purpose: Rename table to more generic name for user settings
+-- =====================================================
+-- This migration script renames the radium.reportify_setting table
+-- to radium.user_setting to better reflect its purpose as a
+-- general user settings storage (not just reportify settings).
+--
+-- DEPLOYMENT:
+-- Run this on your PostgreSQL database BEFORE deploying code changes.
+-- The script is idempotent and safe to re-run.
+-- =====================================================
+
+\echo '====================================================='
+\echo 'Migration: Rename reportify_setting to user_setting'
+\echo 'Started: '
+\echo '====================================================='
+
+DO $$
+DECLARE
+    old_table_exists BOOLEAN;
+    new_table_exists BOOLEAN;
+    row_count INT;
+BEGIN
+    -- Check if old table exists
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'radium' 
+        AND table_name = 'reportify_setting'
+    ) INTO old_table_exists;
+    
+    -- Check if new table exists
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'radium' 
+        AND table_name = 'user_setting'
+    ) INTO new_table_exists;
+    
+    IF old_table_exists THEN
+        RAISE NOTICE 'Step 1: Old table radium.reportify_setting found';
+        
+        IF new_table_exists THEN
+            RAISE WARNING 'New table radium.user_setting already exists!';
+            RAISE NOTICE 'Skipping rename. Please verify data manually.';
+        ELSE
+            RAISE NOTICE 'Step 2: New table does not exist, proceeding with rename';
+            
+            -- Drop old index (will be recreated)
+            IF EXISTS (
+                SELECT 1 FROM pg_indexes 
+                WHERE schemaname = 'radium' 
+                AND indexname = 'ix_reportify_setting_updated_at'
+            ) THEN
+                DROP INDEX IF EXISTS radium.ix_reportify_setting_updated_at;
+                RAISE NOTICE 'Step 3: Dropped old index ix_reportify_setting_updated_at';
+            ELSE
+                RAISE NOTICE 'Step 3: Old index not found (already dropped or never created)';
+            END IF;
+            
+            -- Rename the table
+            ALTER TABLE radium.reportify_setting RENAME TO user_setting;
+            RAISE NOTICE 'Step 4: Renamed table to radium.user_setting';
+            
+            -- Rename the foreign key constraint (if it exists)
+            IF EXISTS (
+                SELECT 1 FROM information_schema.table_constraints 
+                WHERE constraint_schema = 'radium' 
+                AND table_name = 'user_setting'
+                AND constraint_name LIKE '%reportify%'
+            ) THEN
+                ALTER TABLE radium.user_setting 
+                RENAME CONSTRAINT reportify_setting_account_id_fkey TO user_setting_account_id_fkey;
+                RAISE NOTICE 'Step 5: Renamed foreign key constraint to user_setting_account_id_fkey';
+            ELSE
+                RAISE NOTICE 'Step 5: Foreign key constraint not found or already renamed';
+            END IF;
+            
+            -- Create new index with updated name
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_indexes 
+                WHERE schemaname = 'radium' 
+                AND indexname = 'ix_user_setting_updated_at'
+            ) THEN
+                CREATE INDEX ix_user_setting_updated_at ON radium.user_setting(updated_at DESC);
+                RAISE NOTICE 'Step 6: Created new index ix_user_setting_updated_at';
+            ELSE
+                RAISE NOTICE 'Step 6: New index already exists';
+            END IF;
+            
+            RAISE NOTICE '? Migration completed successfully!';
+        END IF;
+    ELSE
+        IF new_table_exists THEN
+            RAISE NOTICE 'Migration already completed - radium.user_setting exists';
+        ELSE
+            RAISE WARNING 'Neither old nor new table exists!';
+            RAISE NOTICE 'Please run the base schema script first.';
+        END IF;
+    END IF;
+    
+    -- Verification
+    RAISE NOTICE '';
+    RAISE NOTICE 'Verification:';
+    
+    IF new_table_exists OR EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'radium' 
+        AND table_name = 'user_setting'
+    ) THEN
+        SELECT COUNT(*) INTO row_count FROM radium.user_setting;
+        RAISE NOTICE '  ? Table radium.user_setting exists with % row(s)', row_count;
+    ELSE
+        RAISE NOTICE '  ? Table radium.user_setting does NOT exist';
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE schemaname = 'radium' 
+        AND indexname = 'ix_user_setting_updated_at'
+    ) THEN
+        RAISE NOTICE '  ? Index ix_user_setting_updated_at exists';
+    ELSE
+        RAISE NOTICE '  ? Index ix_user_setting_updated_at does NOT exist';
+    END IF;
+    
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_schema = 'radium' 
+        AND table_name = 'user_setting'
+        AND constraint_type = 'FOREIGN KEY'
+    ) THEN
+        RAISE NOTICE '  ? Foreign key constraint exists';
+    ELSE
+        RAISE NOTICE '  ? Foreign key constraint does NOT exist';
+    END IF;
+    
+END $$;
+
+\echo '====================================================='
+\echo 'Migration completed'
+\echo '====================================================='

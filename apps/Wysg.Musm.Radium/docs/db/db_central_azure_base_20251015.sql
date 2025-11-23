@@ -13,7 +13,7 @@
 -- - radium.phrase table
 -- - radium.hotkey table
 -- - radium.snippet table
--- - radium.reportify_setting table
+-- - radium.user_setting table
 -- - All base indexes, triggers, constraints
 --
 -- DEPLOYMENT:
@@ -410,40 +410,40 @@ PRINT '  ? Created trigger: trg_snippet_touch';
 GO
 
 -- =====================================================
--- SECTION 12: Create radium.reportify_setting Table
+-- SECTION 12: Create radium.user_setting Table
 -- =====================================================
 PRINT '';
-PRINT 'SECTION 12: Creating radium.reportify_setting table...';
+PRINT 'SECTION 12: Creating radium.user_setting table...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE schema_id = SCHEMA_ID('radium') AND name = 'reportify_setting')
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE schema_id = SCHEMA_ID('radium') AND name = 'user_setting')
 BEGIN
-    CREATE TABLE [radium].[reportify_setting](
+    CREATE TABLE [radium].[user_setting](
         [account_id] [bigint] NOT NULL PRIMARY KEY,
         [settings_json] [nvarchar](max) NOT NULL,
         [updated_at] [datetime2](3) NOT NULL DEFAULT SYSUTCDATETIME(),
         [rev] [bigint] NOT NULL DEFAULT 1,
-        CONSTRAINT [FK_reportify_account] FOREIGN KEY([account_id])
+        CONSTRAINT [FK_user_setting_account] FOREIGN KEY([account_id])
             REFERENCES [app].[account] ([account_id]) ON DELETE CASCADE
     );
-    PRINT '  ? Created table: radium.reportify_setting';
+    PRINT '  ? Created table: radium.user_setting';
 END
-ELSE PRINT '  - Table exists: radium.reportify_setting';
+ELSE PRINT '  - Table exists: radium.user_setting';
 GO
 
 -- =====================================================
--- SECTION 13: Create radium.reportify_setting Index
+-- SECTION 13: Create radium.user_setting Index
 -- =====================================================
 PRINT '';
-PRINT 'SECTION 13: Creating radium.reportify_setting index...';
+PRINT 'SECTION 13: Creating radium.user_setting index...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_reportify_updated_at' AND object_id = OBJECT_ID('radium.reportify_setting'))
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_user_setting_updated_at' AND object_id = OBJECT_ID('radium.user_setting'))
 BEGIN
-    CREATE INDEX IX_reportify_updated_at ON radium.reportify_setting(updated_at DESC);
-    PRINT '  ? Created index: IX_reportify_updated_at';
+    CREATE INDEX IX_user_setting_updated_at ON radium.user_setting(updated_at DESC);
+    PRINT '  ? Created index: IX_user_setting_updated_at';
 END
-ELSE PRINT '  - Index exists: IX_reportify_updated_at';
+ELSE PRINT '  - Index exists: IX_user_setting_updated_at';
 GO
 
 -- =====================================================
@@ -458,7 +458,7 @@ DECLARE @table_count INT, @index_count INT, @trigger_count INT;
 SELECT @table_count = COUNT(*) 
 FROM sys.tables 
 WHERE schema_id IN (SCHEMA_ID('app'), SCHEMA_ID('radium'))
-  AND name IN ('account', 'phrase', 'hotkey', 'snippet', 'reportify_setting');
+  AND name IN ('account', 'phrase', 'hotkey', 'snippet', 'user_setting');
 
 SELECT @index_count = COUNT(*) 
 FROM sys.indexes 
@@ -466,7 +466,7 @@ WHERE object_id IN (
     OBJECT_ID('radium.phrase'),
     OBJECT_ID('radium.hotkey'),
     OBJECT_ID('radium.snippet'),
-    OBJECT_ID('radium.reportify_setting')
+    OBJECT_ID('radium.user_setting')
 )
 AND name LIKE 'IX_%';
 

@@ -56,7 +56,7 @@ namespace Wysg.Musm.Radium.Services
             return state.ById.Values.Where(r => r.Active).Select(r => r.Text).OrderBy(t => t).Take(500).ToList();
         }
 
-        public async Task<IReadOnlyList<string>> GetPhrasesByPrefixAccountAsync(long accountId, string prefix, int limit = 50)
+        public async Task<IReadOnlyList<string>> GetPhrasesByPrefixAccountAsync(long accountId, string prefix, int limit = 15)
         {
             if (accountId <= 0 || string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
             var state = _states.GetOrAdd(accountId, id => new AccountPhraseState(id));
@@ -117,8 +117,8 @@ namespace Wysg.Musm.Radium.Services
         /// Filtering logic is identical to GetGlobalPhrasesAsync().
         /// </summary>
         /// <param name="prefix">Case-insensitive prefix to match (e.g., "li" matches "ligament", "liver")</param>
-        /// <param name="limit">Maximum number of results to return (default 50)</param>
-        public async Task<IReadOnlyList<string>> GetGlobalPhrasesByPrefixAsync(string prefix, int limit = 50)
+        /// <param name="limit">Maximum number of results to return (default 15)</param>
+        public async Task<IReadOnlyList<string>> GetGlobalPhrasesByPrefixAsync(string prefix, int limit = 15)
         {
             if (string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
             
@@ -223,7 +223,7 @@ namespace Wysg.Musm.Radium.Services
         /// Get combined phrases matching a prefix: filtered global + all account-specific.
         /// Used by completion popup for prefix-based filtering.
         /// </summary>
-        public async Task<IReadOnlyList<string>> GetCombinedPhrasesByPrefixAsync(long accountId, string prefix, int limit = 50)
+        public async Task<IReadOnlyList<string>> GetCombinedPhrasesByPrefixAsync(long accountId, string prefix, int limit = 15)
         {
             if (string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
             
@@ -280,7 +280,7 @@ namespace Wysg.Musm.Radium.Services
         }
 
         [Obsolete] public Task<IReadOnlyList<string>> GetPhrasesForTenantAsync(long tenantId) => GetPhrasesForAccountAsync(tenantId);
-        [Obsolete] public Task<IReadOnlyList<string>> GetPhrasesByPrefixAsync(long tenantId, string prefix, int limit = 50) => GetPhrasesByPrefixAccountAsync(tenantId, prefix, limit);
+        [Obsolete] public Task<IReadOnlyList<string>> GetPhrasesByPrefixAsync(long tenantId, string prefix, int limit = 15) => GetPhrasesByPrefixAccountAsync(tenantId, prefix, limit);
 
         public async Task<IReadOnlyList<PhraseInfo>> GetAllPhraseMetaAsync(long accountId)
         {

@@ -322,7 +322,7 @@ namespace Wysg.Musm.Radium.Services
             return state.ById.Values.Where(r => r.Active).Select(r => r.Text).OrderBy(t => t).Take(500).ToList();
         }
 
-        public async Task<IReadOnlyList<string>> GetPhrasesByPrefixAccountAsync(long accountId, string prefix, int limit = 50)
+        public async Task<IReadOnlyList<string>> GetPhrasesByPrefixAccountAsync(long accountId, string prefix, int limit = 15)
         {
             if (accountId <= 0 || string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
             if (!_states.TryGetValue(accountId, out var state))
@@ -375,7 +375,7 @@ namespace Wysg.Musm.Radium.Services
         }
 
         public Task<IReadOnlyList<string>> GetPhrasesForTenantAsync(long tenantId) => GetPhrasesForAccountAsync(tenantId);
-        public Task<IReadOnlyList<string>> GetPhrasesByPrefixAsync(long tenantId, string prefix, int limit = 50) => GetPhrasesByPrefixAccountAsync(tenantId, prefix, limit);
+        public Task<IReadOnlyList<string>> GetPhrasesByPrefixAsync(long tenantId, string prefix, int limit = 15) => GetPhrasesByPrefixAccountAsync(tenantId, prefix, limit);
 
         public async Task<IReadOnlyList<PhraseInfo>> GetAllPhraseMetaAsync(long accountId)
         {
@@ -474,7 +474,7 @@ namespace Wysg.Musm.Radium.Services
             return filtered.Select(r => r.Text).OrderBy(t => t).ToList();
         }
 
-        public async Task<IReadOnlyList<string>> GetGlobalPhrasesByPrefixAsync(string prefix, int limit = 50)
+        public async Task<IReadOnlyList<string>> GetGlobalPhrasesByPrefixAsync(string prefix, int limit = 15)
         {
             if (string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
             await EnsureBackendAsync().ConfigureAwait(false);
@@ -527,7 +527,7 @@ namespace Wysg.Musm.Radium.Services
             return combined.OrderBy(t => t).ToList();
         }
 
-        public async Task<IReadOnlyList<string>> GetCombinedPhrasesByPrefixAsync(long accountId, string prefix, int limit = 50)
+        public async Task<IReadOnlyList<string>> GetCombinedPhrasesByPrefixAsync(long accountId, string prefix, int limit = 15)
         {
             if (string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
             

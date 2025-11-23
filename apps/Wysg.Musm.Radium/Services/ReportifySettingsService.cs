@@ -43,7 +43,7 @@ namespace Wysg.Musm.Radium.Services
             //     If it times out while reading, we assume cold backend; skip waiting longer and retry quickly.
             //  2) Single primary attempt (12s command timeout) with server-side limit (SET LOCAL 8000) but soft local stopwatch cap (fail fast >9s).
             //  No further retries. Total worst-case wait ~ (3s + 2s backoff + 9s) ~= 14s; typical success < 300ms once warm.
-            const string sql = "SELECT settings_json::text FROM radium.reportify_setting WHERE account_id=@aid";
+            const string sql = "SELECT settings_json::text FROM radium.user_setting WHERE account_id=@aid";
 
             async Task<string?> AttemptAsync(bool meta, int cmdTimeoutSeconds, int serverStmtMs, int attempt)
             {
@@ -110,9 +110,9 @@ namespace Wysg.Musm.Radium.Services
 
         public async Task<(string settingsJson,long rev)> UpsertAsync(long accountId, string settingsJson)
         {
-            const string sql = @"INSERT INTO radium.reportify_setting(account_id, settings_json)
+            const string sql = @"INSERT INTO radium.user_setting(account_id, settings_json)
 VALUES(@aid, CAST(@json AS jsonb))
-ON CONFLICT (account_id) DO UPDATE SET settings_json = EXCLUDED.settings_json, updated_at = now(), rev = radium.reportify_setting.rev + 1
+ON CONFLICT (account_id) DO UPDATE SET settings_json = EXCLUDED.settings_json, updated_at = now(), rev = radium.user_setting.rev + 1
 RETURNING settings_json::text, rev";
             int attempts = 0;
             while (true)
@@ -174,7 +174,7 @@ RETURNING settings_json::text, rev";
 
         public async Task<bool> DeleteAsync(long accountId)
         {
-            const string sql = "DELETE FROM radium.reportify_setting WHERE account_id=@aid";
+            const string sql = "DELETE FROM radium.user_setting WHERE account_id=@aid";
             await using var con = CreateConnection();
             try { await PgConnectionHelper.OpenWithLocalSslFallbackAsync(con); } catch { return false; }
             await using var cmd = new NpgsqlCommand(sql, con) { CommandTimeout = 10 };

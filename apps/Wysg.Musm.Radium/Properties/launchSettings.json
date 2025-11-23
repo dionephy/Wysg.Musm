@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Wysg.Musm.Radium": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "USE_API": "1"
+      }
+    }
+  }
+}

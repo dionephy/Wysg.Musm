@@ -1,254 +1,260 @@
 using Microsoft.Data.SqlClient;
 using Wysg.Musm.Radium.Api.Models.Dtos;
+using System.Linq;
 
 namespace Wysg.Musm.Radium.Api.Repositories
 {
-    /// <summary>
-    /// Repository implementation for phrase operations using Azure SQL
-    /// </summary>
+    /// <summary>Repository implementation for phrase operations (Azure SQL) including GLOBAL (account_id IS NULL).</summary>
     public sealed class PhraseRepository : IPhraseRepository
     {
         private readonly ISqlConnectionFactory _connectionFactory;
         private readonly ILogger<PhraseRepository> _logger;
-
         public PhraseRepository(ISqlConnectionFactory connectionFactory, ILogger<PhraseRepository> logger)
-        {
-            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        }
+        { _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory)); _logger = logger ?? throw new ArgumentNullException(nameof(logger)); }
 
         public async Task<List<PhraseDto>> GetAllAsync(long accountId, bool activeOnly = false)
         {
-            await using var connection = _connectionFactory.CreateConnection();
-            await connection.OpenAsync();
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            var sql = activeOnly ?
+                "SELECT id, account_id, text, active, created_at, updated_at, rev FROM radium.phrase WHERE account_id=@accountId AND active=1 ORDER BY text" :
+                "SELECT id, account_id, text, active, created_at, updated_at, rev FROM radium.phrase WHERE account_id=@accountId ORDER BY text";
+            await using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@accountId", accountId);
+            var list = new List<PhraseDto>();
+            await using var rd = await cmd.ExecuteReaderAsync();
+            while (await rd.ReadAsync()) list.Add(Map(rd));
+            return list;
+        }
 
-            var sql = activeOnly
-                ? "SELECT id, account_id, text, active, created_at, updated_at, rev FROM radium.phrase WHERE account_id = @accountId AND active = 1 ORDER BY text"
-                : "SELECT id, account_id, text, active, created_at, updated_at, rev FROM radium.phrase WHERE account_id = @accountId ORDER BY text";
-
-            await using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@accountId", accountId);
-
-            var phrases = new List<PhraseDto>();
-            await using var reader = await command.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                phrases.Add(MapPhraseDto(reader));
-            }
-
-            return phrases;
+        public async Task<List<PhraseDto>> GetAllGlobalAsync(bool activeOnly = false)
+        {
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            var sql = activeOnly ?
+                "SELECT id, account_id, text, active, created_at, updated_at, rev FROM radium.phrase WHERE account_id IS NULL AND active=1 ORDER BY text" :
+                "SELECT id, account_id, text, active, created_at, updated_at, rev FROM radium.phrase WHERE account_id IS NULL ORDER BY text";
+            await using var cmd = new SqlCommand(sql, con);
+            var list = new List<PhraseDto>();
+            await using var rd = await cmd.ExecuteReaderAsync();
+            while (await rd.ReadAsync()) list.Add(Map(rd));
+            return list;
         }
 
         public async Task<PhraseDto?> GetByIdAsync(long phraseId, long accountId)
         {
-            await using var connection = _connectionFactory.CreateConnection();
-            await connection.OpenAsync();
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            const string sql = "SELECT id, account_id, text, active, created_at, updated_at, rev FROM radium.phrase WHERE id=@id AND account_id=@accountId";
+            await using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@id", phraseId);
+            cmd.Parameters.AddWithValue("@accountId", accountId);
+            await using var rd = await cmd.ExecuteReaderAsync();
+            return await rd.ReadAsync() ? Map(rd) : null;
+        }
 
-            const string sql = @"
-                SELECT id, account_id, text, active, created_at, updated_at, rev
-                FROM radium.phrase
-                WHERE id = @phraseId AND account_id = @accountId";
-
-            await using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@phraseId", phraseId);
-            command.Parameters.AddWithValue("@accountId", accountId);
-
-            await using var reader = await command.ExecuteReaderAsync();
-            if (await reader.ReadAsync())
-            {
-                return MapPhraseDto(reader);
-            }
-
-            return null;
+        public async Task<PhraseDto?> GetGlobalByIdAsync(long phraseId)
+        {
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            const string sql = "SELECT id, account_id, text, active, created_at, updated_at, rev FROM radium.phrase WHERE id=@id AND account_id IS NULL";
+            await using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@id", phraseId);
+            await using var rd = await cmd.ExecuteReaderAsync();
+            return await rd.ReadAsync() ? Map(rd) : null;
         }
 
         public async Task<List<PhraseDto>> SearchAsync(long accountId, string? query, bool activeOnly, int maxResults)
         {
-            await using var connection = _connectionFactory.CreateConnection();
-            await connection.OpenAsync();
-
-            var sql = @"
-                SELECT TOP (@maxResults) id, account_id, text, active, created_at, updated_at, rev
-                FROM radium.phrase
-                WHERE account_id = @accountId";
-
-            if (!string.IsNullOrWhiteSpace(query))
-            {
-                sql += " AND text LIKE @query";
-            }
-
-            if (activeOnly)
-            {
-                sql += " AND active = 1";
-            }
-
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            var sql = "SELECT TOP (@max) id, account_id, text, active, created_at, updated_at, rev FROM radium.phrase WHERE account_id=@accountId";
+            if (!string.IsNullOrWhiteSpace(query)) sql += " AND text LIKE @q";
+            if (activeOnly) sql += " AND active=1";
             sql += " ORDER BY text";
+            await using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@accountId", accountId);
+            cmd.Parameters.AddWithValue("@max", maxResults);
+            if (!string.IsNullOrWhiteSpace(query)) cmd.Parameters.AddWithValue("@q", $"%{query}%");
+            var list = new List<PhraseDto>();
+            await using var rd = await cmd.ExecuteReaderAsync();
+            while (await rd.ReadAsync()) list.Add(Map(rd));
+            return list;
+        }
 
-            await using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@accountId", accountId);
-            command.Parameters.AddWithValue("@maxResults", maxResults);
-
-            if (!string.IsNullOrWhiteSpace(query))
-            {
-                command.Parameters.AddWithValue("@query", $"%{query}%");
-            }
-
-            var phrases = new List<PhraseDto>();
-            await using var reader = await command.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                phrases.Add(MapPhraseDto(reader));
-            }
-
-            return phrases;
+        public async Task<List<PhraseDto>> SearchGlobalAsync(string? query, bool activeOnly, int maxResults)
+        {
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            var sql = "SELECT TOP (@max) id, account_id, text, active, created_at, updated_at, rev FROM radium.phrase WHERE account_id IS NULL";
+            if (!string.IsNullOrWhiteSpace(query)) sql += " AND text LIKE @q";
+            if (activeOnly) sql += " AND active=1";
+            sql += " ORDER BY text";
+            await using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@max", maxResults);
+            if (!string.IsNullOrWhiteSpace(query)) cmd.Parameters.AddWithValue("@q", $"%{query}%");
+            var list = new List<PhraseDto>();
+            await using var rd = await cmd.ExecuteReaderAsync();
+            while (await rd.ReadAsync()) list.Add(Map(rd));
+            return list;
         }
 
         public async Task<PhraseDto> UpsertAsync(long accountId, string text, bool active)
         {
-            if (string.IsNullOrWhiteSpace(text))
-                throw new ArgumentException("Phrase text cannot be empty", nameof(text));
-
-            await using var connection = _connectionFactory.CreateConnection();
-            await connection.OpenAsync();
-
-            // Check if phrase exists
-            const string checkSql = @"
-                SELECT id, account_id, text, active, created_at, updated_at, rev
-                FROM radium.phrase
-                WHERE account_id = @accountId AND text = @text";
-
-            await using (var checkCmd = new SqlCommand(checkSql, connection))
+            if (string.IsNullOrWhiteSpace(text)) throw new ArgumentException("Phrase text cannot be empty", nameof(text));
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            const string checkSql = "SELECT id FROM radium.phrase WHERE account_id=@accountId AND text=@text";
+            await using (var check = new SqlCommand(checkSql, con))
             {
-                checkCmd.Parameters.AddWithValue("@accountId", accountId);
-                checkCmd.Parameters.AddWithValue("@text", text);
-
-                await using var reader = await checkCmd.ExecuteReaderAsync();
-                if (await reader.ReadAsync())
+                check.Parameters.AddWithValue("@accountId", accountId);
+                check.Parameters.AddWithValue("@text", text);
+                var existing = await check.ExecuteScalarAsync();
+                if (existing != null)
                 {
-                    var existingPhraseId = reader.GetInt64(0);
-                    await reader.CloseAsync();
-
-                    // Update existing
-                    const string updateSql = @"
-                        UPDATE radium.phrase
-                        SET active = @active
-                        WHERE id = @phraseId";
-
-                    await using var updateCmd = new SqlCommand(updateSql, connection);
-                    updateCmd.Parameters.AddWithValue("@active", active);
-                    updateCmd.Parameters.AddWithValue("@phraseId", existingPhraseId);
-                    await updateCmd.ExecuteNonQueryAsync();
-
-                    _logger.LogInformation("Updated phrase {PhraseId} for account {AccountId}", existingPhraseId, accountId);
-                    return await GetByIdAsync(existingPhraseId, accountId) ?? throw new InvalidOperationException("Failed to retrieve updated phrase");
+                    const string updSql = "UPDATE radium.phrase SET active=@active WHERE id=@id";
+                    await using var upd = new SqlCommand(updSql, con);
+                    upd.Parameters.AddWithValue("@active", active);
+                    upd.Parameters.AddWithValue("@id", Convert.ToInt64(existing));
+                    await upd.ExecuteNonQueryAsync();
+                    _logger.LogInformation("Updated phrase {Id} account {AccountId}", existing, accountId);
+                    return await GetByIdAsync(Convert.ToInt64(existing), accountId) ?? throw new InvalidOperationException("Failed to load updated phrase");
                 }
             }
+            const string insSql = "INSERT INTO radium.phrase (account_id,text,active,created_at,updated_at,rev) OUTPUT INSERTED.id VALUES (@accountId,@text,@active,SYSUTCDATETIME(),SYSUTCDATETIME(),1)";
+            await using var ins = new SqlCommand(insSql, con);
+            ins.Parameters.AddWithValue("@accountId", accountId);
+            ins.Parameters.AddWithValue("@text", text);
+            ins.Parameters.AddWithValue("@active", active);
+            var newId = await ins.ExecuteScalarAsync();
+            _logger.LogInformation("Inserted phrase {Id} account {AccountId}", newId, accountId);
+            return await GetByIdAsync(Convert.ToInt64(newId!), accountId) ?? throw new InvalidOperationException("Failed to load new phrase");
+        }
 
-            // Insert new
-            const string insertSql = @"
-                INSERT INTO radium.phrase (account_id, text, active, created_at, updated_at, rev)
-                OUTPUT INSERTED.id
-                VALUES (@accountId, @text, @active, SYSUTCDATETIME(), SYSUTCDATETIME(), 1)";
-
-            await using var insertCmd = new SqlCommand(insertSql, connection);
-            insertCmd.Parameters.AddWithValue("@accountId", accountId);
-            insertCmd.Parameters.AddWithValue("@text", text);
-            insertCmd.Parameters.AddWithValue("@active", active);
-
-            var newId = await insertCmd.ExecuteScalarAsync();
-            if (newId == null)
-                throw new InvalidOperationException("Failed to create phrase");
-
-            var phraseId = Convert.ToInt64(newId);
-            _logger.LogInformation("Created phrase {PhraseId} for account {AccountId}", phraseId, accountId);
-
-            return await GetByIdAsync(phraseId, accountId) ?? throw new InvalidOperationException("Failed to retrieve new phrase");
+        public async Task<PhraseDto> UpsertGlobalAsync(string text, bool active)
+        {
+            if (string.IsNullOrWhiteSpace(text)) throw new ArgumentException("Phrase text cannot be empty", nameof(text));
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            const string checkSql = "SELECT id FROM radium.phrase WHERE account_id IS NULL AND text=@text";
+            await using (var check = new SqlCommand(checkSql, con))
+            {
+                check.Parameters.AddWithValue("@text", text);
+                var existing = await check.ExecuteScalarAsync();
+                if (existing != null)
+                {
+                    const string updSql = "UPDATE radium.phrase SET active=@active WHERE id=@id";
+                    await using var upd = new SqlCommand(updSql, con);
+                    upd.Parameters.AddWithValue("@active", active);
+                    upd.Parameters.AddWithValue("@id", Convert.ToInt64(existing));
+                    await upd.ExecuteNonQueryAsync();
+                    _logger.LogInformation("Updated GLOBAL phrase {Id}", existing);
+                    return await GetGlobalByIdAsync(Convert.ToInt64(existing)) ?? throw new InvalidOperationException("Failed to load updated global phrase");
+                }
+            }
+            const string insSql = "INSERT INTO radium.phrase (account_id,text,active,created_at,updated_at,rev) OUTPUT INSERTED.id VALUES (NULL,@text,@active,SYSUTCDATETIME(),SYSUTCDATETIME(),1)";
+            await using var ins = new SqlCommand(insSql, con);
+            ins.Parameters.AddWithValue("@text", text);
+            ins.Parameters.AddWithValue("@active", active);
+            var newId = await ins.ExecuteScalarAsync();
+            _logger.LogInformation("Inserted GLOBAL phrase {Id}", newId);
+            return await GetGlobalByIdAsync(Convert.ToInt64(newId!)) ?? throw new InvalidOperationException("Failed to load new global phrase");
         }
 
         public async Task<List<PhraseDto>> BatchUpsertAsync(long accountId, List<string> phrases, bool active)
         {
-            var results = new List<PhraseDto>();
-
-            foreach (var text in phrases.Where(p => !string.IsNullOrWhiteSpace(p)))
+            var result = new List<PhraseDto>();
+            foreach (var p in phrases.Where(p => !string.IsNullOrWhiteSpace(p)))
             {
-                try
-                {
-                    var phrase = await UpsertAsync(accountId, text.Trim(), active);
-                    results.Add(phrase);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to upsert phrase '{Text}' for account {AccountId}", text, accountId);
-                }
+                try { result.Add(await UpsertAsync(accountId, p.Trim(), active)); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Failed upsert '{Text}' acct={AccountId}", p, accountId); }
             }
+            return result;
+        }
 
-            return results;
+        public async Task<List<PhraseDto>> BatchUpsertGlobalAsync(List<string> phrases, bool active)
+        {
+            var result = new List<PhraseDto>();
+            foreach (var p in phrases.Where(p => !string.IsNullOrWhiteSpace(p)))
+            {
+                try { result.Add(await UpsertGlobalAsync(p.Trim(), active)); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Failed global upsert '{Text}'", p); }
+            }
+            return result;
         }
 
         public async Task<bool> ToggleActiveAsync(long phraseId, long accountId)
         {
-            await using var connection = _connectionFactory.CreateConnection();
-            await connection.OpenAsync();
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            const string sql = "UPDATE radium.phrase SET active = CASE WHEN active=1 THEN 0 ELSE 1 END WHERE id=@id AND account_id=@acct";
+            await using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@id", phraseId);
+            cmd.Parameters.AddWithValue("@acct", accountId);
+            return await cmd.ExecuteNonQueryAsync() > 0;
+        }
 
-            const string sql = @"
-                UPDATE radium.phrase
-                SET active = CASE WHEN active = 1 THEN 0 ELSE 1 END
-                WHERE id = @phraseId AND account_id = @accountId";
-
-            await using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@phraseId", phraseId);
-            command.Parameters.AddWithValue("@accountId", accountId);
-
-            var rowsAffected = await command.ExecuteNonQueryAsync();
-            return rowsAffected > 0;
+        public async Task<bool> ToggleGlobalActiveAsync(long phraseId)
+        {
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            const string sql = "UPDATE radium.phrase SET active = CASE WHEN active=1 THEN 0 ELSE 1 END WHERE id=@id AND account_id IS NULL";
+            await using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@id", phraseId);
+            return await cmd.ExecuteNonQueryAsync() > 0;
         }
 
         public async Task<bool> DeleteAsync(long phraseId, long accountId)
         {
-            await using var connection = _connectionFactory.CreateConnection();
-            await connection.OpenAsync();
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            const string sql = "DELETE FROM radium.phrase WHERE id=@id AND account_id=@acct";
+            await using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@id", phraseId);
+            cmd.Parameters.AddWithValue("@acct", accountId);
+            return await cmd.ExecuteNonQueryAsync() > 0;
+        }
 
-            const string sql = @"
-                DELETE FROM radium.phrase
-                WHERE id = @phraseId AND account_id = @accountId";
-
-            await using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@phraseId", phraseId);
-            command.Parameters.AddWithValue("@accountId", accountId);
-
-            var rowsAffected = await command.ExecuteNonQueryAsync();
-            return rowsAffected > 0;
+        public async Task<bool> DeleteGlobalAsync(long phraseId)
+        {
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            const string sql = "DELETE FROM radium.phrase WHERE id=@id AND account_id IS NULL";
+            await using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@id", phraseId);
+            return await cmd.ExecuteNonQueryAsync() > 0;
         }
 
         public async Task<long> GetMaxRevisionAsync(long accountId)
         {
-            await using var connection = _connectionFactory.CreateConnection();
-            await connection.OpenAsync();
-
-            const string sql = @"
-                SELECT ISNULL(MAX(rev), 0)
-                FROM radium.phrase
-                WHERE account_id = @accountId";
-
-            await using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@accountId", accountId);
-
-            var result = await command.ExecuteScalarAsync();
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            const string sql = "SELECT ISNULL(MAX(rev),0) FROM radium.phrase WHERE account_id=@acct";
+            await using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@acct", accountId);
+            var result = await cmd.ExecuteScalarAsync();
             return result == DBNull.Value ? 0 : Convert.ToInt64(result);
         }
 
-        private static PhraseDto MapPhraseDto(SqlDataReader reader)
+        public async Task<long> GetGlobalMaxRevisionAsync()
         {
-            return new PhraseDto
-            {
-                Id = reader.GetInt64(0),
-                AccountId = reader.GetInt64(1),
-                Text = reader.GetString(2),
-                Active = reader.GetBoolean(3),
-                CreatedAt = reader.GetDateTime(4),
-                UpdatedAt = reader.GetDateTime(5),
-                Rev = reader.GetInt64(6)
-            };
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            const string sql = "SELECT ISNULL(MAX(rev),0) FROM radium.phrase WHERE account_id IS NULL";
+            await using var cmd = new SqlCommand(sql, con);
+            var result = await cmd.ExecuteScalarAsync();
+            return result == DBNull.Value ? 0 : Convert.ToInt64(result);
         }
+
+        private static PhraseDto Map(SqlDataReader rd) => new()
+        {
+            Id = rd.GetInt64(0),
+            AccountId = rd.IsDBNull(1) ? null : rd.GetInt64(1),
+            Text = rd.GetString(2),
+            Active = rd.GetBoolean(3),
+            CreatedAt = rd.GetDateTime(4),
+            UpdatedAt = rd.GetDateTime(5),
+            Rev = rd.GetInt64(6)
+        };
     }
 }

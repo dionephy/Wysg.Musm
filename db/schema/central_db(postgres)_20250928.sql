@@ -79,10 +79,10 @@ ALTER FUNCTION radium.touch_phrase()
     OWNER TO postgres;
 
 -- =============================================
--- Reportify Settings (per account)
+-- User Settings (per account)
 -- FR-249: Persist one JSON settings document per account
 -- =============================================
-CREATE TABLE IF NOT EXISTS radium.reportify_setting
+CREATE TABLE IF NOT EXISTS radium.user_setting
 (
     account_id   bigint PRIMARY KEY REFERENCES app.account(account_id) ON DELETE CASCADE,
     settings_json jsonb NOT NULL,
@@ -91,13 +91,13 @@ CREATE TABLE IF NOT EXISTS radium.reportify_setting
 );
 
 -- Upsert helper note:
--- INSERT INTO radium.reportify_setting(account_id, settings_json)
+-- INSERT INTO radium.user_setting(account_id, settings_json)
 -- VALUES($1, CAST($2 AS jsonb))
 -- ON CONFLICT (account_id) DO UPDATE
 --   SET settings_json = EXCLUDED.settings_json,
 --       updated_at = now(),
---       rev = radium.reportify_setting.rev + 1
+--       rev = radium.user_setting.rev + 1
 -- RETURNING settings_json, updated_at, rev;
 
-CREATE INDEX IF NOT EXISTS ix_reportify_setting_updated_at ON radium.reportify_setting(updated_at DESC);
+CREATE INDEX IF NOT EXISTS ix_user_setting_updated_at ON radium.user_setting(updated_at DESC);
 

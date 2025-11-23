@@ -245,6 +245,52 @@ namespace Wysg.Musm.Radium.Services
 
         #endregion
 
+        #region GlobalPhrases
+        public async Task<List<PhraseDto>> GetGlobalPhrasesAsync(bool activeOnly = false)
+        {
+            var url = $"/api/phrases/global?activeOnly={activeOnly}";
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<PhraseDto>>() ?? new List<PhraseDto>();
+        }
+
+        public async Task<List<PhraseDto>> SearchGlobalPhrasesAsync(string? query, bool activeOnly = true, int maxResults = 100)
+        {
+            var url = $"/api/phrases/global/search?activeOnly={activeOnly}&maxResults={maxResults}";
+            if (!string.IsNullOrWhiteSpace(query)) url += $"&query={Uri.EscapeDataString(query)}";
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<PhraseDto>>() ?? new List<PhraseDto>();
+        }
+
+        public async Task<PhraseDto> UpsertGlobalPhraseAsync(string text, bool active = true)
+        {
+            var request = new UpsertPhraseRequest { Text = text, Active = active };
+            var response = await _httpClient.PutAsJsonAsync("/api/phrases/global", request);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<PhraseDto>() ?? throw new InvalidOperationException("Failed to deserialize global phrase");
+        }
+
+        public async Task ToggleGlobalPhraseAsync(long phraseId)
+        {
+            var response = await _httpClient.PostAsync($"/api/phrases/global/{phraseId}/toggle", null);
+            response.EnsureSuccessStatusCode();
+        }
+
+        public async Task DeleteGlobalPhraseAsync(long phraseId)
+        {
+            var response = await _httpClient.DeleteAsync($"/api/phrases/global/{phraseId}");
+            response.EnsureSuccessStatusCode();
+        }
+
+        public async Task<long> GetGlobalPhraseMaxRevisionAsync()
+        {
+            var response = await _httpClient.GetAsync("/api/phrases/global/revision");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<long>();
+        }
+        #endregion
+
         #region SNOMED
 
         /// <summary>
@@ -393,7 +439,7 @@ namespace Wysg.Musm.Radium.Services
     public class PhraseDto
     {
         public long Id { get; set; }
-        public long AccountId { get; set; }
+        public long? AccountId { get; set; } // null => global phrase
         public string Text { get; set; } = string.Empty;
         public bool Active { get; set; }
         public DateTime CreatedAt { get; set; }
