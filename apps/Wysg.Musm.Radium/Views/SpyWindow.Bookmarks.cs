@@ -43,7 +43,11 @@ namespace Wysg.Musm.Radium.Views
             if (FindName("lstBookmarks") is System.Windows.Controls.ListBox lb)
                 lb.ItemsSource = store.Bookmarks.OrderBy(b => b.Name).ToList();
         }
-        private void OnReload(object sender, RoutedEventArgs e) => LoadBookmarks();
+        private void OnReload(object sender, RoutedEventArgs e)
+        {
+            LoadBookmarks();
+            LoadBookmarksIntoComboBox(); // Also reload ComboBox
+        }
         private void OnBookmarkSelected(object sender, SelectionChangedEventArgs e)
         {
             if (FindName("lstBookmarks") is System.Windows.Controls.ListBox lb && lb.SelectedItem is UiBookmarks.Bookmark b)
@@ -52,9 +56,27 @@ namespace Wysg.Musm.Radium.Views
         private void OnKnownSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (FindName("cmbKnown") is not System.Windows.Controls.ComboBox combo) return;
-            var item = combo.SelectedItem as System.Windows.Controls.ComboBoxItem; var keyStr = item?.Tag as string; if (string.IsNullOrWhiteSpace(keyStr)) return;
-            if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key)) return;
-            var mapping = UiBookmarks.GetMapping(key); if (mapping != null) LoadEditor(mapping);
+            
+            // NEW: Handle BookmarkItem instead of ComboBoxItem
+            if (combo.SelectedItem is BookmarkItem item)
+            {
+                if (item.IsKnownControl && !string.IsNullOrWhiteSpace(item.Tag))
+                {
+                    // Built-in KnownControl
+                    if (Enum.TryParse<UiBookmarks.KnownControl>(item.Tag, out var key))
+                    {
+                        var mapping = UiBookmarks.GetMapping(key);
+                        if (mapping != null) LoadEditor(mapping);
+                    }
+                }
+                else
+                {
+                    // User-defined bookmark
+                    var store = UiBookmarks.Load();
+                    var bookmark = store.Bookmarks.FirstOrDefault(b => string.Equals(b.Name, item.Name, StringComparison.OrdinalIgnoreCase));
+                    if (bookmark != null) LoadEditor(bookmark);
+                }
+            }
         }
 
         // ------------------------------ Editor load/save ------------------------------
@@ -115,32 +137,61 @@ namespace Wysg.Musm.Radium.Views
             }
             
             SaveEditorInto(_editing);
-            var knownItem = cmbKnown?.SelectedItem as System.Windows.Controls.ComboBoxItem;
-            var tagStr = knownItem?.Tag as string;
-            if (!string.IsNullOrWhiteSpace(tagStr) && Enum.TryParse<UiBookmarks.KnownControl>(tagStr, out var key))
+            
+            // NEW: Check if saving to a BookmarkItem
+            if (FindName("cmbKnown") is System.Windows.Controls.ComboBox combo && combo.SelectedItem is BookmarkItem item)
             {
-                var toSave = new UiBookmarks.Bookmark
+                if (item.IsKnownControl && !string.IsNullOrWhiteSpace(item.Tag))
                 {
-                    Name = key.ToString(),
-                    ProcessName = _editing.ProcessName,
-                    Method = _editing.Method,
-                    DirectAutomationId = _editing.DirectAutomationId,
-                    CrawlFromRoot = _editing.CrawlFromRoot,
-                    Chain = _editing.Chain.ToList()
-                };
-                UiBookmarks.SaveMapping(key, toSave);
-                txtStatus.Text = $"Saved mapping for {key}"; return;
+                    // Saving to KnownControl
+                    if (Enum.TryParse<UiBookmarks.KnownControl>(item.Tag, out var key))
+                    {
+                        var toSave = new UiBookmarks.Bookmark
+                        {
+                            Name = key.ToString(),
+                            ProcessName = _editing.ProcessName,
+                            Method = _editing.Method,
+                            DirectAutomationId = _editing.DirectAutomationId,
+                            CrawlFromRoot = _editing.CrawlFromRoot,
+                            Chain = _editing.Chain.ToList()
+                        };
+                        UiBookmarks.SaveMapping(key, toSave);
+                        txtStatus.Text = $"Saved mapping for {key}";
+                        return;
+                    }
+                }
+                else
+                {
+                    // Saving to user bookmark
+                    var store = UiBookmarks.Load();
+                    var existing = store.Bookmarks.FirstOrDefault(b => string.Equals(b.Name, item.Name, StringComparison.OrdinalIgnoreCase));
+                    if (existing != null)
+                    {
+                        existing.ProcessName = _editing.ProcessName;
+                        existing.Method = _editing.Method;
+                        existing.DirectAutomationId = _editing.DirectAutomationId;
+                        existing.CrawlFromRoot = _editing.CrawlFromRoot;
+                        existing.Chain = _editing.Chain.ToList();
+                        UiBookmarks.Save(store);
+                        txtStatus.Text = $"Saved bookmark '{item.Name}'";
+                        LoadBookmarksIntoComboBox(); // Refresh
+                        return;
+                    }
+                }
             }
-            var store = UiBookmarks.Load();
+            
+            // Fallback: save as new bookmark or update existing by name
+            var store2 = UiBookmarks.Load();
             var name = string.IsNullOrWhiteSpace(_editing.Name) ? "Bookmark" : _editing.Name;
-            var existing = store.Bookmarks.FirstOrDefault(b => string.Equals(b.Name, name, StringComparison.OrdinalIgnoreCase));
-            if (existing == null) { existing = new UiBookmarks.Bookmark { Name = name }; store.Bookmarks.Add(existing); }
-            existing.ProcessName = _editing.ProcessName;
-            existing.Method = _editing.Method;
-            existing.DirectAutomationId = _editing.DirectAutomationId;
-            existing.CrawlFromRoot = _editing.CrawlFromRoot;
-            existing.Chain = _editing.Chain.ToList();
-            UiBookmarks.Save(store);
+            var existing2 = store2.Bookmarks.FirstOrDefault(b => string.Equals(b.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (existing2 == null) { existing2 = new UiBookmarks.Bookmark { Name = name }; store2.Bookmarks.Add(existing2); }
+            existing2.ProcessName = _editing.ProcessName;
+            existing2.Method = _editing.Method;
+            existing2.DirectAutomationId = _editing.DirectAutomationId;
+            existing2.CrawlFromRoot = _editing.CrawlFromRoot;
+            existing2.Chain = _editing.Chain.ToList();
+            UiBookmarks.Save(store2);
+            LoadBookmarksIntoComboBox(); // Refresh
             txtStatus.Text = $"Saved bookmark '{name}'";
         }
         
@@ -435,33 +486,6 @@ namespace Wysg.Musm.Radium.Views
             catch (Exception ex) { return (null, null, $"Pick error: {ex.Message}"); }
         }
 
-        // ------------------------------ Mapping existing known control ------------------------------
-        private void OnMapSelected(object sender, RoutedEventArgs e)
-        {
-            var item = cmbKnown.SelectedItem as System.Windows.Controls.ComboBoxItem; var keyStr = item?.Tag as string;
-            if (string.IsNullOrWhiteSpace(keyStr)) { txtStatus.Text = "Select a known control"; return; }
-            if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key)) { txtStatus.Text = "Invalid known control"; return; }
-            var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: true);
-            txtStatus.Text = msg; if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName; if (b == null) return;
-            var method = CmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly;
-            b.Method = method;
-            if (method == UiBookmarks.MapMethod.AutomationIdOnly)
-            {
-                var directId = b.Chain.LastOrDefault()?.AutomationId; b.DirectAutomationId = string.IsNullOrWhiteSpace(directId) ? null : directId;
-            }
-            UiBookmarks.SaveMapping(key, b); ShowBookmarkDetails(b, $"Mapped {key}"); HighlightBookmark(b); txtStatus.Text = $"Mapped {key}";
-        }
-        private void OnResolveSelected(object sender, RoutedEventArgs e)
-        {
-            var item = cmbKnown.SelectedItem as System.Windows.Controls.ComboBoxItem; var keyStr = item?.Tag as string;
-            if (string.IsNullOrWhiteSpace(keyStr)) { txtStatus.Text = "Select a known control"; return; }
-            if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key)) { txtStatus.Text = "Invalid known control"; return; }
-            var mapping = UiBookmarks.GetMapping(key); if (mapping == null) { txtStatus.Text = "No mapping saved"; return; }
-            var (hwnd, el) = UiBookmarks.Resolve(key); if (el == null) { txtStatus.Text += " | Resolve failed"; return; }
-            var r = el.BoundingRectangle; _overlay.ShowForRect(new System.Drawing.Rectangle((int)r.Left, (int)r.Top, (int)r.Width, (int)r.Height));
-            txtStatus.Text = $"Resolved {key}";
-        }
-
         // ------------------------------ Validation & diagnostics ------------------------------
         private void OnValidateChain(object sender, RoutedEventArgs e)
         {
@@ -556,21 +580,6 @@ namespace Wysg.Musm.Radium.Views
             }
             var r = el.BoundingRectangle;
             _overlay.ShowForRect(new System.Drawing.Rectangle((int)r.Left, (int)r.Top, (int)r.Width, (int)r.Height));
-        }
-        private void OnPreviewMouseDownForQuickMap(object? sender, MouseButtonEventArgs e)
-        {
-            if (!Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl)) return;
-            if (!Keyboard.IsKeyDown(Key.LeftShift) && !Keyboard.IsKeyDown(Key.RightShift)) return;
-            var item = cmbKnown.SelectedItem as System.Windows.Controls.ComboBoxItem; var keyStr = item?.Tag as string;
-            if (string.IsNullOrWhiteSpace(keyStr)) { txtStatus.Text = "Select a known control"; return; }
-            var (b, procName, msg) = CaptureUnderMouse(preferAutomationId: true); txtStatus.Text = msg;
-            if (!string.IsNullOrWhiteSpace(procName)) txtProcess.Text = procName; if (b == null) return;
-            if (!Enum.TryParse<UiBookmarks.KnownControl>(keyStr, out var key)) { txtStatus.Text = "Invalid known control"; return; }
-            var method = CmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly;
-            b.Method = method;
-            if (method == UiBookmarks.MapMethod.AutomationIdOnly)
-            { var directId = b.Chain.LastOrDefault()?.AutomationId; b.DirectAutomationId = string.IsNullOrWhiteSpace(directId) ? null : directId; }
-            UiBookmarks.SaveMapping(key, b); LoadEditor(b); HighlightBookmark(b); txtStatus.Text = $"Quick-mapped {key}";
         }
 
         // ------------------------------ Chain grid manipulation commands ------------------------------

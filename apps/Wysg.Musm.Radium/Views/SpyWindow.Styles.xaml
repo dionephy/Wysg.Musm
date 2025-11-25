@@ -53,7 +53,7 @@
 
     <!-- Toggle overlay template -->
     <ControlTemplate x:Key="OverlayToggleTemplate" TargetType="ToggleButton">
-        <Border Background="Transparent"/>
+        <Border Background="Transparent" BorderThickness="0"/>
     </ControlTemplate>
 
     <!-- ComboBox Style -->
@@ -72,16 +72,12 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="22"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Margin="6,2,4,2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                <TextBlock.Text>
-                                    <PriorityBinding>
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectedValue"/>
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectedItem.Name"/>
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Text"/>
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="SelectionBoxItem"/>
-                                    </PriorityBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
+                            <ContentPresenter x:Name="ContentSite" Grid.Column="0" Margin="6,2,4,2" 
+                                            VerticalAlignment="Center" HorizontalAlignment="Left"
+                                            Content="{TemplateBinding SelectionBoxItem}"
+                                            ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                            ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                            IsHitTestVisible="False"/>
                             <Border Grid.Column="1" Background="{StaticResource Dark.Accent}" IsHitTestVisible="False">
                                 <Path HorizontalAlignment="Center" VerticalAlignment="Center" Data="M 0 0 L 4 4 L 8 0 Z" Fill="{StaticResource Dark.Foreground}"/>
                             </Border>

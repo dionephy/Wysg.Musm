@@ -11,7 +11,7 @@
                 <ResourceDictionary Source="SpyWindow.Styles.xaml"/>
                 <ResourceDictionary Source="SpyWindow.PacsMethodItems.xaml"/>
                 <ResourceDictionary Source="SpyWindow.OperationItems.xaml"/>
-                <ResourceDictionary Source="SpyWindow.KnownControlItems.xaml"/>
+                <!-- Removed KnownControlItems.xaml - now dynamic -->
             </ResourceDictionary.MergedDictionaries>
             
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -26,102 +26,68 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Top bar -->
-        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
-            <TextBlock Text="PACS:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <TextBlock x:Name="txtPacsKey" Width="160" VerticalAlignment="Center"/>
-            <TextBlock Text="  |  " VerticalAlignment="Center" Margin="6,0,6,0"/>
-            <TextBlock Text="Process:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <TextBox x:Name="txtProcess" Width="160" Text="" Style="{StaticResource DarkTextBox}"/>
-            <TextBlock Text="Delay(ms):" VerticalAlignment="Center" Margin="8,0,4,0"/>
-            <TextBox x:Name="txtDelay" Width="60" Text="1500" Style="{StaticResource DarkTextBox}"/>
-            <Button Content="Pick" Margin="8,0,0,0" Click="OnPick" Style="{StaticResource SpyWindowButtonStyle}"/>
-            <Button Content="Pick Web" Margin="6,0,0,0" Click="OnPickWeb" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Pick element from web browser and save with window name"/>
-            <TextBlock Text="Bookmark:" Margin="12,0,6,0" VerticalAlignment="Center"/>
-            <ComboBox x:Name="cmbKnown" Width="300" SelectionChanged="OnKnownSelectionChanged" SelectedValuePath="Tag"
-                      Style="{StaticResource SpyWindowComboBoxStyle}" ItemsSource="{StaticResource KnownControlItems}"/>
-            <Button Content="Map" Margin="6,0,0,0" Click="OnMapSelected" Style="{StaticResource SpyWindowButtonStyle}"/>
-            <Button Content="Resolve" Margin="6,0,0,0" Click="OnResolveSelected" Style="{StaticResource SpyWindowButtonStyle}"/>
-            <Button Content="Reload" Margin="6,0,0,0" Click="OnReload" Style="{StaticResource SpyWindowButtonStyle}"/>
-            <TextBox x:Name="txtPickedPoint" Width="120" IsReadOnly="True" Margin="12,0,0,0" ToolTip="Picked point (X,Y)" Style="{StaticResource DarkTextBox}"/>
-            <CheckBox x:Name="chkEnableTree" Content="Enable Tree" Margin="12,0,0,0" IsChecked="False" Style="{StaticResource DarkCheckBox}"/>
-        </StackPanel>
+        <!-- Top bar - TWO ROWS -->
+        <Grid Grid.Row="0" Margin="0,0,0,8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <!-- First row: PACS, Process, Delay, Pick buttons -->
+            <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,4">
+                <TextBlock Text="PACS:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBlock x:Name="txtPacsKey" Width="160" VerticalAlignment="Center"/>
+                <TextBlock Text="  |  " VerticalAlignment="Center" Margin="6,0,6,0"/>
+                <TextBlock Text="Process:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBox x:Name="txtProcess" Width="160" Text="" Style="{StaticResource DarkTextBox}"/>
+                <TextBlock Text="Delay(ms):" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                <TextBox x:Name="txtDelay" Width="60" Text="1500" Style="{StaticResource DarkTextBox}"/>
+                <Button Content="Pick" Margin="8,0,0,0" Click="OnPick" Style="{StaticResource SpyWindowButtonStyle}"/>
+                <Button Content="Pick Web" Margin="6,0,0,0" Click="OnPickWeb" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Pick element from web browser and save with window name"/>
+                <TextBox x:Name="txtPickedPoint" Width="120" IsReadOnly="True" Margin="12,0,0,0" ToolTip="Picked point (X,Y)" Style="{StaticResource DarkTextBox}"/>
+            </StackPanel>
+            
+            <!-- Second row: Bookmark selection, Save, and management buttons -->
+            <StackPanel Orientation="Horizontal" Grid.Row="1">
+                <TextBlock Text="Bookmark:" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <ComboBox x:Name="cmbKnown" Width="240" SelectionChanged="OnKnownSelectionChanged"
+                          Style="{StaticResource SpyWindowComboBoxStyle}" 
+                          ItemsSource="{Binding BookmarkItems, RelativeSource={RelativeSource AncestorType=Window}}"
+                          DisplayMemberPath="Name"/>
+                <Button Content="Save" Margin="6,0,0,0" Click="OnSaveEdited" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Save current chain to selected bookmark"/>
+                <Button Content="+" Margin="12,0,0,0" Click="OnAddBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Add new bookmark"/>
+                <Button Content="Rename" Margin="6,0,0,0" Click="OnRenameBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Rename selected bookmark"/>
+                <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Delete selected bookmark"/>
+            </StackPanel>
+        </Grid>
 
-        <!-- Middle: Left tree + Right editor -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="3*"/>
-            </Grid.ColumnDefinitions>
+        <!-- Middle: Full-width Crawl Editor (UI Tree removed) -->
+        <GroupBox Grid.Row="1" Header="Crawl Editor" Style="{StaticResource SpyWindowGroupBoxStyle}">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,6">
+                    <TextBlock Text="Map Method:" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="cmbMethod" Width="150" Margin="6,0,12,0" Style="{StaticResource SpyWindowComboBoxStyle}">
+                        <ComboBoxItem Tag="Chain">Chain</ComboBoxItem>
+                        <ComboBoxItem Tag="AutomationIdOnly">AutomationIdOnly</ComboBoxItem>
+                    </ComboBox>
+                    <Button Content="Validate" Click="OnValidateChain" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="SetFocus" Margin="6,0,0,0" Click="OnSetFocus" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="Get Name" Margin="6,0,0,0" Click="OnGetName" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="Get HTML" Margin="6,0,0,0" Click="OnGetHtml" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="Row Data" Margin="6,0,0,0" Click="OnGetSelectedRow" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Separator Margin="12,0" Width="10"/>
+                    <Button Content="Move Up" Click="OnMoveUp" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="Move Down" Margin="6,0,0,0" Click="OnMoveDown" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="Insert Above" Margin="6,0,0,0" Click="OnInsertAbove" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteNode" Style="{StaticResource SpyWindowButtonStyle}"/>
+                </StackPanel>
 
-            <!-- Left: UI tree -->
-            <GroupBox Grid.Column="0" Header="UI Tree (root -> descendants)" Margin="0,0,6,0" Style="{StaticResource SpyWindowGroupBoxStyle}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <TreeView x:Name="tvAncestry" Grid.Row="0" SelectedItemChanged="OnAncestrySelected"
-                              Style="{StaticResource SpyWindowTreeViewStyle}"
-                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                              ScrollViewer.VerticalScrollBarVisibility="Auto"
-                              Visibility="{Binding IsChecked, ElementName=chkEnableTree, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TreeView.ItemTemplate>
-                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                <Border Background="{Binding Highlight}" Padding="2" CornerRadius="2">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="L="/>
-                                        <TextBlock Text="{Binding Level}" Margin="2,0"/>
-                                        <TextBlock Text=", Class "/>
-                                        <TextBlock Text="{Binding ClassName}" Margin="2,0"/>
-                                        <TextBlock Text=", Ct "/>
-                                        <TextBlock Text="{Binding ControlTypeId}" Margin="2,0"/>
-                                        <TextBlock Text=", AutoId="/>
-                                        <TextBlock Text="{Binding AutomationId}" Margin="2,0"/>
-                                        <TextBlock Text=", Name "/>
-                                        <TextBlock Text="{Binding Name}" Margin="2,0"/>
-                                    </StackPanel>
-                                </Border>
-                            </HierarchicalDataTemplate>
-                        </TreeView.ItemTemplate>
-                    </TreeView>
-
-                    <GroupBox Grid.Row="1" Header="Selected node properties" Margin="0,6,0,0" Style="{StaticResource SpyWindowGroupBoxStyle}">
-                        <TextBox x:Name="txtNodeProps" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" Height="90" 
-                                 VerticalScrollBarVisibility="Auto" Style="{StaticResource DarkTextBox}"/>
-                    </GroupBox>
-                </Grid>
-            </GroupBox>
-
-            <!-- Right: Crawl Editor -->
-            <GroupBox Grid.Column="1" Header="Crawl Editor" Style="{StaticResource SpyWindowGroupBoxStyle}">
-                <DockPanel>
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,6">
-                        <TextBlock Text="Map Method:" VerticalAlignment="Center"/>
-                        <ComboBox x:Name="cmbMethod" Width="150" Margin="6,0,12,0" Style="{StaticResource SpyWindowComboBoxStyle}">
-                            <ComboBoxItem Tag="Chain">Chain</ComboBoxItem>
-                            <ComboBoxItem Tag="AutomationIdOnly">AutomationIdOnly</ComboBoxItem>
-                        </ComboBox>
-                        <Button Content="Validate" Click="OnValidateChain" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Button Content="SetFocus" Margin="6,0,0,0" Click="OnSetFocus" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Button Content="Get Name" Margin="6,0,0,0" Click="OnGetName" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Button Content="Get HTML" Margin="6,0,0,0" Click="OnGetHtml" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Button Content="Row Data" Margin="6,0,0,0" Click="OnGetSelectedRow" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Button Content="Save" Margin="6,0,0,0" Click="OnSaveEdited" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Separator Margin="12,0" Width="10"/>
-                        <Button Content="Move Up" Click="OnMoveUp" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Button Content="Move Down" Margin="6,0,0,0" Click="OnMoveDown" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Button Content="Insert Above" Margin="6,0,0,0" Click="OnInsertAbove" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteNode" Style="{StaticResource SpyWindowButtonStyle}"/>
-                    </StackPanel>
-
-                    <DataGrid x:Name="gridChain" AutoGenerateColumns="False" HeadersVisibility="Column" 
-                              CanUserAddRows="True" CanUserDeleteRows="True" IsReadOnly="False" 
-                              CellEditEnding="OnGridCellEditEnding" Style="{StaticResource SpyWindowDataGridStyle}">
-                        <DataGrid.Resources>
+                <DataGrid x:Name="gridChain" AutoGenerateColumns="False" HeadersVisibility="Column" 
+                          CanUserAddRows="True" CanUserDeleteRows="True" IsReadOnly="False" 
+                          CellEditEnding="OnGridCellEditEnding" Style="{StaticResource SpyWindowDataGridStyle}">
+                    <DataGrid.Resources>
                             <Style TargetType="CheckBox" BasedOn="{StaticResource DarkCheckBox}">
                                 <EventSetter Event="Click" Handler="OnTemplateCheckBoxClick"/>
                             </Style>
@@ -206,7 +172,6 @@
                     </DataGrid>
                 </DockPanel>
             </GroupBox>
-        </Grid>
 
         <!-- Custom Procedures -->
         <GroupBox Grid.Row="2" Header="Custom Procedures" Margin="0,8,0,8" Style="{StaticResource SpyWindowGroupBoxStyle}">

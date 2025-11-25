@@ -25,6 +25,33 @@ using Wysg.Musm.MFCUIA.Session;
 namespace Wysg.Musm.Radium.Views
 {
     /// <summary>
+    /// BookmarkItem represents either a KnownControl or a user-defined bookmark
+    /// </summary>
+    public class BookmarkItem : INotifyPropertyChanged
+    {
+        private string _name = string.Empty;
+        public string Name 
+        { 
+            get => _name; 
+            set 
+            { 
+                if (_name != value) 
+                { 
+                    _name = value; 
+                    OnPropertyChanged(); 
+                } 
+            } 
+        }
+        
+        public string? Tag { get; set; } // For KnownControl, this is the enum name
+        public bool IsKnownControl { get; set; }
+        
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? name = null) => 
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
+    /// <summary>
     /// Core partial of SpyWindow. Heavy logic has been split into multiple partial class files:
     ///  - SpyWindow.Procedures.cs : Custom procedure model + execution
     ///  - SpyWindow.Bookmarks.cs  : Bookmark capture / edit / mapping logic
@@ -63,11 +90,13 @@ namespace Wysg.Musm.Radium.Views
         // Expose known controls and procedure vars (populated in procedures partial)
         public List<string> KnownControlTags { get; } = Enum.GetNames(typeof(UiBookmarks.KnownControl)).ToList();
         public ObservableCollection<string> ProcedureVars { get; } = new();
+        
+        // NEW: Dynamic bookmarks collection
+        public ObservableCollection<BookmarkItem> BookmarkItems { get; } = new();
 
         // Convenient accessors to XAML controls
         private System.Windows.Controls.ComboBox CmbMethod => (System.Windows.Controls.ComboBox)FindName("cmbMethod");
         private System.Windows.Controls.DataGrid GridChain => (System.Windows.Controls.DataGrid)FindName("gridChain");
-        private System.Windows.Controls.CheckBox? _chkEnableTree => (System.Windows.Controls.CheckBox?)FindName("chkEnableTree");
 
         // ------------------------------------------------------------------
         // DWM (dark title bar) setup
@@ -102,8 +131,8 @@ namespace Wysg.Musm.Radium.Views
         {
             InitializeComponent();
             DataContext = this;
+            LoadBookmarksIntoComboBox(); // NEW: Load dynamic bookmarks
             LoadBookmarks(); // (implemented in Bookmarks partial)
-            PreviewMouseDown += OnPreviewMouseDownForQuickMap; // quick-map hotkey handler (Bookmarks partial)
 
             // Custom procedures grid wiring (handlers in Procedures partial)
             if (FindName("gridProcSteps") is System.Windows.Controls.DataGrid procGrid) procGrid.ItemsSource = new List<ProcOpRow>();
@@ -126,6 +155,257 @@ namespace Wysg.Musm.Radium.Views
                 }
             }
             catch { }
+        }
+
+        // ------------------------------------------------------------------
+        // NEW: Bookmark management methods
+        // ------------------------------------------------------------------
+        
+        /// <summary>
+        /// Load all bookmarks (KnownControls + user bookmarks) into ComboBox
+        /// </summary>
+        private void LoadBookmarksIntoComboBox()
+        {
+            BookmarkItems.Clear();
+            
+            // Add KnownControls
+            foreach (UiBookmarks.KnownControl knownCtrl in Enum.GetValues(typeof(UiBookmarks.KnownControl)))
+            {
+                var name = knownCtrl.ToString();
+                // Format name: convert "StudyInfoBanner" to "Study Info Banner"
+                var displayName = System.Text.RegularExpressions.Regex.Replace(name, "([a-z])([A-Z])", "$1 $2");
+                displayName = System.Text.RegularExpressions.Regex.Replace(displayName, "([A-Z]+)([A-Z][a-z])", "$1 $2");
+                
+                BookmarkItems.Add(new BookmarkItem
+                {
+                    Name = displayName.ToLowerInvariant(),
+                    Tag = name,
+                    IsKnownControl = true
+                });
+            }
+            
+            // Add user bookmarks
+            var store = UiBookmarks.Load();
+            foreach (var bookmark in store.Bookmarks.OrderBy(b => b.Name))
+            {
+                BookmarkItems.Add(new BookmarkItem
+                {
+                    Name = bookmark.Name,
+                    Tag = null,
+                    IsKnownControl = false
+                });
+            }
+        }
+        
+        /// <summary>
+        /// Add a new user-defined bookmark
+        /// </summary>
+        private void OnAddBookmark(object sender, RoutedEventArgs e)
+        {
+            var name = PromptForBookmarkName("New Bookmark");
+            if (string.IsNullOrWhiteSpace(name)) return;
+            
+            // Check if name already exists
+            var store = UiBookmarks.Load();
+            if (store.Bookmarks.Any(b => string.Equals(b.Name, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                txtStatus.Text = $"Bookmark '{name}' already exists";
+                return;
+            }
+            
+            // Create new bookmark with current chain if available
+            var newBookmark = new UiBookmarks.Bookmark
+            {
+                Name = name,
+                ProcessName = txtProcess.Text?.Trim() ?? string.Empty,
+                Method = CmbMethod.SelectedIndex == 0 ? UiBookmarks.MapMethod.Chain : UiBookmarks.MapMethod.AutomationIdOnly,
+                Chain = _editing?.Chain.ToList() ?? new List<UiBookmarks.Node>()
+            };
+            
+            store.Bookmarks.Add(newBookmark);
+            UiBookmarks.Save(store);
+            
+            LoadBookmarksIntoComboBox();
+            
+            // Select the new bookmark
+            var newItem = BookmarkItems.FirstOrDefault(b => b.Name == name && !b.IsKnownControl);
+            if (FindName("cmbKnown") is System.Windows.Controls.ComboBox combo && newItem != null)
+            {
+                combo.SelectedItem = newItem;
+            }
+            
+            txtStatus.Text = $"Added bookmark '{name}'";
+        }
+        
+        /// <summary>
+        /// Delete the selected user-defined bookmark
+        /// </summary>
+        private void OnDeleteBookmark(object sender, RoutedEventArgs e)
+        {
+            if (FindName("cmbKnown") is not System.Windows.Controls.ComboBox combo) return;
+            if (combo.SelectedItem is not BookmarkItem item) return;
+            
+            if (item.IsKnownControl)
+            {
+                txtStatus.Text = "Cannot delete built-in bookmarks";
+                return;
+            }
+            
+            var result = MessageBox.Show(
+                $"Delete bookmark '{item.Name}'?",
+                "Confirm Delete",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            
+            if (result != MessageBoxResult.Yes) return;
+            
+            var store = UiBookmarks.Load();
+            var toRemove = store.Bookmarks.FirstOrDefault(b => string.Equals(b.Name, item.Name, StringComparison.OrdinalIgnoreCase));
+            if (toRemove != null)
+            {
+                store.Bookmarks.Remove(toRemove);
+                UiBookmarks.Save(store);
+                LoadBookmarksIntoComboBox();
+                txtStatus.Text = $"Deleted bookmark '{item.Name}'";
+            }
+        }
+        
+        /// <summary>
+        /// Rename the selected user-defined bookmark
+        /// </summary>
+        private void OnRenameBookmark(object sender, RoutedEventArgs e)
+        {
+            if (FindName("cmbKnown") is not System.Windows.Controls.ComboBox combo) return;
+            if (combo.SelectedItem is not BookmarkItem item) return;
+            
+            if (item.IsKnownControl)
+            {
+                txtStatus.Text = "Cannot rename built-in bookmarks";
+                return;
+            }
+            
+            var newName = PromptForBookmarkName("Rename Bookmark", item.Name);
+            if (string.IsNullOrWhiteSpace(newName) || newName == item.Name) return;
+            
+            var store = UiBookmarks.Load();
+            
+            // Check if new name already exists
+            if (store.Bookmarks.Any(b => string.Equals(b.Name, newName, StringComparison.OrdinalIgnoreCase)))
+            {
+                txtStatus.Text = $"Bookmark '{newName}' already exists";
+                return;
+            }
+            
+            var toRename = store.Bookmarks.FirstOrDefault(b => string.Equals(b.Name, item.Name, StringComparison.OrdinalIgnoreCase));
+            if (toRename != null)
+            {
+                toRename.Name = newName;
+                UiBookmarks.Save(store);
+                LoadBookmarksIntoComboBox();
+                
+                // Select the renamed bookmark
+                var renamedItem = BookmarkItems.FirstOrDefault(b => b.Name == newName && !b.IsKnownControl);
+                if (renamedItem != null) combo.SelectedItem = renamedItem;
+                
+                txtStatus.Text = $"Renamed bookmark to '{newName}'";
+            }
+        }
+        
+        /// <summary>
+        /// Prompt user for bookmark name
+        /// </summary>
+        private string? PromptForBookmarkName(string title, string defaultName = "")
+        {
+            var dialog = new System.Windows.Window
+            {
+                Title = title,
+                Width = 400,
+                Height = 180,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1E1E1E")!),
+                Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D0D0D0")!),
+                ResizeMode = ResizeMode.NoResize,
+                WindowStyle = WindowStyle.SingleBorderWindow
+            };
+
+            var grid = new System.Windows.Controls.Grid { Margin = new Thickness(20) };
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var lblPrompt = new TextBlock
+            {
+                Text = "Bookmark name:",
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+            System.Windows.Controls.Grid.SetRow(lblPrompt, 0);
+            grid.Children.Add(lblPrompt);
+
+            var txtName = new System.Windows.Controls.TextBox
+            {
+                Text = defaultName,
+                Margin = new Thickness(0, 0, 0, 15),
+                Padding = new Thickness(6, 4, 6, 4),
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2D2D30")!),
+                Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D0D0D0")!),
+                BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3C3C3C")!),
+                BorderThickness = new Thickness(1),
+                CaretBrush = new SolidColorBrush(Colors.White)
+            };
+            System.Windows.Controls.Grid.SetRow(txtName, 1);
+            grid.Children.Add(txtName);
+
+            var buttonPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            System.Windows.Controls.Grid.SetRow(buttonPanel, 2);
+
+            var btnOk = new System.Windows.Controls.Button
+            {
+                Content = "OK",
+                Width = 80,
+                Margin = new Thickness(0, 0, 10, 0),
+                Padding = new Thickness(10, 5, 10, 5),
+                IsDefault = true
+            };
+            btnOk.Click += (s, e) => { dialog.DialogResult = true; dialog.Close(); };
+            buttonPanel.Children.Add(btnOk);
+
+            var btnCancel = new System.Windows.Controls.Button
+            {
+                Content = "Cancel",
+                Width = 80,
+                Padding = new Thickness(10, 5, 10, 5),
+                IsCancel = true
+            };
+            btnCancel.Click += (s, e) => { dialog.DialogResult = false; dialog.Close(); };
+            buttonPanel.Children.Add(btnCancel);
+
+            grid.Children.Add(buttonPanel);
+            dialog.Content = grid;
+
+            // Focus textbox and select all when dialog opens
+            dialog.Loaded += (s, e) => 
+            { 
+                txtName.Focus(); 
+                txtName.SelectAll();
+            };
+
+            // Handle Enter key
+            txtName.KeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Enter)
+                {
+                    dialog.DialogResult = true;
+                    dialog.Close();
+                }
+            };
+
+            var result = dialog.ShowDialog();
+            return result == true ? txtName.Text?.Trim() : null;
         }
 
         // ------------------------------------------------------------------
