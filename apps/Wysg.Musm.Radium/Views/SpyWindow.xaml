@@ -1,9 +1,9 @@
 <Window x:Class="Wysg.Musm.Radium.Views.SpyWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Name="Root"
-        Title="UI Spy" Height="900" Width="1200"
-        Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+x:Name="Root"
+Title="Automation" Height="900" Width="1200"
+Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
     <Window.Resources>
         <!-- Merge external resource dictionaries -->
         <ResourceDictionary>
@@ -22,47 +22,59 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="2*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Top bar - TWO ROWS -->
-        <Grid Grid.Row="0" Margin="0,0,0,8">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            
-            <!-- First row: PACS, Process, Delay, Pick buttons -->
-            <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,4">
-                <TextBlock Text="PACS:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                <TextBlock x:Name="txtPacsKey" Width="160" VerticalAlignment="Center"/>
-                <TextBlock Text="  |  " VerticalAlignment="Center" Margin="6,0,6,0"/>
-                <TextBlock Text="Process:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                <TextBox x:Name="txtProcess" Width="160" Text="" Style="{StaticResource DarkTextBox}"/>
-                <TextBlock Text="Delay(ms):" VerticalAlignment="Center" Margin="8,0,4,0"/>
-                <TextBox x:Name="txtDelay" Width="60" Text="1500" Style="{StaticResource DarkTextBox}"/>
-                <Button Content="Pick" Margin="8,0,0,0" Click="OnPick" Style="{StaticResource SpyWindowButtonStyle}"/>
-                <Button Content="Pick Web" Margin="6,0,0,0" Click="OnPickWeb" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Pick element from web browser and save with window name"/>
-                <TextBox x:Name="txtPickedPoint" Width="120" IsReadOnly="True" Margin="12,0,0,0" ToolTip="Picked point (X,Y)" Style="{StaticResource DarkTextBox}"/>
-            </StackPanel>
-            
-            <!-- Second row: Bookmark selection, Save, and management buttons -->
-            <StackPanel Orientation="Horizontal" Grid.Row="1">
-                <TextBlock Text="Bookmark:" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                <ComboBox x:Name="cmbKnown" Width="240" SelectionChanged="OnKnownSelectionChanged"
-                          Style="{StaticResource SpyWindowComboBoxStyle}" 
-                          ItemsSource="{Binding BookmarkItems, RelativeSource={RelativeSource AncestorType=Window}}"
-                          DisplayMemberPath="Name"/>
-                <Button Content="Save" Margin="6,0,0,0" Click="OnSaveEdited" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Save current chain to selected bookmark"/>
-                <Button Content="+" Margin="12,0,0,0" Click="OnAddBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Add new bookmark"/>
-                <Button Content="Rename" Margin="6,0,0,0" Click="OnRenameBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Rename selected bookmark"/>
-                <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Delete selected bookmark"/>
-            </StackPanel>
-        </Grid>
+        <!-- Top bar - PACS label only -->
+        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
+            <TextBlock Text="PACS:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBlock x:Name="txtPacsKey" Width="160" VerticalAlignment="Center"/>
+        </StackPanel>
 
-        <!-- Middle: Full-width Crawl Editor (UI Tree removed) -->
-        <GroupBox Grid.Row="1" Header="Crawl Editor" Style="{StaticResource SpyWindowGroupBoxStyle}">
+        <!-- Main TabControl -->
+        <TabControl Grid.Row="1" Style="{StaticResource SpyWindowTabControlStyle}">
+            <!-- UI Bookmark Tab -->
+            <TabItem Header="UI Bookmark" Style="{StaticResource SpyWindowTabItemStyle}">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Controls from original top bar (minus PACS) -->
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        
+                        <!-- First row: Process, Delay, Pick buttons -->
+                        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,4">
+                            <TextBlock Text="Process:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBox x:Name="txtProcess" Width="160" Text="" Style="{StaticResource DarkTextBox}"/>
+                            <TextBlock Text="Delay(ms):" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                            <TextBox x:Name="txtDelay" Width="60" Text="1500" Style="{StaticResource DarkTextBox}"/>
+                            <Button Content="Pick" Margin="8,0,0,0" Click="OnPick" Style="{StaticResource SpyWindowButtonStyle}"/>
+                            <Button Content="Pick Web" Margin="6,0,0,0" Click="OnPickWeb" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Pick element from web browser and save with window name"/>
+                            <TextBox x:Name="txtPickedPoint" Width="120" IsReadOnly="True" Margin="12,0,0,0" ToolTip="Picked point (X,Y)" Style="{StaticResource DarkTextBox}"/>
+                        </StackPanel>
+                        
+                        <!-- Second row: Bookmark selection, Save, and management buttons -->
+                        <StackPanel Orientation="Horizontal" Grid.Row="1">
+                            <TextBlock Text="Bookmark:" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="cmbKnown" Width="240" SelectionChanged="OnKnownSelectionChanged"
+                                      Style="{StaticResource SpyWindowComboBoxStyle}" 
+                                      ItemsSource="{Binding BookmarkItems, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      DisplayMemberPath="Name"/>
+                            <Button Content="Save" Margin="6,0,0,0" Click="OnSaveEdited" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Save current chain to selected bookmark"/>
+                            <Button Content="+" Margin="12,0,0,0" Click="OnAddBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Add new bookmark"/>
+                            <Button Content="Rename" Margin="6,0,0,0" Click="OnRenameBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Rename selected bookmark"/>
+                            <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Delete selected bookmark"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Crawl Editor -->
+                    <GroupBox Grid.Row="1" Header="Crawl Editor" Style="{StaticResource SpyWindowGroupBoxStyle}">
             <DockPanel>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,6">
                     <TextBlock Text="Map Method:" VerticalAlignment="Center"/>
@@ -172,18 +184,33 @@
                     </DataGrid>
                 </DockPanel>
             </GroupBox>
+                </Grid>
+            </TabItem>
 
-        <!-- Custom Procedures -->
-        <GroupBox Grid.Row="2" Header="Custom Procedures" Margin="0,8,0,8" Style="{StaticResource SpyWindowGroupBoxStyle}">
-            <DockPanel>
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,8">
-                    <TextBlock Text="PACS Method:" VerticalAlignment="Center"/>
-                    <ComboBox x:Name="cmbProcMethod" Width="220" Margin="6,0,12,0" SelectedValuePath="Tag"
-                              Style="{StaticResource SpyWindowComboBoxStyle}" ItemsSource="{StaticResource PacsMethodItems}"
-                              SelectionChanged="OnProcMethodChanged"/>
-                    <Button Content="Add" Click="OnAddProcRow" Style="{StaticResource SpyWindowButtonStyle}"/>
-                    <Button Content="Save" Margin="6,0,0,0" Click="OnSaveProcedure" Style="{StaticResource SpyWindowButtonStyle}"/>
-                    <Button Content="Run" Margin="6,0,0,0" Click="OnRunProcedure" Style="{StaticResource SpyWindowButtonStyle}"/>
+            <!-- Procedure Tab -->
+            <TabItem Header="Procedure" Style="{StaticResource SpyWindowTabItemStyle}">
+                <DockPanel Margin="8">
+                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <!-- First row: Procedure selection and management -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Custom Procedure:" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="cmbProcMethod" Width="220" Margin="6,0,12,0"
+                                  Style="{StaticResource SpyWindowComboBoxStyle}" 
+                                  ItemsSource="{Binding PacsMethods, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  DisplayMemberPath="Name"
+                                  SelectedValuePath="Tag"
+                                  SelectionChanged="OnProcMethodChanged"/>
+                        <Button Content="Save procedure" Margin="0,0,0,0" Click="OnSaveProcedure" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Separator Margin="12,0" Width="10"/>
+                        <Button Content="Add procedure" Click="OnAddPacsMethod" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Add new custom procedure"/>
+                        <Button Content="Edit procedure" Margin="6,0,0,0" Click="OnEditPacsMethod" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Edit selected custom procedure"/>
+                        <Button Content="Delete procedure" Margin="6,0,0,0" Click="OnDeletePacsMethod" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Delete selected custom procedure"/>
+                    </StackPanel>
+                    <!-- Second row: Operation management -->
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Add operation" Click="OnAddProcRow" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Run procedure" Margin="6,0,0,0" Click="OnRunProcedure" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    </StackPanel>
                 </StackPanel>
                 <DataGrid x:Name="gridProcSteps" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                           VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
@@ -436,10 +463,166 @@
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>
-        </GroupBox>
+            </TabItem>
+
+            <!-- Automation Tab (from Settings) -->
+            <TabItem Header="Automation" Style="{StaticResource SpyWindowTabItemStyle}">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <!-- Header info bar (fixed at top) -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Stretch" Margin="0,0,0,8">
+                        <TextBlock Text="Drag modules between panes to configure execution order (duplicates allowed)." FontWeight="Bold" Foreground="#D0D0D0"/>
+                        <TextBlock Text="  |  " Margin="8,0" Foreground="#B0B0B0"/>
+                        <TextBlock Text="Following modalities don't send header (separated by comma):" 
+                                  VerticalAlignment="Center" 
+                                  Foreground="#D0D0D0" 
+                                  Margin="0,0,8,0"/>
+                        <TextBox x:Name="txtModalitiesNoHeaderUpdate" 
+                                 VerticalAlignment="Center" 
+                                 Width="150" 
+                                 Style="{StaticResource DarkTextBox}"
+                                 ToolTip="Enter comma-separated modality codes (e.g., XR,CR,DX) that should not update header fields"/>
+                    </StackPanel>
+                    
+                    <!-- Main scrollable content area -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <!-- Top grid for module lists and shortcuts -->
+                    <Grid Margin="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        
+                        <!-- New Study / Add Study -->
+                        <Border Grid.Row="0" Grid.Column="0" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="New Study" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                <ListBox x:Name="lstNewStudy" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" PreviewMouseMove="OnAutomationProcDrag" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" Tag="NewStudy" MinHeight="80" MaxHeight="150"/>
+                            </DockPanel>
+                        </Border>
+                        
+                        <Border Grid.Row="0" Grid.Column="1" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Add Study" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                <ListBox x:Name="lstAddStudy" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" PreviewMouseMove="OnAutomationProcDrag" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" Tag="AddStudy" MinHeight="80" MaxHeight="150"/>
+                            </DockPanel>
+                        </Border>
+                        
+                        
+                        <!-- Available Modules (right pane spans rows) with separate ScrollViewer -->
+                        <Border Grid.Row="0" Grid.Column="2" Grid.RowSpan="6" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Available Modules" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox x:Name="lstLibrary" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="Transparent" BorderThickness="0" PreviewMouseMove="OnAutomationProcDrag" DragLeave="OnAutomationListDragLeave" Tag="Library"/>
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
+                        
+                        <!-- Custom Modules (parallel to Available Modules) with separate ScrollViewer -->
+                        <Border Grid.Row="0" Grid.Column="3" Grid.RowSpan="6" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="8,0,0,0">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top">
+                                    <TextBlock Text="Custom Modules" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                    <Button x:Name="btnCreateModule" Content="Create Module" Margin="0,0,0,8" Click="OnCreateModule" Style="{StaticResource SpyWindowButtonStyle}"/>
+                                </StackPanel>
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox x:Name="lstCustomModules" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="Transparent" BorderThickness="0" PreviewMouseMove="OnAutomationProcDrag" DragLeave="OnAutomationListDragLeave" Tag="CustomModules"/>
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
+
+
+                        <!-- Shortcut panes -->
+                        <Border Grid.Row="1" Grid.Column="0" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Shortcut: Open study (new)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                <ListBox x:Name="lstShortcutOpenNew" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" PreviewMouseMove="OnAutomationProcDrag" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" Tag="ShortcutOpenNew" MinHeight="80" MaxHeight="150"/>
+                            </DockPanel>
+                        </Border>
+                        
+                        <Border Grid.Row="1" Grid.Column="1" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Shortcut: Open study (add)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                <ListBox x:Name="lstShortcutOpenAdd" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" PreviewMouseMove="OnAutomationProcDrag" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" Tag="ShortcutOpenAdd" MinHeight="80" MaxHeight="150"/>
+                            </DockPanel>
+                        </Border>
+                        
+                        <!-- Send Report pane -->
+                        <Border Grid.Row="2" Grid.Column="0" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Send Report" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                <ListBox x:Name="lstSendReport" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" PreviewMouseMove="OnAutomationProcDrag" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" Tag="SendReport" MinHeight="80" MaxHeight="150"/>
+                            </DockPanel>
+                        </Border>
+                        
+                        <Border Grid.Row="2" Grid.Column="1" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Shortcut: Open study (after open)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                <ListBox x:Name="lstShortcutOpenAfterOpen" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" PreviewMouseMove="OnAutomationProcDrag" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" Tag="ShortcutOpenAfterOpen" MinHeight="80" MaxHeight="150"/>
+                            </DockPanel>
+                        </Border>
+                        
+                        <!-- Send Report Preview pane -->
+                        <Border Grid.Row="3" Grid.Column="0" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Send Report Preview" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                <ListBox x:Name="lstSendReportPreview" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" PreviewMouseMove="OnAutomationProcDrag" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" Tag="SendReportPreview" MinHeight="80" MaxHeight="150"/>
+                            </DockPanel>
+                        </Border>
+                        
+                        <!-- Shortcut Send Report (preview) pane -->
+                        <Border Grid.Row="3" Grid.Column="1" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Shortcut: Send Report (preview)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                <ListBox x:Name="lstShortcutSendReportPreview" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" PreviewMouseMove="OnAutomationProcDrag" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" Tag="ShortcutSendReportPreview" MinHeight="80" MaxHeight="150"/>
+                            </DockPanel>
+                        </Border>
+                        
+                        <!-- Shortcut Send Report (reportified) pane -->
+                        <Border Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,0">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Shortcut: Send Report (reportified)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                <ListBox x:Name="lstShortcutSendReportReportified" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" PreviewMouseMove="OnAutomationProcDrag" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" Tag="ShortcutSendReportReportified" MinHeight="80" MaxHeight="150"/>
+                            </DockPanel>
+                        </Border>
+                        
+                        <!-- Test pane -->
+                        <Border Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Test" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                <ListBox x:Name="lstTest" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" PreviewMouseMove="OnAutomationProcDrag" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" Tag="Test" MinHeight="80" MaxHeight="150"/>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+                    </ScrollViewer>
+                    
+                    <!-- Fixed button bar at bottom -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button Content="Save Automation" Width="140" Margin="0,0,8,0" Click="OnSaveAutomation" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Close" Width="90" Click="OnCloseWindow" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
 
         <!-- Bottom status -->
-        <TextBox Grid.Row="3" x:Name="txtStatus" IsReadOnly="True" Height="120" TextWrapping="Wrap" 
+        <TextBox Grid.Row="2" x:Name="txtStatus" IsReadOnly="True" Height="120" TextWrapping="Wrap" 
                  AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Style="{StaticResource DarkTextBox}"/>
     </Grid>
 </Window>

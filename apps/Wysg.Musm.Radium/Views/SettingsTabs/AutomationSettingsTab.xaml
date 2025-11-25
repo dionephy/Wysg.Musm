@@ -25,12 +25,12 @@
     <Grid Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         
-        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Stretch">
+        <!-- Header info bar -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Stretch" Margin="0,0,0,8">
             <TextBlock Text="Drag modules between panes to configure execution order (duplicates allowed)." FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
             <TextBlock Text="  |  " Margin="8,0" Foreground="{DynamicResource BrushTextSecondary}"/>
             <TextBlock Text="PACS: " Foreground="{DynamicResource BrushTextSecondary}"/>
@@ -46,8 +46,9 @@
                      ToolTip="Enter comma-separated modality codes (e.g., XR,CR,DX) that should not update header fields"/>
         </StackPanel>
         
-        <!-- Top grid for module lists and shortcuts -->
-        <Grid Grid.Row="1" Margin="0,8,0,0">
+        <!-- Main scrollable content area -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
@@ -66,22 +67,25 @@
             <Border Grid.Row="0" Grid.Column="0" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}" Margin="0,0,8,8">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="New Study" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-                    <ListBox x:Name="lstNewStudy" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="NewStudy" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                    <ListBox x:Name="lstNewStudy" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="NewStudy" ItemTemplate="{StaticResource OrderedModuleTemplate}" MinHeight="80" MaxHeight="150"/>
                 </DockPanel>
             </Border>
             
             <Border Grid.Row="0" Grid.Column="1" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}" Margin="0,0,8,8">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Add Study" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-                    <ListBox x:Name="lstAddStudy" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="AddStudy" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                    <ListBox x:Name="lstAddStudy" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="AddStudy" ItemTemplate="{StaticResource OrderedModuleTemplate}" MinHeight="80" MaxHeight="150"/>
                 </DockPanel>
             </Border>
             
-            <!-- Available Modules (right pane spans rows) -->
+            
+            <!-- Available Modules (right pane spans rows) with separate ScrollViewer -->
             <Border Grid.Row="0" Grid.Column="2" Grid.RowSpan="6" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Available Modules" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-                    <ListBox x:Name="lstLibrary" PreviewMouseMove="OnProcDrag" DragLeave="OnListDragLeave" Tag="Library" ItemTemplate="{StaticResource LibraryModuleTemplate}"/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ListBox x:Name="lstLibrary" PreviewMouseMove="OnProcDrag" DragLeave="OnListDragLeave" Tag="Library" ItemTemplate="{StaticResource LibraryModuleTemplate}" BorderThickness="0"/>
+                    </ScrollViewer>
                 </DockPanel>
             </Border>
 
@@ -89,14 +93,14 @@
             <Border Grid.Row="1" Grid.Column="0" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}" Margin="0,0,8,8">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Shortcut: Open study (new)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-                    <ListBox x:Name="lstShortcutOpenNew" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutOpenNew" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                    <ListBox x:Name="lstShortcutOpenNew" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutOpenNew" ItemTemplate="{StaticResource OrderedModuleTemplate}" MinHeight="80" MaxHeight="150"/>
                 </DockPanel>
             </Border>
             
             <Border Grid.Row="1" Grid.Column="1" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}" Margin="0,0,8,8">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Shortcut: Open study (add)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-                    <ListBox x:Name="lstShortcutOpenAdd" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutOpenAdd" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                    <ListBox x:Name="lstShortcutOpenAdd" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutOpenAdd" ItemTemplate="{StaticResource OrderedModuleTemplate}" MinHeight="80" MaxHeight="150"/>
                 </DockPanel>
             </Border>
             
@@ -104,14 +108,14 @@
             <Border Grid.Row="2" Grid.Column="0" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}" Margin="0,0,8,8">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Send Report" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-                    <ListBox x:Name="lstSendReport" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="SendReport" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                    <ListBox x:Name="lstSendReport" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="SendReport" ItemTemplate="{StaticResource OrderedModuleTemplate}" MinHeight="80" MaxHeight="150"/>
                 </DockPanel>
             </Border>
             
             <Border Grid.Row="2" Grid.Column="1" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}" Margin="0,0,8,8">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Shortcut: Open study (after open)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-                    <ListBox x:Name="lstShortcutOpenAfterOpen" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutOpenAfterOpen" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                    <ListBox x:Name="lstShortcutOpenAfterOpen" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutOpenAfterOpen" ItemTemplate="{StaticResource OrderedModuleTemplate}" MinHeight="80" MaxHeight="150"/>
                 </DockPanel>
             </Border>
             
@@ -119,7 +123,7 @@
             <Border Grid.Row="3" Grid.Column="0" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}" Margin="0,0,8,8">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Send Report Preview" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-                    <ListBox x:Name="lstSendReportPreview" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="SendReportPreview" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                    <ListBox x:Name="lstSendReportPreview" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="SendReportPreview" ItemTemplate="{StaticResource OrderedModuleTemplate}" MinHeight="80" MaxHeight="150"/>
                 </DockPanel>
             </Border>
             
@@ -127,7 +131,7 @@
             <Border Grid.Row="3" Grid.Column="1" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}" Margin="0,0,8,8">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Shortcut: Send Report (preview)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-                    <ListBox x:Name="lstShortcutSendReportPreview" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutSendReportPreview" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                    <ListBox x:Name="lstShortcutSendReportPreview" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutSendReportPreview" ItemTemplate="{StaticResource OrderedModuleTemplate}" MinHeight="80" MaxHeight="150"/>
                 </DockPanel>
             </Border>
             
@@ -135,7 +139,7 @@
             <Border Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}" Margin="0,0,8,0">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Shortcut: Send Report (reportified)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-                    <ListBox x:Name="lstShortcutSendReportReportified" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutSendReportReportified" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                    <ListBox x:Name="lstShortcutSendReportReportified" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="ShortcutSendReportReportified" ItemTemplate="{StaticResource OrderedModuleTemplate}" MinHeight="80" MaxHeight="150"/>
                 </DockPanel>
             </Border>
             
@@ -143,11 +147,13 @@
             <Border Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="6" Background="{DynamicResource BrushSurface}" Margin="0,0,8,8">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Test" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="{DynamicResource BrushTextPrimary}"/>
-                    <ListBox x:Name="lstTest" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="Test" ItemTemplate="{StaticResource OrderedModuleTemplate}"/>
+                    <ListBox x:Name="lstTest" AllowDrop="True" PreviewMouseMove="OnProcDrag" Drop="OnProcDrop" DragLeave="OnListDragLeave" Tag="Test" ItemTemplate="{StaticResource OrderedModuleTemplate}" MinHeight="80" MaxHeight="150"/>
                 </DockPanel>
             </Border>
         </Grid>
+        </ScrollViewer>
         
+        <!-- Fixed button bar at bottom -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
             <Button Content="Save Automation" Command="{Binding SaveAutomationCommand}" Width="140" Margin="0,0,8,0"/>
             <Button Content="Spy" Width="90" Margin="0,0,8,0" Click="OnOpenSpy"/>

@@ -419,7 +419,20 @@ namespace Wysg.Musm.Radium.Views
         private void OnProcMethodChanged(object? sender, SelectionChangedEventArgs e)
         {
             var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
-            var tag = ((cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string) ?? ((cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content as string);
+            
+            // Handle both old ComboBoxItem format and new PacsMethod format
+            string? tag = null;
+            if (cmb?.SelectedItem is System.Windows.Controls.ComboBoxItem item)
+            {
+                // Legacy format
+                tag = (item.Tag as string) ?? (item.Content as string);
+            }
+            else if (cmb?.SelectedItem is Wysg.Musm.Radium.Models.PacsMethod method)
+            {
+                // New dynamic format
+                tag = method.Tag;
+            }
+            
             if (FindName("gridProcSteps") is not System.Windows.Controls.DataGrid procGrid || string.IsNullOrWhiteSpace(tag)) return;
             var steps = LoadProcedureForMethod(tag).ToList();
             procGrid.ItemsSource = steps;
@@ -429,8 +442,21 @@ namespace Wysg.Musm.Radium.Views
         {
             var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
             var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
-            var tag = ((cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string) ?? ((cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content as string);
-            if (string.IsNullOrWhiteSpace(tag)) { txtStatus.Text = "Select PACS method"; return; }
+            
+            // Handle both old ComboBoxItem format and new PacsMethod format
+            string? tag = null;
+            if (cmb?.SelectedItem is System.Windows.Controls.ComboBoxItem item)
+            {
+                // Legacy format
+                tag = (item.Tag as string) ?? (item.Content as string);
+            }
+            else if (cmb?.SelectedItem is Wysg.Musm.Radium.Models.PacsMethod method)
+            {
+                // New dynamic format
+                tag = method.Tag;
+            }
+            
+            if (string.IsNullOrWhiteSpace(tag)) { txtStatus.Text = "Select custom procedure"; return; }
             if (procGrid == null) { txtStatus.Text = "No steps"; return; }
             try { procGrid.CommitEdit(DataGridEditingUnit.Cell, true); procGrid.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
             var steps = procGrid.Items.OfType<ProcOpRow>().Where(s => !string.IsNullOrWhiteSpace(s.Op)).ToList();
@@ -441,8 +467,21 @@ namespace Wysg.Musm.Radium.Views
         {
             var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
             var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
-            var tag = ((cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string) ?? ((cmb?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content as string);
-            if (string.IsNullOrWhiteSpace(tag)) { txtStatus.Text = "Select PACS method"; return; }
+            
+            // Handle both old ComboBoxItem format and new PacsMethod format
+            string? tag = null;
+            if (cmb?.SelectedItem is System.Windows.Controls.ComboBoxItem item)
+            {
+                // Legacy format
+                tag = (item.Tag as string) ?? (item.Content as string);
+            }
+            else if (cmb?.SelectedItem is Wysg.Musm.Radium.Models.PacsMethod method)
+            {
+                // New dynamic format
+                tag = method.Tag;
+            }
+            
+            if (string.IsNullOrWhiteSpace(tag)) { txtStatus.Text = "Select custom procedure"; return; }
             if (procGrid == null) { txtStatus.Text = "No steps"; return; }
             try { procGrid.CommitEdit(DataGridEditingUnit.Cell, true); procGrid.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
             var steps = procGrid.Items.OfType<ProcOpRow>().Where(s => !string.IsNullOrWhiteSpace(s.Op)).ToList();

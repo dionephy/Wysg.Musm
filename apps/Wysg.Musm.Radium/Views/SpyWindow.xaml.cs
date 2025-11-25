@@ -133,6 +133,8 @@ namespace Wysg.Musm.Radium.Views
             DataContext = this;
             LoadBookmarksIntoComboBox(); // NEW: Load dynamic bookmarks
             LoadBookmarks(); // (implemented in Bookmarks partial)
+            InitializePacsMethods(); // NEW: Load dynamic PACS methods
+            InitializeAutomationTab(); // NEW: Initialize Automation tab
 
             // Custom procedures grid wiring (handlers in Procedures partial)
             if (FindName("gridProcSteps") is System.Windows.Controls.DataGrid procGrid) procGrid.ItemsSource = new List<ProcOpRow>();

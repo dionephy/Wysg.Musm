@@ -31,6 +31,15 @@ namespace Wysg.Musm.Radium.ViewModels
             get => _currentReportDateTime; 
             set => SetProperty(ref _currentReportDateTime, value); 
         }
+        
+        // Temporary storage for previous study properties (set by custom modules)
+        public string? TempPreviousStudyStudyname { get; set; }
+        public DateTime? TempPreviousStudyDatetime { get; set; }
+        public DateTime? TempPreviousStudyReportDatetime { get; set; }
+        public string? TempPreviousStudyReportReporter { get; set; }
+        public string? TempPreviousStudyReportHeaderAndFindings { get; set; }
+        public string? TempPreviousStudyReportConclusion { get; set; }
+
 
         private string _currentStudyLabel = "Current\nStudy"; public string CurrentStudyLabel { get => _currentStudyLabel; private set => SetProperty(ref _currentStudyLabel, value); }
 

@@ -204,4 +204,55 @@
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
     </Style>
 
+    <!-- TabControl Style -->
+    <Style x:Key="SpyWindowTabControlStyle" TargetType="TabControl">
+        <Setter Property="Background" Value="{StaticResource Dark.Background}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <!-- TabItem Style -->
+    <Style x:Key="SpyWindowTabItemStyle" TargetType="TabItem">
+        <Setter Property="Background" Value="{StaticResource Dark.Accent}"/>
+        <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
+        <Setter Property="BorderThickness" Value="1,1,1,0"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Border x:Name="Border" 
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="4,4,0,0"
+                            Margin="0,0,2,0">
+                        <ContentPresenter x:Name="ContentSite"
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Center"
+                                        ContentSource="Header"
+                                        Margin="{TemplateBinding Padding}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{StaticResource Dark.Panel}"/>
+                            <Setter TargetName="Border" Property="BorderThickness" Value="1,1,1,0"/>
+                            <Setter Property="Panel.ZIndex" Value="100"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{StaticResource Dark.Hover}"/>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsSelected" Value="True"/>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Border" Property="Background" Value="{StaticResource Dark.Panel}"/>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

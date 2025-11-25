@@ -614,57 +614,6 @@ if (isLandscape)
             SpyWindow.ShowInstance();
         }
 
-        // Test helper: add a dummy previous study with tabs
-        private void OnAddDummyPrevious(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is not MainViewModel vm) return;
-            var tab = new MainViewModel.PreviousStudyTab
-            {
-                Id = Guid.NewGuid(),
-                StudyDateTime = DateTime.Now.AddDays(-1),
-                Modality = "CT",
-                Title = $"{DateTime.Now.AddDays(-1):yyyy-MM-dd} CT",
-                OriginalFindings = "Dummy findings A\nLine 2",
-                OriginalConclusion = "Dummy conclusion A"
-            };
-            tab.Reports.Add(new MainViewModel.PreviousReportChoice
-            {
-                ReportDateTime = DateTime.Now.AddHours(-12),
-                CreatedBy = "tester",
-                Studyname = "CT HEAD",
-                Findings = "Dummy findings A\nLine 2",
-                Conclusion = "Dummy conclusion A",
-                _studyDateTime = tab.StudyDateTime
-            });
-            tab.Reports.Add(new MainViewModel.PreviousReportChoice
-            {
-                ReportDateTime = DateTime.Now.AddHours(-6),
-                CreatedBy = "tester2",
-                Studyname = "CT HEAD",
-                Findings = "Dummy findings B",
-                Conclusion = "Dummy conclusion B",
-                _studyDateTime = tab.StudyDateTime
-            });
-            tab.SelectedReport = tab.Reports.FirstOrDefault();
-            if (tab.SelectedReport != null)
-            {
-                tab.Findings = tab.SelectedReport.Findings;
-                tab.Conclusion = tab.SelectedReport.Conclusion;
-            }
-            vm.PreviousStudies.Add(tab);
-            vm.SelectedPreviousStudy = tab;
-            // initialize splitters to defaults
-            if (vm.SelectedPreviousStudy != null)
-            {
-                var t = vm.SelectedPreviousStudy;
-                t.HfHeaderFrom = 0; t.HfHeaderTo = 0;
-                t.HfConclusionFrom = (t.Findings ?? string.Empty).Length; t.HfConclusionTo = (t.Findings ?? string.Empty).Length;
-                t.FcHeaderFrom = 0; t.FcHeaderTo = 0;
-                t.FcFindingsFrom = 0; t.FcFindingsTo = 0;
-            }
-            vm.StatusText = "Dummy previous study added";
-        }
-
         private async void OnLogout(object sender, RoutedEventArgs e)
         {
             try

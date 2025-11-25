@@ -91,6 +91,27 @@ namespace Wysg.Musm.Radium.ViewModels
 
         [ObservableProperty]
         private ObservableCollection<string> testModules = new();
+        
+        // Load custom modules into available modules
+        private void LoadCustomModulesIntoAvailable()
+        {
+            try
+            {
+                var store = Wysg.Musm.Radium.Models.CustomModuleStore.Load();
+                foreach (var module in store.Modules)
+                {
+                    if (!AvailableModules.Contains(module.Name))
+                    {
+                        AvailableModules.Add(module.Name);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SettingsVM] Error loading custom modules: {ex.Message}");
+            }
+        }
+
 
         // ===== Reportify Settings (manual properties) =====
         private bool _removeExcessiveBlanks = true; public bool RemoveExcessiveBlanks { get => _removeExcessiveBlanks; set { if (SetProperty(ref _removeExcessiveBlanks, value)) UpdateReportifyJson(); } }
@@ -234,6 +255,9 @@ namespace Wysg.Musm.Radium.ViewModels
             
             // Load ModalitiesNoHeaderUpdate from local settings (global setting, not PACS-specific)
             ModalitiesNoHeaderUpdate = _local.ModalitiesNoHeaderUpdate ?? string.Empty;
+            
+            // Load custom modules into available modules
+            LoadCustomModulesIntoAvailable();
         }
 
         private bool CanPersistSettings() => _reportifySvc != null && _tenant != null && _tenant.AccountId > 0;
