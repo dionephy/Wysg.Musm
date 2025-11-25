@@ -151,8 +151,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 string lineText = editor.Document.GetText(line);
                 int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
                 
-                // Use WordBoundaryHelper to include digits, hyphens, and underscores in word
-                var (startLocal, endLocal) = WordBoundaryHelper.ComputeWordSpan(lineText, local);
+                // Use ComputePrefixBeforeCaret to only get text from break to caret (not beyond)
+                var (startLocal, endLocal) = WordBoundaryHelper.ComputePrefixBeforeCaret(lineText, local);
                 int start = line.Offset + startLocal;
                 string word = endLocal > startLocal ? lineText.Substring(startLocal, endLocal - startLocal) : string.Empty;
                 

@@ -21,7 +21,7 @@ namespace Wysg.Musm.Editor.Controls
             var line = doc.GetLineByOffset(caret);
             string lineText = doc.GetText(line);
             int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
-            var (startLocal, endLocal) = WordBoundaryHelper.ComputeWordSpan(lineText, local);
+            var (startLocal, endLocal) = WordBoundaryHelper.ComputePrefixBeforeCaret(lineText, local);
             int start = line.Offset + startLocal;
             string text = endLocal > startLocal ? lineText.Substring(startLocal, endLocal - startLocal) : string.Empty;
             return (start, text);
@@ -37,11 +37,11 @@ namespace Wysg.Musm.Editor.Controls
             var doc = Editor.Document;
             var caret = Editor.CaretOffset;
 
-            // Use unified word-boundary logic that treats letters, digits, '_' and '-' as word characters
+            // Use ComputePrefixBeforeCaret to only get text from break to caret (not beyond)
             var line = doc.GetLineByOffset(caret);
             string lineText = doc.GetText(line);
             int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
-            var (startLocal, endLocal) = WordBoundaryHelper.ComputeWordSpan(lineText, local);
+            var (startLocal, endLocal) = WordBoundaryHelper.ComputePrefixBeforeCaret(lineText, local);
             int start = line.Offset + startLocal;
             string word = endLocal > startLocal ? lineText.Substring(startLocal, endLocal - startLocal) : string.Empty;
 

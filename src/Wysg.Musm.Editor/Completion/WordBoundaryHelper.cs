@@ -12,6 +12,10 @@ namespace Wysg.Musm.Editor.Completion
     /// </summary>
     public class WordBoundaryHelper
     {
+        /// <summary>
+        /// Computes the full word span containing the caret (extending both left and right).
+        /// DEPRECATED: Use ComputePrefixBeforeCaret for completion scenarios.
+        /// </summary>
         public static (int startLocal, int endLocal) ComputeWordSpan(string lineText, int caretLocal)
         {
             if (string.IsNullOrEmpty(lineText)) return (0, 0);
@@ -24,6 +28,26 @@ namespace Wysg.Musm.Editor.Completion
             int right = caretLocal;
             while (right < lineText.Length && IsWordChar(lineText[right])) right++;
             int end = right;
+
+            return (start, end);
+        }
+
+        /// <summary>
+        /// Computes only the prefix before the caret (from last break to caret).
+        /// For completion scenarios: "no, br|heart" returns (4, 6) for "br".
+        /// </summary>
+        public static (int startLocal, int endLocal) ComputePrefixBeforeCaret(string lineText, int caretLocal)
+        {
+            if (string.IsNullOrEmpty(lineText)) return (0, 0);
+            
+            caretLocal = Math.Clamp(caretLocal, 0, lineText.Length);
+
+            int left = caretLocal - 1;
+            while (left >= 0 && IsWordChar(lineText[left])) left--;
+            int start = left + 1;
+
+            // Only extend to caret, not beyond
+            int end = caretLocal;
 
             return (start, end);
         }

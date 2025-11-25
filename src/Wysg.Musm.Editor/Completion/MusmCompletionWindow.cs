@@ -361,13 +361,13 @@ int caret = _editor.CaretOffset;
             var line = doc.GetLineByOffset(caret);
             string lineText = doc.GetText(line);
    int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
-     var (startLocal, endLocal) = WordBoundaryHelper.ComputeWordSpan(lineText, local);
+     var (startLocal, endLocal) = WordBoundaryHelper.ComputePrefixBeforeCaret(lineText, local);
          if (endLocal <= startLocal) return (string.Empty, true);
             var word = lineText.Substring(startLocal, endLocal - startLocal);
       return (word, true);
         }
 
-        /// <summary>Compute StartOffset/EndOffset from the word around caret.</summary>
+        /// <summary>Compute StartOffset/EndOffset from the prefix before caret.</summary>
         public void ComputeReplaceRegionFromCaret()
         {
       var doc = _editor.Document;
@@ -377,7 +377,7 @@ int caret = _editor.CaretOffset;
        string lineText = doc.GetText(line);
             int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
 
-    var (startLocal, endLocal) = WordBoundaryHelper.ComputeWordSpan(lineText, local);
+    var (startLocal, endLocal) = WordBoundaryHelper.ComputePrefixBeforeCaret(lineText, local);
   StartOffset = line.Offset + startLocal;
             EndOffset = line.Offset + endLocal;
         }
@@ -388,18 +388,10 @@ int caret = _editor.CaretOffset;
             var w = new MusmCompletionWindow(editor);
             var target = w.CompletionList.CompletionData;
             
-            int itemCount = 0;
             foreach (var item in items)
             {
                 target.Add(item);
-                itemCount++;
-                System.Diagnostics.Debug.WriteLine($"[MusmCompletionWindow] Added item: Content='{item.Content}' Text='{item.Text}'");
             }
-            
-            System.Diagnostics.Debug.WriteLine($"[MusmCompletionWindow] Total items added: {itemCount}");
-            System.Diagnostics.Debug.WriteLine($"[MusmCompletionWindow] ListBox item count: {w.CompletionList?.ListBox?.Items.Count ?? -1}");
-            System.Diagnostics.Debug.WriteLine($"[MusmCompletionWindow] ListBox DisplayMemberPath: '{w.CompletionList?.ListBox?.DisplayMemberPath ?? "(null)"}'");
-            System.Diagnostics.Debug.WriteLine($"[MusmCompletionWindow] ListBox ItemTemplate: {(w.CompletionList?.ListBox?.ItemTemplate == null ? "null" : "not null")}");
             
             w.ComputeReplaceRegionFromCaret();
             w.Show();

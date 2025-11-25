@@ -38,8 +38,6 @@ namespace Wysg.Musm.Radium.ViewModels
 
             long accountId = _ctx.AccountId;
 
-            System.Diagnostics.Debug.WriteLine($"[PhraseCompletionProvider] Querying with prefix: '{prefix}'");
-
             // CRITICAL FIX: Query by prefix directly instead of caching all phrases
             // This ensures we get exactly 15 results from the service layer
             var task = _svc.GetCombinedPhrasesByPrefixAsync(accountId, prefix, limit: 15);
@@ -50,18 +48,10 @@ namespace Wysg.Musm.Radium.ViewModels
             task.Wait();
             var matches = task.Result;
             
-            System.Diagnostics.Debug.WriteLine($"[PhraseCompletionProvider] Got {matches.Count} matches from service");
-            
-            int yieldCount = 0;
             foreach (var t in matches)
             {
-                var item = MusmCompletionData.Token(t);
-                System.Diagnostics.Debug.WriteLine($"[PhraseCompletionProvider]   ? Yielding: Text='{item.Text}' Content='{item.Content}'");
-                yieldCount++;
-                yield return item;
+                yield return MusmCompletionData.Token(t);
             }
-            
-            System.Diagnostics.Debug.WriteLine($"[PhraseCompletionProvider] Total items yielded: {yieldCount}");
         }
 
         private static (string word, int startOffset) GetWordBeforeCaret(TextEditor editor)
@@ -71,8 +61,8 @@ namespace Wysg.Musm.Radium.ViewModels
             string lineText = editor.Document.GetText(line);
             int local = Math.Clamp(caret - line.Offset, 0, lineText.Length);
             
-            // Use WordBoundaryHelper to include digits, hyphens, and underscores in word
-            var (startLocal, endLocal) = WordBoundaryHelper.ComputeWordSpan(lineText, local);
+            // Use ComputePrefixBeforeCaret to only get text from break to caret (not beyond)
+            var (startLocal, endLocal) = WordBoundaryHelper.ComputePrefixBeforeCaret(lineText, local);
             int start = line.Offset + startLocal;
             string word = endLocal > startLocal ? lineText.Substring(startLocal, endLocal - startLocal) : string.Empty;
             
