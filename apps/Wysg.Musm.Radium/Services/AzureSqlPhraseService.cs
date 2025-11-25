@@ -222,21 +222,50 @@ namespace Wysg.Musm.Radium.Services
         /// <summary>
         /// Get combined phrases matching a prefix: filtered global + all account-specific.
         /// Used by completion popup for prefix-based filtering.
+        /// 
+        /// FIXED 2025-02-11: Fetch ALL matching phrases first, sort, then take top 15.
+        /// Previously was taking 15 from each source, combining, and taking 15 again,
+        /// which could miss the best matches.
         /// </summary>
         public async Task<IReadOnlyList<string>> GetCombinedPhrasesByPrefixAsync(long accountId, string prefix, int limit = 15)
         {
             if (string.IsNullOrWhiteSpace(prefix)) return Array.Empty<string>();
             
-            // Global phrases are pre-filtered to ¡Â3 words in GetGlobalPhrasesByPrefixAsync
-            var globalPhrases = await GetGlobalPhrasesByPrefixAsync(prefix, limit).ConfigureAwait(false);
-            // Account-specific phrases are NOT filtered (no word limit)
-            var accountPhrases = await GetPhrasesByPrefixAccountAsync(accountId, prefix, limit).ConfigureAwait(false);
+            Debug.WriteLine($"[AzureSqlPhraseService][GetCombinedByPrefix] prefix='{prefix}', limit={limit}");
             
-            var combined = new HashSet<string>(accountPhrases, StringComparer.OrdinalIgnoreCase);
-            foreach (var global in globalPhrases)
-                combined.Add(global);
+            // Ensure both states are loaded
+            var globalState = _states.GetOrAdd(GLOBAL_KEY, _ => new AccountPhraseState(null));
+            if (globalState.ById.Count == 0) 
+                await LoadGlobalSnapshotAsync(globalState).ConfigureAwait(false);
                 
-            return combined.OrderBy(t => t.Length).ThenBy(t => t).Take(limit).ToList();
+            var accountState = _states.GetOrAdd(accountId, id => new AccountPhraseState(id));
+            if (accountState.ById.Count == 0) 
+                await LoadSnapshotAsync(accountState).ConfigureAwait(false);
+            
+            // Get ALL global phrases matching prefix (with 4-word filter)
+            var globalMatches = globalState.ById.Values
+                .Where(r => r.Active && r.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && CountWords(r.Text) <= 4)
+                .Select(r => r.Text);
+            
+            // Get ALL account phrases matching prefix (no word filter)
+            var accountMatches = accountState.ById.Values
+                .Where(r => r.Active && r.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .Select(r => r.Text);
+            
+            // Combine and remove duplicates
+            var combined = new HashSet<string>(accountMatches, StringComparer.OrdinalIgnoreCase);
+            foreach (var global in globalMatches)
+                combined.Add(global);
+            
+            // NOW sort by length (shorter first) and alphabetically, THEN take top 15
+            var sortedAndLimited = combined
+                .OrderBy(t => t.Length)
+                .ThenBy(t => t, StringComparer.OrdinalIgnoreCase)
+                .Take(limit)
+                .ToList();
+            
+            Debug.WriteLine($"[AzureSqlPhraseService][GetCombinedByPrefix] Account={accountMatches.Count()}, Global={globalMatches.Count()}, AllMatches={combined.Count}, Final={sortedAndLimited.Count}");
+            return sortedAndLimited;
         }
 
         // ============================================================================

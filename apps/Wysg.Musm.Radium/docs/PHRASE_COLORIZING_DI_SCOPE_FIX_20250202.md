@@ -1,6 +1,6 @@
-# ? CRITICAL FIX: Dependency Injection Scope Mismatch
+ï»¿# ? CRITICAL FIX: Dependency Injection Scope Mismatch
 
-**Date:** 2025-02-02  
+**Date:** 2025-11-02  
 **Status:** ? **BUILD SUCCESSFUL** - Critical DI violation fixed
 
 ---
@@ -44,7 +44,7 @@ services.AddSingleton<ISnomedMapService>(sp =>
 2. `ApiSnomedMapServiceAdapter` constructor needs `ISnomedApiClient`
 3. DI container finds `ISnomedApiClient` is registered as `Scoped`
 4. **RUNTIME ERROR:** Cannot inject Scoped service into Singleton!
-5. Result: `_snomedMapService` is null ¡æ colorizing doesn't work
+5. Result: `_snomedMapService` is null ï¿½ï¿½ colorizing doesn't work
 
 ---
 
@@ -77,9 +77,9 @@ dotnet run
 ```
 
 Type in editor to verify colors:
-- `chest pain` ¡æ **Pink**
-- `heart` ¡æ **Green**
-- `ct scan` ¡æ **Yellow**
+- `chest pain` ï¿½ï¿½ **Pink**
+- `heart` ï¿½ï¿½ **Green**
+- `ct scan` ï¿½ï¿½ **Yellow**
 
 ---
 

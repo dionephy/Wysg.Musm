@@ -1,6 +1,6 @@
-# Diagnosis: Reportify Numbering Every Line (Line Mode Active)
+ï»¿# Diagnosis: Reportify Numbering Every Line (Line Mode Active)
 
-**Date**: 2025-01-23  
+**Date**: 2025-10-23  
 **Issue**: Conclusion text being numbered as individual lines instead of paragraphs  
 **Status**: ?? Investigating
 
@@ -74,7 +74,7 @@ Chronologic change and decreased amount of ICH in left frontal lobe with decreas
  decreased amount of extra-axial fluid collection in right cerebral convexity 
 ```
 
-**Blank line separator** (two blank lines ¡æ normalized to one)
+**Blank line separator** (two blank lines ï¿½ï¿½ normalized to one)
 
 **Paragraph 3** (2 lines):
 ```
@@ -114,7 +114,7 @@ Check the reportify settings JSON to see if `number_conclusion_lines_on_one_para
 ## Solution
 
 If the setting is wrong:
-1. Open Settings ¡æ Reportify tab
+1. Open Settings ï¿½ï¿½ Reportify tab
 2. Find "Number each line (line mode)" checkbox
 3. **Uncheck** it (should be OFF for paragraph mode)
 4. Click "Save Reportify Settings"
@@ -158,12 +158,12 @@ else
 ## Diagnostic Steps
 
 1. **Check Settings UI**:
-   - Open Settings ¡æ Reportify
+   - Open Settings ï¿½ï¿½ Reportify
    - Look for "Number each line (line mode)" checkbox
    - Current state: ???
 
 2. **Check JSON**:
-   - Open Settings ¡æ Reportify
+   - Open Settings ï¿½ï¿½ Reportify
    - Look at the JSON output
    - Find `"number_conclusion_lines_on_one_paragraph"`
    - Current value: ???

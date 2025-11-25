@@ -1,10 +1,10 @@
-# Send Report Global Hotkey - Fix Applied ?
-**Date**: 2025-01-19  
+ï»¿# Send Report Global Hotkey - Fix Applied ?
+**Date**: 2025-10-19  
 **Issue**: Ctrl+Decimal hotkey configured but not invoking automation pane  
 **Status**: FIXED
 
 ## Problem
-User configured the "Send study" global hotkey to `Ctrl+Decimal` in Settings ¡æ Keyboard tab, but pressing the hotkey did not trigger the Send Report automation sequence.
+User configured the "Send study" global hotkey to `Ctrl+Decimal` in Settings ï¿½ï¿½ Keyboard tab, but pressing the hotkey did not trigger the Send Report automation sequence.
 
 ## Root Cause
 The global hotkey registration and handler for Send Report were **not implemented** in `MainWindow.xaml.cs`. While the runtime logic (`RunSendReportShortcut()`) was complete in `MainViewModel.Commands.cs`, the OS-level hotkey integration was missing.
@@ -85,40 +85,40 @@ protected override void OnClosed(EventArgs e)
 ## How It Works Now
 
 ### Registration Flow
-1. **App Startup** ¡æ `OnSourceInitialized()` called after window handle created
-2. **Read Settings** ¡æ Loads `GlobalHotkeySendStudy` from `IRadiumLocalSettings`
-3. **Parse Hotkey** ¡æ Converts "Ctrl+Decimal" to mods (0x02=CONTROL) + vk (0x6E=VK_DECIMAL)
-4. **Register with Windows** ¡æ Calls `RegisterHotKey(hwnd, 0xB003, mods, vk)`
-5. **Log Result** ¡æ Debug output shows success or failure
+1. **App Startup** ï¿½ï¿½ `OnSourceInitialized()` called after window handle created
+2. **Read Settings** ï¿½ï¿½ Loads `GlobalHotkeySendStudy` from `IRadiumLocalSettings`
+3. **Parse Hotkey** ï¿½ï¿½ Converts "Ctrl+Decimal" to mods (0x02=CONTROL) + vk (0x6E=VK_DECIMAL)
+4. **Register with Windows** ï¿½ï¿½ Calls `RegisterHotKey(hwnd, 0xB003, mods, vk)`
+5. **Log Result** ï¿½ï¿½ Debug output shows success or failure
 
 ### Execution Flow
-1. **User Presses Hotkey** ¡æ Windows sends `WM_HOTKEY` message to app
-2. **WndProc Receives Message** ¡æ Checks if `wParam == HOTKEY_ID_SEND_REPORT`
-3. **Check Reportified State** ¡æ `RunSendReportShortcut()` inspects `Reportified` toggle
+1. **User Presses Hotkey** ï¿½ï¿½ Windows sends `WM_HOTKEY` message to app
+2. **WndProc Receives Message** ï¿½ï¿½ Checks if `wParam == HOTKEY_ID_SEND_REPORT`
+3. **Check Reportified State** ï¿½ï¿½ `RunSendReportShortcut()` inspects `Reportified` toggle
 4. **Load Appropriate Sequence**:
-   - If `Reportified=true` ¡æ Loads `ShortcutSendReportReportified` sequence
-   - If `Reportified=false` ¡æ Loads `ShortcutSendReportPreview` sequence
-5. **Execute Modules** ¡æ Runs modules sequentially (e.g., `Reportify, SendReport`)
-6. **Log Execution** ¡æ Debug output shows which sequence was selected
+   - If `Reportified=true` ï¿½ï¿½ Loads `ShortcutSendReportReportified` sequence
+   - If `Reportified=false` ï¿½ï¿½ Loads `ShortcutSendReportPreview` sequence
+5. **Execute Modules** ï¿½ï¿½ Runs modules sequentially (e.g., `Reportify, SendReport`)
+6. **Log Execution** ï¿½ï¿½ Debug output shows which sequence was selected
 
 ### Cleanup Flow
-1. **Window Closes** ¡æ `OnClosed()` called
-2. **Unregister Hotkey** ¡æ `UnregisterHotKey()` removes OS-level registration
-3. **Unhook WndProc** ¡æ `RemoveHook()` stops receiving messages
-4. **Prevent Leaks** ¡æ System-wide hotkey released, available for other apps
+1. **Window Closes** ï¿½ï¿½ `OnClosed()` called
+2. **Unregister Hotkey** ï¿½ï¿½ `UnregisterHotKey()` removes OS-level registration
+3. **Unhook WndProc** ï¿½ï¿½ `RemoveHook()` stops receiving messages
+4. **Prevent Leaks** ï¿½ï¿½ System-wide hotkey released, available for other apps
 
 ## Testing Steps
 
 ### 1. Verify Hotkey Configuration
 ```
-Settings ¡æ Keyboard Tab
+Settings ï¿½ï¿½ Keyboard Tab
   - Send study hotkey: Ctrl+Decimal
   - Click "Save Keyboard"
 ```
 
 ### 2. Configure Automation Sequences
 ```
-Settings ¡æ Automation Tab
+Settings ï¿½ï¿½ Automation Tab
   - Shortcut: Send Report (preview): SendReport
   - Shortcut: Send Report (reportified): Reportify, SendReport
   - Click "Save Automation"
@@ -173,8 +173,8 @@ The `TryParseHotkey()` method handles various key formats:
 - **Special Keys**: `Insert`, `Delete`, `PageUp`, `PageDown`
 
 For `Ctrl+Decimal`:
-- Modifiers: `Ctrl` ¡æ `MOD_CONTROL` (0x0002)
-- Key: `Decimal` ¡æ WPF `Key.Decimal` ¡æ VK code 0x6E (VK_DECIMAL)
+- Modifiers: `Ctrl` ï¿½ï¿½ `MOD_CONTROL` (0x0002)
+- Key: `Decimal` ï¿½ï¿½ WPF `Key.Decimal` ï¿½ï¿½ VK code 0x6E (VK_DECIMAL)
 
 ### State-Based Routing
 The `RunSendReportShortcut()` method in MainViewModel checks the `Reportified` toggle:

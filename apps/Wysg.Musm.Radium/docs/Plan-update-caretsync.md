@@ -1,4 +1,4 @@
-## Change Log Addition (2025-01-19 ? Foreign Text Merge Caret Preservation and Focus Management)
+ï»¿## Change Log Addition (2025-10-19 ? Foreign Text Merge Caret Preservation and Focus Management)
 - **User Request 1**: On sync text OFF, when merging foreign text into Findings editor, preserve the caret position at the same location relative to the existing Findings text (i.e., current_caret_offset + foreign_text_length + newline_length).
 - **User Request 2**: When clearing the foreign textbox during merge, prevent it from stealing focus from the Radium application.
 - **Solution**: Implemented caret offset adjustment mechanism using ViewModel property and Editor control binding; removed SetFocus() call from WriteToForeignAsync.
@@ -14,7 +14,7 @@
 
 2. EditorFindings binding:
    - Bound to `FindingsCaretOffsetAdjustment` via XAML one-way binding
-   - Property change flows through EditorControl ¡æ MusmEditor
+   - Property change flows through EditorControl ï¿½ï¿½ MusmEditor
    - MusmEditor stores adjustment in dependency property
 
 3. Caret adjustment application:

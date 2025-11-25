@@ -1,10 +1,10 @@
-# Quick Fix: COVID-19 Not Highlighting Correctly
+ï»¿# Quick Fix: COVID-19 Not Highlighting Correctly
 
 **Issue**: "COVID-19" shows as red (missing phrase) even though it's saved in the phrase database.
 
 **Cause**: The hyphen in "COVID-19" was being treated as a word separator instead of part of the word.
 
-**Fix Date**: 2025-02-02
+**Fix Date**: 2025-11-02
 
 ---
 
@@ -22,7 +22,7 @@ The editor now treats **hyphens as part of words** when matching phrases. This m
 ## How to Test
 
 1. **Add "COVID-19" to your phrase database** (if not already added):
-   - Go to Settings ¡æ Global Phrases
+   - Go to Settings ï¿½ï¿½ Global Phrases
    - Click "Add Phrase"
    - Type "COVID-19"
    - Click "Save"
@@ -41,7 +41,7 @@ The editor now treats **hyphens as part of words** when matching phrases. This m
 ## What If It Still Shows Red?
 
 1. **Check if the phrase is saved**:
-   - Go to Settings ¡æ Global Phrases
+   - Go to Settings ï¿½ï¿½ Global Phrases
    - Search for "COVID-19"
    - Make sure "Active" is checked
 
@@ -50,8 +50,8 @@ The editor now treats **hyphens as part of words** when matching phrases. This m
    - The phrase list reloads from the database
 
 3. **Check exact spelling**:
-   - "COVID-19" ¡Á "COVID19" (no hyphen)
-   - "COVID-19" ¡Á "COVID -19" (space before hyphen)
+   - "COVID-19" ï¿½ï¿½ "COVID19" (no hyphen)
+   - "COVID-19" ï¿½ï¿½ "COVID -19" (space before hyphen)
    - Case doesn't matter: "covid-19" = "COVID-19" ?
 
 ---
@@ -75,10 +75,10 @@ No - phrases without hyphens work exactly the same as before.
 
 | Before Fix | After Fix |
 |-----------|-----------|
-| "COVID-19" ¡æ **RED** ? | "COVID-19" ¡æ **GRAY** ? |
-| "T-cell" ¡æ **RED** ? | "T-cell" ¡æ **GRAY** ? |
-| "follow-up" ¡æ **RED** ? | "follow-up" ¡æ **GRAY** ? |
-| "X-ray" ¡æ **RED** ? | "X-ray" ¡æ **GRAY** ? |
+| "COVID-19" ï¿½ï¿½ **RED** ? | "COVID-19" ï¿½ï¿½ **GRAY** ? |
+| "T-cell" ï¿½ï¿½ **RED** ? | "T-cell" ï¿½ï¿½ **GRAY** ? |
+| "follow-up" ï¿½ï¿½ **RED** ? | "follow-up" ï¿½ï¿½ **GRAY** ? |
+| "X-ray" ï¿½ï¿½ **RED** ? | "X-ray" ï¿½ï¿½ **GRAY** ? |
 
 ---
 
@@ -103,13 +103,13 @@ No - phrases without hyphens work exactly the same as before.
 ## Support
 
 If you still see issues after applying this fix:
-1. Check the documentation: `docs\BUGFIX_2025-02-02_COVID19-Hyphen.md`
+1. Check the documentation: `docs\BUGFIX_2025-11-02_COVID19-Hyphen.md`
 2. Run the verification tests: `docs\Tasks.md` (V470-V480)
 3. Contact support with details about which phrase is not highlighting
 
 ---
 
-**Version**: Fixed in build dated 2025-02-02 or later  
+**Version**: Fixed in build dated 2025-11-02 or later  
 **Affected Component**: Phrase-based syntax highlighting  
 **Severity**: Low (cosmetic issue, no data loss)  
 **Status**: ? Fixed and verified

@@ -1,6 +1,6 @@
-# Quick Fix Summary: JSON Key Names
+ï»¿# Quick Fix Summary: JSON Key Names
 
-**Date**: 2025-01-23  
+**Date**: 2025-10-23  
 **Status**: ? Fixed
 
 ---
@@ -21,7 +21,7 @@ Report JSON was missing `header_and_findings` and `final_conclusion` keys when a
 {
   "findings": "",
   "conclusion": "",
-  "report_radiologist": "±èµ¿Çö"
+  "report_radiologist": "ï¿½èµ¿ï¿½ï¿½"
 }
 ```
 ? Empty despite being set
@@ -33,7 +33,7 @@ Report JSON was missing `header_and_findings` and `final_conclusion` keys when a
   "final_conclusion": "1. Diffuse brain atrophy...",
   "findings": "Diffuse brain atrophy...",
   "conclusion": "1. Diffuse brain atrophy...",
-  "report_radiologist": "±èµ¿Çö"
+  "report_radiologist": "ï¿½èµ¿ï¿½ï¿½"
 }
 ```
 ? Complete data

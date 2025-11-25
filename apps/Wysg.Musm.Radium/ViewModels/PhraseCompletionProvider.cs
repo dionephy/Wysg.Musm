@@ -52,11 +52,16 @@ namespace Wysg.Musm.Radium.ViewModels
             
             System.Diagnostics.Debug.WriteLine($"[PhraseCompletionProvider] Got {matches.Count} matches from service");
             
+            int yieldCount = 0;
             foreach (var t in matches)
             {
-                System.Diagnostics.Debug.WriteLine($"[PhraseCompletionProvider]   ¡æ {t}");
-                yield return MusmCompletionData.Token(t);
+                var item = MusmCompletionData.Token(t);
+                System.Diagnostics.Debug.WriteLine($"[PhraseCompletionProvider]   ? Yielding: Text='{item.Text}' Content='{item.Content}'");
+                yieldCount++;
+                yield return item;
             }
+            
+            System.Diagnostics.Debug.WriteLine($"[PhraseCompletionProvider] Total items yielded: {yieldCount}");
         }
 
         private static (string word, int startOffset) GetWordBeforeCaret(TextEditor editor)

@@ -1,4 +1,4 @@
-# FEATURE: Proofread Toggle Binding Implementation
+ï»¿# FEATURE: Proofread Toggle Binding Implementation
 
 **Date**: 2025-01-24  
 **Status**: ? Implemented  
@@ -19,10 +19,10 @@ This feature implements binding logic for **both** the **Proofread** toggle and 
 
 As a radiologist reviewing reports:
 - I want to **toggle between reportified, proofread, and raw versions** of report fields
-- **When Reportified is ON** ¡æ I see formatted text (capitalized, numbered, punctuated) in **read-only mode**
-- **When Reportified is OFF and Proofread is ON** ¡æ I see grammar-corrected text in **read-only mode**
-- **When both are OFF** ¡æ I see the original raw text in **editable mode**
-- **Reportified takes priority** ¡æ When both toggles are ON, reportified text is shown
+- **When Reportified is ON** ï¿½ï¿½ I see formatted text (capitalized, numbered, punctuated) in **read-only mode**
+- **When Reportified is OFF and Proofread is ON** ï¿½ï¿½ I see grammar-corrected text in **read-only mode**
+- **When both are OFF** ï¿½ï¿½ I see the original raw text in **editable mode**
+- **Reportified takes priority** ï¿½ï¿½ When both toggles are ON, reportified text is shown
 
 ---
 
@@ -179,7 +179,7 @@ The editors use `Style.Triggers` with `DataTrigger` and `MultiDataTrigger` to su
 | False | False | `FindingsText` (TwoWay) | False | Raw text (editable) |
 | False | True | `FindingsDisplay` (OneWay) | True | Proofread text (read-only) |
 | True | False | `FindingsDisplay` (OneWay) | True | Reportified(raw) text (read-only) |
-| **True** | **True** | `FindingsDisplay` (OneWay) | True | **Reportified(proofread) text (read-only)** ¡ç Shows formatted proofread version |
+| **True** | **True** | `FindingsDisplay` (OneWay) | True | **Reportified(proofread) text (read-only)** ï¿½ï¿½ Shows formatted proofread version |
 
 The same pattern is applied to the `Conclusion` editor.
 
@@ -191,7 +191,7 @@ The same pattern is applied to the `Conclusion` editor.
 | ? OFF | ? OFF | Raw text (editable) ?? |
 | ? OFF | ? ON | Proofread text (read-only) ?? |
 | ? ON | ? OFF | **Reportified(raw)** text (read-only) ???? |
-| ? ON | ? ON | **Reportified(proofread)** text (read-only) ????? ¡ç New! |
+| ? ON | ? ON | **Reportified(proofread)** text (read-only) ????? ï¿½ï¿½ New! |
 
 ## Fallback Behavior
 
@@ -202,7 +202,7 @@ When proofread version is blank or null, the computed property falls back approp
 ```csharp
 // Example: Proofread is blank
 FindingsText = "no acute findings"
-FindingsProofread = ""  // ¡ç blank
+FindingsProofread = ""  // ï¿½ï¿½ blank
 Reportified = false
 ProofreadMode = true
 
@@ -225,21 +225,21 @@ When `Reportified = true`:
 
 ```
 User toggles Reportified ON
-    ¡é
+    ï¿½ï¿½
 Reportified setter
-    ¡é
-SetProperty() ¡æ notifies Reportified
+    ï¿½ï¿½
+SetProperty() ï¿½ï¿½ notifies Reportified
 OnPropertyChanged(nameof(FindingsDisplay))
 OnPropertyChanged(nameof(ConclusionDisplay))
-    ¡é
-ToggleReportified(true) ¡æ Applies reportify transformations
-    ¡é
+    ï¿½ï¿½
+ToggleReportified(true) ï¿½ï¿½ Applies reportify transformations
+    ï¿½ï¿½
 _findingsText and _conclusionText now contain formatted text
-    ¡é
+    ï¿½ï¿½
 UI re-evaluates FindingsDisplay and ConclusionDisplay
-    ¡é
-Style triggers activate (Reportified = True) ¡æ DocumentText switches to FindingsDisplay, IsReadOnly = True
-    ¡é
+    ï¿½ï¿½
+Style triggers activate (Reportified = True) ï¿½ï¿½ DocumentText switches to FindingsDisplay, IsReadOnly = True
+    ï¿½ï¿½
 Editors update to show reportified text in read-only mode
 ```
 
@@ -247,17 +247,17 @@ Editors update to show reportified text in read-only mode
 
 ```
 User toggles ProofreadMode ON (Reportified = false)
-    ¡é
+    ï¿½ï¿½
 ProofreadMode setter
-    ¡é
-SetProperty() ¡æ notifies ProofreadMode
+    ï¿½ï¿½
+SetProperty() ï¿½ï¿½ notifies ProofreadMode
 OnPropertyChanged(nameof(FindingsDisplay))
 OnPropertyChanged(nameof(ConclusionDisplay))
-    ¡é
+    ï¿½ï¿½
 UI re-evaluates display properties
-    ¡é
+    ï¿½ï¿½
 Style triggers activate (MultiDataTrigger: Reportified = False AND ProofreadMode = True)
-    ¡é
+    ï¿½ï¿½
 Editors switch to FindingsDisplay (showing proofread text), IsReadOnly = True
 ```
 
@@ -360,12 +360,12 @@ Editors switch to FindingsDisplay (showing proofread text), IsReadOnly = True
   - `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Commands.cs`
   - `apps\Wysg.Musm.Radium\Controls\CurrentReportEditorPanel.xaml`
 - **Related Docs**:
-  - `apps\Wysg.Musm.Radium\docs\CRITICAL_FIX_2025-01-23_ReportifySavingWrongValues.md`
+  - `apps\Wysg.Musm.Radium\docs\CRITICAL_FIX_2025-10-23_ReportifySavingWrongValues.md`
 
 ### ?? What Was Implemented
 
 **Priority Logic** (in order):
-1. **Both Reportified AND Proofread ON** ¡æ Show reportified(proofread) text, read-only ¡ç **NEW!**
-2. **Only Reportified ON** ¡æ Show reportified(raw) text, read-only
-3. **Only Proofread ON** ¡æ Show proofread text, read-only  
-4. **Both OFF** ¡æ Show raw text, editable
+1. **Both Reportified AND Proofread ON** ï¿½ï¿½ Show reportified(proofread) text, read-only ï¿½ï¿½ **NEW!**
+2. **Only Reportified ON** ï¿½ï¿½ Show reportified(raw) text, read-only
+3. **Only Proofread ON** ï¿½ï¿½ Show proofread text, read-only  
+4. **Both OFF** ï¿½ï¿½ Show raw text, editable

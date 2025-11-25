@@ -1,4 +1,4 @@
-# ? Global Phrases + Caching - Complete Solution
+ï»¿# ? Global Phrases + Caching - Complete Solution
 
 ## Status: **FULLY RESOLVED** ?
 
@@ -93,7 +93,7 @@ dotnet run
 - [x] Global phrases load successfully (count = 2358)
 - [x] Syntax highlighting works
 - [x] Completion window is instant (< 1ms)
-- [x] Settings ¡æ Phrases tab shows data
+- [x] Settings ï¿½ï¿½ Phrases tab shows data
 - [x] Toggle phrase works
 - [x] Search/filter works
 - [x] Cache performs efficiently
@@ -106,15 +106,15 @@ dotnet run
 ### Data Flow
 
 ```
-¦£¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¤
-¦¢  Azure SQL DB                                               ¦¢
-¦¢  ¦¦¦¡> REST API (GlobalPhrasesController)                    ¦¢
-¦¢      ¦¦¦¡> RadiumApiClient                                    ¦¢
-¦¢          ¦¦¦¡> ApiPhraseServiceAdapter (IN-MEMORY CACHE)     ¦¢
-¦¢              ¦¦¦¡> MainViewModel                              ¦¢
-¦¢                  ¦§¦¡> Syntax highlighting (INSTANT)         ¦¢
-¦¢                  ¦¦¦¡> Completion window (INSTANT)            ¦¢
-¦¦¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¥
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½  Azure SQL DB                                               ï¿½ï¿½
+ï¿½ï¿½  ï¿½ï¿½ï¿½ï¿½> REST API (GlobalPhrasesController)                    ï¿½ï¿½
+ï¿½ï¿½      ï¿½ï¿½ï¿½ï¿½> RadiumApiClient                                    ï¿½ï¿½
+ï¿½ï¿½          ï¿½ï¿½ï¿½ï¿½> ApiPhraseServiceAdapter (IN-MEMORY CACHE)     ï¿½ï¿½
+ï¿½ï¿½              ï¿½ï¿½ï¿½ï¿½> MainViewModel                              ï¿½ï¿½
+ï¿½ï¿½                  ï¿½ï¿½ï¿½ï¿½> Syntax highlighting (INSTANT)         ï¿½ï¿½
+ï¿½ï¿½                  ï¿½ï¿½ï¿½ï¿½> Completion window (INSTANT)            ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 ```
 
 ### Caching Strategy
@@ -122,28 +122,28 @@ dotnet run
 **Initial Load (Once per login):**
 ```
 1. PreloadAsync(accountId)
-   ¦§¦¡> API: GET /api/accounts/{id}/phrases
-   ¦§¦¡> API: GET /api/phrases/global
-   ¦¦¦¡> Cache: Store in _cachedPhrases + _cachedGlobal
+   ï¿½ï¿½ï¿½ï¿½> API: GET /api/accounts/{id}/phrases
+   ï¿½ï¿½ï¿½ï¿½> API: GET /api/phrases/global
+   ï¿½ï¿½ï¿½ï¿½> Cache: Store in _cachedPhrases + _cachedGlobal
 ```
 
 **Subsequent Calls (From Cache):**
 ```
 1. GetAllPhrasesForHighlightingAsync()
-   ¦¦¦¡> Return cached: _cachedPhrases + _cachedGlobal (NO API CALL)
+   ï¿½ï¿½ï¿½ï¿½> Return cached: _cachedPhrases + _cachedGlobal (NO API CALL)
 
 2. GetCombinedPhrasesByPrefixAsync(prefix)
-   ¦¦¦¡> Filter cached by prefix (NO API CALL)
+   ï¿½ï¿½ï¿½ï¿½> Filter cached by prefix (NO API CALL)
 
 3. GetAllPhraseMetaAsync()
-   ¦¦¦¡> Return _cachedPhrases (NO API CALL)
+   ï¿½ï¿½ï¿½ï¿½> Return _cachedPhrases (NO API CALL)
 ```
 
 **Cache Updates:**
 ```
-1. UpsertPhraseAsync() ¡æ API call + cache insert
-2. ToggleActiveAsync() ¡æ API call + cache update
-3. RefreshPhrasesAsync() ¡æ API call + cache replace
+1. UpsertPhraseAsync() ï¿½ï¿½ API call + cache insert
+2. ToggleActiveAsync() ï¿½ï¿½ API call + cache update
+3. RefreshPhrasesAsync() ï¿½ï¿½ API call + cache replace
 ```
 
 ---
@@ -187,6 +187,6 @@ dotnet run
 
 ---
 
-*Last updated: 2025-01-23*
+*Last Updated: 2025-11-25*
 *Issues resolved: Missing controller + broken caching + poor performance*
-*Architecture: DB ¡ê API ¡ê Cache ¡ê UI*
+*Architecture: DB ï¿½ï¿½ API ï¿½ï¿½ Cache ï¿½ï¿½ UI*

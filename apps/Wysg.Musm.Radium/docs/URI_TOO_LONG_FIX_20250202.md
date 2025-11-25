@@ -1,6 +1,6 @@
-# ? FIX: 414 URI Too Long Error for SNOMED Batch Mappings
+ï»¿# ? FIX: 414 URI Too Long Error for SNOMED Batch Mappings
 
-**Date:** 2025-02-02  
+**Date:** 2025-11-02  
 **Status:** ? **FIXED** - Changed from GET to POST
 
 ---
@@ -198,22 +198,22 @@ public async Task<ActionResult<List<T>>> GetMany([FromQuery] long[] ids)
 
 ## Related Issues Fixed Today
 
-1. ? Snippets not working ¡æ Fixed (caching)
-2. ? Editor sluggish ¡æ Fixed (caching)
-3. ? Phrase colorizing adapter missing ¡æ Fixed (created ApiSnomedMapServiceAdapter)
-4. ? DI registration wrong ¡æ Fixed (class name + lifetime)
-5. ? **414 URI Too Long** ¡æ Fixed (THIS - changed GET to POST)
+1. ? Snippets not working ï¿½ï¿½ Fixed (caching)
+2. ? Editor sluggish ï¿½ï¿½ Fixed (caching)
+3. ? Phrase colorizing adapter missing ï¿½ï¿½ Fixed (created ApiSnomedMapServiceAdapter)
+4. ? DI registration wrong ï¿½ï¿½ Fixed (class name + lifetime)
+5. ? **414 URI Too Long** ï¿½ï¿½ Fixed (THIS - changed GET to POST)
 
 ---
 
 ## Summary
 
-**Problem:** 2,358 phrase IDs in URL ¡æ 414 URI Too Long error  
+**Problem:** 2,358 phrase IDs in URL ï¿½ï¿½ 414 URI Too Long error  
 **Solution:** Changed from GET with query params to POST with JSON body  
 **Result:** Phrase colorizing now works! ??
 
 ---
 
 **Implementation by:** GitHub Copilot  
-**Date:** 2025-02-02  
+**Date:** 2025-11-02  
 **Status:** ? **READY FOR TESTING**

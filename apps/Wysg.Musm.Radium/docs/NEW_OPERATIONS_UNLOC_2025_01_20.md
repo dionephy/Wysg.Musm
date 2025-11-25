@@ -1,4 +1,4 @@
-# New Operations and UnlockStudy Module - 2025-01-20
+ï»¿# New Operations and UnlockStudy Module - 2025-10-20
 
 ## Summary
 Added 4 new Custom Procedure operations for accessing editor content and 1 new Automation module for unlocking studies.
@@ -6,28 +6,28 @@ Added 4 new Custom Procedure operations for accessing editor content and 1 new A
 ## Features Implemented
 
 ### 1. GetCurrentHeader Operation
-- **Location**: Spy Window ¡æ Custom Procedures
+- **Location**: Spy Window ï¿½ï¿½ Custom Procedures
 - **Purpose**: Outputs the text content of the Header editor in MainWindow
 - **Arguments**: None
 - **Output**: Variable containing header text
 - **Implementation**: Reads `MainViewModel.HeaderText` from UI thread
 
 ### 2. GetCurrentFindings Operation
-- **Location**: Spy Window ¡æ Custom Procedures
+- **Location**: Spy Window ï¿½ï¿½ Custom Procedures
 - **Purpose**: Outputs the text content of the Findings editor in MainWindow
 - **Arguments**: None
 - **Output**: Variable containing findings text
 - **Implementation**: Reads `MainViewModel.FindingsText` from UI thread
 
 ### 3. GetCurrentConclusion Operation
-- **Location**: Spy Window ¡æ Custom Procedures
+- **Location**: Spy Window ï¿½ï¿½ Custom Procedures
 - **Purpose**: Outputs the text content of the Conclusion editor in MainWindow
 - **Arguments**: None
 - **Output**: Variable containing conclusion text
 - **Implementation**: Reads `MainViewModel.ConclusionText` from UI thread
 
 ### 4. Merge Operation
-- **Location**: Spy Window ¡æ Custom Procedures
+- **Location**: Spy Window ï¿½ï¿½ Custom Procedures
 - **Purpose**: Merges two strings or variables with an optional separator
 - **Arguments**:
   - Arg1 (Var/String): First input
@@ -35,11 +35,11 @@ Added 4 new Custom Procedure operations for accessing editor content and 1 new A
   - Arg3 (String): Optional separator (empty = direct concatenation)
 - **Output**: Merged string
 - **Example**: 
-  - Arg1=var1 ("Hello"), Arg2=var2 ("World"), Arg3=" " ¡æ "Hello World"
-  - Arg1=var1 ("ABC"), Arg2="DEF", Arg3="" ¡æ "ABCDEF"
+  - Arg1=var1 ("Hello"), Arg2=var2 ("World"), Arg3=" " ï¿½ï¿½ "Hello World"
+  - Arg1=var1 ("ABC"), Arg2="DEF", Arg3="" ï¿½ï¿½ "ABCDEF"
 
 ### 5. UnlockStudy Automation Module
-- **Location**: Settings ¡æ Automation ¡æ Available Modules
+- **Location**: Settings ï¿½ï¿½ Automation ï¿½ï¿½ Available Modules
 - **Purpose**: Toggles OFF the "Study locked" toggle button (reverse of LockStudy)
 - **Usage**: Can be added to any automation sequence (NewStudy, AddStudy, Shortcuts)
 - **Implementation**: Sets `PatientLocked = false` and updates status to "Study unlocked"

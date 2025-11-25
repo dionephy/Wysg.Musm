@@ -1,9 +1,9 @@
-# Reportified Toggle and ResultsListSetFocus Module - Fixes ?
-**Date**: 2025-01-19  
+ï»¿# Reportified Toggle and ResultsListSetFocus Module - Fixes ?
+**Date**: 2025-10-19  
 **Status**: IN PROGRESS - Issue 1 fixed, Issue 2 requires bookmark re-mapping
 **Issues**: 
-1. ? Reportified toggle not updating when Reportify module runs ¡æ **FIXED**
-2. ?? ResultsListSetFocus automation module not working - mouse moves to wrong element ¡æ **REQUIRES MAPPING FIX**
+1. ? Reportified toggle not updating when Reportify module runs ï¿½ï¿½ **FIXED**
+2. ?? ResultsListSetFocus automation module not working - mouse moves to wrong element ï¿½ï¿½ **REQUIRES MAPPING FIX**
 
 ## Issue 1: Reportified Toggle Binding ? FIXED (Second Attempt)
 
@@ -62,11 +62,11 @@ private void ToggleReportified(bool value)
 
 ### Testing
 1. ? Configure automation sequence with `Reportify` module
-2. ? Run the automation ¡æ toggle button turns ON
-3. ? Run automation again ¡æ toggle stays ON (no flicker)
-4. ? Click toggle manually OFF ¡æ works
-5. ? Run automation ¡æ toggle turns ON again
-6. ? Click toggle manually ON (when already ON) ¡æ no issues
+2. ? Run the automation ï¿½ï¿½ toggle button turns ON
+3. ? Run automation again ï¿½ï¿½ toggle stays ON (no flicker)
+4. ? Click toggle manually OFF ï¿½ï¿½ works
+5. ? Run automation ï¿½ï¿½ toggle turns ON again
+6. ? Click toggle manually ON (when already ON) ï¿½ï¿½ no issues
 
 ---
 
@@ -90,7 +90,7 @@ The `SearchResultsList` KnownControl bookmark in SpyWindow is currently mapped t
 
 1. **Open SpyWindow**:
    - From MainWindow: Click **Spy** button in status bar
-   - Or from Settings ¡æ Automation: Click **Spy** button
+   - Or from Settings ï¿½ï¿½ Automation: Click **Spy** button
 
 2. **Select Map-to Target**:
    - In SpyWindow top section, find the **Map to** dropdown
@@ -112,7 +112,7 @@ The `SearchResultsList` KnownControl bookmark in SpyWindow is currently mapped t
    - Click **Validate** button to test if the bookmark resolves correctly
 
 5. **Test the Procedure**:
-   - In SpyWindow ¡æ Custom Procedures, select **"SetFocusSearchResultsList"**
+   - In SpyWindow ï¿½ï¿½ Custom Procedures, select **"SetFocusSearchResultsList"**
    - Click **Run** button
    - Verify:
      - ? `GetSelectedElement` operation returns selected row data
@@ -134,7 +134,7 @@ The `SearchResultsList` KnownControl bookmark in SpyWindow is currently mapped t
 If you want to diagnose the current mapping before re-mapping:
 
 1. Open SpyWindow
-2. Select Map to ¡æ **SearchResultsList**
+2. Select Map to ï¿½ï¿½ **SearchResultsList**
 3. Click **Resolve** button (without clicking Pick)
 4. SpyWindow will try to resolve the bookmark and show:
    - Current element it's mapped to

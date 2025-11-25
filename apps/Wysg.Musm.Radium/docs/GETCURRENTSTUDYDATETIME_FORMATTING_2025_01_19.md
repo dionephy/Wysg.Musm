@@ -1,4 +1,4 @@
-# GetCurrentStudyDateTime Formatting Update - 2025-01-19
+ï»¿# GetCurrentStudyDateTime Formatting Update - 2025-10-19
 
 ## User Request
 "can you change the 'GetCurrentStudyDateTime' operation output as 'YYYY-MM-DD HH:mm:ss' format?"
@@ -67,7 +67,7 @@ else
 
 ### Output Format
 - **Previous**: Raw value from `MainViewModel.StudyDateTime` (e.g., "1/19/2025 2:30:00 PM")
-- **Current**: Formatted string "yyyy-MM-dd HH:mm:ss" (e.g., "2025-01-19 14:30:00")
+- **Current**: Formatted string "yyyy-MM-dd HH:mm:ss" (e.g., "2025-10-19 14:30:00")
 
 ### Fallback Handling
 - If `DateTime.TryParse()` succeeds: Returns formatted string
@@ -87,7 +87,7 @@ Both implementations include detailed debug logging:
 #### Success Case
 1. MainViewModel.StudyDateTime = "1/19/2025 2:30:00 PM"
 2. GetCurrentStudyDateTime operation executes
-3. **Expected Output**: "2025-01-19 14:30:00"
+3. **Expected Output**: "2025-10-19 14:30:00"
 
 #### Fallback Case (Invalid Format)
 1. MainViewModel.StudyDateTime = "Invalid Date"
@@ -104,12 +104,12 @@ Both implementations include detailed debug logging:
 [ProcedureExecutor][GetCurrentStudyDateTime] Starting direct read
 [ProcedureExecutor][GetCurrentStudyDateTime] MainWindow found
 [ProcedureExecutor][GetCurrentStudyDateTime] Raw value: '1/19/2025 2:30:00 PM'
-[ProcedureExecutor][GetCurrentStudyDateTime] SUCCESS: Formatted='2025-01-19 14:30:00'
+[ProcedureExecutor][GetCurrentStudyDateTime] SUCCESS: Formatted='2025-10-19 14:30:00'
 ```
 
 ## Build Status
 - ? **SUCCESS** (0 errors, 112 MVVM Toolkit warnings - safe to ignore)
-- Fixed variable name conflict (`dt` ¡æ `studyDt`) in SpyWindow.Procedures.Exec.cs
+- Fixed variable name conflict (`dt` ï¿½ï¿½ `studyDt`) in SpyWindow.Procedures.Exec.cs
 
 ## Benefits
 1. **Consistency**: Datetime format now matches other datetime operations (e.g., ToDateTime)

@@ -1,6 +1,6 @@
-# ?? QUICK REFERENCE - All Fixes Applied
+ï»¿# ?? QUICK REFERENCE - All Fixes Applied
 
-**Date:** 2025-02-02  
+**Date:** 2025-11-02  
 **Status:** ? ALL WORKING
 
 ---
@@ -49,17 +49,17 @@ dotnet run
 ```
 
 ### Verify
-1. Type `ngi` ¡æ Snippet appears ?
-2. Type `noaa` ¡æ Hotkey appears ?
-3. Type `chest pain` ¡æ Pink color (finding) ?
-4. Type fast ¡æ No lag ?
+1. Type `ngi` ï¿½ï¿½ Snippet appears ?
+2. Type `noaa` ï¿½ï¿½ Hotkey appears ?
+3. Type `chest pain` ï¿½ï¿½ Pink color (finding) ?
+4. Type fast ï¿½ï¿½ No lag ?
 
 ---
 
 ## Build Status
 
 ```
-ºôµå ¼º°ø ?
+ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ?
 ```
 
 **No errors, no warnings**

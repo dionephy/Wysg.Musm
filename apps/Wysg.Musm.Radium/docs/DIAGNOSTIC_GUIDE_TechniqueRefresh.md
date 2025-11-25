@@ -1,7 +1,7 @@
-# Diagnostic Guide: Technique Refresh Not Working
+ï»¿# Diagnostic Guide: Technique Refresh Not Working
 
 **Issue**: Study techniques field doesn't refresh when Studyname LOINC Parts window closes  
-**Date**: 2025-01-23  
+**Date**: 2025-10-23  
 **Status**: ?? Diagnostic Mode Enabled
 
 ---
@@ -10,7 +10,7 @@
 
 ### Step 1: Enable Debug Output
 1. Open Visual Studio
-2. Go to **View** ¡æ **Output**
+2. Go to **View** ï¿½ï¿½ **Output**
 3. Select **Debug** from the dropdown
 4. Run the application in Debug mode (F5)
 
@@ -64,8 +64,8 @@ When the window closes, you should see this sequence:
 
 **Solutions**:
 1. ? **Enable Debug Output**:
-   - Visual Studio ¡æ **Tools** ¡æ **Options**
-   - **Debugging** ¡æ **General**
+   - Visual Studio ï¿½ï¿½ **Tools** ï¿½ï¿½ **Options**
+   - **Debugging** ï¿½ï¿½ **General**
    - Ensure "Redirect all Output Window text to the Immediate Window" is **unchecked**
 
 2. ? **Verify Event Handler**:
@@ -258,7 +258,7 @@ public StudynameLoincWindow(StudynameLoincViewModel vm)
     DataContext = vm;
     
     // This line MUST be present
-    Closed += OnWindowClosed;  // ¡ç Check this exists
+    Closed += OnWindowClosed;  // ï¿½ï¿½ Check this exists
 }
 ```
 
@@ -266,7 +266,7 @@ public StudynameLoincWindow(StudynameLoincViewModel vm)
 1. Set breakpoint in `OnWindowClosed` method
 2. Close the window
 3. Breakpoint should hit
-4. If not hit ¡æ Event not attached
+4. If not hit ï¿½ï¿½ Event not attached
 
 ---
 
@@ -352,11 +352,11 @@ Debug.WriteLine($"[StudynameLoincWindow] Refresh took {sw.ElapsedMilliseconds}ms
 
 **Copy-paste this into Debug Output window after closing the window:**
 
-1. If you see "RefreshStudyTechniqueFromDefaultAsync - START" ¡æ Event handler working ?
-2. If you see "StudyName is empty" ¡æ No study loaded ?
-3. If you see "No studyname ID found" ¡æ Studyname not in database ?
-4. If you see "No default combination found" ¡æ No default set ?
-5. If you see "StudyTechniques updated" ¡æ Success! ?
+1. If you see "RefreshStudyTechniqueFromDefaultAsync - START" ï¿½ï¿½ Event handler working ?
+2. If you see "StudyName is empty" ï¿½ï¿½ No study loaded ?
+3. If you see "No studyname ID found" ï¿½ï¿½ Studyname not in database ?
+4. If you see "No default combination found" ï¿½ï¿½ No default set ?
+5. If you see "StudyTechniques updated" ï¿½ï¿½ Success! ?
 
 ---
 
@@ -391,6 +391,6 @@ Before reporting an issue, verify:
 
 ---
 
-**Last Updated**: 2025-01-23  
+**Last Updated**: 2025-11-25  
 **Diagnostic Version**: 1.0  
 **Status**: ?? Active Diagnostics

@@ -1,4 +1,4 @@
-# IsMatch Operation Implementation - 2025-01-19
+ï»¿# IsMatch Operation Implementation - 2025-10-19
 
 ## Summary
 Implemented new `IsMatch` operation for SpyWindow Custom Procedures that compares two variable values and returns "true" or "false".
@@ -20,9 +20,9 @@ Implemented new `IsMatch` operation for SpyWindow Custom Procedures that compare
 
 ### Example
 ```
-Step 1: GetCurrentPatientNumber ¡æ var1 = "123456"
-Step 2: GetText(PatientIdField) ¡æ var2 = "123456"  
-Step 3: IsMatch(var1, var2) ¡æ var3 = "true"
+Step 1: GetCurrentPatientNumber ï¿½ï¿½ var1 = "123456"
+Step 2: GetText(PatientIdField) ï¿½ï¿½ var2 = "123456"  
+Step 3: IsMatch(var1, var2) ï¿½ï¿½ var3 = "true"
 ```
 
 ### Use Cases
@@ -87,19 +87,19 @@ case "IsMatch":
 ### Test Plan
 
 #### Basic Comparison
-1. Open SpyWindow ¡æ Custom Procedures
+1. Open SpyWindow ï¿½ï¿½ Custom Procedures
 2. Create procedure "TestIsMatch":
-   - Step 1: GetText(element1) ¡æ var1
-   - Step 2: GetText(element2) ¡æ var2
-   - Step 3: IsMatch(var1, var2) ¡æ var3
+   - Step 1: GetText(element1) ï¿½ï¿½ var1
+   - Step 2: GetText(element2) ï¿½ï¿½ var2
+   - Step 3: IsMatch(var1, var2) ï¿½ï¿½ var3
 3. Click "Set" on step 3
 4. **Expected**: Preview shows `true ('value1' vs 'value1')` or `false ('value1' vs 'value2')`
 
 #### Edge Cases
-- **Empty strings**: IsMatch("", "") ¡æ "true"
-- **Null handling**: IsMatch(null, null) ¡æ "true" (both converted to empty string)
-- **Case sensitivity**: IsMatch("ABC", "abc") ¡æ "false"
-- **Whitespace**: IsMatch(" text ", "text") ¡æ "false" (exact match required)
+- **Empty strings**: IsMatch("", "") ï¿½ï¿½ "true"
+- **Null handling**: IsMatch(null, null) ï¿½ï¿½ "true" (both converted to empty string)
+- **Case sensitivity**: IsMatch("ABC", "abc") ï¿½ï¿½ "false"
+- **Whitespace**: IsMatch(" text ", "text") ï¿½ï¿½ "false" (exact match required)
 
 #### Integration Testing
 1. Create procedure with IsMatch followed by conditional logic

@@ -1,4 +1,4 @@
-# Delay Operation Implementation (2025-01-20)
+ï»¿# Delay Operation Implementation (2025-10-20)
 
 ## Overview
 Added `Delay` operation to Custom Procedures to pause execution for a specified number of milliseconds. This enables timed waits between automation steps for UI element loading, animations, or other timing-dependent scenarios.
@@ -26,30 +26,30 @@ Added `Delay` operation to Custom Procedures to pause execution for a specified 
 
 ### 1. Wait for UI Element Loading
 ```
-GetSelectedElement(SearchResultsList) ¡æ var1
-Delay(500) ¡æ var2                          # Wait 500ms for element to fully render
-ClickElement(var1) ¡æ var3
+GetSelectedElement(SearchResultsList) ï¿½ï¿½ var1
+Delay(500) ï¿½ï¿½ var2                          # Wait 500ms for element to fully render
+ClickElement(var1) ï¿½ï¿½ var3
 ```
 
 ### 2. Wait Between Actions
 ```
-ClickElement(OpenButton) ¡æ var1
-Delay(1000) ¡æ var2                         # Wait 1 second for dialog to open
-SetFocus(DialogTextField) ¡æ var3
+ClickElement(OpenButton) ï¿½ï¿½ var1
+Delay(1000) ï¿½ï¿½ var2                         # Wait 1 second for dialog to open
+SetFocus(DialogTextField) ï¿½ï¿½ var3
 ```
 
 ### 3. Wait for Animation Completion
 ```
-MouseMoveToElement(MenuButton) ¡æ var1
-Delay(300) ¡æ var2                          # Wait for hover animation
-ClickElement(MenuButton) ¡æ var3
+MouseMoveToElement(MenuButton) ï¿½ï¿½ var1
+Delay(300) ï¿½ï¿½ var2                          # Wait for hover animation
+ClickElement(MenuButton) ï¿½ï¿½ var3
 ```
 
 ### 4. Rate Limiting
 ```
-GetValueFromSelection(ResultsList, "ID") ¡æ var1
-Delay(200) ¡æ var2                          # Throttle requests to avoid overload
-GetValueFromSelection(ResultsList, "Name") ¡æ var3
+GetValueFromSelection(ResultsList, "ID") ï¿½ï¿½ var1
+Delay(200) ï¿½ï¿½ var2                          # Throttle requests to avoid overload
+GetValueFromSelection(ResultsList, "Name") ï¿½ï¿½ var3
 ```
 
 ## Code Locations
@@ -113,7 +113,7 @@ case "Delay":
 ## Testing Recommendations
 
 ### SpyWindow Interactive Testing
-1. Open SpyWindow ¡æ Custom Procedures tab
+1. Open SpyWindow ï¿½ï¿½ Custom Procedures tab
 2. Create test procedure with Delay operations
 3. Verify preview shows `(delayed N ms)` after execution
 4. Test with various delay values (100ms, 500ms, 1000ms, 2000ms)
@@ -122,8 +122,8 @@ case "Delay":
 
 ### Automation Sequence Testing
 1. Add Delay to PACS method procedure (e.g., `SetFocusSearchResultsList`)
-2. Configure delay after element interaction: `GetSelectedElement` ¡æ `Delay` ¡æ `ClickElement`
-3. Run automation sequence via Settings ¡æ Automation
+2. Configure delay after element interaction: `GetSelectedElement` ï¿½ï¿½ `Delay` ï¿½ï¿½ `ClickElement`
+3. Run automation sequence via Settings ï¿½ï¿½ Automation
 4. Verify timing: operations execute in correct order with delays respected
 5. Monitor debug log for timing information
 
@@ -163,28 +163,28 @@ case "Delay":
 
 **Pattern: Retry with Backoff**
 ```
-GetSelectedElement(SearchResultsList) ¡æ var1
-IsVisible(var1) ¡æ var2
-Delay(500) ¡æ var3                          # Wait before retry
-GetSelectedElement(SearchResultsList) ¡æ var4
+GetSelectedElement(SearchResultsList) ï¿½ï¿½ var1
+IsVisible(var1) ï¿½ï¿½ var2
+Delay(500) ï¿½ï¿½ var3                          # Wait before retry
+GetSelectedElement(SearchResultsList) ï¿½ï¿½ var4
 ```
 
 **Pattern: Multi-Step with Timing**
 ```
-ClickElement(OpenButton) ¡æ var1
-Delay(300) ¡æ var2                          # Wait for menu to appear
-MouseMoveToElement(MenuItem) ¡æ var3
-Delay(100) ¡æ var4                          # Wait for hover highlight
-ClickElement(MenuItem) ¡æ var5
+ClickElement(OpenButton) ï¿½ï¿½ var1
+Delay(300) ï¿½ï¿½ var2                          # Wait for menu to appear
+MouseMoveToElement(MenuItem) ï¿½ï¿½ var3
+Delay(100) ï¿½ï¿½ var4                          # Wait for hover highlight
+ClickElement(MenuItem) ï¿½ï¿½ var5
 ```
 
 **Pattern: Sequential Actions**
 ```
-SetClipboard("Patient Name") ¡æ var1
-Delay(50) ¡æ var2                           # Ensure clipboard ready
-SimulatePaste ¡æ var3
-Delay(100) ¡æ var4                          # Wait for paste to complete
-SimulateTab ¡æ var5
+SetClipboard("Patient Name") ï¿½ï¿½ var1
+Delay(50) ï¿½ï¿½ var2                           # Ensure clipboard ready
+SimulatePaste ï¿½ï¿½ var3
+Delay(100) ï¿½ï¿½ var4                          # Wait for paste to complete
+SimulateTab ï¿½ï¿½ var5
 ```
 
 ## Known Limitations
@@ -204,7 +204,7 @@ SimulateTab ¡æ var5
 
 ## Specification Reference
 
-### FR-1180: Custom Procedure Operation ? Delay (2025-01-20)
+### FR-1180: Custom Procedure Operation ? Delay (2025-10-20)
 **Requirement**: Add operation `Delay` to Custom Procedures for timed pauses between automation steps.
 
 **Operation Signature**:
@@ -229,7 +229,7 @@ SimulateTab ¡æ var5
 **Rationale**: Many PACS systems have timing dependencies where immediate actions fail due to incomplete UI rendering, ongoing animations, or async data loading. A simple delay operation allows users to insert precise timing controls without complex retry/polling logic.
 
 ## Version History
-- **2025-01-20**: Initial implementation
+- **2025-10-20**: Initial implementation
   - Added Delay operation to SpyWindow and ProcedureExecutor
   - Default value: 100ms
   - Supports Number arg type with variable substitution
@@ -255,7 +255,7 @@ A: By design - ensures strict sequential execution. Delay blocks current thread 
 A: Yes! Set Arg1 Type to "Var" and reference any procedure variable (e.g., `var1`). Useful for dynamic timing based on previous operations.
 
 **Q: What if my delay is too short and actions still fail?**
-A: Increase delay incrementally (e.g., 100ms ¡æ 300ms ¡æ 500ms) until reliable. Some PACS UI elements require longer rendering times.
+A: Increase delay incrementally (e.g., 100ms ï¿½ï¿½ 300ms ï¿½ï¿½ 500ms) until reliable. Some PACS UI elements require longer rendering times.
 
 **Q: Can I delay between GetSelectedElement and ClickElement?**
-A: Yes, this is a common pattern: `GetSelectedElement ¡æ Delay ¡æ ClickElement` ensures element is fully ready before interaction.
+A: Yes, this is a common pattern: `GetSelectedElement ï¿½ï¿½ Delay ï¿½ï¿½ ClickElement` ensures element is fully ready before interaction.

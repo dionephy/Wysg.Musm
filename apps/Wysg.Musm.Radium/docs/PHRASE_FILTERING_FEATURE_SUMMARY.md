@@ -1,8 +1,8 @@
-# Global Phrase 3-Word Filtering for Completion
+ï»¿# Global Phrase 3-Word Filtering for Completion
 
-**Feature ID**: FR-completion-filter-2025-01-20  
+**Feature ID**: FR-completion-filter-2025-10-20  
 **Status**: ? Complete  
-**Date**: 2025-01-20
+**Date**: 2025-10-20
 
 ---
 
@@ -31,7 +31,7 @@ Global phrases contain extensive medical terminology from SNOMED CT (e.g., "liga
 
 | Phrase Type | Filtering | Rationale |
 |-------------|-----------|-----------|
-| **Global Phrases** | ¡Â3 words only | Shared phrases, reduce clutter |
+| **Global Phrases** | ï¿½ï¿½3 words only | Shared phrases, reduce clutter |
 | **Account-Specific** | No filtering | User's custom phrases, always show all |
 | **Syntax Highlighting** | No filtering | Needs all phrases including long ones |
 
@@ -45,27 +45,27 @@ Words are counted by splitting on whitespace (space, tab, CR, LF):
 ### Dual Storage Strategy
 
 ```
-¦£¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¤
-¦¢                        Database                              ¦¢
-¦¢              (ALL phrases including long ones)               ¦¢
-¦¦¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¨¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¥
-                     ¦¢
-                     ¡é
-         ¦£¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¤
-         ¦¢  PhraseService._states ¦¢
-         ¦¢   (In-memory storage)  ¦¢
-         ¦¢  ALL phrases unfiltered¦¢
-         ¦¦¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¨¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¥
-                 ¦¢
-        ¦£¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦ª¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¤
-        ¦¢                 ¦¢
-        ¡é                 ¡é
-¦£¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¤  ¦£¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¤
-¦¢ Completion   ¦¢  ¦¢ Syntax           ¦¢
-¦¢ (Filtered)   ¦¢  ¦¢ Highlighting     ¦¢
-¦¢ ¡Â3 words     ¦¢  ¦¢ (Unfiltered)     ¦¢
-¦¢              ¦¢  ¦¢ ALL phrases      ¦¢
-¦¦¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¥  ¦¦¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¥
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½                        Database                              ï¿½ï¿½
+ï¿½ï¿½              (ALL phrases including long ones)               ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+                     ï¿½ï¿½
+                     ï¿½ï¿½
+         ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+         ï¿½ï¿½  PhraseService._states ï¿½ï¿½
+         ï¿½ï¿½   (In-memory storage)  ï¿½ï¿½
+         ï¿½ï¿½  ALL phrases unfilteredï¿½ï¿½
+         ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+                 ï¿½ï¿½
+        ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+        ï¿½ï¿½                 ï¿½ï¿½
+        ï¿½ï¿½                 ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½  ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½ Completion   ï¿½ï¿½  ï¿½ï¿½ Syntax           ï¿½ï¿½
+ï¿½ï¿½ (Filtered)   ï¿½ï¿½  ï¿½ï¿½ Highlighting     ï¿½ï¿½
+ï¿½ï¿½ ï¿½ï¿½3 words     ï¿½ï¿½  ï¿½ï¿½ (Unfiltered)     ï¿½ï¿½
+ï¿½ï¿½              ï¿½ï¿½  ï¿½ï¿½ ALL phrases      ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½  ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 ```
 
 ---
@@ -97,14 +97,14 @@ Words are counted by splitting on whitespace (space, tab, CR, LF):
 
 ```csharp
 // Filtering applied here
-GetGlobalPhrasesAsync() ¡æ Returns filtered global phrases (¡Â3 words)
-GetGlobalPhrasesByPrefixAsync(prefix) ¡æ Returns filtered matches
+GetGlobalPhrasesAsync() ï¿½ï¿½ Returns filtered global phrases (ï¿½ï¿½3 words)
+GetGlobalPhrasesByPrefixAsync(prefix) ï¿½ï¿½ Returns filtered matches
 
 // No filtering (for syntax highlighting)
-GetAllPhrasesForHighlightingAsync(accountId) ¡æ Returns ALL phrases
+GetAllPhrasesForHighlightingAsync(accountId) ï¿½ï¿½ Returns ALL phrases
 
 // Helper
-CountWords(text) ¡æ Splits on whitespace, returns word count
+CountWords(text) ï¿½ï¿½ Splits on whitespace, returns word count
 ```
 
 ---
@@ -178,7 +178,7 @@ CountWords(text) ¡æ Splits on whitespace, returns word count
 - ? **Faster phrase selection** - Shorter list = easier to scan visually
 - ? **Preserved functionality** - All phrases still available via:
   - Syntax highlighting (editor shows all phrases)
-  - Phrase manager (Settings ¡æ Global Phrases)
+  - Phrase manager (Settings ï¿½ï¿½ Global Phrases)
   - SNOMED Browser
 
 ### Neutral
@@ -196,8 +196,8 @@ CountWords(text) ¡æ Splits on whitespace, returns word count
 
 | Version | Date | Description |
 |---------|------|-------------|
-| v1 (implicit) | < 2025-01-20 | No filtering |
-| **v2** | **2025-01-20** | **3-word filter for global phrases** |
+| v1 (implicit) | < 2025-10-20 | No filtering |
+| **v2** | **2025-10-20** | **3-word filter for global phrases** |
 
 ### Future Configuration Options (Not Implemented)
 
@@ -217,7 +217,7 @@ Potential enhancements if user feedback requires:
 
 **Manual Fix**:
 1. Stop app
-2. Open Settings ¡æ Global Phrases
+2. Open Settings ï¿½ï¿½ Global Phrases
 3. Click "Refresh" button
 4. Close settings and test again
 
@@ -273,7 +273,7 @@ Potential enhancements if user feedback requires:
 
 ## References
 
-- **Spec**: `docs/Spec-active.md` (FR-completion-filter-2025-01-20)
+- **Spec**: `docs/Spec-active.md` (FR-completion-filter-2025-10-20)
 - **README**: `docs/README.md` (Recent Updates section)
 - **Code**: 
   - `Services/AzureSqlPhraseService.cs`
@@ -287,9 +287,9 @@ Potential enhancements if user feedback requires:
 
 | Date | Change | Author |
 |------|--------|--------|
-| 2025-01-20 | Initial implementation with 3-word filter | GitHub Copilot + User |
-| 2025-01-20 | Added comprehensive comments and cleanup | GitHub Copilot |
+| 2025-10-20 | Initial implementation with 3-word filter | GitHub Copilot + User |
+| 2025-10-20 | Added comprehensive comments and cleanup | GitHub Copilot |
 
 ---
 
-*Last Updated: 2025-01-20*
+*Last Updated: 2025-11-25*

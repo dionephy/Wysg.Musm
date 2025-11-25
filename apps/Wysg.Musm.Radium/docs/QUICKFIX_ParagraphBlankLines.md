@@ -1,6 +1,6 @@
-# Quick Fix: Paragraph Blank Lines Preserved
+ï»¿# Quick Fix: Paragraph Blank Lines Preserved
 
-**Date**: 2025-01-23  
+**Date**: 2025-10-23  
 **Status**: ? Fixed
 
 ---
@@ -32,10 +32,10 @@ Paragraph mode wasn't preserving blank lines between paragraphs.
 
 **Changed processing order**:
 
-1. ~~Paragraph numbering ¡æ Blank line normalization~~ ?
-2. **Blank line normalization ¡æ Paragraph numbering** ?
+1. ~~Paragraph numbering ï¿½ï¿½ Blank line normalization~~ ?
+2. **Blank line normalization ï¿½ï¿½ Paragraph numbering** ?
 
-Now blank lines are normalized first (3+ ¡æ 2), then paragraphs are numbered and joined with `\n\n`.
+Now blank lines are normalized first (3+ ï¿½ï¿½ 2), then paragraphs are numbered and joined with `\n\n`.
 
 ---
 

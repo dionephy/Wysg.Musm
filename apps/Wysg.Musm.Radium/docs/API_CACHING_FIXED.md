@@ -1,4 +1,4 @@
-# ? API Caching Layer - Performance Fix Complete
+ï»¿# ? API Caching Layer - Performance Fix Complete
 
 ## Problem Identified
 
@@ -52,9 +52,9 @@ public async Task<IReadOnlyList<string>> GetAllPhrasesForHighlightingAsync(long 
 #### Architecture Flow
 
 ```
-¦£¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¤
-¦¢  DB <-> API <-> ApiPhraseServiceAdapter (CACHE) <-> UI           ¦¢
-¦¦¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¥
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½  DB <-> API <-> ApiPhraseServiceAdapter (CACHE) <-> UI           ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 ```
 
 #### Caching Strategy
@@ -63,48 +63,48 @@ public async Task<IReadOnlyList<string>> GetAllPhrasesForHighlightingAsync(long 
 ```
 1. User logs in
 2. SplashLoginViewModel.OnInitializeStarted() calls:
-   ¦¦¦¡> _phrases.PreloadAsync(accountId)
-       ¦§¦¡> _apiClient.GetAllPhrasesAsync(accountId)     // Account phrases
-       ¦¦¦¡> _apiClient.GetGlobalPhrasesAsync()            // Global phrases
+   ï¿½ï¿½ï¿½ï¿½> _phrases.PreloadAsync(accountId)
+       ï¿½ï¿½ï¿½ï¿½> _apiClient.GetAllPhrasesAsync(accountId)     // Account phrases
+       ï¿½ï¿½ï¿½ï¿½> _apiClient.GetGlobalPhrasesAsync()            // Global phrases
 3. Both stored in ApiPhraseServiceAdapter:
-   ¦§¦¡> _cachedPhrases (account-specific)
-   ¦¦¦¡> _cachedGlobal (global phrases)
+   ï¿½ï¿½ï¿½ï¿½> _cachedPhrases (account-specific)
+   ï¿½ï¿½ï¿½ï¿½> _cachedGlobal (global phrases)
 4. _loaded = true (cache populated)
 ```
 
 **Subsequent Calls (From Cache):**
 ```
 1. Syntax Highlighting:
-   ¦¦¦¡> GetAllPhrasesForHighlightingAsync(accountId)
-       ¦§¦¡> EnsureLoadedAsync() ¡æ checks _loaded flag ¡æ returns immediately
-       ¦§¦¡> Filters _cachedPhrases for account
-       ¦§¦¡> Filters _cachedGlobal
-       ¦¦¦¡> Returns COMBINED set (NO API CALL)
+   ï¿½ï¿½ï¿½ï¿½> GetAllPhrasesForHighlightingAsync(accountId)
+       ï¿½ï¿½ï¿½ï¿½> EnsureLoadedAsync() ï¿½ï¿½ checks _loaded flag ï¿½ï¿½ returns immediately
+       ï¿½ï¿½ï¿½ï¿½> Filters _cachedPhrases for account
+       ï¿½ï¿½ï¿½ï¿½> Filters _cachedGlobal
+       ï¿½ï¿½ï¿½ï¿½> Returns COMBINED set (NO API CALL)
 
 2. Completion Window:
-   ¦¦¦¡> GetCombinedPhrasesByPrefixAsync(accountId, prefix, limit)
-       ¦§¦¡> EnsureLoadedAsync() ¡æ returns immediately
-       ¦§¦¡> Filters _cachedPhrases by prefix
-       ¦§¦¡> Filters _cachedGlobal by prefix
-       ¦¦¦¡> Returns COMBINED matches (NO API CALL)
+   ï¿½ï¿½ï¿½ï¿½> GetCombinedPhrasesByPrefixAsync(accountId, prefix, limit)
+       ï¿½ï¿½ï¿½ï¿½> EnsureLoadedAsync() ï¿½ï¿½ returns immediately
+       ï¿½ï¿½ï¿½ï¿½> Filters _cachedPhrases by prefix
+       ï¿½ï¿½ï¿½ï¿½> Filters _cachedGlobal by prefix
+       ï¿½ï¿½ï¿½ï¿½> Returns COMBINED matches (NO API CALL)
 
 3. Settings Tab:
-   ¦¦¦¡> GetAllPhraseMetaAsync(accountId)
-       ¦§¦¡> EnsureLoadedAsync() ¡æ returns immediately
-       ¦¦¦¡> Returns _cachedPhrases (NO API CALL)
+   ï¿½ï¿½ï¿½ï¿½> GetAllPhraseMetaAsync(accountId)
+       ï¿½ï¿½ï¿½ï¿½> EnsureLoadedAsync() ï¿½ï¿½ returns immediately
+       ï¿½ï¿½ï¿½ï¿½> Returns _cachedPhrases (NO API CALL)
 ```
 
 **Cache Invalidation:**
 ```
 1. User adds/toggles/deletes phrase:
-   ¦¦¦¡> API call updates database
-   ¦¦¦¡> Cache updated immediately in-memory
-   ¦¦¦¡> No reload needed!
+   ï¿½ï¿½ï¿½ï¿½> API call updates database
+   ï¿½ï¿½ï¿½ï¿½> Cache updated immediately in-memory
+   ï¿½ï¿½ï¿½ï¿½> No reload needed!
 
 2. Manual refresh:
-   ¦¦¦¡> RefreshPhrasesAsync(accountId)
-       ¦§¦¡> Sets _loaded = false
-       ¦¦¦¡> Next call reloads from API
+   ï¿½ï¿½ï¿½ï¿½> RefreshPhrasesAsync(accountId)
+       ï¿½ï¿½ï¿½ï¿½> Sets _loaded = false
+       ï¿½ï¿½ï¿½ï¿½> Next call reloads from API
 ```
 
 ### 3. Performance Improvements
@@ -186,7 +186,7 @@ Norm
 
 ### 4. Settings Tab Test
 
-Open Settings ¡æ Phrases tab
+Open Settings ï¿½ï¿½ Phrases tab
 
 **Expected:**
 - Grid shows 2358 phrases
@@ -231,13 +231,13 @@ Open Settings ¡æ Phrases tab
 ### Before (Direct DB Access)
 
 ```
-¦£¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¤
-¦¢  PostgreSQL DB                              ¦¢
-¦¢  ¦¦¦¡> PhraseService (with internal cache)   ¦¢
-¦¢      ¦¦¦¡> MainViewModel                      ¦¢
-¦¢          ¦§¦¡> Syntax highlighting           ¦¢
-¦¢          ¦¦¦¡> Completion window              ¦¢
-¦¦¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¥
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½  PostgreSQL DB                              ï¿½ï¿½
+ï¿½ï¿½  ï¿½ï¿½ï¿½ï¿½> PhraseService (with internal cache)   ï¿½ï¿½
+ï¿½ï¿½      ï¿½ï¿½ï¿½ï¿½> MainViewModel                      ï¿½ï¿½
+ï¿½ï¿½          ï¿½ï¿½ï¿½ï¿½> Syntax highlighting           ï¿½ï¿½
+ï¿½ï¿½          ï¿½ï¿½ï¿½ï¿½> Completion window              ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 ```
 
 **Pros:** Simple, fast  
@@ -246,14 +246,14 @@ Open Settings ¡æ Phrases tab
 ### After (API with Cache Layer)
 
 ```
-¦£¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¤
-¦¢  Azure SQL DB                                    ¦¢
-¦¢  ¦¦¦¡> REST API (GlobalPhrasesController)         ¦¢
-¦¢      ¦¦¦¡> ApiPhraseServiceAdapter (IN-MEMORY)    ¦¢
-¦¢          ¦¦¦¡> MainViewModel                       ¦¢
-¦¢              ¦§¦¡> Syntax highlighting            ¦¢
-¦¢              ¦¦¦¡> Completion window               ¦¢
-¦¦¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¥
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½  Azure SQL DB                                    ï¿½ï¿½
+ï¿½ï¿½  ï¿½ï¿½ï¿½ï¿½> REST API (GlobalPhrasesController)         ï¿½ï¿½
+ï¿½ï¿½      ï¿½ï¿½ï¿½ï¿½> ApiPhraseServiceAdapter (IN-MEMORY)    ï¿½ï¿½
+ï¿½ï¿½          ï¿½ï¿½ï¿½ï¿½> MainViewModel                       ï¿½ï¿½
+ï¿½ï¿½              ï¿½ï¿½ï¿½ï¿½> Syntax highlighting            ï¿½ï¿½
+ï¿½ï¿½              ï¿½ï¿½ï¿½ï¿½> Completion window               ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 ```
 
 **Pros:** Scalable, multi-user, centralized  
@@ -377,6 +377,6 @@ Open Settings ¡æ Phrases tab
 
 ---
 
-*Last updated: 2025-01-23*
+*Last Updated: 2025-11-25*
 *Issue: Phrase caching broken after API migration*
 *Fix: Combined phrase caching in `ApiPhraseServiceAdapter`*

@@ -1,6 +1,6 @@
 ﻿# Feature Specification: Radium (Cumulative)
 
-> **⚠️ DEPRECATION NOTICE (2025-01-19)**  
+> **⚠️ DEPRECATION NOTICE (2025-10-19)**  
 > This file is being phased out in favor of an archive-based structure.
 > 
 > **Please use instead:**
@@ -165,18 +165,18 @@
 - FR-660 Application registers a global hotkey from Settings (Keyboard → Open study). When pressed, it MUST invoke `MainViewModel.RunOpenStudyShortcut()`.
 - FR-661 The invoked shortcut sequence MUST honor the PACS-scoped `automation.json` panes (new/add/after open). Modules like `ShowTestMessage` must execute if present.
 
-## Update: New PACS Method Items - InvokeSendReport and SendReportWithoutHeader (2025-02-09, updated 2025-02-10)
+## Update: New PACS Method Items - InvokeSendReport and SendReportWithoutHeader (2025-11-09, updated 2025-11-10)
 - FR-1190 Add new PACS method "Invoke send report" (`InvokeSendReport`) to SpyWindow Custom Procedures dropdown for primary send report automation.
-- FR-1191 Add new PACS method "Send report without header" (`SendReportWithoutHeader`) to SpyWindow Custom Procedures dropdown for sending reports without header information (replaced SendReportRetry on 2025-02-10).
+- FR-1191 Add new PACS method "Send report without header" (`SendReportWithoutHeader`) to SpyWindow Custom Procedures dropdown for sending reports without header information (replaced SendReportRetry on 2025-11-10).
 - FR-1192 `PacsService` MUST expose `InvokeSendReportAsync()` wrapper that executes the `InvokeSendReport` custom procedure tag.
-- FR-1193 `PacsService` MUST expose `SendReportWithoutHeaderAsync()` wrapper that executes the `SendReportWithoutHeader` custom procedure tag (replaced SendReportRetryAsync on 2025-02-10).
+- FR-1193 `PacsService` MUST expose `SendReportWithoutHeaderAsync()` wrapper that executes the `SendReportWithoutHeader` custom procedure tag (replaced SendReportRetryAsync on 2025-11-10).
 - FR-1194 Both methods MUST return `Task<bool>` and always return `true` after procedure execution (success/failure determined by PACS state validation).
 - FR-1195 Custom procedures for both methods MUST be configured per-PACS profile in SpyWindow (no auto-seeded defaults provided).
 - FR-1196 Rationale: InvokeSendReport provides primary send report entry point; SendReportWithoutHeader enables sending reports without header component, which is commonly needed for certain PACS workflows.
 - FR-1197 User workflow: Configure procedures in SpyWindow using bookmark resolution, click operations, delays, and validation checks; test using Run button before deployment.
 - FR-1198 These methods complement existing `SendReport` method (which accepts findings/conclusion parameters) and provide alternative entry points for PACS-specific automation.
 
-## Update: New Custom Procedure Operation - SetValue (2025-02-09)
+## Update: New Custom Procedure Operation - SetValue (2025-11-09)
 - FR-1200 Add new operation "SetValue" to SpyWindow Custom Procedures with Arg1=Element (target control) and Arg2=String or Var (value to set).
 - FR-1201 SetValue operation MUST use UIA `ValuePattern.SetValue()` to programmatically set text field and control values.
 - FR-1202 Operation MUST validate element supports ValuePattern before attempting to set value; return `(no value pattern)` if unsupported.
@@ -193,7 +193,7 @@
 - FR-1213 Use cases: Fill text fields, copy values between controls, clear fields, populate forms, transform and set data from variables.
 - FR-1214 Best practices: Use SetFocus before SetValue for reliability; verify value format matches control expectations; add validation after SetValue using GetText.
 
-## Update: New PACS Method - ClearReport (2025-02-09)
+## Update: New PACS Method - ClearReport (2025-11-09)
 - FR-1220 Add new PACS method "Clear report" (`ClearReport`) to SpyWindow Custom Procedures dropdown for clearing report text fields in PACS.
 - FR-1221 `PacsService` MUST expose `ClearReportAsync()` wrapper that executes the `ClearReport` custom procedure tag.
 - FR-1222 Method MUST return `Task<bool>` and always return `true` after procedure execution (success/failure determined by PACS state validation).
@@ -202,7 +202,7 @@
 - FR-1225 User workflow: Configure procedure in SpyWindow using SetValue operations with empty strings for findings/conclusion fields; test using Run button before deployment.
 - FR-1226 Common implementation: Use SetValue operations to clear findings field, conclusion field, and any other report text fields specific to PACS.
 
-## Update: New Custom Procedure Operation - SimulateSelectAll (2025-02-09)
+## Update: New Custom Procedure Operation - SimulateSelectAll (2025-11-09)
 - FR-1230 Add new operation "SimulateSelectAll" to SpyWindow Custom Procedures for selecting all text in the currently focused control.
 - FR-1231 Operation MUST send Ctrl+A keyboard shortcut using `System.Windows.Forms.SendKeys.SendWait("^a")`.
 - FR-1232 Operation requires no arguments (Arg1, Arg2, Arg3 all disabled).
@@ -214,7 +214,7 @@
 - FR-1238 Best practices: Use SetFocus before SimulateSelectAll to ensure correct control is targeted; combine with SimulatePaste for replace-all operation; use with SetClipboard for copy-all scenarios.
 - FR-1239 Integration: Can be chained with other keyboard operations (SimulatePaste, SetClipboard) and clipboard operations for complete text manipulation workflows.
 
-## Update: New Custom Procedure Operation - SimulateDelete (2025-02-09)
+## Update: New Custom Procedure Operation - SimulateDelete (2025-11-09)
 - FR-1240 Add new operation "SimulateDelete" to SpyWindow Custom Procedures for deleting selected text or character at cursor position.
 - FR-1241 Operation MUST send Delete key using `System.Windows.Forms.SendKeys.SendWait("{DELETE}")`.
 - FR-1242 Operation requires no arguments (Arg1, Arg2, Arg3 all disabled).
@@ -227,7 +227,7 @@
 - FR-1249 Best practices: Use SimulateSelectAll + SimulateDelete for clearing entire field; use SetFocus before SimulateDelete to ensure correct control; prefer SetValue with empty string for simple field clearing when possible.
 - FR-1250 Integration: Can be chained with SimulateSelectAll for field clearing, works with SetFocus for targeted deletion, combines with other keyboard operations for complex text manipulation.
 
-## Bugfix: IsMatch and IsAlmostMatch Argument Type Forcing (2025-02-09)
+## Bugfix: IsMatch and IsAlmostMatch Argument Type Forcing (2025-11-09)
 - BUG-1260 Fix issue where IsMatch and IsAlmostMatch operations force both Arg1 and Arg2 to Var type, preventing users from using String literals for comparison.
 - FIX-1261 Change IsMatch and IsAlmostMatch configuration to not force argument types; only enable arguments without resetting Type property.
 - FIX-1262 Allow Arg1 and Arg2 to accept both String (literal comparison value) and Var (variable reference) types for flexibility.
@@ -235,7 +235,7 @@
 - FIX-1264 Impact: Existing procedures with IsMatch/IsAlmostMatch preserve user-selected argument types; new procedures allow flexible String or Var selection.
 - FIX-1265 Common use case: Compare variable to literal string `IsMatch(var1, "true")` to check boolean results or validate expected values.
 
-## Update: New Custom Procedure Operation - And (2025-02-09)
+## Update: New Custom Procedure Operation - And (2025-11-09)
 - FR-1270 Add new operation "And" to SpyWindow Custom Procedures for boolean logic operations with two Var arguments.
 - FR-1271 Operation MUST accept Arg1=Var and Arg2=Var, both representing boolean values ("true" or "false").
 - FR-1272 Operation returns "true" if BOTH arguments are "true" (case-insensitive), otherwise returns "false".
@@ -247,7 +247,7 @@
 - FR-1278 Best practices: Chain with IsMatch/IsVisible/IsAlmostMatch operations; use for multi-condition validation; combine with conditional execution patterns.
 - FR-1279 Common patterns: `IsMatch(var1, "expected") → var2`, `IsMatch(var3, "expected2") → var4`, `And(var2, var4) → var5` to check if both conditions pass.
 
-## Enhancement: SendReport Module Retry Logic (2025-02-09)
+## Enhancement: SendReport Module Retry Logic (2025-11-09)
 - FR-1280 Update "SendReport" automation module to implement comprehensive retry flow with user interaction.
 - FR-1281 Module execution flow: (1) Run SendReport custom procedure → (2) If result="true", run InvokeSendReport and succeed → (3) If result="false", prompt user with "Send failed. Retry?" messagebox.
 - FR-1282 Retry flow: If user clicks OK → Run ClearReport custom procedure → If result="true", retry SendReport from step 1 → If result="false", show "Clear Report failed. Retry?" messagebox.
@@ -259,7 +259,7 @@
 - FR-1288 User experience: Clear prompts for each failure scenario; OK/Cancel buttons for user control; status messages reflect current operation state.
 - FR-1289 Debug logging: Comprehensive logging at each step for troubleshooting; logs procedure results, user choices, and exception details.
 
-## Update: Keyboard Hotkey Shift Modifier Support (2025-02-11)
+## Update: Keyboard Hotkey Shift Modifier Support (2025-11-11)
 - FR-1400 The Keyboard settings tab MUST allow capturing the Shift key as a modifier along with Ctrl / Alt / Win.
 - FR-1401 When user presses any combination including Shift (e.g., Ctrl+Shift+O, Shift+Alt+T), the captured text MUST include "Shift" exactly once even if both LeftShift and RightShift are held.
 - FR-1402 Pressing only Shift (without a non-modifier key) MUST update the textbox to show just "Shift" (consistent with existing behavior for single modifiers) until an additional key is pressed.

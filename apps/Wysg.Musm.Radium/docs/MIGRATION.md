@@ -1,6 +1,6 @@
-# Documentation Migration Guide
+ï»¿# Documentation Migration Guide
 
-**Date**: 2025-01-19  
+**Date**: 2025-10-19  
 **Purpose**: Guide for transitioning from monolithic documentation to archive-based structure
 
 ---
@@ -12,28 +12,28 @@ We've reorganized documentation to improve maintainability and reduce file sizes
 ### Before (Monolithic)
 ```
 docs/
-¦§¦¡¦¡ Spec.md (979 lines, 63 KB) ¡ç Too large
-¦§¦¡¦¡ Plan.md (1,317 lines, 88 KB) ¡ç Too large
-¦¦¦¡¦¡ Tasks.md (665 lines, 62 KB) ¡ç Too large
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Spec.md (979 lines, 63 KB) ï¿½ï¿½ Too large
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Plan.md (1,317 lines, 88 KB) ï¿½ï¿½ Too large
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Tasks.md (665 lines, 62 KB) ï¿½ï¿½ Too large
 ```
 
 ### After (Archive-Based)
 ```
 docs/
-¦§¦¡¦¡ Spec-active.md (Current, ~200 lines)
-¦§¦¡¦¡ Plan-active.md (Current, ~200 lines)
-¦§¦¡¦¡ Tasks.md (Active only, ~200 lines)
-¦§¦¡¦¡ archive/
-¦¢   ¦§¦¡¦¡ README.md (Index of all archives)
-¦¢   ¦§¦¡¦¡ 2024/
-¦¢   ¦¢   ¦§¦¡¦¡ Spec-2024-Q4.md
-¦¢   ¦¢   ¦§¦¡¦¡ Plan-2024-Q4.md
-¦¢   ¦¢   ¦¦¦¡¦¡ Tasks-2024-Q4.md
-¦¢   ¦¦¦¡¦¡ 2025-Q1/
-¦¢       ¦§¦¡¦¡ Spec-2025-Q1-foreign-text-sync.md
-¦¢       ¦§¦¡¦¡ Plan-2025-Q1-foreign-text-sync.md
-¦¢       ¦¦¦¡¦¡ ... (more feature-specific archives)
-¦¦¦¡¦¡ MIGRATION.md (this file)
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Spec-active.md (Current, ~200 lines)
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Plan-active.md (Current, ~200 lines)
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Tasks.md (Active only, ~200 lines)
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ archive/
+ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ README.md (Index of all archives)
+ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 2024/
+ï¿½ï¿½   ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Spec-2024-Q4.md
+ï¿½ï¿½   ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Plan-2024-Q4.md
+ï¿½ï¿½   ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Tasks-2024-Q4.md
+ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 2025-Q1/
+ï¿½ï¿½       ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Spec-2025-Q1-foreign-text-sync.md
+ï¿½ï¿½       ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Plan-2025-Q1-foreign-text-sync.md
+ï¿½ï¿½       ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ... (more feature-specific archives)
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ MIGRATION.md (this file)
 ```
 
 ---
@@ -53,13 +53,13 @@ docs/
 ### Example Searches
 
 **"I need the Foreign Text Sync requirements"**
-¡æ FR-1100..FR-1136 in `archive/2025-Q1/Spec-2025-Q1-foreign-text-sync.md`
+ï¿½ï¿½ FR-1100..FR-1136 in `archive/2025-Q1/Spec-2025-Q1-foreign-text-sync.md`
 
 **"How was Study Technique management implemented?"**
-¡æ `archive/2024/Plan-2024-Q4.md` (search for "Study Technique")
+ï¿½ï¿½ `archive/2024/Plan-2024-Q4.md` (search for "Study Technique")
 
 **"What tasks were completed for PACS automation?"**
-¡æ `archive/2024/Tasks-2024-Q4.md` (search for "T540..T680")
+ï¿½ï¿½ `archive/2024/Tasks-2024-Q4.md` (search for "T540..T680")
 
 ---
 
@@ -106,8 +106,8 @@ docs/
 - [ ] Update developer onboarding guide
 
 ### Phase 5: Deprecate Old Files
-- [ ] Rename Spec.md ¡æ Spec-old.md (keep for reference)
-- [ ] Rename Plan.md ¡æ Plan-old.md (keep for reference)
+- [ ] Rename Spec.md ï¿½ï¿½ Spec-old.md (keep for reference)
+- [ ] Rename Plan.md ï¿½ï¿½ Plan-old.md (keep for reference)
 - [ ] Add deprecation notice to old files
 - [ ] Remove after 30 days if no issues
 
@@ -190,6 +190,6 @@ If you have suggestions for improving the archive structure, please discuss with
 
 ---
 
-*Migration initiated: 2025-01-19*  
+*Migration initiated: 2025-10-19*  
 *Transition period: 30 days (until 2025-02-18)*  
 *Status: Phase 2 in progress*

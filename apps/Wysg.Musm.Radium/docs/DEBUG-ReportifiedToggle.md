@@ -1,4 +1,4 @@
-# DEBUG: Reportified Toggle Not Working
+ï»¿# DEBUG: Reportified Toggle Not Working
 
 **Date**: 2025-01-24  
 **Status**: ?? Debugging  
@@ -41,7 +41,7 @@ Debug logging has been added to the following methods to trace the execution flo
 ## Testing Steps
 
 ### Step 1: Enable Debug Output Window
-1. In Visual Studio, go to **View ¡æ Output**
+1. In Visual Studio, go to **View ï¿½ï¿½ Output**
 2. In the Output dropdown, select **Debug**
 
 ### Step 2: Test Reportified Toggle (Simple Case)
@@ -102,7 +102,7 @@ Debug logging has been added to the following methods to trace the execution flo
 - Example:
   - Raw: `no acute findings`
   - Proofread: `No acute intracranial findings`
-  - Display shows: `No acute intracranial findings.` ¡ç Reportified version of proofread text
+  - Display shows: `No acute intracranial findings.` ï¿½ï¿½ Reportified version of proofread text
 
 ---
 
@@ -207,7 +207,7 @@ If the issue persists after reviewing debug output:
 - `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.ReportifyHelpers.cs` - Transformation implementation
 - `apps\Wysg.Musm.Radium\Controls\CurrentReportEditorPanel.xaml` - XAML bindings with triggers
 - `apps\Wysg.Musm.Radium\docs\FEATURE-ProofreadToggleBinding.md` - Feature documentation
-- `apps\Wysg.Musm.Radium\docs\CRITICAL_FIX_2025-01-23_ReportifySavingWrongValues.md` - Previous reportify fix
+- `apps\Wysg.Musm.Radium\docs\CRITICAL_FIX_2025-10-23_ReportifySavingWrongValues.md` - Previous reportify fix
 
 ---
 

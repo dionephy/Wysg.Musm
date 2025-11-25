@@ -90,21 +90,58 @@ namespace Wysg.Musm.Radium.Services
         {
             try
             {
-                if (!File.Exists(MainPath)) return null;
+                if (!File.Exists(MainPath))
+                {
+                    Debug.WriteLine($"[RadiumLocalSettings] Settings file does not exist: {MainPath}");
+                    return null;
+                }
+                
                 var enc = File.ReadAllBytes(MainPath);
+                Debug.WriteLine($"[RadiumLocalSettings] Read {enc.Length} encrypted bytes from {MainPath}");
+                
                 var plain = ProtectedData.Unprotect(enc, null, DataProtectionScope.CurrentUser);
                 var text = Encoding.UTF8.GetString(plain);
+                Debug.WriteLine($"[RadiumLocalSettings] Decrypted {text.Length} chars");
+                
                 foreach (var line in text.Split('\n'))
                 {
                     var idx = line.IndexOf('=');
                     if (idx <= 0) continue;
                     var k = line[..idx];
                     var v = line[(idx + 1)..];
-                    if (k == key) return v;
+                    if (k == key)
+                    {
+                        Debug.WriteLine($"[RadiumLocalSettings] Found key '{key}' with value length {v.Length}");
+                        return v;
+                    }
+                }
+                Debug.WriteLine($"[RadiumLocalSettings] Key '{key}' not found in settings");
+                return null;
+            }
+            catch (CryptographicException ex)
+            {
+                Debug.WriteLine($"[RadiumLocalSettings] Cryptographic error reading key '{key}': {ex.Message}");
+                Debug.WriteLine($"[RadiumLocalSettings] Settings file may be corrupted. Attempting to delete: {MainPath}");
+                try
+                {
+                    // Delete corrupted file so user can reconfigure
+                    if (File.Exists(MainPath))
+                    {
+                        File.Delete(MainPath);
+                        Debug.WriteLine($"[RadiumLocalSettings] Deleted corrupted settings file");
+                    }
+                }
+                catch (Exception deleteEx)
+                {
+                    Debug.WriteLine($"[RadiumLocalSettings] Failed to delete corrupted file: {deleteEx.Message}");
                 }
                 return null;
             }
-            catch { return null; }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[RadiumLocalSettings] Error reading key '{key}': {ex.Message}");
+                return null;
+            }
         }
 
         /// <summary>
@@ -124,20 +161,39 @@ namespace Wysg.Musm.Radium.Services
         {
             try
             {
+                Debug.WriteLine($"[RadiumLocalSettings] WriteSecret key='{key}' valueLength={value.Length}");
                 Directory.CreateDirectory(Dir);
+                Debug.WriteLine($"[RadiumLocalSettings] Ensured directory exists: {Dir}");
+                
                 var dict = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 if (File.Exists(MainPath))
                 {
-                    var enc = File.ReadAllBytes(MainPath);
-                    var plain = ProtectedData.Unprotect(enc, null, DataProtectionScope.CurrentUser);
-                    var text = Encoding.UTF8.GetString(plain);
-                    foreach (var line in text.Split('\n'))
+                    Debug.WriteLine($"[RadiumLocalSettings] Loading existing settings from {MainPath}");
+                    try
                     {
-                        var idx = line.IndexOf('=');
-                        if (idx <= 0) continue;
-                        dict[line[..idx]] = line[(idx + 1)..];
+                        var enc = File.ReadAllBytes(MainPath);
+                        var plain = ProtectedData.Unprotect(enc, null, DataProtectionScope.CurrentUser);
+                        var text = Encoding.UTF8.GetString(plain);
+                        foreach (var line in text.Split('\n'))
+                        {
+                            var idx = line.IndexOf('=');
+                            if (idx <= 0) continue;
+                            dict[line[..idx]] = line[(idx + 1)..];
+                        }
+                        Debug.WriteLine($"[RadiumLocalSettings] Loaded {dict.Count} existing keys");
+                    }
+                    catch (CryptographicException ex)
+                    {
+                        Debug.WriteLine($"[RadiumLocalSettings] Cryptographic error loading existing settings: {ex.Message}");
+                        Debug.WriteLine($"[RadiumLocalSettings] Starting with empty settings (corrupted file will be overwritten)");
+                        // Continue with empty dict - will overwrite corrupted file
                     }
                 }
+                else
+                {
+                    Debug.WriteLine($"[RadiumLocalSettings] No existing settings file, creating new");
+                }
+                
                 dict[key] = value;
                 var sb = new StringBuilder();
                 foreach (var kv in dict)
@@ -147,8 +203,13 @@ namespace Wysg.Musm.Radium.Services
                 var bytes = Encoding.UTF8.GetBytes(sb.ToString());
                 var encOut = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
                 File.WriteAllBytes(MainPath, encOut);
+                Debug.WriteLine($"[RadiumLocalSettings] Successfully wrote {encOut.Length} encrypted bytes to {MainPath}");
             }
-            catch { /* Swallow write errors to avoid crashing settings UI */ }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[RadiumLocalSettings] Error writing key '{key}': {ex.GetType().Name} - {ex.Message}");
+                Debug.WriteLine($"[RadiumLocalSettings] Stack trace: {ex.StackTrace}");
+            }
         }
 
         /// <summary>

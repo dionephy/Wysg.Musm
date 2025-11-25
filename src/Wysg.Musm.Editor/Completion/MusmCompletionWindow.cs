@@ -26,7 +26,7 @@ namespace Wysg.Musm.Editor.Completion
             _editor = editor;
 
             CloseAutomatically = true;
-            CompletionList.IsFiltering = true;
+            CompletionList.IsFiltering = false; // CRITICAL FIX: Disable AvalonEdit's built-in filtering since we do our own filtering in the provider
             // Width grows with content; height we manage manually each rebuild
             SizeToContent = SizeToContent.Width;
             MaxHeight = 320; // hard ceiling safeguard
@@ -113,16 +113,12 @@ namespace Wysg.Musm.Editor.Completion
                     ScrollViewer.SetHorizontalScrollBarVisibility(lb, ScrollBarVisibility.Disabled);
                     ScrollViewer.SetVerticalScrollBarVisibility(lb, ScrollBarVisibility.Auto);
 
-                    // Item template: bind to Content to show "{trigger} → {description}" for snippets
-                    var dt = new DataTemplate();
-                    var f = new FrameworkElementFactory(typeof(TextBlock));
-                    f.SetBinding(TextBlock.TextProperty, new Binding("Content")); // ✅ Changed from "Text" to "Content"
-                    f.SetValue(TextBlock.MarginProperty, new Thickness(0));
-                    f.SetValue(TextBlock.PaddingProperty, new Thickness(0));
-                    f.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
-                    f.SetValue(TextBlock.ForegroundProperty, new SolidColorBrush(Color.FromRgb(220,220,220)));
-                    dt.VisualTree = f;
-                    lb.ItemTemplate = dt;
+                    // CRITICAL FIX: Don't use custom ItemTemplate - let AvalonEdit handle it
+                    // Instead, just set DisplayMemberPath to "Content" to use the ICompletionData.Content property
+                    lb.DisplayMemberPath = "Content";
+                    
+                    // Remove any existing ItemTemplate that might interfere
+                    lb.ItemTemplate = null;
 
                     // Item container style (selection visuals)
                     var itemStyle = new Style(typeof(ListBoxItem));
@@ -389,13 +385,26 @@ int caret = _editor.CaretOffset;
         /// <summary>One-liner to show a completion window for current word.</summary>
         public static MusmCompletionWindow ShowForCurrentWord(TextEditor editor, IEnumerable<ICompletionData> items)
         {
-     var w = new MusmCompletionWindow(editor);
-  var target = w.CompletionList.CompletionData;
-         foreach (var item in items) target.Add(item);
+            var w = new MusmCompletionWindow(editor);
+            var target = w.CompletionList.CompletionData;
+            
+            int itemCount = 0;
+            foreach (var item in items)
+            {
+                target.Add(item);
+                itemCount++;
+                System.Diagnostics.Debug.WriteLine($"[MusmCompletionWindow] Added item: Content='{item.Content}' Text='{item.Text}'");
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"[MusmCompletionWindow] Total items added: {itemCount}");
+            System.Diagnostics.Debug.WriteLine($"[MusmCompletionWindow] ListBox item count: {w.CompletionList?.ListBox?.Items.Count ?? -1}");
+            System.Diagnostics.Debug.WriteLine($"[MusmCompletionWindow] ListBox DisplayMemberPath: '{w.CompletionList?.ListBox?.DisplayMemberPath ?? "(null)"}'");
+            System.Diagnostics.Debug.WriteLine($"[MusmCompletionWindow] ListBox ItemTemplate: {(w.CompletionList?.ListBox?.ItemTemplate == null ? "null" : "not null")}");
+            
             w.ComputeReplaceRegionFromCaret();
-     w.Show();
+            w.Show();
             // Auto-select first item by default (new behavior FR-264)
-   w.EnsureFirstItemSelected();
+            w.EnsureFirstItemSelected();
             return w;
         }
 

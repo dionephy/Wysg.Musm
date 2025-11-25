@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Diagnostics;
+using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -102,11 +103,11 @@ namespace Wysg.Musm.Radium.ViewModels
                     {
                         try
                         {
-                            // ? Set Firebase token in API client
+                            // Set Firebase token in API client
                             _apiClient.SetAuthToken(refreshed.IdToken);
                             Debug.WriteLine("[Splash][Init] Firebase token set in API client");
 
-                            // ? Ensure account via API (replaces _central.EnsureAccountAndGetSettingsAsync)
+                            // Ensure account via API
                             swStage.Restart();
                             StatusMessage = "Ensuring account...";
                             Debug.WriteLine("[Splash][Init][Stage] EnsureAccount start user=" + refreshed.UserId);
@@ -146,7 +147,6 @@ namespace Wysg.Musm.Radium.ViewModels
                                 if (phraseSvc != null)
                                 {
                                     var swP = Stopwatch.StartNew();
-                                    // Force refresh to load with auth token
                                     await phraseSvc.RefreshPhrasesAsync(accountId);
                                     swP.Stop();
                                     Debug.WriteLine($"[Splash][Init][Stage] Phrase preload (with token) ms={swP.ElapsedMilliseconds}");
@@ -158,14 +158,23 @@ namespace Wysg.Musm.Radium.ViewModels
                             Debug.WriteLine($"[Splash][Init] Silent login success (tenant set) with PACS={tenant.PacsKey}");
                             LoginSuccess?.Invoke();
 
-                            // ? Background last login update via API (replaces _central.UpdateLastLoginAsync)
-                            // Note: Already updated in EnsureAccountAsync, but keeping for explicit tracking
+                            // Background last login update via API
                             BackgroundTask.Run("LastLoginUpdate", async () =>
                             {
                                 try { await _apiClient.UpdateLastLoginAsync(accountId); }
                                 catch (Exception ex) { Debug.WriteLine($"[LastLogin] Background update error: {ex.Message}"); }
                             });
                             return;
+                        }
+                        catch (HttpRequestException hre)
+                        {
+                            Debug.WriteLine($"[Splash][Init] API connection failed: {hre.Message}");
+                            ErrorMessage = "Cannot connect to server. Please start the API.";
+                        }
+                        catch (TaskCanceledException tce)
+                        {
+                            Debug.WriteLine($"[Splash][Init] API request timeout: {tce.Message}");
+                            ErrorMessage = "Server connection timeout.";
                         }
                         catch (OperationCanceledException oce)
                         {
@@ -221,46 +230,72 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine("[Splash][Login] Auth success=" + auth.Success);
                 if (!auth.Success) { ErrorMessage = auth.Error; return; }
 
-                // ? Set Firebase token in API client
+                // Set Firebase token in API client
                 _apiClient.SetAuthToken(auth.IdToken);
                 Debug.WriteLine("[Splash][Login] Firebase token set in API client");
 
-                // ? Ensure account via API (replaces _central.EnsureAccountAsync + UpdateLastLoginAsync + EnsureAccountAndGetSettingsAsync)
-                var response = await _apiClient.EnsureAccountAsync(new EnsureAccountRequest
-                {
-                    Uid = auth.UserId,
-                    Email = auth.Email,
-                    DisplayName = auth.DisplayName ?? string.Empty
-                });
-                var accountId = response.Account.AccountId;
-                
-                // Apply settings immediately
-                _tenantContext.ReportifySettingsJson = response.SettingsJson;
-                
-                Debug.WriteLine($"[Splash][Login] Account ensured via API: accountId={accountId}");
-
-                // Ensure local tenant
-                StatusMessage = "Loading PACS profile...";
-                var tenant = await _tenantRepo.EnsureTenantAsync(accountId, "default_pacs");
-                Debug.WriteLine($"[Splash][Login] Tenant ensured id={tenant.Id} pacs={tenant.PacsKey}");
-
-                _tenantContext.TenantId = accountId;
-                _tenantContext.TenantCode = auth.UserId;
-                _tenantContext.CurrentPacsKey = tenant.PacsKey;
-
-                // Preload phrases after token is set
+                // Ensure account via API
+                StatusMessage = "Connecting to server...";
                 try
                 {
-                    StatusMessage = "Loading phrases...";
-                    var phraseSvc = ((App)Application.Current).Services.GetService(typeof(IPhraseService)) as IPhraseService;
-                    if (phraseSvc != null)
-                        await phraseSvc.RefreshPhrasesAsync(accountId); // Force refresh with auth token
-                }
-                catch (Exception px) { Debug.WriteLine("[Splash][Login][PhrasePreload][WARN] " + px.Message); }
+                    var response = await _apiClient.EnsureAccountAsync(new EnsureAccountRequest
+                    {
+                        Uid = auth.UserId,
+                        Email = auth.Email,
+                        DisplayName = auth.DisplayName ?? string.Empty
+                    });
+                    var accountId = response.Account.AccountId;
+                    
+                    // Apply settings immediately
+                    _tenantContext.ReportifySettingsJson = response.SettingsJson;
+                    
+                    Debug.WriteLine($"[Splash][Login] Account ensured via API: accountId={accountId}");
 
-                PersistAuth(auth);
-                Debug.WriteLine($"[Splash][Login] Success account={accountId} PACS={tenant.PacsKey}");
-                LoginSuccess?.Invoke();
+                    // Ensure local tenant
+                    StatusMessage = "Loading PACS profile...";
+                    var tenant = await _tenantRepo.EnsureTenantAsync(accountId, "default_pacs");
+                    Debug.WriteLine($"[Splash][Login] Tenant ensured id={tenant.Id} pacs={tenant.PacsKey}");
+
+                    _tenantContext.TenantId = accountId;
+                    _tenantContext.TenantCode = auth.UserId;
+                    _tenantContext.CurrentPacsKey = tenant.PacsKey;
+
+                    // Preload phrases after token is set
+                    try
+                    {
+                        StatusMessage = "Loading phrases...";
+                        var phraseSvc = ((App)Application.Current).Services.GetService(typeof(IPhraseService)) as IPhraseService;
+                        if (phraseSvc != null)
+                            await phraseSvc.RefreshPhrasesAsync(accountId);
+                    }
+                    catch (Exception px) { Debug.WriteLine("[Splash][Login][PhrasePreload][WARN] " + px.Message); }
+
+                    // Background last login update
+                    BackgroundTask.Run("LastLoginUpdate", async () =>
+                    {
+                        try { await _apiClient.UpdateLastLoginAsync(accountId); }
+                        catch (Exception ex) { Debug.WriteLine($"[LastLogin] Background update error: {ex.Message}"); }
+                    });
+
+                    PersistAuth(auth);
+                    Debug.WriteLine($"[Splash][Login] Success account={accountId} PACS={tenant.PacsKey}");
+                    LoginSuccess?.Invoke();
+                }
+                catch (HttpRequestException hre)
+                {
+                    Debug.WriteLine($"[Splash][Login] API connection failed: {hre.Message}");
+                    ErrorMessage = "Cannot connect to server. Please ensure:\n" +
+                                   "1. The Radium API is running (apps/Wysg.Musm.Radium.Api)\n" +
+                                   "2. API URL is correct in configuration\n" +
+                                   $"3. Network connection is available\n\n" +
+                                   $"Technical details: {hre.Message}";
+                }
+                catch (TaskCanceledException tce)
+                {
+                    Debug.WriteLine($"[Splash][Login] API request timeout: {tce.Message}");
+                    ErrorMessage = "Server connection timeout. The API may not be running.\n" +
+                                   "Please start: apps/Wysg.Musm.Radium.Api";
+                }
             }
             catch (OperationCanceledException oce)
             {
@@ -293,46 +328,72 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine("[Splash][Google] Auth success=" + auth.Success);
                 if (!auth.Success) { ErrorMessage = auth.Error; return; }
 
-                // ? Set Firebase token in API client
+                // Set Firebase token in API client
                 _apiClient.SetAuthToken(auth.IdToken);
                 Debug.WriteLine("[Splash][Google] Firebase token set in API client");
 
-                // ? Ensure account via API (replaces _central.EnsureAccountAsync + UpdateLastLoginAsync + EnsureAccountAndGetSettingsAsync)
-                var response = await _apiClient.EnsureAccountAsync(new EnsureAccountRequest
-                {
-                    Uid = auth.UserId,
-                    Email = auth.Email,
-                    DisplayName = auth.DisplayName ?? string.Empty
-                });
-                var accountId = response.Account.AccountId;
-                
-                // Apply settings immediately
-                _tenantContext.ReportifySettingsJson = response.SettingsJson;
-                
-                Debug.WriteLine($"[Splash][Google] Account ensured via API: accountId={accountId}");
-
-                // Ensure local tenant
-                StatusMessage = "Loading PACS profile...";
-                var tenant = await _tenantRepo.EnsureTenantAsync(accountId, "default_pacs");
-                Debug.WriteLine($"[Splash][Google] Tenant ensured id={tenant.Id} pacs={tenant.PacsKey}");
-
-                _tenantContext.TenantId = accountId;
-                _tenantContext.TenantCode = auth.UserId;
-                _tenantContext.CurrentPacsKey = tenant.PacsKey;
-
-                // Preload phrases after token is set
+                // Ensure account via API
+                StatusMessage = "Connecting to server...";
                 try
                 {
-                    StatusMessage = "Loading phrases...";
-                    var phraseSvc = ((App)Application.Current).Services.GetService(typeof(IPhraseService)) as IPhraseService;
-                    if (phraseSvc != null)
-                        await phraseSvc.RefreshPhrasesAsync(accountId); // Force refresh with auth token
-                }
-                catch (Exception px) { Debug.WriteLine("[Splash][Google][PhrasePreload][WARN] " + px.Message); }
+                    var response = await _apiClient.EnsureAccountAsync(new EnsureAccountRequest
+                    {
+                        Uid = auth.UserId,
+                        Email = auth.Email,
+                        DisplayName = auth.DisplayName ?? string.Empty
+                    });
+                    var accountId = response.Account.AccountId;
+                    
+                    // Apply settings immediately
+                    _tenantContext.ReportifySettingsJson = response.SettingsJson;
+                    
+                    Debug.WriteLine($"[Splash][Google] Account ensured via API: accountId={accountId}");
 
-                PersistAuth(auth);
-                Debug.WriteLine($"[Splash][Google] Success account={accountId} PACS={tenant.PacsKey}");
-                LoginSuccess?.Invoke();
+                    // Ensure local tenant
+                    StatusMessage = "Loading PACS profile...";
+                    var tenant = await _tenantRepo.EnsureTenantAsync(accountId, "default_pacs");
+                    Debug.WriteLine($"[Splash][Google] Tenant ensured id={tenant.Id} pacs={tenant.PacsKey}");
+
+                    _tenantContext.TenantId = accountId;
+                    _tenantContext.TenantCode = auth.UserId;
+                    _tenantContext.CurrentPacsKey = tenant.PacsKey;
+
+                    // Preload phrases after token is set
+                    try
+                    {
+                        StatusMessage = "Loading phrases...";
+                        var phraseSvc = ((App)Application.Current).Services.GetService(typeof(IPhraseService)) as IPhraseService;
+                        if (phraseSvc != null)
+                            await phraseSvc.RefreshPhrasesAsync(accountId);
+                    }
+                    catch (Exception px) { Debug.WriteLine("[Splash][Google][PhrasePreload][WARN] " + px.Message); }
+
+                    // Background last login update
+                    BackgroundTask.Run("LastLoginUpdate", async () =>
+                    {
+                        try { await _apiClient.UpdateLastLoginAsync(accountId); }
+                        catch (Exception ex) { Debug.WriteLine($"[LastLogin] Background update error: {ex.Message}"); }
+                    });
+
+                    PersistAuth(auth);
+                    Debug.WriteLine($"[Splash][Google] Success account={accountId} PACS={tenant.PacsKey}");
+                    LoginSuccess?.Invoke();
+                }
+                catch (HttpRequestException hre)
+                {
+                    Debug.WriteLine($"[Splash][Google] API connection failed: {hre.Message}");
+                    ErrorMessage = "Cannot connect to server. Please ensure:\n" +
+                                   "1. The Radium API is running (apps/Wysg.Musm.Radium.Api)\n" +
+                                   "2. API URL is correct in configuration\n" +
+                                   $"3. Network connection is available\n\n" +
+                                   $"Technical details: {hre.Message}";
+                }
+                catch (TaskCanceledException tce)
+                {
+                    Debug.WriteLine($"[Splash][Google] API request timeout: {tce.Message}");
+                    ErrorMessage = "Server connection timeout. The API may not be running.\n" +
+                                   "Please start: apps/Wysg.Musm.Radium.Api";
+                }
             }
             catch (OperationCanceledException oce)
             {

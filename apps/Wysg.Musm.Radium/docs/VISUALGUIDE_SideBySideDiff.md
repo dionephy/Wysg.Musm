@@ -1,32 +1,32 @@
-# Visual Guide: Side-by-Side Diff Viewer
+ï»¿# Visual Guide: Side-by-Side Diff Viewer
 
-**Last Updated**: 2025-02-02
+**Last Updated**: 2025-11-25
 
 ---
 
 ## What It Looks Like
 
 ```
-¦£¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¤
-¦¢ ¡å Show Changes (Side-by-Side) (character/word/line-level diff)        ¦¢
-¦§¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦©
-¦¢                 ¦¢
-¦¢  Original (Left Panel)         ¦¢  Modified (Right Panel)       ¦¢
-¦¢  ???????????????????????     ¦¢  ???????????????????????         ¦¢
-¦¢             ¦¢        ¦¢
-¦¢  no acute hemorrhage      ¦¢  No acute intracranial hemorrhage.   ¦¢
-¦¢  ^^      ¦¢  ^^     ^^^^^^^^^^^^  ^   ¦¢
-¦¢  red (lowercase deleted)        ¦¢  green (uppercase added)            ¦¢
-¦¢    ¦¢  green (word added)        ¦¢
-¦¢       ¦¢  green (period added)               ¦¢
-¦¢              ¦¢  ¦¢
-¦¢  Line 2 deleted      ¦¢  (empty - line removed)           ¦¢
-¦¢  ^^^^^^^^^^^^^^ red    ¦¢  gray placeholder             ¦¢
-¦¢ ¦¢             ¦¢
-¦¢  (empty - line added)  ¦¢  Line 3 added     ¦¢
-¦¢  gray placeholder     ¦¢  ^^^^^^^^^^^^^^^ green        ¦¢
-¦¢         ¦¢         ¦¢
-¦¦¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¥
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½ ï¿½ï¿½ Show Changes (Side-by-Side) (character/word/line-level diff)        ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½                 ï¿½ï¿½
+ï¿½ï¿½  Original (Left Panel)         ï¿½ï¿½  Modified (Right Panel)       ï¿½ï¿½
+ï¿½ï¿½  ???????????????????????     ï¿½ï¿½  ???????????????????????         ï¿½ï¿½
+ï¿½ï¿½             ï¿½ï¿½        ï¿½ï¿½
+ï¿½ï¿½  no acute hemorrhage      ï¿½ï¿½  No acute intracranial hemorrhage.   ï¿½ï¿½
+ï¿½ï¿½  ^^      ï¿½ï¿½  ^^     ^^^^^^^^^^^^  ^   ï¿½ï¿½
+ï¿½ï¿½  red (lowercase deleted)        ï¿½ï¿½  green (uppercase added)            ï¿½ï¿½
+ï¿½ï¿½    ï¿½ï¿½  green (word added)        ï¿½ï¿½
+ï¿½ï¿½       ï¿½ï¿½  green (period added)               ï¿½ï¿½
+ï¿½ï¿½              ï¿½ï¿½  ï¿½ï¿½
+ï¿½ï¿½  Line 2 deleted      ï¿½ï¿½  (empty - line removed)           ï¿½ï¿½
+ï¿½ï¿½  ^^^^^^^^^^^^^^ red    ï¿½ï¿½  gray placeholder             ï¿½ï¿½
+ï¿½ï¿½ ï¿½ï¿½             ï¿½ï¿½
+ï¿½ï¿½  (empty - line added)  ï¿½ï¿½  Line 3 added     ï¿½ï¿½
+ï¿½ï¿½  gray placeholder     ï¿½ï¿½  ^^^^^^^^^^^^^^^ green        ï¿½ï¿½
+ï¿½ï¿½         ï¿½ï¿½         ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 ```
 
 ---
@@ -50,37 +50,37 @@
 
 ### Example 1: Capitalization Fix
 ```
-LEFT (Original)      ¦¢ RIGHT (Modified)
-???????????????????????¦¢???????????????????????
-no acute hemorrhage   ¦¢ No acute hemorrhage
-^^  ¦¢ ^^
-?? red + strike      ¦¢ ?? green
+LEFT (Original)      ï¿½ï¿½ RIGHT (Modified)
+???????????????????????ï¿½ï¿½???????????????????????
+no acute hemorrhage   ï¿½ï¿½ No acute hemorrhage
+^^  ï¿½ï¿½ ^^
+?? red + strike      ï¿½ï¿½ ?? green
 ```
 
 ### Example 2: Word Insertion
 ```
-LEFT (Original)   ¦¢ RIGHT (Modified)
-??????????????????????????????¦¢??????????????????????????????
-No acute hemorrhage  ¦¢ No acute intracranial hemorrhage
-     ¦¢     ?? green line tint
-   ¦¢       ^^^^^^^^^^^^
-        ¦¢  ?? bright green
+LEFT (Original)   ï¿½ï¿½ RIGHT (Modified)
+??????????????????????????????ï¿½ï¿½??????????????????????????????
+No acute hemorrhage  ï¿½ï¿½ No acute intracranial hemorrhage
+     ï¿½ï¿½     ?? green line tint
+   ï¿½ï¿½       ^^^^^^^^^^^^
+        ï¿½ï¿½  ?? bright green
 ```
 
 ### Example 3: Multi-Line Changes
 ```
-LEFT (Original)      ¦¢ RIGHT (Modified)
-???????????????????????¦¢???????????????????????
-Line 1: Normal    ¦¢ Line 1: Normal
-       ¦¢
-Line 2: Deleted¦¢ [gray placeholder]
-?? red line tint   ¦¢ ? alignment
-       ¦¢
-[gray placeholder]     ¦¢ Line 2: New finding
-? alignment ¦¢ ?? green line tint
-       ¦¢        ^^^^^^^^^^^^^^^^^^^^
-        ¦¢          ?? bright green
-Line 3: Normal    ¦¢ Line 3: Normal
+LEFT (Original)      ï¿½ï¿½ RIGHT (Modified)
+???????????????????????ï¿½ï¿½???????????????????????
+Line 1: Normal    ï¿½ï¿½ Line 1: Normal
+       ï¿½ï¿½
+Line 2: Deletedï¿½ï¿½ [gray placeholder]
+?? red line tint   ï¿½ï¿½ ? alignment
+       ï¿½ï¿½
+[gray placeholder]     ï¿½ï¿½ Line 2: New finding
+? alignment ï¿½ï¿½ ?? green line tint
+       ï¿½ï¿½        ^^^^^^^^^^^^^^^^^^^^
+        ï¿½ï¿½          ?? bright green
+Line 3: Normal    ï¿½ï¿½ Line 3: Normal
 ```
 
 ---
@@ -89,12 +89,12 @@ Line 3: Normal    ¦¢ Line 3: Normal
 
 ### 1. Collapsible Panel
 - **Collapsed (default)**: Only toggle button visible
-- **Click ¡å**: Panel expands, showing side-by-side diff
+- **Click ï¿½ï¿½**: Panel expands, showing side-by-side diff
 - **Click again**: Panel collapses
 
 ### 2. Synchronized Scrolling
-- Scroll left panel ¡æ Right panel moves with it
-- Scroll right panel ¡æ Left panel moves with it
+- Scroll left panel ï¿½ï¿½ Right panel moves with it
+- Scroll right panel ï¿½ï¿½ Left panel moves with it
 - Always shows same lines
 
 ### 3. Resizable Panels
@@ -112,7 +112,7 @@ Line 3: Normal    ¦¢ Line 3: Normal
 3. Proofread appears in **Findings (PR)** textbox (right column)
 
 ### Step 2: View Diff
-1. Click **"¡å Show Changes"** toggle button
+1. Click **"ï¿½ï¿½ Show Changes"** toggle button
 2. Side-by-side diff viewer expands
 3. **Left panel**: Shows original with deletions (red)
 4. **Right panel**: Shows modified with insertions (green)
@@ -223,5 +223,5 @@ Line 3: Normal    ¦¢ Line 3: Normal
 ---
 
 **Feature Status**: ? Production Ready  
-**Last Updated**: 2025-02-02  
+**Last Updated**: 2025-11-25  
 **Version**: 1.0

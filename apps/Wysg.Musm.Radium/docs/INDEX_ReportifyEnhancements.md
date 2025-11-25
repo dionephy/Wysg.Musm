@@ -1,19 +1,19 @@
-# Documentation Index: Reportify Line Numbering & Enhanced Capitalization
+ï»¿# Documentation Index: Reportify Line Numbering & Enhanced Capitalization
 
-This index provides quick access to all documentation related to the new Reportify features added on 2025-01-23.
+This index provides quick access to all documentation related to the new Reportify features added on 2025-10-23.
 
 ---
 
 ## Quick Start
 
 **Want to get started quickly?**  
-¡æ Read: [`QUICKREF_ReportifyEnhancements.md`](./QUICKREF_ReportifyEnhancements.md)
+ï¿½ï¿½ Read: [`QUICKREF_ReportifyEnhancements.md`](./QUICKREF_ReportifyEnhancements.md)
 
 **Need step-by-step examples?**  
-¡æ See: Feature Documentation (Section: "Usage Guide")
+ï¿½ï¿½ See: Feature Documentation (Section: "Usage Guide")
 
 **Looking for technical details?**  
-¡æ Read: Feature Documentation (Section: "Technical Implementation")
+ï¿½ï¿½ Read: Feature Documentation (Section: "Technical Implementation")
 
 ---
 
@@ -34,7 +34,7 @@ This index provides quick access to all documentation related to the new Reporti
 ---
 
 ### 2. Feature Documentation
-**File**: `FEATURE_2025-01-23_ReportifyLineNumberingAndCapitalization.md`  
+**File**: `FEATURE_2025-10-23_ReportifyLineNumberingAndCapitalization.md`  
 **Purpose**: Comprehensive feature documentation  
 **Contents**:
 - Detailed feature descriptions
@@ -53,7 +53,7 @@ This index provides quick access to all documentation related to the new Reporti
 ---
 
 ### 3. Implementation Summary
-**File**: `IMPLEMENTATION_SUMMARY_2025-01-23_ReportifyEnhancements.md`  
+**File**: `IMPLEMENTATION_SUMMARY_2025-10-23_ReportifyEnhancements.md`  
 **Purpose**: High-level project summary  
 **Contents**:
 - Files modified summary
@@ -78,39 +78,39 @@ This index provides quick access to all documentation related to the new Reporti
 | Aspect | Details |
 |--------|---------|
 | **Setting Name** | `number_conclusion_lines_on_one_paragraph` |
-| **UI Location** | Settings ¡æ Reportify ¡æ Conclusion Numbering |
+| **UI Location** | Settings ï¿½ï¿½ Reportify ï¿½ï¿½ Conclusion Numbering |
 | **Default Value** | `false` (disabled) |
 | **Parent Option** | "Number conclusion paragraphs" must be enabled |
-| **Example** | `apple\nbanana\n\nmelon` ¡æ `1. Apple.\n   Banana.\n\n2. Melon.` |
+| **Example** | `apple\nbanana\n\nmelon` ï¿½ï¿½ `1. Apple.\n   Banana.\n\n2. Melon.` |
 
 ### Feature 2: Capitalize After Bullet or Number
 
 | Aspect | Details |
 |--------|---------|
 | **Setting Name** | `capitalize_after_bullet_or_number` |
-| **UI Location** | Settings ¡æ Reportify ¡æ Sentence Formatting |
+| **UI Location** | Settings ï¿½ï¿½ Reportify ï¿½ï¿½ Sentence Formatting |
 | **Default Value** | `false` (disabled) |
 | **Parent Option** | "Capitalize first letter" must be enabled |
-| **Example** | `1. apple\n2. banana` ¡æ `1. Apple\n2. Banana` |
+| **Example** | `1. apple\n2. banana` ï¿½ï¿½ `1. Apple\n2. Banana` |
 
 ---
 
 ## Quick Links
 
 ### For Users
-1. **Getting Started** ¡æ `QUICKREF_ReportifyEnhancements.md` (Section: "Quick Setup Guide")
-2. **Examples** ¡æ `QUICKREF_ReportifyEnhancements.md` (Section: "Common Use Cases")
-3. **Settings Location** ¡æ `FEATURE_...md` (Section: "UI Integration")
+1. **Getting Started** ï¿½ï¿½ `QUICKREF_ReportifyEnhancements.md` (Section: "Quick Setup Guide")
+2. **Examples** ï¿½ï¿½ `QUICKREF_ReportifyEnhancements.md` (Section: "Common Use Cases")
+3. **Settings Location** ï¿½ï¿½ `FEATURE_...md` (Section: "UI Integration")
 
 ### For Developers
-1. **Code Changes** ¡æ `IMPLEMENTATION_SUMMARY_...md` (Section: "Files Modified")
-2. **Implementation Logic** ¡æ `FEATURE_...md` (Section: "Technical Implementation")
-3. **Testing Guide** ¡æ `FEATURE_...md` (Section: "Testing Recommendations")
+1. **Code Changes** ï¿½ï¿½ `IMPLEMENTATION_SUMMARY_...md` (Section: "Files Modified")
+2. **Implementation Logic** ï¿½ï¿½ `FEATURE_...md` (Section: "Technical Implementation")
+3. **Testing Guide** ï¿½ï¿½ `FEATURE_...md` (Section: "Testing Recommendations")
 
 ### For QA
-1. **Test Cases** ¡æ `FEATURE_...md` (Section: "Testing Recommendations")
-2. **Test Matrix** ¡æ `IMPLEMENTATION_SUMMARY_...md` (Section: "Testing Results")
-3. **Edge Cases** ¡æ `FEATURE_...md` (Section: "Edge Cases")
+1. **Test Cases** ï¿½ï¿½ `FEATURE_...md` (Section: "Testing Recommendations")
+2. **Test Matrix** ï¿½ï¿½ `IMPLEMENTATION_SUMMARY_...md` (Section: "Testing Results")
+3. **Edge Cases** ï¿½ï¿½ `FEATURE_...md` (Section: "Edge Cases")
 
 ---
 
@@ -161,21 +161,21 @@ Output (with capitalization enabled):
 
 ```
 Reportify Settings
-¦§¦¡¦¡ Conclusion Numbering
-¦¢   ¦§¦¡¦¡ ? Number conclusion paragraphs
-¦¢   ¦¢   ¦¦¦¡¦¡ ? On one paragraph, number each line (NEW)
-¦¢   ¦¦¦¡¦¡ ? Indent continuation lines
-¦¦¦¡¦¡ Sentence Formatting
-    ¦§¦¡¦¡ ? Capitalize first letter
-    ¦¢   ¦¦¦¡¦¡ ? Also capitalize after bullet or number (NEW)
-    ¦¦¦¡¦¡ ? Ensure trailing period
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Conclusion Numbering
+ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ? Number conclusion paragraphs
+ï¿½ï¿½   ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ? On one paragraph, number each line (NEW)
+ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ? Indent continuation lines
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Sentence Formatting
+    ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ? Capitalize first letter
+    ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ? Also capitalize after bullet or number (NEW)
+    ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ? Ensure trailing period
 ```
 
 ---
 
 ## Version Information
 
-- **Date Added**: 2025-01-23
+- **Date Added**: 2025-10-23
 - **Version**: 1.0
 - **Build Status**: ? Success
 - **Backward Compatible**: Yes
@@ -186,7 +186,7 @@ Reportify Settings
 ## Support Resources
 
 ### In-App Help
-- **Hint Buttons**: Click "Hint" next to each option in Settings ¡æ Reportify tab
+- **Hint Buttons**: Click "Hint" next to each option in Settings ï¿½ï¿½ Reportify tab
 - **Sample Preview**: View before/after examples in the preview pane
 - **Settings JSON**: View generated JSON in the right panel
 
@@ -206,7 +206,7 @@ Reportify Settings
 
 | Date | Change | Document |
 |------|--------|----------|
-| 2025-01-23 | Initial release | All 3 documents created |
+| 2025-10-23 | Initial release | All 3 documents created |
 
 ---
 
@@ -239,8 +239,8 @@ For feedback or issues:
 All documentation files are in: `apps/Wysg.Musm.Radium/docs/`
 
 - `QUICKREF_ReportifyEnhancements.md`
-- `FEATURE_2025-01-23_ReportifyLineNumberingAndCapitalization.md`
-- `IMPLEMENTATION_SUMMARY_2025-01-23_ReportifyEnhancements.md`
+- `FEATURE_2025-10-23_ReportifyLineNumberingAndCapitalization.md`
+- `IMPLEMENTATION_SUMMARY_2025-10-23_ReportifyEnhancements.md`
 - `INDEX_ReportifyEnhancements.md` (this file)
 
 ---
@@ -248,9 +248,9 @@ All documentation files are in: `apps/Wysg.Musm.Radium/docs/`
 ## Navigation Tips
 
 **From this index:**
-- Want quick examples? ¡æ Go to Quick Reference
-- Need technical details? ¡æ Go to Feature Documentation  
-- Want project overview? ¡æ Go to Implementation Summary
+- Want quick examples? ï¿½ï¿½ Go to Quick Reference
+- Need technical details? ï¿½ï¿½ Go to Feature Documentation  
+- Want project overview? ï¿½ï¿½ Go to Implementation Summary
 
 **From code:**
 - See `SettingsViewModel.cs` for property definitions
@@ -259,5 +259,5 @@ All documentation files are in: `apps/Wysg.Musm.Radium/docs/`
 
 ---
 
-**Last Updated**: 2025-01-23  
+**Last Updated**: 2025-11-25  
 **Status**: ? Complete

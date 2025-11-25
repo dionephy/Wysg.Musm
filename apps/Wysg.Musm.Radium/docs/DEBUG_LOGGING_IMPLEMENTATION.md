@@ -1,4 +1,4 @@
-# Debug Logging Implementation - 2025-01-16
+ï»¿# Debug Logging Implementation - 2025-01-16
 
 ## Summary
 Added comprehensive debug logging to diagnose and fix 4 critical issues with PACS automation operations.
@@ -23,10 +23,10 @@ Added comprehensive debug logging to diagnose and fix 4 critical issues with PAC
 
 **Solution**: Changed to access MainViewModel from `MainWindow.DataContext` with `Dispatcher.Invoke()` for thread safety.
 
-**Enhancement** (2025-01-19): GetCurrentStudyDateTime now formats output as "YYYY-MM-DD HH:mm:ss" instead of raw datetime string for consistency.
+**Enhancement** (2025-10-19): GetCurrentStudyDateTime now formats output as "YYYY-MM-DD HH:mm:ss" instead of raw datetime string for consistency.
 
 ### Issue #3 & #4: Empty Separator Bug (GetCurrentStudyRemark/PatientRemark)  
-**Fixed**: 2025-01-19
+**Fixed**: 2025-10-19
 
 **Problem**: `ResolveString` method was treating ALL String arguments as variable names and looking them up in the vars dictionary, always returning empty string for literal separator strings like `"&pinfo="`.
 
@@ -34,10 +34,10 @@ Added comprehensive debug logging to diagnose and fix 4 critical issues with PAC
 
 ---
 
-## New Features Added (2025-01-19)
+## New Features Added (2025-10-19)
 
 ### GetCurrentStudyDateTime Formatting
-**Updated**: 2025-01-19
+**Updated**: 2025-10-19
 
 The `GetCurrentStudyDateTime` operation now automatically formats the datetime value as "YYYY-MM-DD HH:mm:ss" for consistency across the application.
 
@@ -47,7 +47,7 @@ The `GetCurrentStudyDateTime` operation now automatically formats the datetime v
 - If successful: Returns formatted string in "yyyy-MM-dd HH:mm:ss" format
 - If parsing fails: Returns raw value as fallback
 
-**Example Output**: `"2025-01-19 14:30:00"` instead of `"1/19/2025 2:30:00 PM"`
+**Example Output**: `"2025-10-19 14:30:00"` instead of `"1/19/2025 2:30:00 PM"`
 
 **Implementation**:
 - `ProcedureExecutor.cs`: Format in `ExecuteInternal` method
@@ -68,9 +68,9 @@ Added new `IsMatch` operation to SpyWindow Custom Procedures for comparing two v
 **Preview Format**: `{result} ('{value1}' vs '{value2}')`
 
 **Example Usage**:
-1. GetCurrentPatientNumber ¡æ var1
-2. GetText from PatientIdField ¡æ var2  
-3. IsMatch(var1, var2) ¡æ var3
+1. GetCurrentPatientNumber ï¿½ï¿½ var1
+2. GetText from PatientIdField ï¿½ï¿½ var2  
+3. IsMatch(var1, var2) ï¿½ï¿½ var3
 4. Result: var3 = "true" if patient numbers match, "false" otherwise
 
 **Implementation Locations**:

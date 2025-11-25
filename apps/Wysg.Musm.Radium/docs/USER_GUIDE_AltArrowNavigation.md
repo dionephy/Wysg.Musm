@@ -1,4 +1,4 @@
-# USER GUIDE: Alt+Arrow Navigation Feature
+ï»¿# USER GUIDE: Alt+Arrow Navigation Feature
 
 **Feature**: Quick Navigation Between Text Fields  
 **Version**: 1.0  
@@ -35,10 +35,10 @@ The Alt+Arrow navigation feature allows you to quickly move between related text
 
 | From Field | Press | To Field |
 |-----------|-------|----------|
-| **Study Remark** | Alt+Down ¡é | Chief Complaint |
-| **Chief Complaint** | Alt+Up ¡è | Study Remark |
-| **Chief Complaint** | Alt+Right ¡æ | Chief Complaint (Proofread) |
-| **Chief Complaint (Proofread)** | Alt+Left ¡ç | Chief Complaint |
+| **Study Remark** | Alt+Down ï¿½ï¿½ | Chief Complaint |
+| **Chief Complaint** | Alt+Up ï¿½ï¿½ | Study Remark |
+| **Chief Complaint** | Alt+Right ï¿½ï¿½ | Chief Complaint (Proofread) |
+| **Chief Complaint (Proofread)** | Alt+Left ï¿½ï¿½ | Chief Complaint |
 
 ---
 
@@ -78,9 +78,9 @@ The Alt+Arrow navigation feature allows you to quickly move between related text
 **Scenario**: Building Chief Complaint from multiple sources
 
 1. Select relevant text in **Study Remark**
-2. Press **Alt+Down** ¡æ Text copied to Chief Complaint
+2. Press **Alt+Down** ï¿½ï¿½ Text copied to Chief Complaint
 3. Select additional text in **Study Remark**
-4. Press **Alt+Down** again ¡æ Text appended with newline separator
+4. Press **Alt+Down** again ï¿½ï¿½ Text appended with newline separator
 5. Result: Chief Complaint contains both selections on separate lines
 
 ---
@@ -178,5 +178,5 @@ If you encounter issues or have suggestions:
 
 ---
 
-**Last Updated**: 2025-01-30  
+**Last Updated**: 2025-11-25  
 **Document Version**: 1.0

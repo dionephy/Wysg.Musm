@@ -1,4 +1,4 @@
-# Delay Operation - Compilation Fix (2025-01-20)
+ï»¿# Delay Operation - Compilation Fix (2025-10-20)
 
 ## Issue
 After implementing the `Delay` operation, compilation errors occurred:
@@ -53,9 +53,9 @@ No changes needed - this file already had the `Delay` case properly handled with
 ## Usage Example
 ```
 # Wait 300ms after getting element before clicking
-GetSelectedElement(SearchResultsList) ¡æ var1
-Delay(300) ¡æ var2
-ClickElement(var1) ¡æ var3
+GetSelectedElement(SearchResultsList) ï¿½ï¿½ var1
+Delay(300) ï¿½ï¿½ var2
+ClickElement(var1) ï¿½ï¿½ var3
 ```
 
 ## Files Modified

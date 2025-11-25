@@ -1,4 +1,4 @@
-# Send Report Automation Pane - UI Implementation Complete
+ï»¿# Send Report Automation Pane - UI Implementation Complete
 
 ## Status: ? Fully Implemented
 
@@ -9,7 +9,7 @@ Build Status: **SUCCESS** (0 errors, 120 warnings - MVVM Toolkit only)
 
 ## Summary
 
-Successfully implemented the **Send Report automation pane** UI in the Settings ¡æ Automation tab. Users can now configure which automation modules run when clicking the "Send Report" button in the main window.
+Successfully implemented the **Send Report automation pane** UI in the Settings ï¿½ï¿½ Automation tab. Users can now configure which automation modules run when clicking the "Send Report" button in the main window.
 
 ---
 
@@ -26,16 +26,16 @@ Successfully implemented the **Send Report automation pane** UI in the Settings 
 
 **Visual Arrangement:**
 ```
-¦£¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¨¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¨¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¤
-¦¢  New Study    ¦¢  Add Study    ¦¢  Available  ¦¢
-¦¢               ¦¢               ¦¢  Modules    ¦¢
-¦§¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦«¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦©  (Library)  ¦¢
-¦¢ Shortcut:     ¦¢ Shortcut:     ¦¢             ¦¢
-¦¢ Open (new)    ¦¢ Open (add)    ¦¢             ¦¢
-¦§¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦«¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦©             ¦¢
-¦¢ Send Report   ¦¢ Shortcut:     ¦¢             ¦¢
-¦¢  [NEW]        ¦¢ Open (after)  ¦¢             ¦¢
-¦¦¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦ª¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦ª¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¥
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½  New Study    ï¿½ï¿½  Add Study    ï¿½ï¿½  Available  ï¿½ï¿½
+ï¿½ï¿½               ï¿½ï¿½               ï¿½ï¿½  Modules    ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½  (Library)  ï¿½ï¿½
+ï¿½ï¿½ Shortcut:     ï¿½ï¿½ Shortcut:     ï¿½ï¿½             ï¿½ï¿½
+ï¿½ï¿½ Open (new)    ï¿½ï¿½ Open (add)    ï¿½ï¿½             ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½             ï¿½ï¿½
+ï¿½ï¿½ Send Report   ï¿½ï¿½ Shortcut:     ï¿½ï¿½             ï¿½ï¿½
+ï¿½ï¿½  [NEW]        ï¿½ï¿½ Open (after)  ï¿½ï¿½             ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 ```
 
 ### 2. Code-Behind Integration (AutomationSettingsTab.xaml.cs)
@@ -126,8 +126,8 @@ public void InitializeAutomationListBoxes(
 ### How to Configure Send Report Automation
 
 1. **Open Settings**
-   - Main Window ¡æ Click Settings button
-   - Or: File ¡æ Settings (if menu available)
+   - Main Window ï¿½ï¿½ Click Settings button
+   - Or: File ï¿½ï¿½ Settings (if menu available)
 
 2. **Navigate to Automation Tab**
    - Click "Automation" tab
@@ -252,7 +252,7 @@ foreach (var module in configuredModules)
 - [x] Available Modules library shows all modules
 - [x] Drag from library to Send Report works
 - [x] Save Automation button persists settings
-- [x] Restart app ¡æ settings reload correctly
+- [x] Restart app ï¿½ï¿½ settings reload correctly
 
 ### Functional Tests
 - [ ] Configure sequence: `SendReport` only
@@ -261,8 +261,8 @@ foreach (var module in configuredModules)
   - [ ] Verify patient unlocks after send
 
 - [ ] Configure sequence: `AbortIfPatientNumberNotMatch,SendReport`
-  - [ ] With matching patient ¡æ send succeeds
-  - [ ] With mismatched patient ¡æ automation aborts
+  - [ ] With matching patient ï¿½ï¿½ send succeeds
+  - [ ] With mismatched patient ï¿½ï¿½ automation aborts
 
 - [ ] Configure sequence: Empty (no modules)
   - [ ] Click "Send Report"
@@ -270,8 +270,8 @@ foreach (var module in configuredModules)
 
 - [ ] Multiple PACS profiles
   - [ ] Configure different sequences per PACS
-  - [ ] Switch profiles ¡æ verify correct sequence loads
-  - [ ] Save each ¡æ verify separate files created
+  - [ ] Switch profiles ï¿½ï¿½ verify correct sequence loads
+  - [ ] Save each ï¿½ï¿½ verify separate files created
 
 ### Edge Cases
 - [ ] Drag module from Send Report back to library
@@ -380,7 +380,7 @@ foreach (var module in configuredModules)
 
 **Solutions:**
 1. Check if using latest build (2025-01-16 or later)
-2. Clear designer cache: Close VS ¡æ Delete `obj/` folder ¡æ Rebuild
+2. Clear designer cache: Close VS ï¿½ï¿½ Delete `obj/` folder ï¿½ï¿½ Rebuild
 3. Verify AutomationSettingsTab.xaml has latest changes
 4. Check XAML for syntax errors (build warnings)
 
@@ -394,7 +394,7 @@ foreach (var module in configuredModules)
 - No status messages appear
 
 **Solutions:**
-1. Verify sequence configured in Settings ¡æ Automation ¡æ Send Report
+1. Verify sequence configured in Settings ï¿½ï¿½ Automation ï¿½ï¿½ Send Report
 2. Click "Save Automation" after configuring
 3. Check file exists: `%AppData%\Wysg.Musm\Radium\Pacs\{pacs_key}\automation.json`
 4. Open JSON file, verify `SendReportSequence` property present
@@ -457,6 +457,6 @@ foreach (var module in configuredModules)
 
 ---
 
-*Last Updated: 2025-01-16*  
+*Last Updated: 2025-11-25*  
 *Author: GitHub Copilot + User*  
 *Build: apps\Wysg.Musm.Radium v1.0*

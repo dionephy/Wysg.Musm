@@ -1,4 +1,4 @@
-# Documentation Archives
+ï»¿# Documentation Archives
 
 This directory contains archived documentation organized by quarter and feature domain.
 
@@ -7,8 +7,8 @@ This directory contains archived documentation organized by quarter and feature 
 Archives are organized by **year/quarter** and then by **feature domain** to make historical changes easy to find.
 
 ### Current Active Documentation (Last 90 Days)
-- **[Spec.md](../Spec.md)** - Feature specifications (2025-01-01 onward)
-- **[Plan.md](../Plan.md)** - Implementation plans (2025-01-01 onward)
+- **[Spec.md](../Spec.md)** - Feature specifications (2025-10-01 onward)
+- **[Plan.md](../Plan.md)** - Implementation plans (2025-10-01 onward)
 - **[Tasks.md](../Tasks.md)** - Task tracking (active and recent)
 
 ### 2025 Q1 Archives (January - March 2025)
@@ -70,13 +70,13 @@ Archives are organized by **year/quarter** and then by **feature domain** to mak
 3. Search for your feature requirements (FR-XXX) or task numbers (TXXX)
 
 ### By Requirement ID
-- FR-453..FR-468: Technique database schema ¡æ [Spec-2025-Q1-technique.md](2025-Q1/Spec-2025-Q1-technique.md)
-- FR-500..FR-515: Technique autofill & refresh ¡æ [Spec-2024-Q4.md](2024/Spec-2024-Q4.md)
-- FR-540..FR-547: Automation modules ¡æ [Spec-2024-Q4.md](2024/Spec-2024-Q4.md)
-- FR-600..FR-609: Multi-PACS tenancy ¡æ [Spec-2024-Q4.md](2024/Spec-2024-Q4.md)
-- FR-700..FR-709: Phrase highlighting ¡æ [Spec-2025-Q1-editor.md](2025-Q1/Spec-2025-Q1-editor.md)
-- FR-900..FR-915: Phrase-SNOMED mapping ¡æ [Spec-2025-Q1-phrase-snomed.md](2025-Q1/Spec-2025-Q1-phrase-snomed.md)
-- FR-1100..FR-1136: Foreign text sync ¡æ [Spec-2025-Q1-foreign-text-sync.md](2025-Q1/Spec-2025-Q1-foreign-text-sync.md)
+- FR-453..FR-468: Technique database schema ï¿½ï¿½ [Spec-2025-Q1-technique.md](2025-Q1/Spec-2025-Q1-technique.md)
+- FR-500..FR-515: Technique autofill & refresh ï¿½ï¿½ [Spec-2024-Q4.md](2024/Spec-2024-Q4.md)
+- FR-540..FR-547: Automation modules ï¿½ï¿½ [Spec-2024-Q4.md](2024/Spec-2024-Q4.md)
+- FR-600..FR-609: Multi-PACS tenancy ï¿½ï¿½ [Spec-2024-Q4.md](2024/Spec-2024-Q4.md)
+- FR-700..FR-709: Phrase highlighting ï¿½ï¿½ [Spec-2025-Q1-editor.md](2025-Q1/Spec-2025-Q1-editor.md)
+- FR-900..FR-915: Phrase-SNOMED mapping ï¿½ï¿½ [Spec-2025-Q1-phrase-snomed.md](2025-Q1/Spec-2025-Q1-phrase-snomed.md)
+- FR-1100..FR-1136: Foreign text sync ï¿½ï¿½ [Spec-2025-Q1-foreign-text-sync.md](2025-Q1/Spec-2025-Q1-foreign-text-sync.md)
 
 ## Archive Maintenance Guidelines
 
@@ -111,8 +111,8 @@ Archives maintain full cumulative detail and cross-reference each other:
 
 | Date | Action | Files Moved | Reason |
 |------|--------|-------------|--------|
-| 2025-01-19 | Initial archive creation | (pending) | Spec.md (979 lines), Plan.md (1317 lines), Tasks.md (665 lines) too large |
+| 2025-10-19 | Initial archive creation | (pending) | Spec.md (979 lines), Plan.md (1317 lines), Tasks.md (665 lines) too large |
 
 ---
 
-*Last updated: 2025-01-19*
+*Last Updated: 2025-11-25*

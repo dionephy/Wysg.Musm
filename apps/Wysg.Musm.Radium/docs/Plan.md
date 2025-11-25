@@ -1,6 +1,6 @@
 ﻿# Implementation Plan: Radium (Cumulative)
 
-> **⚠️ DEPRECATION NOTICE (2025-01-19)**  
+> **⚠️ DEPRECATION NOTICE (2025-10-19)**  
 > This file is being phased out in favor of an archive-based structure.
 > 
 > **Please use instead:**
@@ -15,7 +15,7 @@
 
 [Original content preserved below for transition period...]
 
-## Change Log Addition (2025-01-15 – Fix: Shortcut Key Missing NewStudy and LockStudy Modules)
+## Change Log Addition (2025-10-15 – Fix: Shortcut Key Missing NewStudy and LockStudy Modules)
 - **Problem**: The "Shortcut: Open study (new)" automation sequence was not executing `NewStudy` and `LockStudy` modules that are present in the "New Study" button sequence, causing incomplete study initialization.
 - **Symptoms**:
   1. Current study label not changing (NewStudy module not running)
@@ -668,7 +668,7 @@
 - Reportify JSON generated no longer contains `preserve_known_tokens`.
 - Prior stored JSON with the key loads without error and does not affect output.
 
-## Change Log Addition (2025-01-15 – Phrase-SNOMED Mapping Window UX Enhancements)
+## Change Log Addition (2025-10-15 – Phrase-SNOMED Mapping Window UX Enhancements)
 - **Problem 1**: When opening the phrase-SNOMED link window from Settings → Global Phrases, the search textbox was empty, requiring users to retype the phrase text to search for matching SNOMED concepts.
 - **Problem 2**: The Map button remained disabled even after selecting a concept from the search results, preventing users from saving the mapping.
 
@@ -758,7 +758,7 @@
 - **Risk**: ElementStyle might conflict with cell selection styling
   - **Mitigation**: WPF selection template overrides cell style appropriately; tested with row selection
 
-## Change Log Addition (2025-01-18 – MouseMoveToElement Custom Procedure Operation)
+## Change Log Addition (2025-10-18 – MouseMoveToElement Custom Procedure Operation)
 - **User Request**: Add new operation "MouseMoveToElement" to SpyWindow → Custom Procedures that moves the mouse cursor to the center of a UI element without clicking.
 - **Solution**: Implemented MouseMoveToElement operation in both ProcedureExecutor (headless) and SpyWindow (interactive) with single Element argument.
 
@@ -849,7 +849,7 @@ The MouseMoveToElement operation provides non-destructive cursor positioning by 
 - **Risk**: DPI scaling may affect coordinate calculation
   - **Mitigation**: Using screen coordinates (SetCursorPos) which handle DPI automatically; bounding rectangle from UIA is DPI-aware
 
-## Change Log Addition (2025-01-18 – Save as New Combination Button Enablement Fix)
+## Change Log Addition (2025-10-18 – Save as New Combination Button Enablement Fix)
 - **Problem**: The "Save as New Combination" button in the Manage Studyname Techniques window remained disabled even after adding techniques to the Current Combination list, preventing users from saving their work.
 - **Root Cause**: The SaveNewCombinationCommand's CanExecute predicate correctly checks if CurrentCombinationItems.Count > 0, but the command's CanExecuteChanged event was never raised when items were added or removed, so WPF never re-evaluated the button's enabled state.
 - **Solution**: Explicitly call RaiseCanExecuteChanged() on SaveNewCombinationCommand after modifying CurrentCombinationItems collection.
@@ -915,7 +915,7 @@ The MouseMoveToElement operation provides non-destructive cursor positioning by 
 - Resolves user workflow issue reported in task request
 - Maintains existing duplicate prevention logic (FR-1024)
 
-## Change Log Addition (2025-01-19 – Foreign Textbox One-Way Sync Feature)
+## Change Log Addition (2025-10-19 – Foreign Textbox One-Way Sync Feature)
 - **User Request**: Add text synchronization between the application's Findings editor and an external textbox application (e.g., Notepad) with a "Sync Text" toggle button in the Spy window UI.
 - **Solution**: Implemented full two-way text synchronization using UI Automation and polling-based change detection.
 
@@ -1063,7 +1063,7 @@ The Foreign Textbox Sync feature enables real-time bidirectional text synchroniz
 - Conflict resolution UI when both sides change simultaneously
 - Support for rich text formatting preservation
 
-## Change Log Addition (2025-01-19 ? Global Hotkey for Toggle Sync Text)
+## Change Log Addition (2025-10-19 ? Global Hotkey for Toggle Sync Text)
 - **User Request**: Add global hotkey support for toggling the "Sync Text" feature without needing to click the toggle button in MainWindow.
 - **Solution**: Implemented system-wide hotkey registration using Win32 RegisterHotKey API with hotkey configuration in Settings → Keyboard tab.
 

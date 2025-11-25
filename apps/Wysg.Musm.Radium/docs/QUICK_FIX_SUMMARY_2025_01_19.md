@@ -1,5 +1,5 @@
-# Quick Fix Summary - Reportified & ResultsListSetFocus
-**Date**: 2025-01-19  
+ï»¿# Quick Fix Summary - Reportified & ResultsListSetFocus
+**Date**: 2025-10-19  
 **Build**: ? Successful
 
 ## Issue 1: Reportified Toggle Not Updating ? FIXED
@@ -12,9 +12,9 @@ Corrected the condition in `MainViewModel.Editor.cs` to always force `OnProperty
 
 ### Test It
 1. Add `Reportify` module to any automation sequence
-2. Run automation ¡æ toggle should turn ON
-3. Click toggle manually ¡æ should turn OFF
-4. Run automation again ¡æ toggle should turn ON
+2. Run automation ï¿½ï¿½ toggle should turn ON
+3. Click toggle manually ï¿½ï¿½ should turn OFF
+4. Run automation again ï¿½ï¿½ toggle should turn ON
 
 **Status**: ? Fixed in code, rebuild required
 
@@ -30,13 +30,13 @@ The `SearchResultsList` bookmark in SpyWindow is **mapped to the wrong UI elemen
 
 ### How to Fix (5 minutes)
 1. Open **SpyWindow** (click Spy button in MainWindow status bar)
-2. Select **Map to** ¡æ **"SearchResultsList"**
+2. Select **Map to** ï¿½ï¿½ **"SearchResultsList"**
 3. Click **Pick** button (hand icon)
 4. During 5-second countdown: **Click on the SEARCH RESULTS LIST** in PACS
    - This is the list showing patient records (columns: ID, Name, Study Date, etc.)
    - **NOT the "Open Worklist" button**
-5. Click **Run** in SpyWindow to test ¡æ mouse should now move to list
-6. Test automation sequence ¡æ should work correctly
+5. Click **Run** in SpyWindow to test ï¿½ï¿½ mouse should now move to list
+6. Test automation sequence ï¿½ï¿½ should work correctly
 
 **Status**: ?? Requires user action (no code changes needed)
 

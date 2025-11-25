@@ -140,7 +140,22 @@ namespace Wysg.Musm.Radium.Services.Adapters
             => Task.FromResult<IReadOnlyList<string>>(_cachedGlobal.Where(p => p.Active).Select(p => p.Text).ToList());
 
         public Task<IReadOnlyList<string>> GetGlobalPhrasesByPrefixAsync(string prefix, int limit = 15)
-            => Task.FromResult<IReadOnlyList<string>>(_cachedGlobal.Where(p => p.Active && p.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).Take(limit).Select(p => p.Text).ToList());
+        {
+            // FIXED: Fetch ALL matching global phrases, sort, then take top 15
+            if (string.IsNullOrWhiteSpace(prefix)) 
+                return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+            
+            var matches = _cachedGlobal
+                .Where(p => p.Active && p.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .Select(p => p.Text)
+                .OrderBy(p => p.Length)
+                .ThenBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .Take(limit)
+                .ToList();
+            
+            Debug.WriteLine($"[ApiPhraseServiceAdapter][GetGlobalByPrefix] prefix='{prefix}' matched={matches.Count}");
+            return Task.FromResult<IReadOnlyList<string>>(matches);
+        }
 
         // Combined phrases (account + global, but global not supported)
         public async Task<IReadOnlyList<string>> GetCombinedPhrasesAsync(long accountId)
@@ -155,11 +170,33 @@ namespace Wysg.Musm.Radium.Services.Adapters
         public async Task<IReadOnlyList<string>> GetCombinedPhrasesByPrefixAsync(long accountId, string prefix, int limit = 15)
         {
             Debug.WriteLine($"[ApiPhraseServiceAdapter][GetCombinedByPrefix] prefix='{prefix}', limit={limit}");
-            var acct = await GetPhrasesByPrefixInternalAsync(accountId, prefix, limit);
-            var globals = _cachedGlobal.Where(p => p.Active && p.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).Select(p => p.Text);
-            var combined = acct.Concat(globals).Distinct(StringComparer.OrdinalIgnoreCase).Take(limit).ToList();
-            Debug.WriteLine($"[ApiPhraseServiceAdapter][GetCombinedByPrefix] Account={acct.Count}, Global={globals.Count()}, Combined={combined.Count}");
-            return combined;
+            
+            // FIXED: Fetch ALL matching phrases (not limited to 15), then sort and take top 15
+            // This ensures we get the best matches (shortest first) instead of just the first 15 found
+            await EnsureLoadedAsync(accountId).ConfigureAwait(false);
+            
+            // Get ALL account phrases matching prefix (no limit yet)
+            var accountMatches = _cachedPhrases
+                .Where(p => p.Active && p.AccountId == accountId && p.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .Select(p => p.Text);
+            
+            // Get ALL global phrases matching prefix (no limit yet)
+            var globalMatches = _cachedGlobal
+                .Where(p => p.Active && p.Text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .Select(p => p.Text);
+            
+            // Combine and remove duplicates
+            var allMatches = accountMatches.Concat(globalMatches).Distinct(StringComparer.OrdinalIgnoreCase);
+            
+            // NOW sort by length (shorter first) and alphabetically, THEN take top 15
+            var sortedAndLimited = allMatches
+                .OrderBy(p => p.Length)
+                .ThenBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .Take(limit)
+                .ToList();
+            
+            Debug.WriteLine($"[ApiPhraseServiceAdapter][GetCombinedByPrefix] Account={accountMatches.Count()}, Global={globalMatches.Count()}, AllMatches={allMatches.Count()}, Final={sortedAndLimited.Count}");
+            return sortedAndLimited;
         }
 
         // For highlighting - returns COMBINED (account + global) phrases UNFILTERED

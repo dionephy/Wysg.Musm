@@ -1,6 +1,6 @@
-# SNOMED Browser Token Caching - Quick Summary
+ï»¿# SNOMED Browser Token Caching - Quick Summary
 
-**Date:** 2025-01-20  
+**Date:** 2025-10-20  
 **Status:** ? Implemented and Tested
 
 ---
@@ -26,9 +26,9 @@ Implemented **searchAfter token caching**:
 
 | Navigation | Before | After | Improvement |
 |------------|--------|-------|-------------|
-| Page 1 ¡æ 2 | 2 calls, 3s | 1 call, 1.5s | 50% faster |
-| Page 1 ¡æ 10 | 10 calls, 15s | 9 calls, 13.5s | 10% faster |
-| Page 100 ¡æ 101 | 101 calls, 150s | **1 call, 1.5s** | **99% faster** ? |
+| Page 1 ï¿½ï¿½ 2 | 2 calls, 3s | 1 call, 1.5s | 50% faster |
+| Page 1 ï¿½ï¿½ 10 | 10 calls, 15s | 9 calls, 13.5s | 10% faster |
+| Page 100 ï¿½ï¿½ 101 | 101 calls, 150s | **1 call, 1.5s** | **99% faster** ? |
 
 ---
 

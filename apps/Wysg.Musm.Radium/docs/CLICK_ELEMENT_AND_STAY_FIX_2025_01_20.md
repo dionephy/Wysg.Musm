@@ -1,11 +1,11 @@
-# Fix: SetFocusSearchResultsList Element Chaining Issue (2025-01-20)
+ï»¿# Fix: SetFocusSearchResultsList Element Chaining Issue (2025-10-20)
 
 ## Problem
 
 The `SetFocusSearchResultsList` procedure worked correctly in the SpyWindow interactive execution but failed when run as an automation module. The procedure used two operations:
 
-1. `GetSelectedElement(SearchResultsList)` ¡æ stores selected element in cache and returns cache key to `var1`
-2. `ClickElementAndStay(var1)` ¡æ should click the cached element
+1. `GetSelectedElement(SearchResultsList)` ï¿½ï¿½ stores selected element in cache and returns cache key to `var1`
+2. `ClickElementAndStay(var1)` ï¿½ï¿½ should click the cached element
 
 **Error Symptom:**
 ```

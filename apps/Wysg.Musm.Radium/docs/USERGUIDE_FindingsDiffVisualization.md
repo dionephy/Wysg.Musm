@@ -1,6 +1,6 @@
-# User Guide: Findings (PR) Diff Visualization
+ï»¿# User Guide: Findings (PR) Diff Visualization
 
-**Last Updated**: 2025-02-02
+**Last Updated**: 2025-11-25
 
 ---
 
@@ -67,7 +67,7 @@ What you see:
 [l?][L]ungs[ are] clear bilaterally[.]
 red green green     green
 ```
-- Capitalization change: "l" ¡æ "L"
+- Capitalization change: "l" ï¿½ï¿½ "L"
 - "are" added
 - Period added
 
@@ -223,7 +223,7 @@ Diff may show many small red/green chunks
 **A**: No, it's read-only. Edit original findings and regenerate, or edit JSON manually.
 
 ### Q: Why are some changes highlighted in both red and green?
-**A**: Character-level diff shows exact changes. Example: "a" ¡æ "A" shows red "a" + green "A".
+**A**: Character-level diff shows exact changes. Example: "a" ï¿½ï¿½ "A" shows red "a" + green "A".
 
 ### Q: Can I hide the diff colors?
 **A**: Not currently. Future enhancement may add toggle for plain text view.
@@ -246,5 +246,5 @@ If you encounter issues or have suggestions:
 ---
 
 **Feature Status**: ? Production Ready  
-**Last Updated**: 2025-02-02  
+**Last Updated**: 2025-11-25  
 **Version**: 1.0

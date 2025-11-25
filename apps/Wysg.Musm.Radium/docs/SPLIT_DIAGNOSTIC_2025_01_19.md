@@ -1,4 +1,4 @@
-# Split Operation Diagnostic Enhancement - 2025-01-19
+ï»¿# Split Operation Diagnostic Enhancement - 2025-10-19
 
 ## Summary
 Added comprehensive debug logging to the Split operation in `ProcedureExecutor.cs` to diagnose why separators like `&pinfo=` and `&pname=` are not matching the URL content.
@@ -7,7 +7,7 @@ Added comprehensive debug logging to the Split operation in `ProcedureExecutor.c
 
 ### File: `apps\Wysg.Musm.Radium\Services\ProcedureExecutor.cs`
 
-**Method**: `ExecuteRow` ¡æ `case "Split"`
+**Method**: `ExecuteRow` ï¿½ï¿½ `case "Split"`
 
 **Added Debug Logging**:
 1. **Input diagnostics**:
@@ -46,20 +46,20 @@ Added comprehensive debug logging to the Split operation in `ProcedureExecutor.c
 ```
 [Split] Input contains separator: True
 [Split] Input contains unescaped separator: True
-[Split] Split result: 2 parts  ¡ç Should be > 1
+[Split] Split result: 2 parts  ï¿½ï¿½ Should be > 1
 ```
 
 #### Case 2: Separator doesn't match (CURRENT PROBLEM)
 ```
-[Split] Input contains separator: False  ¡ç Problem indicator
+[Split] Input contains separator: False  ï¿½ï¿½ Problem indicator
 [Split] Input contains unescaped separator: False
-[Split] Split result: 1 parts  ¡ç What we're seeing now
+[Split] Split result: 1 parts  ï¿½ï¿½ What we're seeing now
 ```
 
 #### Case 3: Hidden characters in separator
 ```
 [Split] SepRaw: '&pinfo=' (length: 8, bytes: 26 70 69 6E 66 6F 3D 20)
-                                            ^^                  ^^ ¡ç Extra 0x20 (space)
+                                            ^^                  ^^ ï¿½ï¿½ Extra 0x20 (space)
 ```
 
 ### Expected Byte Sequences

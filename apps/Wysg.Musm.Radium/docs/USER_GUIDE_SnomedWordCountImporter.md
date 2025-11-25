@@ -1,4 +1,4 @@
-# User Guide: SNOMED-CT Word Count Importer
+ï»¿# User Guide: SNOMED-CT Word Count Importer
 
 ## Purpose
 The Word Count Importer helps you systematically import SNOMED-CT concepts into your global phrase library, filtered by the number of words in their synonyms. This tool searches **ALL SNOMED domains** to find matching terms.
@@ -190,7 +190,7 @@ As you review candidates, you'll see different semantic tags:
 ### Where Added Phrases Appear
 - **Editor Completions**: Type to see suggestions
 - **Syntax Highlighting**: Terms are colored in editor
-- **Global Phrases List**: Manage in Settings ¡æ Global Phrases
+- **Global Phrases List**: Manage in Settings ï¿½ï¿½ Global Phrases
 - **SNOMED Mappings**: View concept details via "Link SNOMED"
 
 ### Phrase Management
@@ -230,6 +230,6 @@ Typical SNOMED content distribution by word count:
 Refer to the main Radium documentation or contact support for additional help.
 
 ---
-**Last Updated**: 2025-01-29  
+**Last Updated**: 2025-11-25  
 **Feature Version**: 1.2 (Session Persistence)  
 **Compatible with**: Radium production version using Azure SQL

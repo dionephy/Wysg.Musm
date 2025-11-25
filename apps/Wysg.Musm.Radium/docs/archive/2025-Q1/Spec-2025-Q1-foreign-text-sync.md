@@ -1,11 +1,11 @@
-# Feature Specifications: Foreign Text Sync (2025-Q1)
+ï»¿# Feature Specifications: Foreign Text Sync (2025-Q1)
 
 **Archive Period**: January 2025  
 **Feature Domain**: Foreign Text Synchronization & Caret Management  
 **Requirement Range**: FR-1100 through FR-1136  
 **Status**: Implemented and Active  
 
-[¡ç Back to Archive Index](../README.md) | [¡æ See Implementation Plan](Plan-2025-Q1-foreign-text-sync.md)
+[ï¿½ï¿½ Back to Archive Index](../README.md) | [ï¿½ï¿½ See Implementation Plan](Plan-2025-Q1-foreign-text-sync.md)
 
 ---
 
@@ -299,7 +299,7 @@ New dependency property on EditorControl wrapper to flow caret adjustment from V
 
 ### Task Tracking
 - Tasks T1100-T1148 cover implementation and verification
-- All tasks marked complete as of 2025-01-19
+- All tasks marked complete as of 2025-10-19
 
 ### Cross-References
 - UiBookmarks system: FR-516..FR-524 (archived in 2024-Q4)
@@ -308,5 +308,5 @@ New dependency property on EditorControl wrapper to flow caret adjustment from V
 
 ---
 
-*Archived: 2025-01-19*  
+*Archived: 2025-10-19*  
 *Status: Feature complete and deployed*

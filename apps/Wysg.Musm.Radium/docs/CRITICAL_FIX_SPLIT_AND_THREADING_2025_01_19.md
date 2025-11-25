@@ -1,4 +1,4 @@
-# Critical Fixes - Split Operation & Cross-Thread Exception - 2025-01-19
+ï»¿# Critical Fixes - Split Operation & Cross-Thread Exception - 2025-10-19
 
 ## Summary
 
@@ -13,9 +13,9 @@ Fixed **TWO critical bugs** discovered through diagnostic logging that were prev
 
 The diagnostic output showed:
 ```
-[Split] SepRaw: '' (length: 0, bytes: )  ¡ç EMPTY STRING!
+[Split] SepRaw: '' (length: 0, bytes: )  ï¿½ï¿½ EMPTY STRING!
 [Split] Input contains separator: True
-[Split] Split result: 1 parts  ¡ç No split occurred
+[Split] Split result: 1 parts  ï¿½ï¿½ No split occurred
 ```
 
 Even though the saved procedure had correct separators (`&pinfo=`, `&pname=`), they were being resolved as empty strings.
@@ -36,7 +36,7 @@ private static string ResolveString(ProcArg arg, Dictionary<string, string?> var
     }
     // For other ArgKinds, perform normal variable resolution
     vars.TryGetValue(arg.Value ?? string.Empty, out var value);
-    return value ?? string.Empty;  ¡ç BUG: Always returns empty for String args!
+    return value ?? string.Empty;  ï¿½ï¿½ BUG: Always returns empty for String args!
 }
 ```
 
@@ -72,9 +72,9 @@ private static string ResolveString(ProcArg arg, Dictionary<string, string?> var
 ```
 
 **Key Change**: Added explicit handling for different `ArgKind` types:
-- `Element` ¡æ lookup in element cache
-- `Var` ¡æ lookup in vars dictionary (e.g., `var1`, `var2`)
-- `String` / `Number` ¡æ return value directly ?
+- `Element` ï¿½ï¿½ lookup in element cache
+- `Var` ï¿½ï¿½ lookup in vars dictionary (e.g., `var1`, `var2`)
+- `String` / `Number` ï¿½ï¿½ return value directly ?
 
 ---
 
@@ -84,7 +84,7 @@ private static string ResolveString(ProcArg arg, Dictionary<string, string?> var
 
 ```
 [ProcedureExecutor][GetCurrentPatientNumber] EXCEPTION: InvalidOperationException - 
-´Ù¸¥ ½º·¹µå°¡ ÀÌ °³Ã¼¸¦ ¼ÒÀ¯ÇÏ°í ÀÖ¾î È£Ãâ ½º·¹µå°¡ ÇØ´ç °³Ã¼¿¡ ¾×¼¼½ºÇÒ ¼ö ¾ø½À´Ï´Ù.
+ï¿½Ù¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½å°¡ ï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½Ö¾ï¿½ È£ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½å°¡ ï¿½Ø´ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½×¼ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½.
 ```
 
 Translation: "The calling thread cannot access this object because a different thread owns it."
@@ -98,7 +98,7 @@ Translation: "The calling thread cannot access this object because a different t
 // BEFORE (BROKEN):
 if (string.Equals(methodTag, "GetCurrentPatientNumber", StringComparison.OrdinalIgnoreCase))
 {
-    var mainWindow = System.Windows.Application.Current?.MainWindow;  ¡ç UI thread object!
+    var mainWindow = System.Windows.Application.Current?.MainWindow;  ï¿½ï¿½ UI thread object!
     if (mainWindow != null)
     {
         if (mainWindow.DataContext is ViewModels.MainViewModel mainVM)
@@ -121,7 +121,7 @@ WPF throws `InvalidOperationException` when UI thread objects are accessed from 
 if (string.Equals(methodTag, "GetCurrentPatientNumber", StringComparison.OrdinalIgnoreCase))
 {
     string result = string.Empty;
-    System.Windows.Application.Current?.Dispatcher.Invoke(() =>  ¡ç Marshal to UI thread!
+    System.Windows.Application.Current?.Dispatcher.Invoke(() =>  ï¿½ï¿½ Marshal to UI thread!
     {
         var mainWindow = System.Windows.Application.Current?.MainWindow;
         if (mainWindow != null)

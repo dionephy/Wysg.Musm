@@ -1,4 +1,4 @@
-# Clipboard and Keyboard Simulation Operations (2025-01-18)
+ï»¿# Clipboard and Keyboard Simulation Operations (2025-10-18)
 
 ## User Request
 Add three new operations to Custom Procedures:
@@ -116,27 +116,27 @@ Both Tab and Paste use `System.Windows.Forms.SendKeys.SendWait()`:
 
 #### Workflow 1: Copy PACS Data to External App
 ```
-1. GetText(PatientName) ¡æ extracts name to var1
-2. SetClipboard(var1) ¡æ copies name to clipboard
+1. GetText(PatientName) ï¿½ï¿½ extracts name to var1
+2. SetClipboard(var1) ï¿½ï¿½ copies name to clipboard
 3. [User switches to external app]
-4. SimulatePaste ¡æ pastes name into external app
+4. SimulatePaste ï¿½ï¿½ pastes name into external app
 ```
 
 #### Workflow 2: Navigate PACS Form
 ```
-1. SetFocus(FirstField) ¡æ focus first input
-2. SimulateTab ¡æ move to second field
-3. SimulateTab ¡æ move to third field
-4. SimulateTab ¡æ move to submit button
-5. Invoke(SubmitButton) ¡æ submit form
+1. SetFocus(FirstField) ï¿½ï¿½ focus first input
+2. SimulateTab ï¿½ï¿½ move to second field
+3. SimulateTab ï¿½ï¿½ move to third field
+4. SimulateTab ï¿½ï¿½ move to submit button
+5. Invoke(SubmitButton) ï¿½ï¿½ submit form
 ```
 
 #### Workflow 3: Automated Data Entry
 ```
-1. SetClipboard("Patient: John Doe, Age: 45") ¡æ prepare text
-2. ClickElement(RemarkField) ¡æ focus remarks
-3. SimulatePaste ¡æ paste prepared text
-4. SimulateTab ¡æ move to next field
+1. SetClipboard("Patient: John Doe, Age: 45") ï¿½ï¿½ prepare text
+2. ClickElement(RemarkField) ï¿½ï¿½ focus remarks
+3. SimulatePaste ï¿½ï¿½ paste prepared text
+4. SimulateTab ï¿½ï¿½ move to next field
 ```
 
 ### Build Status
@@ -145,7 +145,7 @@ Both Tab and Paste use `System.Windows.Forms.SendKeys.SendWait()`:
 ### Testing Instructions
 
 #### Test SetClipboard:
-1. Open SpyWindow ¡æ Custom Procedures
+1. Open SpyWindow ï¿½ï¿½ Custom Procedures
 2. Add operation `SetClipboard` with Arg1="Test text 123"
 3. Click "Set" button
 4. Verify preview shows `(clipboard set, 13 chars)`
@@ -172,7 +172,7 @@ Both Tab and Paste use `System.Windows.Forms.SendKeys.SendWait()`:
 
 #### Test Combined Workflow:
 1. Create procedure:
-   - `GetText(PatientName)` ¡æ var1
+   - `GetText(PatientName)` ï¿½ï¿½ var1
    - `SetClipboard(var1)`
    - `ClickElement(RemarkField)`
    - `SimulatePaste`
@@ -225,7 +225,7 @@ The implementation is complete and ready for use:
 
 ---
 
-**Implementation Date**: 2025-01-18  
+**Implementation Date**: 2025-10-18  
 **Status**: ? Complete and Verified  
 **Build**: ? Successful
 **Operations Added**: MouseMoveToElement (already in dropdown), SetClipboard, SimulateTab, SimulatePaste
