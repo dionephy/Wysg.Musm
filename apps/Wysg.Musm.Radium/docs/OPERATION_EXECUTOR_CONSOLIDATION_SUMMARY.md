@@ -9,13 +9,13 @@
 
 ## The Problem in One Sentence
 
-Operation execution logic was duplicated between `SpyWindow` (UI testing) and `ProcedureExecutor` (background automation), causing **GetHTML to fail with encoding errors** in ProcedureExecutor while working fine in SpyWindow.
+Operation execution logic was duplicated between `AutomationWindow` (UI testing) and `ProcedureExecutor` (background automation), causing **GetHTML to fail with encoding errors** in ProcedureExecutor while working fine in AutomationWindow.
 
 ---
 
 ## The Solution in One Sentence
 
-Created a shared `OperationExecutor` service that contains all 30+ operation implementations once, with sophisticated HTTP/encoding logic from SpyWindow now available to both callers.
+Created a shared `OperationExecutor` service that contains all 30+ operation implementations once, with sophisticated HTTP/encoding logic from AutomationWindow now available to both callers.
 
 ---
 
@@ -38,16 +38,16 @@ Created a shared `OperationExecutor` service that contains all 30+ operation imp
 ```
 Before:                                  After:
 式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式   式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式
-SpyWindow.Procedures.Exec.cs            OperationExecutor.cs (NEW)
+AutomationWindow.Procedures.Exec.cs            OperationExecutor.cs (NEW)
   戍式式 1300 lines of operations            戍式式 All 30+ operations
   戍式式 GetHTML (basic UTF-8)               戍式式 GetHTML (smart encoding)
   戌式式 Element operations                  戌式式 HTTP/encoding helpers
 
-SpyWindow.Procedures.Http.cs            SpyWindow.Procedures.Exec.cs
+AutomationWindow.Procedures.Http.cs            AutomationWindow.Procedures.Exec.cs
   戍式式 Korean encoding helpers               戍式式 Delegates to OperationExecutor
   戌式式 Smart decoding logic                  戌式式 UI-specific resolution
 
-SpyWindow.Procedures.Encoding.cs        ProcedureExecutor.Operations.cs
+AutomationWindow.Procedures.Encoding.cs        ProcedureExecutor.Operations.cs
   戍式式 Mojibake repair                       戌式式 Delegates to OperationExecutor
   戌式式 Mixed UTF-8/CP949
 
@@ -59,7 +59,7 @@ ProcedureExecutor.Operations.cs
 
 ### Delegation Pattern
 
-Both SpyWindow and ProcedureExecutor now delegate to shared service:
+Both AutomationWindow and ProcedureExecutor now delegate to shared service:
 
 ```csharp
 // Before: Each had own ExecuteSingle with 1000+ lines
@@ -94,7 +94,7 @@ var html = Encoding.UTF8.GetString(bytes); // ? Korean text becomes ?????
 
 ### The Solution
 
-Moved SpyWindow's sophisticated encoding detection to shared OperationExecutor:
+Moved AutomationWindow's sophisticated encoding detection to shared OperationExecutor:
 
 ```csharp
 // OperationExecutor (after) - WORKS
@@ -127,7 +127,7 @@ HttpGetHtmlSmartAsync(url)
 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
-| **SpyWindow.Procedures.Exec.cs** | 1300 lines | 150 lines | -88% |
+| **AutomationWindow.Procedures.Exec.cs** | 1300 lines | 150 lines | -88% |
 | **ProcedureExecutor.Operations.cs** | 900 lines | 30 lines | -97% |
 | **Shared OperationExecutor.cs** | 0 lines | 1500 lines | NEW |
 | **Total** | 2200 lines | 1680 lines | **-24%** |
@@ -140,14 +140,14 @@ HttpGetHtmlSmartAsync(url)
 ### Verified ?
 - [x] Build succeeds without errors
 - [x] All 30+ operations implemented
-- [x] SpyWindow delegates correctly
+- [x] AutomationWindow delegates correctly
 - [x] ProcedureExecutor delegates correctly
 - [x] Encoding logic preserved
 - [x] Element resolution preserved
 - [x] Element caching works
 
 ### Needs Manual Testing ??
-- [ ] SpyWindow: Execute procedure with GetHTML on Korean site
+- [ ] AutomationWindow: Execute procedure with GetHTML on Korean site
 - [ ] ProcedureExecutor: Run automation with GetHTML
 - [ ] Verify all operations work in both contexts
 - [ ] Test element caching (GetSelectedElement ⊥ ClickElement)
@@ -160,7 +160,7 @@ HttpGetHtmlSmartAsync(url)
 
 **Before (implement twice):**
 ```csharp
-// In SpyWindow
+// In AutomationWindow
 case "NewOp": /* implementation */ break;
 
 // In ProcedureExecutor (duplicate!)
@@ -204,12 +204,12 @@ private static (string preview, string? value) ExecuteNewOp(...)
 - `apps\Wysg.Musm.Radium\Services\OperationExecutor.cs` (1500 lines)
 
 ### Modified
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs` (1300 ⊥ 150 lines)
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs` (1300 ⊥ 150 lines)
 - `apps\Wysg.Musm.Radium\Services\ProcedureExecutor.Operations.cs` (900 ⊥ 30 lines)
 
 ### Removed (logic moved to OperationExecutor)
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Http.cs`
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Encoding.cs`
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Http.cs`
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Encoding.cs`
 
 ---
 
@@ -223,7 +223,7 @@ private static (string preview, string? value) ExecuteNewOp(...)
 
 ## Quick Reference
 
-### SpyWindow Usage
+### AutomationWindow Usage
 ```csharp
 // Delegates to shared OperationExecutor
 private (string preview, string? value) ExecuteSingle(ProcOpRow row, Dictionary<string, string?> vars)
@@ -270,5 +270,5 @@ private static (string preview, string? value) ExecuteMyNewOperation(string? arg
 
 ---
 
-**Next Steps**: Manual runtime testing to verify GetHTML with Korean encoding works in both SpyWindow and ProcedureExecutor contexts.
+**Next Steps**: Manual runtime testing to verify GetHTML with Korean encoding works in both AutomationWindow and ProcedureExecutor contexts.
 

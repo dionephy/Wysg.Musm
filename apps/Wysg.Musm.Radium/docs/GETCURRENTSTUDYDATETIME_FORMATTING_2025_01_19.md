@@ -1,4 +1,4 @@
-﻿# GetCurrentStudyDateTime Formatting Update - 2025-10-19
+# GetCurrentStudyDateTime Formatting Update - 2025-10-19
 
 ## User Request
 "can you change the 'GetCurrentStudyDateTime' operation output as 'YYYY-MM-DD HH:mm:ss' format?"
@@ -34,7 +34,7 @@ else
 }
 ```
 
-#### 2. SpyWindow.Procedures.Exec.cs (Interactive Editor)
+#### 2. AutomationWindow.Procedures.Exec.cs (Interactive Editor)
 **Location**: `ExecuteSingle` method, `GetCurrentStudyDateTime` case
 
 **Before**:
@@ -109,7 +109,7 @@ Both implementations include detailed debug logging:
 
 ## Build Status
 - ? **SUCCESS** (0 errors, 112 MVVM Toolkit warnings - safe to ignore)
-- Fixed variable name conflict (`dt` �� `studyDt`) in SpyWindow.Procedures.Exec.cs
+- Fixed variable name conflict (`dt` ?? `studyDt`) in AutomationWindow.Procedures.Exec.cs
 
 ## Benefits
 1. **Consistency**: Datetime format now matches other datetime operations (e.g., ToDateTime)
@@ -124,13 +124,13 @@ Both implementations include detailed debug logging:
 
 ## Files Modified
 1. `apps\Wysg.Musm.Radium\Services\ProcedureExecutor.cs`
-2. `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs`
+2. `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs`
 3. `apps\Wysg.Musm.Radium\docs\DEBUG_LOGGING_IMPLEMENTATION.md`
 4. `apps\Wysg.Musm.Radium\docs\GETCURRENTSTUDYDATETIME_FORMATTING_2025_01_19.md` (this file)
 
 ## Completion Checklist
 - [x] Implemented formatting in ProcedureExecutor.cs
-- [x] Implemented formatting in SpyWindow.Procedures.Exec.cs
+- [x] Implemented formatting in AutomationWindow.Procedures.Exec.cs
 - [x] Fixed variable name conflict (studyDt)
 - [x] Build verification (0 errors)
 - [x] Documentation updated (DEBUG_LOGGING_IMPLEMENTATION.md)

@@ -13,7 +13,7 @@ using Wysg.Musm.Radium.Services;
 
 namespace Wysg.Musm.Radium.Views
 {
-    public partial class SpyWindow
+    public partial class AutomationWindow
     {
         private static bool NeedsAsync(string? op)
         {
@@ -270,39 +270,39 @@ namespace Wysg.Musm.Radium.Views
             if (type == ArgKind.Var)
             {
                 var varName = arg.Value ?? string.Empty;
-                Debug.WriteLine($"[SpyWindow][ResolveElement][Var] Resolving variable '{varName}'");
+                Debug.WriteLine($"[AutomationWindow][ResolveElement][Var] Resolving variable '{varName}'");
                 
                 // First resolve the variable value from vars dictionary
                 if (!vars.TryGetValue(varName, out var varValue) || string.IsNullOrWhiteSpace(varValue))
                 {
-                    Debug.WriteLine($"[SpyWindow][ResolveElement][Var] Variable '{varName}' not found in vars dictionary or is empty");
+                    Debug.WriteLine($"[AutomationWindow][ResolveElement][Var] Variable '{varName}' not found in vars dictionary or is empty");
                     return null;
                 }
                 
-                Debug.WriteLine($"[SpyWindow][ResolveElement][Var] Variable '{varName}' resolved to: '{varValue}'");
+                Debug.WriteLine($"[AutomationWindow][ResolveElement][Var] Variable '{varName}' resolved to: '{varValue}'");
                 
                 // Check if this variable contains a cached element reference
                 if (_elementCache.TryGetValue(varValue, out var cachedElement))
                 {
-                    Debug.WriteLine($"[SpyWindow][ResolveElement][Var] Found cached element for key '{varValue}'");
+                    Debug.WriteLine($"[AutomationWindow][ResolveElement][Var] Found cached element for key '{varValue}'");
                     // Validate element is still alive
                     try
                     {
                         _ = cachedElement.Name; // Test if element is still accessible
-                        Debug.WriteLine($"[SpyWindow][ResolveElement][Var] Cached element is still alive");
+                        Debug.WriteLine($"[AutomationWindow][ResolveElement][Var] Cached element is still alive");
                         return cachedElement;
                     }
                     catch
                     {
                         // Element is stale, remove from cache
-                        Debug.WriteLine($"[SpyWindow][ResolveElement][Var] Cached element is stale, removing from cache");
+                        Debug.WriteLine($"[AutomationWindow][ResolveElement][Var] Cached element is stale, removing from cache");
                         _elementCache.Remove(varValue);
                         return null;
                     }
                 }
                 else
                 {
-                    Debug.WriteLine($"[SpyWindow][ResolveElement][Var] No cached element found for key '{varValue}'");
+                    Debug.WriteLine($"[AutomationWindow][ResolveElement][Var] No cached element found for key '{varValue}'");
                 }
             }
             

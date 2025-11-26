@@ -72,7 +72,7 @@ Both operations support:
 ### Error Handling
 - Returns `(no element)` if element cannot be resolved
 - Returns `(no bounds)` if element has zero width/height
-- Returns `(error)` on exception (with message in SpyWindow, without in ProcedureExecutor)
+- Returns `(error)` on exception (with message in AutomationWindow, without in ProcedureExecutor)
 
 ## Comparison: ClickElement vs ClickElementAndStay
 
@@ -85,6 +85,6 @@ Both operations support:
 
 ## See Also
 - [GET_SELECTED_ELEMENT.md](GET_SELECTED_ELEMENT.md) - Get selected items for clicking
-- [SpyWindow.Procedures.Exec.cs](../Views/SpyWindow.Procedures.Exec.cs) - Operation implementation
+- [AutomationWindow.Procedures.Exec.cs](../Views/AutomationWindow.Procedures.Exec.cs) - Operation implementation
 - [ProcedureExecutor.cs](../Services/ProcedureExecutor.cs) - Runtime executor
 - [NativeMouseHelper.cs](../Services/NativeMouseHelper.cs) - Native mouse operations

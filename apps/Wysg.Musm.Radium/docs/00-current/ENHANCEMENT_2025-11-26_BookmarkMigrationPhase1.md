@@ -32,12 +32,12 @@ The bookmark system has a hybrid approach:
 ### Phase 1: Export Tool (? COMPLETE)
 
 **What Was Added:**
-- "Export KnownControls" button in SpyWindow UI Bookmark tab
+- "Export KnownControls" button in AutomationWindow UI Bookmark tab
 - Export function that converts all KnownControl mappings to regular bookmarks
 - User-friendly migration flow with confirmation dialogs
 
 **User Workflow:**
-1. Open SpyWindow ¡æ UI Bookmark tab
+1. Open AutomationWindow ¡æ UI Bookmark tab
 2. Click "Export KnownControls" button (green background)
 3. Confirm export operation
 4. System exports all mapped KnownControls as dynamic bookmarks
@@ -91,12 +91,12 @@ After users export their bookmarks, developers can remove the hard-coded system:
    - Remove `ResolveWithRetry(KnownControl key)` method
    - Update `ControlMap` dictionary to use string keys instead of enum
 
-2. **SpyWindow.xaml.cs**
+2. **AutomationWindow.xaml.cs**
    - Remove `KnownControlTags` list
    - Update `LoadBookmarksIntoComboBox()` to only load dynamic bookmarks
    - Simplify `OnKnownSelectionChanged()` to only handle dynamic bookmarks
 
-3. **SpyWindow.Bookmarks.cs**
+3. **AutomationWindow.Bookmarks.cs**
    - Remove enum-specific code from `OnSaveEdited()`
    - Simplify bookmark loading logic
 
@@ -104,7 +104,7 @@ After users export their bookmarks, developers can remove the hard-coded system:
    - Update `ResolveElement()` to only use bookmark name/tag resolution
    - Remove enum parsing logic
 
-5. **SpyWindow.Procedures.Exec.cs**
+5. **AutomationWindow.Procedures.Exec.cs**
    - Update `ResolveElement()` to only use bookmark name/tag resolution
    - Remove enum parsing logic
 
@@ -115,7 +115,7 @@ After users export their bookmarks, developers can remove the hard-coded system:
 ### User Interface
 
 **Button Location:**
-- SpyWindow ¡æ UI Bookmark tab
+- AutomationWindow ¡æ UI Bookmark tab
 - Second toolbar row after "Delete" button
 - Green background (#3C5C00) for visibility
 - Tooltip: "Export all hardcoded KnownControl mappings as regular bookmarks"
@@ -382,10 +382,10 @@ If Phase 2 causes issues:
 
 ### Files Modified (Phase 1)
 
-1. **SpyWindow.xaml** (1 button added)
+1. **AutomationWindow.xaml** (1 button added)
    - Added "Export KnownControls" button to toolbar
 
-2. **SpyWindow.xaml.cs** (~50 lines added)
+2. **AutomationWindow.xaml.cs** (~50 lines added)
    - Added `OnExportKnownControls()` method
    - Implements export logic with error handling
    - Provides user feedback via dialogs
@@ -397,11 +397,11 @@ If Phase 2 causes issues:
    - Remove enum-specific methods
    - Simplify ControlMap handling
 
-2. **SpyWindow.xaml.cs** (~20 lines to modify)
+2. **AutomationWindow.xaml.cs** (~20 lines to modify)
    - Remove KnownControlTags list
    - Simplify LoadBookmarksIntoComboBox()
 
-3. **SpyWindow.Bookmarks.cs** (~30 lines to simplify)
+3. **AutomationWindow.Bookmarks.cs** (~30 lines to simplify)
    - Remove enum-specific code in OnSaveEdited()
    - Simplify OnKnownSelectionChanged()
 
@@ -409,7 +409,7 @@ If Phase 2 causes issues:
    - Remove enum parsing logic
    - Use bookmark name resolution only
 
-5. **SpyWindow.Procedures.Exec.cs** (~15 lines to simplify)
+5. **AutomationWindow.Procedures.Exec.cs** (~15 lines to simplify)
    - Remove enum parsing logic
    - Use bookmark name resolution only
 

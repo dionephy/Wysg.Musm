@@ -9,7 +9,7 @@ using Wysg.Musm.Radium.Services;
 
 namespace Wysg.Musm.Radium.Views
 {
-    public partial class SpyWindow
+    public partial class AutomationWindow
     {
         private PacsMethodManager? _pacsMethodManager;
 
@@ -41,7 +41,7 @@ namespace Wysg.Musm.Radium.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[SpyWindow] Error initializing PACS methods: {ex.Message}");
+                Debug.WriteLine($"[AutomationWindow] Error initializing PACS methods: {ex.Message}");
                 // Continue with empty list - user can add methods manually
             }
         }
@@ -62,11 +62,11 @@ namespace Wysg.Musm.Radium.Views
                     PacsMethods.Add(method);
                 }
 
-                Debug.WriteLine($"[SpyWindow] Loaded {PacsMethods.Count} PACS methods");
+                Debug.WriteLine($"[AutomationWindow] Loaded {PacsMethods.Count} PACS methods");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[SpyWindow] Error loading PACS methods: {ex.Message}");
+                Debug.WriteLine($"[AutomationWindow] Error loading PACS methods: {ex.Message}");
             }
         }
 

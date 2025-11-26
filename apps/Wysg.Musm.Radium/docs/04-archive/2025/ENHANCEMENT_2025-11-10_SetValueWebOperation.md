@@ -1,4 +1,4 @@
-﻿# ENHANCEMENT: SetValueWeb Operation for Web Browser Elements
+# ENHANCEMENT: SetValueWeb Operation for Web Browser Elements
 
 **Date**: 2025-11-10  
 **Type**: Feature Enhancement  
@@ -9,7 +9,7 @@
 
 ## Summary
 
-Added a new `SetValueWeb` operation to SpyWindow Custom Procedures that provides a **web-optimized** text input method using keyboard simulation (SendKeys) instead of UIA ValuePattern. This operation is specifically designed for web browser elements where `SetValue` may fail due to browser security restrictions or lack of ValuePattern support.
+Added a new `SetValueWeb` operation to AutomationWindow Custom Procedures that provides a **web-optimized** text input method using keyboard simulation (SendKeys) instead of UIA ValuePattern. This operation is specifically designed for web browser elements where `SetValue` may fail due to browser security restrictions or lack of ValuePattern support.
 
 ---
 
@@ -30,7 +30,7 @@ SetValue(ReportText, "New report text")
 Result: "(no value pattern)" or "(read-only)"
 
 SetValue(WebTextArea, "Findings")
-Result: Text appears but browser doesn't fire events �� React state broken
+Result: Text appears but browser doesn't fire events ?? React state broken
 ```
 
 ---
@@ -79,7 +79,7 @@ SetValueWeb(ReportText, "Normal findings.")
 
 #### With Variable
 ```
-GetCurrentFindings �� var1
+GetCurrentFindings ?? var1
 SetValueWeb(WebFindings, var1)
 ```
 
@@ -226,7 +226,7 @@ SetValueWeb(WebInput, "")  # Types nothing after select all
 
 ### 4. Copy Between Fields
 ```
-GetText(SourceField) �� var1
+GetText(SourceField) ?? var1
 SetValueWeb(TargetField, var1)
 ```
 
@@ -290,8 +290,8 @@ SetValue(DesktopTextBox, "Desktop text")
 ```
 SetValueWeb(ReportText, "Test findings")
 Delay(100)  # Wait for UI update
-GetText(ReportText) �� var1
-IsMatch(var1, "Test findings") �� var2  # Verify
+GetText(ReportText) ?? var1
+IsMatch(var1, "Test findings") ?? var2  # Verify
 ```
 
 ---
@@ -300,10 +300,10 @@ IsMatch(var1, "Test findings") �� var2  # Verify
 
 | File | Changes |
 |------|---------|
-| `SpyWindow.OperationItems.xaml` | Added `SetValueWeb` to operations dropdown |
+| `AutomationWindow.OperationItems.xaml` | Added `SetValueWeb` to operations dropdown |
 | `OperationExecutor.ElementOps.cs` | Implemented `ExecuteSetValueWeb()` and `EscapeTextForSendKeys()` |
 | `OperationExecutor.cs` | Added routing for `SetValueWeb` operation |
-| `SpyWindow.Procedures.Exec.cs` | Added configuration (Arg1=Element, Arg2=String/Var) |
+| `AutomationWindow.Procedures.Exec.cs` | Added configuration (Arg1=Element, Arg2=String/Var) |
 
 ---
 
@@ -394,7 +394,7 @@ IsMatch(var1, "Test findings") �� var2  # Verify
 ## Specification (Spec.md)
 
 ### FR-1300: SetValueWeb Operation
-Add new operation "SetValueWeb" to SpyWindow Custom Procedures for web-optimized text input using keyboard simulation instead of UIA ValuePattern.
+Add new operation "SetValueWeb" to AutomationWindow Custom Procedures for web-optimized text input using keyboard simulation instead of UIA ValuePattern.
 
 ### FR-1301: Operation Configuration
 - Arg1: Element (target web control)

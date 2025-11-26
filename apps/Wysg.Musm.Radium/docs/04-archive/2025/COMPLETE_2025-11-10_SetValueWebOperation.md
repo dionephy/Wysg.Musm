@@ -1,4 +1,4 @@
-﻿# COMPLETE: SetValueWeb Operation Implementation
+# COMPLETE: SetValueWeb Operation Implementation
 
 **Date**: 2025-11-10  
 **Feature**: Web-optimized text input operation  
@@ -17,11 +17,11 @@ Successfully implemented `SetValueWeb` operation for Custom Procedures, providin
 ### 1. Core Implementation ?
 - New operation `SetValueWeb` in OperationExecutor.ElementOps.cs
 - Automatic special character escaping (`EscapeTextForSendKeys`)
-- Focus �� Select All �� Type workflow
+- Focus ?? Select All ?? Type workflow
 - Debug logging at each step
 
 ### 2. UI Integration ?
-- Added to SpyWindow operations dropdown
+- Added to AutomationWindow operations dropdown
 - Configured arguments (Arg1=Element, Arg2=String/Var)
 - Proper routing in OperationExecutor
 
@@ -52,7 +52,7 @@ Successfully implemented `SetValueWeb` operation for Custom Procedures, providin
 ```
 SetFocus(WebReportText)
 SetValueWeb(WebReportText, "Normal CT findings.")
-�� "(web value set, 22 chars)"
+?? "(web value set, 22 chars)"
 ```
 
 ---
@@ -61,10 +61,10 @@ SetValueWeb(WebReportText, "Normal CT findings.")
 
 | File | Purpose | Status |
 |------|---------|--------|
-| `SpyWindow.OperationItems.xaml` | Dropdown entry | ? |
+| `AutomationWindow.OperationItems.xaml` | Dropdown entry | ? |
 | `OperationExecutor.ElementOps.cs` | Implementation | ? |
 | `OperationExecutor.cs` | Routing | ? |
-| `SpyWindow.Procedures.Exec.cs` | Configuration | ? |
+| `AutomationWindow.Procedures.Exec.cs` | Configuration | ? |
 
 ---
 
@@ -169,13 +169,13 @@ SetValueWeb(WebReportText, "Normal CT findings.")
 ### Before SetValueWeb
 ```
 SetValue(WebReportText, "findings")
-�� "(no value pattern)" ?
+?? "(no value pattern)" ?
 ```
 
 ### After SetValueWeb
 ```
 SetValueWeb(WebReportText, "findings")
-�� "(web value set, 8 chars)" ?
+?? "(web value set, 8 chars)" ?
 ```
 
 ---

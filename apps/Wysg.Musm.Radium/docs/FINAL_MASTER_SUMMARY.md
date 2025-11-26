@@ -683,7 +683,7 @@ The documentation is now:
 - Tab 1 "UI Bookmark": Process management, bookmark operations, crawl editor
 - Tab 2 "Procedure": Custom procedure creation and execution
 - PACS label remains at top level for constant visibility
-- **Files Modified**: `SpyWindow.xaml`, `SpyWindow.Styles.xaml`
+- **Files Modified**: `AutomationWindow.xaml`, `AutomationWindow.Styles.xaml`
 - **Documentation**: `docs/00-current/AUTOMATION_WINDOW_TAB_STRUCTURE_20251125.md`
 - **Status**: ? Complete, Build Successful
 

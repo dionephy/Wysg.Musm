@@ -1,12 +1,12 @@
-﻿# Enhancement: New Custom Procedure Operation - SetValue (2025-11-09)
+# Enhancement: New Custom Procedure Operation - SetValue (2025-11-09)
 
 ## Overview
 Added a new "SetValue" operation to the UI Spy window Custom Procedures section, enabling automated setting of text field and control values using the UIA ValuePattern.
 
 ## Changes Made
 
-### 1. SpyWindow.OperationItems.xaml
-**Path**: `apps\Wysg.Musm.Radium\Views\SpyWindow.OperationItems.xaml`
+### 1. AutomationWindow.OperationItems.xaml
+**Path**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.OperationItems.xaml`
 
 **Changes**:
 - Added `<ComboBoxItem Content="SetValue"/>` to operations list
@@ -14,8 +14,8 @@ Added a new "SetValue" operation to the UI Spy window Custom Procedures section,
 
 **Impact**: Users can now select SetValue from the Operation dropdown in Custom Procedures.
 
-### 2. SpyWindow.Procedures.Exec.cs
-**Path**: `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs`
+### 2. AutomationWindow.Procedures.Exec.cs
+**Path**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs`
 
 **Changes**:
 Added operation configuration:
@@ -99,13 +99,13 @@ Arg2: "12345678" (String)
 
 ### 2. Set Value from Variable
 ```
-Operation: GetText       Arg1: SourceField (Element)    �� var1
+Operation: GetText       Arg1: SourceField (Element)    ?? var1
 Operation: SetValue      Arg1: TargetField (Element)    Arg2: var1 (Var)
 ```
 
 ### 3. Copy Between Fields
 ```
-Operation: GetValueFromSelection  Arg1: DataGrid (Element)  Arg2: "Name" (String) �� var1
+Operation: GetValueFromSelection  Arg1: DataGrid (Element)  Arg2: "Name" (String) ?? var1
 Operation: SetValue              Arg1: NameField (Element)  Arg2: var1 (Var)
 ```
 
@@ -158,23 +158,23 @@ Operation automatically checks `ValuePattern.IsReadOnly`:
 ### Chaining with GetText
 ```
 # Copy value from one field to another
-GetText(SourceField) �� var1
+GetText(SourceField) ?? var1
 SetValue(TargetField, var1)
 ```
 
 ### Chaining with Split
 ```
 # Extract and set part of text
-GetText(FullNameField) �� var1
-Split(var1, " ", 0) �� var2  # First name
+GetText(FullNameField) ?? var1
+Split(var1, " ", 0) ?? var2  # First name
 SetValue(FirstNameField, var2)
 ```
 
 ### Chaining with Replace
 ```
 # Transform and set value
-GetText(DateField) �� var1
-Replace(var1, "/", "-") �� var2
+GetText(DateField) ?? var1
+Replace(var1, "/", "-") ?? var2
 SetValue(FormattedDateField, var2)
 ```
 
@@ -260,7 +260,7 @@ Step 8: ClickElement  Arg1: SaveButton
 ```
 PACS Method: CopySearchResult
 
-Step 1: GetValueFromSelection  Arg1: SearchResultsList  Arg2: "ID" (String) �� var1
+Step 1: GetValueFromSelection  Arg1: SearchResultsList  Arg2: "ID" (String) ?? var1
 Step 2: SetFocus              Arg1: SearchBox
 Step 3: SetValue              Arg1: SearchBox          Arg2: var1 (Var)
 Step 4: Delay                 Arg1: 50 (Number)

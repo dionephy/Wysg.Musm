@@ -21,7 +21,7 @@ namespace Wysg.Musm.Radium.Views
     /// <summary>
     /// Partial: Bookmark capture, editing, validation & mapping logic.
     /// </summary>
-    public partial class SpyWindow
+    public partial class AutomationWindow
     {
         // UIA constants needed by helper logic (kept internal to this partial)
         private const int UIA_ListItem = 50007;

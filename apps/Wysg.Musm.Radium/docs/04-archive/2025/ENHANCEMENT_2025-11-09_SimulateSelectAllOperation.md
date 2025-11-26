@@ -1,12 +1,12 @@
-﻿# Enhancement: New Custom Procedure Operation - SimulateSelectAll (2025-11-09)
+# Enhancement: New Custom Procedure Operation - SimulateSelectAll (2025-11-09)
 
 ## Overview
 Added a new "SimulateSelectAll" operation to the UI Spy window Custom Procedures section, enabling automated selection of all text in the currently focused control by sending Ctrl+A keyboard shortcut.
 
 ## Changes Made
 
-### 1. SpyWindow.OperationItems.xaml
-**Path**: `apps\Wysg.Musm.Radium\Views\SpyWindow.OperationItems.xaml`
+### 1. AutomationWindow.OperationItems.xaml
+**Path**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.OperationItems.xaml`
 
 **Changes**:
 - Added `<ComboBoxItem Content="SimulateSelectAll"/>` to operations list
@@ -14,8 +14,8 @@ Added a new "SimulateSelectAll" operation to the UI Spy window Custom Procedures
 
 **Impact**: Users can now select SimulateSelectAll from the Operation dropdown in Custom Procedures.
 
-### 2. SpyWindow.Procedures.Exec.cs
-**Path**: `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs`
+### 2. AutomationWindow.Procedures.Exec.cs
+**Path**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs`
 
 **Changes**:
 Added operation configuration:
@@ -207,7 +207,7 @@ SimulatePaste
 
 ### With GetText (Read Before Replace)
 ```
-GetText(TextField) �� var1      # Save current value
+GetText(TextField) ?? var1      # Save current value
 SetClipboard("new text")
 SetFocus(TextField)
 SimulateSelectAll
@@ -252,7 +252,7 @@ SimulateSelectAll
 
 # Good: Validate after operation
 SimulateSelectAll
-GetText(TextField) �� var1
+GetText(TextField) ?? var1
 # Check if var1 makes sense
 ```
 
@@ -378,7 +378,7 @@ Step 2: SimulateSelectAll
 ```
 PACS Method: ReplaceWithVariable
 
-Step 1: GetText         Arg1: TemplateField (Element) �� var1
+Step 1: GetText         Arg1: TemplateField (Element) ?? var1
 Step 2: SetClipboard    Arg1: var1 (Var)
 Step 3: SetFocus        Arg1: TargetField (Element)
 Step 4: SimulateSelectAll

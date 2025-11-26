@@ -144,7 +144,7 @@ Result: Procedure runs, result ignored
 - Restart application if needed
 
 **Procedure not in dropdown?**
-- Create procedure in SpyWindow ?? Custom Procedures first
+- Create procedure in AutomationWindow ?? Custom Procedures first
 - Refresh by reopening CreateModuleWindow
 
 **Module not executing?**

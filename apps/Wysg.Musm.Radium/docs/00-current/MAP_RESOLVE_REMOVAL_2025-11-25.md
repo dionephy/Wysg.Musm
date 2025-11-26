@@ -2,7 +2,7 @@
 
 ## Summary
 
-Removed Map and Resolve buttons from SpyWindow toolbar and all related code per user request.
+Removed Map and Resolve buttons from AutomationWindow toolbar and all related code per user request.
 
 ---
 
@@ -14,17 +14,17 @@ Removed Map and Resolve buttons from SpyWindow toolbar and all related code per 
 
 ### Code Removed
 
-#### 1. SpyWindow.xaml
+#### 1. AutomationWindow.xaml
 - Removed Map button definition
 - Removed Resolve button definition
 
-#### 2. SpyWindow.Bookmarks.cs
+#### 2. AutomationWindow.Bookmarks.cs
 - Removed `OnMapSelected` method (~15 lines)
 - Removed `OnResolveSelected` method (~20 lines)
 - Removed `OnPreviewMouseDownForQuickMap` method (~20 lines)
   - This handled Ctrl+Shift+Click quick mapping functionality
 
-#### 3. SpyWindow.xaml.cs
+#### 3. AutomationWindow.xaml.cs
 - Removed `PreviewMouseDown += OnPreviewMouseDownForQuickMap` event registration from constructor
 
 #### 4. SettingsWindow.xaml.cs
@@ -91,9 +91,9 @@ The cleaner toolbar focuses on essential operations:
 
 ## Files Modified
 
-1. **apps/Wysg.Musm.Radium/Views/SpyWindow.xaml** - Removed button definitions
-2. **apps/Wysg.Musm.Radium/Views/SpyWindow.Bookmarks.cs** - Removed handler methods
-3. **apps/Wysg.Musm.Radium/Views/SpyWindow.xaml.cs** - Removed event registration
+1. **apps/Wysg.Musm.Radium/Views/AutomationWindow.xaml** - Removed button definitions
+2. **apps/Wysg.Musm.Radium/Views/AutomationWindow.Bookmarks.cs** - Removed handler methods
+3. **apps/Wysg.Musm.Radium/Views/AutomationWindow.xaml.cs** - Removed event registration
 4. **apps/Wysg.Musm.Radium/Views/SettingsWindow.xaml.cs** - Removed delegation methods
 
 ---

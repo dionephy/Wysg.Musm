@@ -1,4 +1,4 @@
-﻿# GetSelectedElement Implementation (2025-10-18)
+# GetSelectedElement Implementation (2025-10-18)
 
 ## User Request
 Add operation "GetSelectedElement" with a single Element argument that returns the selected element from any list or container element. This is a generalized operation that works with any element, making it more flexible than hardcoded list-specific operations.
@@ -25,7 +25,7 @@ Add operation "GetSelectedElement" with a single Element argument that returns t
 7. Value: `SelectedElement:{name}`
 
 **Runtime Element Cache** ?:
-- Dictionary<string, AutomationElement> in both SpyWindow and ProcedureExecutor
+- Dictionary<string, AutomationElement> in both AutomationWindow and ProcedureExecutor
 - Cleared at start of each procedure run to prevent stale references
 - Elements validated before use (staleness check via Name property access)
 - Stale elements automatically evicted from cache
@@ -34,10 +34,10 @@ Add operation "GetSelectedElement" with a single Element argument that returns t
 
 **Files Modified:**
 
-1. **`apps\Wysg.Musm.Radium\Views\SpyWindow.OperationItems.xaml`**
+1. **`apps\Wysg.Musm.Radium\Views\AutomationWindow.OperationItems.xaml`**
    - Added GetSelectedElement to operation dropdown
 
-2. **`apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs`**
+2. **`apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs`**
    - Added operation configuration (Arg1=Element, Arg2/Arg3 disabled)
    - Implemented execution in ExecuteSingle method:
      - Resolves parent element from Arg1
@@ -55,7 +55,7 @@ Add operation "GetSelectedElement" with a single Element argument that returns t
 3. **`apps\Wysg.Musm.Radium\Services\ProcedureExecutor.cs`**
    - Added operation to ExecuteRow switch
    - Implemented in ExecuteElemental method:
-     - Same logic as SpyWindow for consistency
+     - Same logic as AutomationWindow for consistency
      - **Stores element in static `_elementCache` dictionary**
      - Returns element identifier string
    - **Added static `_elementCache` dictionary field**
@@ -152,47 +152,47 @@ private async Task<(string? result, List<ProcOpRow> annotated)> RunProcedureAsyn
 
 1. **Get Selected Study from Search Results**:
    ```
-   GetSelectedElement(SearchResultsList) �� var1
+   GetSelectedElement(SearchResultsList) ?? var1
    ```
 
 2. **Get Selected Study from Related Studies**:
    ```
-   GetSelectedElement(RelatedStudiesList) �� var2
+   GetSelectedElement(RelatedStudiesList) ?? var2
    ```
 
 3. **Get Selected Item from Custom List**:
    ```
-   GetSelectedElement(CustomListBookmark) �� var3
+   GetSelectedElement(CustomListBookmark) ?? var3
    ```
 
 4. **Combine with Field Extraction**:
    ```
    # Get element reference
-   GetSelectedElement(SearchResultsList) �� var1
+   GetSelectedElement(SearchResultsList) ?? var1
    
    # Get specific field value from same list
-   GetValueFromSelection(SearchResultsList, "Patient Name") �� var2
+   GetValueFromSelection(SearchResultsList, "Patient Name") ?? var2
    ```
 
 5. **Metadata Extraction**:
    ```
    GetSelectedElement(SearchResultsList)
-   �� Preview shows: (element: MRI Brain, automationId: 12345)
+   ?? Preview shows: (element: MRI Brain, automationId: 12345)
    ```
 
 6. **Operation Chaining (NEW)** ?:
    ```
    # Get selected row
-   GetSelectedElement(SearchResultsList) �� var1
+   GetSelectedElement(SearchResultsList) ?? var1
    
    # Click that specific row (Arg1 Type changed to Var)
-   ClickElement(var1) �� var2
+   ClickElement(var1) ?? var2
    
    # Move mouse to the element
-   MouseMoveToElement(var1) �� var3
+   MouseMoveToElement(var1) ?? var3
    
    # Check if element is visible
-   IsVisible(var1) �� var4
+   IsVisible(var1) ?? var4
    ```
 
 ### Advantages Over Previous Implementation
@@ -231,8 +231,8 @@ private async Task<(string? result, List<ProcOpRow> annotated)> RunProcedureAsyn
 
 ### Testing Instructions
 
-**SpyWindow Interactive Test**:
-1. Open SpyWindow (Settings �� Automation �� Spy button)
+**AutomationWindow Interactive Test**:
+1. Open AutomationWindow (Settings ?? Automation ?? Spy button)
 2. Navigate to Custom Procedures tab
 3. Click "Add" to add new operation row
 4. Select "GetSelectedElement" from dropdown
@@ -244,7 +244,7 @@ private async Task<(string? result, List<ProcOpRow> annotated)> RunProcedureAsyn
 10. Verify output variable contains element identifier (e.g., `SelectedElement:MRI Brain`)
 
 **Operation Chaining Test** ?:
-1. Add GetSelectedElement operation �� var1
+1. Add GetSelectedElement operation ?? var1
 2. Add ClickElement operation below it
 3. **Change ClickElement Arg1 Type from Element to Var**
 4. Set ClickElement Arg1 Value to var1
@@ -254,7 +254,7 @@ private async Task<(string? result, List<ProcOpRow> annotated)> RunProcedureAsyn
 8. Verify coordinates displayed match selected row position
 
 **Staleness Test**:
-1. Run procedure with GetSelectedElement �� var1
+1. Run procedure with GetSelectedElement ?? var1
 2. Close/reopen PACS list (simulate UI change)
 3. Run ClickElement(var1) operation alone
 4. Verify reports `(no element)` (cached element no longer valid)
@@ -262,27 +262,27 @@ private async Task<(string? result, List<ProcOpRow> annotated)> RunProcedureAsyn
 **Test with Different Lists**:
 ```
 # Test with SearchResultsList
-GetSelectedElement(SearchResultsList) �� var1
-ClickElement(var1) �� var2
+GetSelectedElement(SearchResultsList) ?? var1
+ClickElement(var1) ?? var2
 
 # Test with RelatedStudiesList  
-GetSelectedElement(RelatedStudiesList) �� var3
-ClickElement(var3) �� var4
+GetSelectedElement(RelatedStudiesList) ?? var3
+ClickElement(var3) ?? var4
 
 # Test with any custom list bookmark
-GetSelectedElement(CustomList) �� var5
-ClickElement(var5) �� var6
+GetSelectedElement(CustomList) ?? var5
+ClickElement(var5) ?? var6
 ```
 
 **Integration Test**:
 1. Create procedure with multiple list selections and chaining:
    ```
-   GetSelectedElement(SearchResultsList) �� var1
-   GetValueFromSelection(SearchResultsList, "Patient Name") �� var2
-   ClickElement(var1) �� var3
-   GetSelectedElement(RelatedStudiesList) �� var4
-   GetValueFromSelection(RelatedStudiesList, "Study Name") �� var5
-   ClickElement(var4) �� var6
+   GetSelectedElement(SearchResultsList) ?? var1
+   GetValueFromSelection(SearchResultsList, "Patient Name") ?? var2
+   ClickElement(var1) ?? var3
+   GetSelectedElement(RelatedStudiesList) ?? var4
+   GetValueFromSelection(RelatedStudiesList, "Study Name") ?? var5
+   ClickElement(var4) ?? var6
    ```
 2. Run procedure
 3. Verify each operation returns expected values

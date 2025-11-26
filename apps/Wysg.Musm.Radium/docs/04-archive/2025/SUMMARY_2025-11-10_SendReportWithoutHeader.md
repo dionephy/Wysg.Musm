@@ -1,16 +1,16 @@
-﻿# Summary: SendReportWithoutHeader Implementation
+# Summary: SendReportWithoutHeader Implementation
 
 **Date:** 2025-11-10  
 **Type:** Enhancement/Replacement  
 **Impact:** Low (Method replacement)
 
 ## What Changed
-Replaced "Send report retry" PACS method with "Send report without header" in SpyWindow Custom Procedures.
+Replaced "Send report retry" PACS method with "Send report without header" in AutomationWindow Custom Procedures.
 
 ## Key Points
 1. **Removed:** SendReportRetry method and dropdown item
 2. **Added:** SendReportWithoutHeader method and dropdown item
-3. **Location:** SpyWindow �� Custom Procedures �� PACS Methods
+3. **Location:** AutomationWindow ?? Custom Procedures ?? PACS Methods
 4. **Service:** PacsService.SendReportWithoutHeaderAsync()
 
 ## Why This Change
@@ -21,8 +21,8 @@ The SendReportRetry functionality was redundant with the comprehensive retry log
 - New configurations can use SendReportWithoutHeader for header-less report sending
 
 ## Configuration Required
-Users must configure the SendReportWithoutHeader custom procedure in SpyWindow per their PACS requirements. This typically involves:
-1. Opening SpyWindow
+Users must configure the SendReportWithoutHeader custom procedure in AutomationWindow per their PACS requirements. This typically involves:
+1. Opening AutomationWindow
 2. Selecting "Send report without header" from PACS methods dropdown
 3. Defining the custom procedure operations (e.g., SetFocus, SetValue, Invoke, etc.)
 4. Testing with the Run button

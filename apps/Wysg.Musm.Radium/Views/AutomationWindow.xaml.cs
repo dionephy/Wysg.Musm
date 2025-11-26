@@ -52,26 +52,26 @@ namespace Wysg.Musm.Radium.Views
     }
 
     /// <summary>
-    /// Core partial of SpyWindow. Heavy logic has been split into multiple partial class files:
-    ///  - SpyWindow.Procedures.cs : Custom procedure model + execution
-    ///  - SpyWindow.Bookmarks.cs  : Bookmark capture / edit / mapping logic
-    ///  - SpyWindow.Tree.cs       : (Disabled) ancestry/tree view helpers
-    ///  - SpyWindow.UIAHelpers.cs : UIA helper & parsing utilities
+    /// Core partial of AutomationWindow. Heavy logic has been split into multiple partial class files:
+    ///  - AutomationWindow.Procedures.cs : Custom procedure model + execution
+    ///  - AutomationWindow.Bookmarks.cs  : Bookmark capture / edit / mapping logic
+    ///  - AutomationWindow.Tree.cs       : (Disabled) ancestry/tree view helpers
+    ///  - AutomationWindow.UIAHelpers.cs : UIA helper & parsing utilities
     /// This core file now contains only bootstrapping, shared fields, and simple command handlers that
     /// delegate to logic in the other partials.
     /// </summary>
-    public partial class SpyWindow : System.Windows.Window
+    public partial class AutomationWindow : System.Windows.Window
     {
         // ------------------------------------------------------------------
         // Single instance management
         // ------------------------------------------------------------------
-        private static SpyWindow? _instance;
+        private static AutomationWindow? _instance;
         
         public static void ShowInstance()
         {
             if (_instance == null || !_instance.IsLoaded)
             {
-                _instance = new SpyWindow();
+                _instance = new AutomationWindow();
                 _instance.Closed += (s, e) => _instance = null;
             }
             
@@ -129,7 +129,7 @@ namespace Wysg.Musm.Radium.Views
         // ------------------------------------------------------------------
         // Constructor
         // ------------------------------------------------------------------
-        public SpyWindow()
+        public AutomationWindow()
         {
             InitializeComponent();
             DataContext = this;

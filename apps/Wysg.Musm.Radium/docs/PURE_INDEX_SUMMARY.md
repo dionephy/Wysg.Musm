@@ -69,7 +69,7 @@ if (cond == null)
 }
 ```
 
-## Usage in SpyWindow
+## Usage in AutomationWindow
 
 ### Configuring Pure Index Node
 
@@ -245,7 +245,7 @@ All roots tried, not found
 ## Recommendation
 
 **For your immediate issue (WorklistViewButton)**:
-1. Open SpyWindow, load your bookmark
+1. Open AutomationWindow, load your bookmark
 2. Find **Step 3** (the toolbar/statusbar step)
 3. **Configure as pure index**:
    - Scope: Children

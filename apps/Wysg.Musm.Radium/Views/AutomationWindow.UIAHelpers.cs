@@ -4,7 +4,7 @@ using System.Windows.Media;
 
 namespace Wysg.Musm.Radium.Views
 {
-    public partial class SpyWindow
+    public partial class AutomationWindow
     {
         private static TParent? FindParent<TParent>(DependencyObject? child) where TParent : DependencyObject
         {

@@ -1,4 +1,4 @@
-﻿# Split Operation Diagnostic Enhancement - 2025-10-19
+# Split Operation Diagnostic Enhancement - 2025-10-19
 
 ## Summary
 Added comprehensive debug logging to the Split operation in `ProcedureExecutor.cs` to diagnose why separators like `&pinfo=` and `&pname=` are not matching the URL content.
@@ -7,7 +7,7 @@ Added comprehensive debug logging to the Split operation in `ProcedureExecutor.c
 
 ### File: `apps\Wysg.Musm.Radium\Services\ProcedureExecutor.cs`
 
-**Method**: `ExecuteRow` �� `case "Split"`
+**Method**: `ExecuteRow` ?? `case "Split"`
 
 **Added Debug Logging**:
 1. **Input diagnostics**:
@@ -46,20 +46,20 @@ Added comprehensive debug logging to the Split operation in `ProcedureExecutor.c
 ```
 [Split] Input contains separator: True
 [Split] Input contains unescaped separator: True
-[Split] Split result: 2 parts  �� Should be > 1
+[Split] Split result: 2 parts  ?? Should be > 1
 ```
 
 #### Case 2: Separator doesn't match (CURRENT PROBLEM)
 ```
-[Split] Input contains separator: False  �� Problem indicator
+[Split] Input contains separator: False  ?? Problem indicator
 [Split] Input contains unescaped separator: False
-[Split] Split result: 1 parts  �� What we're seeing now
+[Split] Split result: 1 parts  ?? What we're seeing now
 ```
 
 #### Case 3: Hidden characters in separator
 ```
 [Split] SepRaw: '&pinfo=' (length: 8, bytes: 26 70 69 6E 66 6F 3D 20)
-                                            ^^                  ^^ �� Extra 0x20 (space)
+                                            ^^                  ^^ ?? Extra 0x20 (space)
 ```
 
 ### Expected Byte Sequences
@@ -98,7 +98,7 @@ Added comprehensive debug logging to the Split operation in `ProcedureExecutor.c
 - Hidden control characters
 
 ### If bytes show extra characters:
-- Edit procedure in SpyWindow
+- Edit procedure in AutomationWindow
 - Delete and re-type the separator strings
 - Save procedure and test again
 
@@ -130,17 +130,17 @@ Check Debug Output:
 - [ ] Run procedure and capture new debug output
 - [ ] Compare SepRaw bytes with expected hex values
 - [ ] Check if `Input contains separator` is True or False
-- [ ] Verify separator string in SpyWindow matches URL exactly
+- [ ] Verify separator string in AutomationWindow matches URL exactly
 - [ ] Delete/recreate procedure if corruption suspected
 - [ ] Test with simple separator (e.g., `,`) to verify Split works
 
 ## Related Files
 - `apps\Wysg.Musm.Radium\Services\ProcedureExecutor.cs` - Split operation implementation
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs` - SpyWindow Split implementation
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs` - AutomationWindow Split implementation
 - `%AppData%\Wysg.Musm\Radium\Pacs\{pacs_key}\ui-procedures.json` - Stored procedures
 
 ## Contact
 If diagnostic output shows unexpected values, please share:
 1. Full debug output from `[Split]` lines
-2. Screenshot of procedure configuration in SpyWindow
+2. Screenshot of procedure configuration in AutomationWindow
 3. Sample URL text from Step 1 (GetText result)

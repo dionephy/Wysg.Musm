@@ -1,9 +1,9 @@
-﻿# Reportified Toggle and ResultsListSetFocus Module - Fixes ?
+# Reportified Toggle and ResultsListSetFocus Module - Fixes ?
 **Date**: 2025-10-19  
 **Status**: IN PROGRESS - Issue 1 fixed, Issue 2 requires bookmark re-mapping
 **Issues**: 
-1. ? Reportified toggle not updating when Reportify module runs �� **FIXED**
-2. ?? ResultsListSetFocus automation module not working - mouse moves to wrong element �� **REQUIRES MAPPING FIX**
+1. ? Reportified toggle not updating when Reportify module runs ?? **FIXED**
+2. ?? ResultsListSetFocus automation module not working - mouse moves to wrong element ?? **REQUIRES MAPPING FIX**
 
 ## Issue 1: Reportified Toggle Binding ? FIXED (Second Attempt)
 
@@ -62,11 +62,11 @@ private void ToggleReportified(bool value)
 
 ### Testing
 1. ? Configure automation sequence with `Reportify` module
-2. ? Run the automation �� toggle button turns ON
-3. ? Run automation again �� toggle stays ON (no flicker)
-4. ? Click toggle manually OFF �� works
-5. ? Run automation �� toggle turns ON again
-6. ? Click toggle manually ON (when already ON) �� no issues
+2. ? Run the automation ?? toggle button turns ON
+3. ? Run automation again ?? toggle stays ON (no flicker)
+4. ? Click toggle manually OFF ?? works
+5. ? Run automation ?? toggle turns ON again
+6. ? Click toggle manually ON (when already ON) ?? no issues
 
 ---
 
@@ -76,7 +76,7 @@ private void ToggleReportified(bool value)
 The `ResultsListSetFocus` automation module executes but **clicks the wrong UI element**. The mouse cursor moves to the "Open Worklist" button instead of the search results list, indicating the `SearchResultsList` bookmark is **mapped incorrectly**.
 
 ### Root Cause
-The `SearchResultsList` KnownControl bookmark in SpyWindow is currently mapped to the "Open Worklist Button" UI element instead of the actual search results list control. This causes the `GetSelectedElement` and `ClickElementAndStay` operations in the `SetFocusSearchResultsList` PACS method to target the wrong element.
+The `SearchResultsList` KnownControl bookmark in AutomationWindow is currently mapped to the "Open Worklist Button" UI element instead of the actual search results list control. This causes the `GetSelectedElement` and `ClickElementAndStay` operations in the `SetFocusSearchResultsList` PACS method to target the wrong element.
 
 **Evidence**:
 - User reported: "mouse is moved over the open worklist button"
@@ -84,41 +84,41 @@ The `SearchResultsList` KnownControl bookmark in SpyWindow is currently mapped t
 - The `ClickElementAndStay` operation is executing correctly (cursor moves to element center), just on the wrong target
 
 ### Solution
-**Re-map the `SearchResultsList` bookmark in SpyWindow to the correct UI element**.
+**Re-map the `SearchResultsList` bookmark in AutomationWindow to the correct UI element**.
 
 ### Step-by-Step Fix Instructions
 
-1. **Open SpyWindow**:
+1. **Open AutomationWindow**:
    - From MainWindow: Click **Spy** button in status bar
-   - Or from Settings �� Automation: Click **Spy** button
+   - Or from Settings ?? Automation: Click **Spy** button
 
 2. **Select Map-to Target**:
-   - In SpyWindow top section, find the **Map to** dropdown
+   - In AutomationWindow top section, find the **Map to** dropdown
    - Select **"SearchResultsList"** from the list
 
 3. **Capture the Correct Element**:
-   - Click the **Pick** button (hand icon) in SpyWindow
-   - SpyWindow will minimize and display a countdown (5 seconds default)
+   - Click the **Pick** button (hand icon) in AutomationWindow
+   - AutomationWindow will minimize and display a countdown (5 seconds default)
    - **Important**: During countdown, click on the **SEARCH RESULTS LIST** in PACS
      - This is typically a ListView or DataGrid showing patient search results
      - It is **NOT** the "Open Worklist" button
      - It should be the list that displays columns like: Patient ID, Name, Study Date, etc.
-   - SpyWindow will re-appear and show the captured element details
+   - AutomationWindow will re-appear and show the captured element details
 
 4. **Verify the Mapping**:
-   - In SpyWindow, check the **Mapped Element** section
+   - In AutomationWindow, check the **Mapped Element** section
    - Verify the `ClassName` shows something like `SysListView32`, `ListView`, or similar list control class
    - Verify the `Name` or `AutomationId` matches the search results list (not button text)
    - Click **Validate** button to test if the bookmark resolves correctly
 
 5. **Test the Procedure**:
-   - In SpyWindow �� Custom Procedures, select **"SetFocusSearchResultsList"**
+   - In AutomationWindow ?? Custom Procedures, select **"SetFocusSearchResultsList"**
    - Click **Run** button
    - Verify:
      - ? `GetSelectedElement` operation returns selected row data
      - ? `ClickElementAndStay` operation clicks the list (not the button)
      - ? Mouse cursor ends up over the search results list
-     - ? No errors in SpyWindow status
+     - ? No errors in AutomationWindow status
 
 6. **Test Automation Module**:
    - Configure automation sequence with `ResultsListSetFocus` module
@@ -127,16 +127,16 @@ The `SearchResultsList` KnownControl bookmark in SpyWindow is currently mapped t
      - ? Mouse moves to search results list
      - ? List gains focus (keyboard navigation works)
      - ? Status shows "Search results list focused"
-     - ? Consistent with SpyWindow manual execution
+     - ? Consistent with AutomationWindow manual execution
 
 ### Alternative: Check Existing Bookmark
 
 If you want to diagnose the current mapping before re-mapping:
 
-1. Open SpyWindow
-2. Select Map to �� **SearchResultsList**
+1. Open AutomationWindow
+2. Select Map to ?? **SearchResultsList**
 3. Click **Resolve** button (without clicking Pick)
-4. SpyWindow will try to resolve the bookmark and show:
+4. AutomationWindow will try to resolve the bookmark and show:
    - Current element it's mapped to
    - Element's name, class, and location
 5. If it resolves to "Open Worklist Button" or similar, you've confirmed the wrong mapping
@@ -149,7 +149,7 @@ If you want to diagnose the current mapping before re-mapping:
   - **Mitigation**: Ensure PACS worklist is open and has search results visible before starting Pick
 
 - **Risk**: PACS UI might have multiple list controls on screen
-  - **Mitigation**: Click precisely on the search results list (the main list showing patient records); SpyWindow will capture the element under the mouse cursor
+  - **Mitigation**: Click precisely on the search results list (the main list showing patient records); AutomationWindow will capture the element under the mouse cursor
 
 ### Expected Results After Correct Mapping
 
@@ -163,7 +163,7 @@ If you want to diagnose the current mapping before re-mapping:
 - ? Mouse moves to center of list
 - ? List gains keyboard focus
 - ? `GetSelectedElement` returns correct selected row data
-- ? Automation module works consistently with SpyWindow manual execution
+- ? Automation module works consistently with AutomationWindow manual execution
 
 ---
 
@@ -171,7 +171,7 @@ If you want to diagnose the current mapping before re-mapping:
 - ? **0 Compilation Errors**
 - ? **Build Succeeded**
 - ? Issue 1 fix compiles successfully
-- ?? Issue 2 requires user action (bookmark re-mapping in SpyWindow)
+- ?? Issue 2 requires user action (bookmark re-mapping in AutomationWindow)
 
 ## Files Modified
 
@@ -184,20 +184,20 @@ If you want to diagnose the current mapping before re-mapping:
 ### Issue 2 Fix
 **No code changes required** - this is a **configuration issue** in the bookmark mapping system.
 
-**Action Required**: User must re-map `SearchResultsList` bookmark in SpyWindow to the correct UI element (search results list, not button).
+**Action Required**: User must re-map `SearchResultsList` bookmark in AutomationWindow to the correct UI element (search results list, not button).
 
 ## Summary
 
 | Issue | Status | Action Required |
 |-------|--------|-----------------|
 | Reportified toggle not updating | ? FIXED | None - automatic after rebuild |
-| ResultsListSetFocus wrong element | ?? MAPPING ERROR | Re-map bookmark in SpyWindow |
+| ResultsListSetFocus wrong element | ?? MAPPING ERROR | Re-map bookmark in AutomationWindow |
 
 ### Next Steps
 1. ? Rebuild solution to apply Reportified toggle fix
-2. ?? Open SpyWindow and re-map `SearchResultsList` bookmark (follow instructions above)
+2. ?? Open AutomationWindow and re-map `SearchResultsList` bookmark (follow instructions above)
 3. ? Test both fixes with automation sequences
 
 **Implementation Status**: 
 - ?? **Issue 1 COMPLETE** (code fix applied)
-- ?? **Issue 2 PENDING** (requires user configuration in SpyWindow)
+- ?? **Issue 2 PENDING** (requires user configuration in AutomationWindow)

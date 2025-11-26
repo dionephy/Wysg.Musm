@@ -1,4 +1,4 @@
-ï»¿# Quick Reference: SetValue Operation
+# Quick Reference: SetValue Operation
 
 **Date**: 2025-11-25  
 **Type**: Quick Reference  
@@ -53,7 +53,7 @@ SetValue  Arg1: TextField  Arg2: "Hello World" (String)
 
 ### 2. Set from Variable
 ```
-GetText   Arg1: SourceField â†’ var1
+GetText   Arg1: SourceField ¡æ var1
 SetValue  Arg1: TargetField  Arg2: var1 (Var)
 ```
 
@@ -64,14 +64,14 @@ SetValue  Arg1: TextField  Arg2: "" (String)
 
 ### 4. Copy from List Selection
 ```
-GetValueFromSelection  Arg1: DataGrid  Arg2: "Name" â†’ var1
+GetValueFromSelection  Arg1: DataGrid  Arg2: "Name" ¡æ var1
 SetValue              Arg1: NameField  Arg2: var1 (Var)
 ```
 
 ### 5. Transform and Set
 ```
-GetText    Arg1: DateField â†’ var1
-Replace    var1  "/"  "-" â†’ var2
+GetText    Arg1: DateField ¡æ var1
+Replace    var1  "/"  "-" ¡æ var2
 SetValue   Arg1: FormattedDate  Arg2: var2 (Var)
 ```
 
@@ -110,7 +110,7 @@ SetValue   Arg1: TextField  Arg2: "value"
 
 # Good: Validate after setting
 SetValue   Arg1: TextField  Arg2: "value"
-GetText    Arg1: TextField â†’ var1
+GetText    Arg1: TextField ¡æ var1
 
 # Good: Add delay for slow controls
 SetValue   Arg1: TextField  Arg2: "value"
@@ -227,27 +227,27 @@ SimulatePaste
 
 ### With GetText (Copy Field)
 ```
-GetText   Arg1: Source â†’ var1
+GetText   Arg1: Source ¡æ var1
 SetValue  Arg1: Target  Arg2: var1
 ```
 
 ### With Split (Extract Part)
 ```
-GetText       Arg1: FullName â†’ var1
-Split         var1  " "  0 â†’ var2
+GetText       Arg1: FullName ¡æ var1
+Split         var1  " "  0 ¡æ var2
 SetValue      Arg1: FirstName  Arg2: var2
 ```
 
 ### With Replace (Transform)
 ```
-GetText    Arg1: DateField â†’ var1
-Replace    var1  "/"  "-" â†’ var2
+GetText    Arg1: DateField ¡æ var1
+Replace    var1  "/"  "-" ¡æ var2
 SetValue   Arg1: ISODate  Arg2: var2
 ```
 
 ### With GetValueFromSelection (Copy from List)
 ```
-GetValueFromSelection  Arg1: List  Arg2: "ID" â†’ var1
+GetValueFromSelection  Arg1: List  Arg2: "ID" ¡æ var1
 SetFocus              Arg1: IDField
 SetValue              Arg1: IDField  Arg2: var1
 ```
@@ -264,8 +264,8 @@ SetValue  Arg1: Field3  Arg2: "value3"
 ### 2. Validate After Set
 ```
 SetValue  Arg1: Field  Arg2: "123"
-GetText   Arg1: Field â†’ var1
-IsMatch   var1  "123" â†’ var2
+GetText   Arg1: Field ¡æ var1
+IsMatch   var1  "123" ¡æ var2
 # var2 = "true" if value was set correctly
 ```
 
@@ -279,7 +279,7 @@ SetValue  Arg1: Field3  Arg2: ""
 ### 4. Copy Between Screens
 ```
 # From main screen
-GetText   Arg1: MainField â†’ var1
+GetText   Arg1: MainField ¡æ var1
 
 # To sub screen
 SetFocus  Arg1: SubField
@@ -314,5 +314,5 @@ Before using SetValue, verify:
 ## Related Documentation
 - Full details: `ENHANCEMENT_2025-11-09_SetValueOperation.md`
 - Feature specs: `Spec.md` (FR-1200 through FR-1214)
-- Other operations: `SpyWindow.OperationItems.xaml`
+- Other operations: `AutomationWindow.OperationItems.xaml`
 

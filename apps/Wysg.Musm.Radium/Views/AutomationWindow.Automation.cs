@@ -11,9 +11,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Wysg.Musm.Radium.Views
 {
     /// <summary>
-    /// Partial class for Automation tab functionality in SpyWindow
+    /// Partial class for Automation tab functionality in AutomationWindow
     /// </summary>
-    public partial class SpyWindow
+    public partial class AutomationWindow
     {
         private SettingsViewModel? _automationViewModel;
         private Point _automationDragStart;
@@ -121,7 +121,7 @@ namespace Wysg.Musm.Radium.Views
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[SpyWindow] Error loading custom modules: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[AutomationWindow] Error loading custom modules: {ex.Message}");
             }
         }
 
@@ -165,7 +165,7 @@ namespace Wysg.Musm.Radium.Views
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[SpyWindow] Error creating module: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[AutomationWindow] Error creating module: {ex.Message}");
                 MessageBox.Show($"Error creating module: {ex.Message}", "Error", 
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }

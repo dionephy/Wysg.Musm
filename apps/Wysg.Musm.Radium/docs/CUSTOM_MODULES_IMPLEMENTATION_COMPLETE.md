@@ -89,12 +89,12 @@ Module type ComboBox shows: "Run" (clean display)
 - No custom ItemTemplate needed
 
 ### 3. Integration Updates
-**File**: `apps/Wysg.Musm.Radium/Views/SpyWindow.xaml`
+**File**: `apps/Wysg.Musm.Radium/Views/AutomationWindow.xaml`
 - Added 4th column in Automation tab Grid for Custom Modules pane
 - Custom Modules ListBox with drag-drop support
 - "Create Module" button
 
-**File**: `apps/Wysg.Musm.Radium/Views/SpyWindow.Automation.cs`
+**File**: `apps/Wysg.Musm.Radium/Views/AutomationWindow.Automation.cs`
 - LoadCustomModules(): Loads modules from CustomModuleStore
 - OnCreateModule(): Opens CreateModuleWindow dialog, saves module, refreshes lists
 - GetAutomationListForListBox(): Added lstCustomModules case
@@ -198,7 +198,7 @@ Custom modules are stored in `%AppData%\Wysg.Musm\Radium\custom-modules.json`:
 
 ### Creating a Custom Module
 
-1. **Open Automation Window** (via Settings or SpyWindow ?? Automation tab)
+1. **Open Automation Window** (via Settings or AutomationWindow ?? Automation tab)
 2. **Click "Create Module"** button in Custom Modules pane
 3. **Enter Module Name** (e.g., "Set Current Patient Name to Get current patient name")
 4. **Select Module Type** (Run, Set, or Abort if)
@@ -276,7 +276,7 @@ Alternative (abort case):
 ### 2. PacsMethodManager
 - CreateModuleWindow loads procedures via PacsMethodManager
 - Dynamic list reflects current PACS profile's custom procedures
-- Changes in SpyWindow ?? Custom Procedures immediately available
+- Changes in AutomationWindow ?? Custom Procedures immediately available
 
 ### 3. SettingsViewModel
 - Custom modules automatically added to AvailableModules
@@ -368,8 +368,8 @@ Create separate procedures for different parameter values (e.g., "GetPatientName
 | CustomModule.cs | 175 (new) | Model |
 | CreateModuleWindow.xaml | 55 (new) | UI |
 | CreateModuleWindow.xaml.cs | 135 (new) | UI Logic |
-| SpyWindow.xaml | 15 | UI Update |
-| SpyWindow.Automation.cs | 80 | Integration |
+| AutomationWindow.xaml | 15 | UI Update |
+| AutomationWindow.Automation.cs | 80 | Integration |
 | SettingsViewModel.cs | 25 | Integration |
 | MainViewModel.Commands.Automation.cs | 120 | Execution |
 | MainViewModel.CurrentStudy.cs | 6 | Properties |

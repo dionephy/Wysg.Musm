@@ -9,7 +9,7 @@ using FlaUI.Core.AutomationElements;
 namespace Wysg.Musm.Radium.Services
 {
     /// <summary>
-    /// Shared operation executor for both SpyWindow (UI testing) and ProcedureExecutor (background automation).
+    /// Shared operation executor for both AutomationWindow (UI testing) and ProcedureExecutor (background automation).
     /// Centralizes operation execution logic to avoid duplication and ensure consistency.
     /// 
     /// Architecture (split across multiple files using partial classes):

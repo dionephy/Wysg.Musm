@@ -1,4 +1,4 @@
-# ENHANCEMENT: Dynamic UI Bookmarks in SpyWindow (2025-11-25)
+# ENHANCEMENT: Dynamic UI Bookmarks in AutomationWindow (2025-11-25)
 
 **Status**: ? Implemented (Updated 2025-11-25)
 **Date**: 2025-11-25
@@ -22,7 +22,7 @@ The UI Spy Window now supports dynamic bookmark management. Users can add, save,
 - Bookmark ComboBox was displaying the type name ("Wysg.Musm.Radium.Views.BookmarkItem") instead of the bookmark's Name property
 
 **Root Cause:**
-- The `SpyWindowComboBoxStyle` template was using a `TextBlock` with `PriorityBinding` that tried multiple binding paths
+- The `AutomationWindowComboBoxStyle` template was using a `TextBlock` with `PriorityBinding` that tried multiple binding paths
 - This was overriding the `DisplayMemberPath="Name"` attribute on the ComboBox
 
 **Solution:**
@@ -62,7 +62,7 @@ The UI Spy Window now supports dynamic bookmark management. Users can add, save,
 
 ## Problem
 
-Previously, UI bookmarks in the Spy Window were hardcoded in `SpyWindow.KnownControlItems.xaml`. Users couldn't:
+Previously, UI bookmarks in the Spy Window were hardcoded in `AutomationWindow.KnownControlItems.xaml`. Users couldn't:
 - Add new bookmarks without modifying XAML
 - Delete unused bookmarks
 - Rename bookmarks for clarity
@@ -77,7 +77,7 @@ This made it difficult to work with multiple PACS systems or custom UI elements.
 ### 1. Dynamic Bookmark Collection
 
 **What Changed:**
-- Added `ObservableCollection<BookmarkItem>` to SpyWindow
+- Added `ObservableCollection<BookmarkItem>` to AutomationWindow
 - BookmarkItem class represents either KnownControl or user-defined bookmark
 - ComboBox now binds to dynamic collection instead of hardcoded XAML
 
@@ -178,26 +178,26 @@ public class BookmarkItem : INotifyPropertyChanged
 
 ### Files Modified (5)
 
-1. **SpyWindow.xaml.cs** (~150 lines added)
+1. **AutomationWindow.xaml.cs** (~150 lines added)
    - Added `BookmarkItem` class
    - Added `BookmarkItems` ObservableCollection
    - Implemented add, delete, rename methods
    - Added name prompt dialog
 
-2. **SpyWindow.Bookmarks.cs** (~40 lines modified)
+2. **AutomationWindow.Bookmarks.cs** (~40 lines modified)
    - Updated `OnKnownSelectionChanged` for BookmarkItem
    - Updated `OnSaveEdited` to refresh ComboBox
    - Updated `OnReload` to reload bookmarks
    - Updated map/resolve methods
 
-3. **SpyWindow.xaml** (~5 lines modified)
+3. **AutomationWindow.xaml** (~5 lines modified)
    - Removed `KnownControlItems.xaml` reference
    - Updated ComboBox binding to `BookmarkItems`
    - Added management buttons (+, Rename, Delete)
 
-4. **SpyWindow.Styles.xaml** (1 template updated)
+4. **AutomationWindow.Styles.xaml** (1 template updated)
    - Fixed `OverlayToggleTemplate` border
-   - **NEW**: Fixed `SpyWindowComboBoxStyle` to use ContentPresenter
+   - **NEW**: Fixed `AutomationWindowComboBoxStyle` to use ContentPresenter
 
 5. **MAP_METHOD_EXPLANATION.md** (new documentation)
    - Comprehensive guide to Map Method
@@ -332,7 +332,7 @@ public class BookmarkItem : INotifyPropertyChanged
 ## Related Documentation
 
 - `MAP_METHOD_EXPLANATION.md` - Detailed explanation of Chain vs AutomationIdOnly
-- `ENHANCEMENT_2025-11-02_SpyWindowUIEnhancements.md` - Previous SpyWindow updates
+- `ENHANCEMENT_2025-11-02_AutomationWindowUIEnhancements.md` - Previous AutomationWindow updates
 - `README.md` - Updated with feature summary
 
 ---

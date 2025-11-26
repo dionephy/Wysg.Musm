@@ -1,4 +1,4 @@
-﻿# Summary: SetValue Custom Procedure Operation Implementation
+# Summary: SetValue Custom Procedure Operation Implementation
 
 ## Date: 2025-11-09
 
@@ -7,8 +7,8 @@ Add a new "SetValue" operation to UI Spy window Custom Procedures, enabling auto
 
 ## Files Modified
 
-### 1. SpyWindow.OperationItems.xaml
-**Path**: `apps\Wysg.Musm.Radium\Views\SpyWindow.OperationItems.xaml`
+### 1. AutomationWindow.OperationItems.xaml
+**Path**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.OperationItems.xaml`
 
 **Changes**:
 - Added `<ComboBoxItem Content="SetValue"/>` to operations list
@@ -16,8 +16,8 @@ Add a new "SetValue" operation to UI Spy window Custom Procedures, enabling auto
 
 **Impact**: SetValue now appears in Operation dropdown in Custom Procedures editor.
 
-### 2. SpyWindow.Procedures.Exec.cs
-**Path**: `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs`
+### 2. AutomationWindow.Procedures.Exec.cs
+**Path**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs`
 
 **Changes**:
 - Added `case "SetValue"` in `OnProcOpChanged` method
@@ -155,9 +155,9 @@ Automated data entry into PACS forms:
 
 ### 2. Data Transfer
 Copy values between controls:
-- List selection �� text field
-- Source field �� target field
-- Variable �� control
+- List selection ?? text field
+- Source field ?? target field
+- Variable ?? control
 
 ### 3. Field Manipulation
 Transform and set values:
@@ -168,9 +168,9 @@ Transform and set values:
 
 ### 4. Workflow Automation
 Complete multi-step processes:
-- Fill form �� submit
-- Copy data �� validate
-- Transform �� set �� verify
+- Fill form ?? submit
+- Copy data ?? validate
+- Transform ?? set ?? verify
 
 ## Advantages Over Alternatives
 
@@ -196,8 +196,8 @@ Complete multi-step processes:
 ### Chaining with Other Operations
 ```
 # Example: Extract, transform, and set
-GetText(Source) �� var1
-Split(var1, " ", 0) �� var2
+GetText(Source) ?? var1
+Split(var1, " ", 0) ?? var2
 SetValue(Target, var2)
 ```
 

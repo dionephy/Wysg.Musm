@@ -1,7 +1,7 @@
 # Enhancement: Automation Window Updates (2025-11-25)
 
 ## Overview
-Two UI improvements to the Automation window (SpyWindow) as requested by the user:
+Two UI improvements to the Automation window (AutomationWindow) as requested by the user:
 1. Removed the "Custom Procedures" GroupBox from the Procedure tab to allow controls to expand freely
 2. Added a new "Automation" tab that mirrors the Settings ⊥ Automation tab functionality
 
@@ -9,7 +9,7 @@ Two UI improvements to the Automation window (SpyWindow) as requested by the use
 
 ### 1. Procedure Tab - GroupBox Removal
 
-**File**: `apps/Wysg.Musm.Radium/Views/SpyWindow.xaml`
+**File**: `apps/Wysg.Musm.Radium/Views/AutomationWindow.xaml`
 
 **Before**:
 ```xaml
@@ -40,7 +40,7 @@ Two UI improvements to the Automation window (SpyWindow) as requested by the use
 
 ### 2. New Automation Tab
 
-**File**: `apps/Wysg.Musm.Radium/Views/SpyWindow.xaml`
+**File**: `apps/Wysg.Musm.Radium/Views/AutomationWindow.xaml`
 
 Added complete Automation tab with all features from Settings ⊥ Automation:
 - Available Modules library (right panel)
@@ -56,12 +56,12 @@ Added complete Automation tab with all features from Settings ⊥ Automation:
 **Layout**:
 - 3x2 grid for main automation panes (left/center columns)
 - Available Modules spans all rows on the right
-- Dark theme styling consistent with SpyWindow design
+- Dark theme styling consistent with AutomationWindow design
 - Drag-and-drop support for module configuration
 
 ### 3. Code-Behind Implementation
 
-**File**: `apps/Wysg.Musm.Radium/Views/SpyWindow.Automation.cs` (new partial class)
+**File**: `apps/Wysg.Musm.Radium/Views/AutomationWindow.Automation.cs` (new partial class)
 
 Implemented automation tab functionality:
 - `InitializeAutomationTab()` - Initializes bindings to SettingsViewModel
@@ -82,9 +82,9 @@ Implemented automation tab functionality:
 
 | File | Changes |
 |------|---------|
-| `SpyWindow.xaml` | Removed GroupBox, added Automation tab (~150 lines) |
-| `SpyWindow.xaml.cs` | Added `InitializeAutomationTab()` call to constructor |
-| `SpyWindow.Automation.cs` | New partial class with automation handlers (~110 lines) |
+| `AutomationWindow.xaml` | Removed GroupBox, added Automation tab (~150 lines) |
+| `AutomationWindow.xaml.cs` | Added `InitializeAutomationTab()` call to constructor |
+| `AutomationWindow.Automation.cs` | New partial class with automation handlers (~110 lines) |
 
 **Total**: 3 files modified, ~260 lines added
 
@@ -152,14 +152,14 @@ Implemented automation tab functionality:
 ### Architecture
 
 ```
-SpyWindow (main window)
-戍式 SpyWindow.xaml.cs (core, constructor)
-戍式 SpyWindow.Automation.cs (automation tab logic - NEW)
-戍式 SpyWindow.Bookmarks.cs (bookmark management)
-戍式 SpyWindow.Procedures.cs (custom procedures)
-戌式 SpyWindow.PacsMethods.cs (PACS methods)
+AutomationWindow (main window)
+戍式 AutomationWindow.xaml.cs (core, constructor)
+戍式 AutomationWindow.Automation.cs (automation tab logic - NEW)
+戍式 AutomationWindow.Bookmarks.cs (bookmark management)
+戍式 AutomationWindow.Procedures.cs (custom procedures)
+戌式 AutomationWindow.PacsMethods.cs (PACS methods)
 
-SettingsViewModel (shared between Settings and SpyWindow)
+SettingsViewModel (shared between Settings and AutomationWindow)
 戍式 AvailableModules collection
 戍式 11 automation sequence collections
 戍式 SaveAutomationCommand
@@ -205,9 +205,9 @@ SettingsViewModel (shared between Settings and SpyWindow)
 
 ### Simplified Implementation
 
-The SpyWindow Automation tab uses a simplified drag-and-drop implementation compared to the full SettingsWindow version:
+The AutomationWindow Automation tab uses a simplified drag-and-drop implementation compared to the full SettingsWindow version:
 
-| Feature | SettingsWindow | SpyWindow |
+| Feature | SettingsWindow | AutomationWindow |
 |---------|----------------|-----------|
 | Ghost visual during drag | ? Full implementation | ? Basic WPF DragDrop |
 | Drop indicator line | ? Orange indicator | ? No indicator |
@@ -216,7 +216,7 @@ The SpyWindow Automation tab uses a simplified drag-and-drop implementation comp
 | Reordering within pane | ? Drag to reorder | ? Limited support |
 
 **Rationale**:
-- SpyWindow is primarily for quick access during workflow setup
+- AutomationWindow is primarily for quick access during workflow setup
 - Settings window remains the full-featured editor
 - Simplified implementation reduces code duplication
 - Users can still achieve all configurations via drag-and-drop

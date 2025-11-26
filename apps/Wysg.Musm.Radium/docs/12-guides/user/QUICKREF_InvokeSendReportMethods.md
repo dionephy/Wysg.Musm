@@ -1,4 +1,4 @@
-ï»¿# Quick Reference: New PACS Methods - InvokeSendReport and SendReportRetry
+# Quick Reference: New PACS Methods - InvokeSendReport and SendReportRetry
 
 **Date**: 2025-11-25  
 **Type**: Quick Reference  
@@ -21,13 +21,13 @@ Two new PACS method items in UI Spy window's Custom Procedures:
 2. **Send report retry** (Tag: `SendReportRetry`)
 
 ## Where to Find Them?
-**UI Spy Window** â†’ **Custom Procedures** section â†’ **PACS Method** dropdown â†’ Look for new items at the bottom of the list
+**UI Spy Window** ¡æ **Custom Procedures** section ¡æ **PACS Method** dropdown ¡æ Look for new items at the bottom of the list
 
 ## Quick Configuration Steps
 
 ### Step 1: Open UI Spy
-- From Radium main window: Tools menu â†’ UI Spy
-- Or call: `SpyWindow.ShowInstance()`
+- From Radium main window: Tools menu ¡æ UI Spy
+- Or call: `AutomationWindow.ShowInstance()`
 
 ### Step 2: Select Your PACS
 - Top-left dropdown shows current PACS profile (e.g., "default_pacs", "infinitt", etc.)
@@ -38,10 +38,10 @@ Two new PACS method items in UI Spy window's Custom Procedures:
 2. Click "Add" to create operation steps
 3. Common steps:
    ```
-   Operation: IsVisible     Arg1: ReportTextEditor (Element)    â†’ Check if report is open
-   Operation: ClickElement  Arg1: SendReportButton (Element)    â†’ Click send button
-   Operation: Delay         Arg1: 500 (Number)                   â†’ Wait for dialog
-   Operation: ClickElement  Arg1: ConfirmButton (Element)       â†’ Confirm send
+   Operation: IsVisible     Arg1: ReportTextEditor (Element)    ¡æ Check if report is open
+   Operation: ClickElement  Arg1: SendReportButton (Element)    ¡æ Click send button
+   Operation: Delay         Arg1: 500 (Number)                   ¡æ Wait for dialog
+   Operation: ClickElement  Arg1: ConfirmButton (Element)       ¡æ Confirm send
    ```
 4. Click "Save" to persist
 5. Click "Run" to test
@@ -51,11 +51,11 @@ Two new PACS method items in UI Spy window's Custom Procedures:
 2. Click "Add" to create retry-specific steps
 3. Common steps:
    ```
-   Operation: IsVisible     Arg1: ErrorDialog (Element)          â†’ Check for error
-   Operation: ClickElement  Arg1: CloseErrorButton (Element)    â†’ Close error dialog
-   Operation: Delay         Arg1: 1000 (Number)                  â†’ Wait longer
-   Operation: ClickElement  Arg1: SendReportButton (Element)    â†’ Retry send
-   Operation: Delay         Arg1: 500 (Number)                   â†’ Wait for response
+   Operation: IsVisible     Arg1: ErrorDialog (Element)          ¡æ Check for error
+   Operation: ClickElement  Arg1: CloseErrorButton (Element)    ¡æ Close error dialog
+   Operation: Delay         Arg1: 1000 (Number)                  ¡æ Wait longer
+   Operation: ClickElement  Arg1: SendReportButton (Element)    ¡æ Retry send
+   Operation: Delay         Arg1: 500 (Number)                   ¡æ Wait for response
    ```
 4. Click "Save"
 5. Click "Run" to test

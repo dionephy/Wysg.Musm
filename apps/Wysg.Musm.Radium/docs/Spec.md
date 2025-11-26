@@ -1,6 +1,6 @@
-ï»¿# Feature Specification: Radium (Cumulative)
+# Feature Specification: Radium (Cumulative)
 
-> **âš ï¸ DEPRECATION NOTICE (2025-10-19)**  
+> **?? DEPRECATION NOTICE (2025-10-19)**  
 > This file is being phased out in favor of an archive-based structure.
 > 
 > **Please use instead:**
@@ -29,15 +29,15 @@
 - FR-506 Repository MUST provide methods to resolve studyname id from text, fetch default combination id, and fetch combination items with component texts ordered by sequence_order.
 
 ## Update: Refresh Current Study Techniques on Default Change (2025-10-13)
-- FR-507 When a new default technique combination is created or set for the current studyname, the current studyâ€™s `study_techniques` field MUST refresh to reflect the new default without restarting New Study.
+- FR-507 When a new default technique combination is created or set for the current studyname, the current study¡¯s `study_techniques` field MUST refresh to reflect the new default without restarting New Study.
 - FR-508 Implementation MAY invoke a VM method `MainViewModel.RefreshStudyTechniqueFromDefaultAsync()` after window close or after save in the builder window.
 
-## Update: Edit Study Technique â€“ Duplicate Rule (2025-10-13)
+## Update: Edit Study Technique ? Duplicate Rule (2025-10-13)
 - FR-509 Within a single technique combination build session, duplicates by exact (prefix_id, tech_id, suffix_id) MUST be prevented at add time.
 - FR-510 On save, the system MUST ensure the persisted list is unique by the same triple; first occurrence order preserved and sequence numbers compacted (1..N).
 
 ## Update: Add Previous Study Automation Module (2025-10-13)
-- FR-511 Add a module named `AddPreviousStudy` to Automation tab â†’ Available Modules list.
+- FR-511 Add a module named `AddPreviousStudy` to Automation tab ¡æ Available Modules list.
 - FR-512 Module behavior:
   - Step 1: Run `GetCurrentPatientNumber`; if it matches the application's current `PatientNumber` (after normalization), continue; else abort with status "Patient mismatch".
   - Step 2: Read from Related Studies list: `GetSelectedStudynameFromRelatedStudies`, `GetSelectedStudyDateTimeFromRelatedStudies`, `GetSelectedRadiologistFromRelatedStudies`, `GetSelectedReportDateTimeFromRelatedStudies`.
@@ -49,8 +49,8 @@
 - FR-514 Automation tab MUST expose an ordered list: `AddStudy` sequence (already present). Clicking the small `+` button in Previous Reports section MUST execute the configured modules in `AddStudy` sequence in order.
 - FR-515 Supported modules in `AddStudy` include: `AddPreviousStudy`, `GetStudyRemark`, `GetPatientRemark`. Unknown modules are ignored.
 
-## Update: PACS Custom Procedure â€“ Invoke Open Study (2025-10-13, updated 2025-10-15)
-- FR-516 SpyWindow Custom Procedures MUST include a PACS method `InvokeOpenStudy` labeled "Invoke open study".
+## Update: PACS Custom Procedure ? Invoke Open Study (2025-10-13, updated 2025-10-15)
+- FR-516 AutomationWindow Custom Procedures MUST include a PACS method `InvokeOpenStudy` labeled "Invoke open study".
 - FR-517 `PacsService` MUST expose `InvokeOpenStudyAsync()` which runs the procedure tag `InvokeOpenStudy`.
 - FR-518 No fallback or auto-seed MUST exist for `InvokeOpenStudy`. The procedure MUST be authored explicitly by the user per PACS. If it is missing, the system MUST throw an error indicating the procedure is not defined for the current PACS profile.
 - FR-518a Per-PACS storage: UiBookmarks and Custom Procedures are stored under `%AppData%/Wysg.Musm/Radium/Pacs/{pacs_key}/` so each PACS profile maintains its own configuration.
@@ -63,17 +63,17 @@
 - FR-714 `AddPreviousStudy` MUST NOT block subsequent modules with heavy previous-studies reload; after persisting the previous study and report, the list reload/selection MAY run in the background.
 - FR-715 Remark acquisition helpers (`GetStudyRemark`, `GetPatientRemark`) MUST be awaited within sequencing to preserve order.
 
-## Update: Custom Procedure Operation â€“ Invoke (2025-10-13)
+## Update: Custom Procedure Operation ? Invoke (2025-10-13)
 - FR-519 Add a new operation `Invoke` to Custom Procedures. Behavior:
   - Arg1 Type MUST be `Element` and map to a `UiBookmarks.KnownControl` entry.
   - Execution MUST attempt UIA `Invoke` pattern; if not supported, attempt `Toggle` pattern.
   - Preview text MUST show "(invoked)" on success.
-- FR-520 SpyWindow op editor MUST preconfigure Arg1 Type=`Element` and disable Arg2/Arg3 for `Invoke`.
-- FR-521 Headless `ProcedureExecutor` MUST support `Invoke` with same behavior as SpyWindow.
+- FR-520 AutomationWindow op editor MUST preconfigure Arg1 Type=`Element` and disable Arg2/Arg3 for `Invoke`.
+- FR-521 Headless `ProcedureExecutor` MUST support `Invoke` with same behavior as AutomationWindow.
 
-## Update: UI Spy Map-to Bookmark â€“ Test invoke (2025-10-13)
+## Update: UI Spy Map-to Bookmark ? Test invoke (2025-10-13)
 - FR-522 UI Spy MUST include a new KnownControl `TestInvoke` to allow mapping any arbitrary element for Invoke testing.
-- FR-523 SpyWindow Map-to dropdown MUST list "Test invoke" and save/load its mapping like other known controls.
+- FR-523 AutomationWindow Map-to dropdown MUST list "Test invoke" and save/load its mapping like other known controls.
 - FR-524 No additional logic required beyond existing Map/Resolve/Invoke flows; this is a convenience target.
 
 ## Update: PACS Custom Mouse Clicks + Procedure Operation (2025-10-13)
@@ -83,13 +83,13 @@
 - FR-528 `PacsService` MUST expose wrappers `CustomMouseClick1Async()` and `CustomMouseClick2Async()` to run the respective procedures.
 - FR-529 Provide auto-seeded defaults for both click methods consisting of a single `MouseClick` op with 0,0 coordinates (user will edit).
 
-## Update: SpyWindow Picked Point Display (2025-10-13)
+## Update: AutomationWindow Picked Point Display (2025-10-13)
 - FR-530 Add a read-only selectable TextBox to the left of the "Enable Tree" checkbox to display picked point screen coordinates.
 - FR-531 After performing Pick, show the captured mouse position as "X,Y" in the new TextBox.
 
 [Other existing sections unchanged]
 
-## Update: Settings â†’ Automation modules and Keyboard (2025-10-13, updated 2025-11-26)
+## Update: Settings ¡æ Automation modules and Keyboard (2025-10-13, updated 2025-11-26)
 - FR-540 Add three new Automation modules to library: `OpenStudy`, `MouseClick1`, `MouseClick2`.
   - `OpenStudy` executes PACS procedure tag `InvokeOpenStudy`.
   - `MouseClick1`/`MouseClick2` execute their respective procedure tags (headless wrappers in PacsService).
@@ -100,11 +100,11 @@
   - **NEW (2025-11-26)**: Editor Autofocus section with "Target UI element" combobox populated from dynamic bookmarks in ui-bookmarks.json
   - Note: only capture+persist is implemented; global system-wide hook/registration occurs in a later increment.
 
-## Update: Settings â†’ Automation panes for Open Study Shortcut (2025-10-13)
+## Update: Settings ¡æ Automation panes for Open Study Shortcut (2025-10-13)
 - FR-545 Add three new panes under Automation tab to configure sequences for the Open Study global hotkey:
-  - Shortcut: Open study (new) â†’ executes when PatientLocked == false.
-  - Shortcut: Open study (add) â†’ executes when PatientLocked == true and StudyOpened == false.
-  - Shortcut: Open study (after open) â†’ executes when PatientLocked == true and StudyOpened == true.
+  - Shortcut: Open study (new) ¡æ executes when PatientLocked == false.
+  - Shortcut: Open study (add) ¡æ executes when PatientLocked == true and StudyOpened == false.
+  - Shortcut: Open study (after open) ¡æ executes when PatientLocked == true and StudyOpened == true.
 - FR-546 Persist sequences locally: `auto_shortcut_open_new`, `auto_shortcut_open_add`, `auto_shortcut_open_after_open`.
 - FR-547 MainViewModel MUST expose `RunOpenStudyShortcut()` that selects and executes the appropriate sequence.
 
@@ -114,7 +114,7 @@
 - FR-544 Remove the icon-only "reportified" toggle in the previous report area; keep the text "Reportified" toggle elsewhere unchanged.
 
 ## Update: Multi-PACS Tenant Model + Account-Scoped Techniques (2025-10-14)
-- FR-600 Multi-PACS tenancy: A local tenant represents a unique (account_id Ã— PACS combination). Persist tenants in `app.tenant` with `(account_id, pacs_key)` unique.
+- FR-600 Multi-PACS tenancy: A local tenant represents a unique (account_id ¡¿ PACS combination). Persist tenants in `app.tenant` with `(account_id, pacs_key)` unique.
 - FR-601 Patient tenancy: `med.patient` MUST include `tenant_id` FK to `app.tenant`. Patient uniqueness MUST be `(tenant_id, patient_number)`.
 - FR-602 Studyname tenancy: `med.rad_studyname` MUST include `tenant_id` FK to `app.tenant`. Studyname uniqueness MUST be `(tenant_id, studyname)`.
 - FR-603 Repository behavior: RadStudyRepository and StudynameLoincRepository MUST scope CRUD/queries to current `ITenantContext.TenantId` when set (>0).
@@ -130,23 +130,23 @@
 ## Update: PACS Display Source and Settings PACS Simplification (2025-10-14)
 - FR-610 The status bar MUST display the current PACS using `ITenantContext.CurrentPacsKey` from the local DB (e.g., "default_pacs").
 - FR-611 The application MUST raise an event when `CurrentPacsKey` changes so listeners can update UI reactively.
-- FR-612 Settings â†’ PACS tab MUST NOT expose Rename/Remove actions; selection is applied by row selection.
-- FR-613 Settings â†’ PACS tab MUST omit a dedicated Close button; users close the window using the window close control.
+- FR-612 Settings ¡æ PACS tab MUST NOT expose Rename/Remove actions; selection is applied by row selection.
+- FR-613 Settings ¡æ PACS tab MUST omit a dedicated Close button; users close the window using the window close control.
 
 ## Update: Instant PACS Switch for Automation and Spy (2025-10-14)
-- FR-620 When PACS selection changes in Settings â†’ PACS, the Automation tab MUST immediately switch its active PACS context (load sequences for the new key).
-- FR-621 When PACS selection changes, SpyWindow MUST immediately reflect the current PACS context for procedure storage and display the current PACS key.
+- FR-620 When PACS selection changes in Settings ¡æ PACS, the Automation tab MUST immediately switch its active PACS context (load sequences for the new key).
+- FR-621 When PACS selection changes, AutomationWindow MUST immediately reflect the current PACS context for procedure storage and display the current PACS key.
 - FR-622 Automation tab MUST display text "PACS: {current_pacs_key}" near its header area.
-- FR-623 SpyWindow MUST display text "PACS: {current_pacs_key}" in the top bar and update live when the key changes.
+- FR-623 AutomationWindow MUST display text "PACS: {current_pacs_key}" in the top bar and update live when the key changes.
 
 ## Update: Per-PACS Spy Persistence + Invoke Test (2025-10-14)
 - FR-630 UI bookmarks map and custom procedures MUST be saved per PACS profile under: `%AppData%/Wysg.Musm/Radium/Pacs/{pacs_key}/bookmarks.json` and `ui-procedures.json`.
 - FR-631 On login and whenever `CurrentPacsKey` changes, both ProcedureExecutor and UiBookmarks MUST switch their storage paths to the current PACS directory.
-- FR-632 Add a new PACS method `InvokeTest` available in SpyWindowâ€™s Custom Procedures list. Default auto-seed uses a single `Invoke` op targeting `TestInvoke` KnownControl.
+- FR-632 Add a new PACS method `InvokeTest` available in AutomationWindow¡¯s Custom Procedures list. Default auto-seed uses a single `Invoke` op targeting `TestInvoke` KnownControl.
 - FR-633 Add a new Automation module `TestInvoke` that runs the `InvokeTest` custom procedure via `PacsService.InvokeTestAsync()`.
- - FR-634 SpyWindow custom PACS methods list and editor MUST load/save procedures from the per-PACS `ui-procedures.json` (not the legacy global file).
+ - FR-634 AutomationWindow custom PACS methods list and editor MUST load/save procedures from the per-PACS `ui-procedures.json` (not the legacy global file).
 
-## Update: Test Automation Module â€“ ShowTestMessage (2025-10-14)
+## Update: Test Automation Module ? ShowTestMessage (2025-10-14)
 - FR-640 Add an Automation module `ShowTestMessage` which displays a modal message box with title "Test" and content "Test" when executed.
 - FR-641 Module must be executable from all sequences: NewStudy, AddStudy, and all OpenStudy Shortcut sequences.
 
@@ -162,23 +162,23 @@
 - FR-680 Clarify: "Remove excessive blanks" collapses repeated spaces within a line to a single space. "Collapse whitespace" reduces any whitespace (spaces, tabs) to a single space after other line-normalization steps; both operate per-line, with CollapseWhitespace stronger and applied later.
 - FR-681 Remove "Preserve known tokens" from Reportify settings and processing. Any previously stored value is ignored during parse. UI toggle and sample removed.
 
-## Update: Global Hotkey â€“ Open Study Shortcut Execution (2025-10-14)
-- FR-660 Application registers a global hotkey from Settings (Keyboard â†’ Open study). When pressed, it MUST invoke `MainViewModel.RunOpenStudyShortcut()`.
+## Update: Global Hotkey ? Open Study Shortcut Execution (2025-10-14)
+- FR-660 Application registers a global hotkey from Settings (Keyboard ¡æ Open study). When pressed, it MUST invoke `MainViewModel.RunOpenStudyShortcut()`.
 - FR-661 The invoked shortcut sequence MUST honor the PACS-scoped `automation.json` panes (new/add/after open). Modules like `ShowTestMessage` must execute if present.
 
 ## Update: New PACS Method Items - InvokeSendReport and SendReportWithoutHeader (2025-11-09, updated 2025-11-10)
-- FR-1190 Add new PACS method "Invoke send report" (`InvokeSendReport`) to SpyWindow Custom Procedures dropdown for primary send report automation.
-- FR-1191 Add new PACS method "Send report without header" (`SendReportWithoutHeader`) to SpyWindow Custom Procedures dropdown for sending reports without header information (replaced SendReportRetry on 2025-11-10).
+- FR-1190 Add new PACS method "Invoke send report" (`InvokeSendReport`) to AutomationWindow Custom Procedures dropdown for primary send report automation.
+- FR-1191 Add new PACS method "Send report without header" (`SendReportWithoutHeader`) to AutomationWindow Custom Procedures dropdown for sending reports without header information (replaced SendReportRetry on 2025-11-10).
 - FR-1192 `PacsService` MUST expose `InvokeSendReportAsync()` wrapper that executes the `InvokeSendReport` custom procedure tag.
 - FR-1193 `PacsService` MUST expose `SendReportWithoutHeaderAsync()` wrapper that executes the `SendReportWithoutHeader` custom procedure tag (replaced SendReportRetryAsync on 2025-11-10).
 - FR-1194 Both methods MUST return `Task<bool>` and always return `true` after procedure execution (success/failure determined by PACS state validation).
-- FR-1195 Custom procedures for both methods MUST be configured per-PACS profile in SpyWindow (no auto-seeded defaults provided).
+- FR-1195 Custom procedures for both methods MUST be configured per-PACS profile in AutomationWindow (no auto-seeded defaults provided).
 - FR-1196 Rationale: InvokeSendReport provides primary send report entry point; SendReportWithoutHeader enables sending reports without header component, which is commonly needed for certain PACS workflows.
-- FR-1197 User workflow: Configure procedures in SpyWindow using bookmark resolution, click operations, delays, and validation checks; test using Run button before deployment.
+- FR-1197 User workflow: Configure procedures in AutomationWindow using bookmark resolution, click operations, delays, and validation checks; test using Run button before deployment.
 - FR-1198 These methods complement existing `SendReport` method (which accepts findings/conclusion parameters) and provide alternative entry points for PACS-specific automation.
 
 ## Update: New Custom Procedure Operation - SetValue (2025-11-09)
-- FR-1200 Add new operation "SetValue" to SpyWindow Custom Procedures with Arg1=Element (target control) and Arg2=String or Var (value to set).
+- FR-1200 Add new operation "SetValue" to AutomationWindow Custom Procedures with Arg1=Element (target control) and Arg2=String or Var (value to set).
 - FR-1201 SetValue operation MUST use UIA `ValuePattern.SetValue()` to programmatically set text field and control values.
 - FR-1202 Operation MUST validate element supports ValuePattern before attempting to set value; return `(no value pattern)` if unsupported.
 - FR-1203 Operation MUST check `ValuePattern.IsReadOnly` property; return `(read-only)` if true without attempting to set value.
@@ -195,16 +195,16 @@
 - FR-1214 Best practices: Use SetFocus before SetValue for reliability; verify value format matches control expectations; add validation after SetValue using GetText.
 
 ## Update: New PACS Method - ClearReport (2025-11-09)
-- FR-1220 Add new PACS method "Clear report" (`ClearReport`) to SpyWindow Custom Procedures dropdown for clearing report text fields in PACS.
+- FR-1220 Add new PACS method "Clear report" (`ClearReport`) to AutomationWindow Custom Procedures dropdown for clearing report text fields in PACS.
 - FR-1221 `PacsService` MUST expose `ClearReportAsync()` wrapper that executes the `ClearReport` custom procedure tag.
 - FR-1222 Method MUST return `Task<bool>` and always return `true` after procedure execution (success/failure determined by PACS state validation).
-- FR-1223 Custom procedure MUST be configured per-PACS profile in SpyWindow (no auto-seeded defaults provided).
+- FR-1223 Custom procedure MUST be configured per-PACS profile in AutomationWindow (no auto-seeded defaults provided).
 - FR-1224 Rationale: Provides dedicated method for clearing report fields before starting new report; commonly needed in report correction workflows.
-- FR-1225 User workflow: Configure procedure in SpyWindow using SetValue operations with empty strings for findings/conclusion fields; test using Run button before deployment.
+- FR-1225 User workflow: Configure procedure in AutomationWindow using SetValue operations with empty strings for findings/conclusion fields; test using Run button before deployment.
 - FR-1226 Common implementation: Use SetValue operations to clear findings field, conclusion field, and any other report text fields specific to PACS.
 
 ## Update: New Custom Procedure Operation - SimulateSelectAll (2025-11-09)
-- FR-1230 Add new operation "SimulateSelectAll" to SpyWindow Custom Procedures for selecting all text in the currently focused control.
+- FR-1230 Add new operation "SimulateSelectAll" to AutomationWindow Custom Procedures for selecting all text in the currently focused control.
 - FR-1231 Operation MUST send Ctrl+A keyboard shortcut using `System.Windows.Forms.SendKeys.SendWait("^a")`.
 - FR-1232 Operation requires no arguments (Arg1, Arg2, Arg3 all disabled).
 - FR-1233 Preview text MUST show "(Ctrl+A sent)" on success or "(error: message)" on failure.
@@ -216,7 +216,7 @@
 - FR-1239 Integration: Can be chained with other keyboard operations (SimulatePaste, SetClipboard) and clipboard operations for complete text manipulation workflows.
 
 ## Update: New Custom Procedure Operation - SimulateDelete (2025-11-09)
-- FR-1240 Add new operation "SimulateDelete" to SpyWindow Custom Procedures for deleting selected text or character at cursor position.
+- FR-1240 Add new operation "SimulateDelete" to AutomationWindow Custom Procedures for deleting selected text or character at cursor position.
 - FR-1241 Operation MUST send Delete key using `System.Windows.Forms.SendKeys.SendWait("{DELETE}")`.
 - FR-1242 Operation requires no arguments (Arg1, Arg2, Arg3 all disabled).
 - FR-1243 Preview text MUST show "(Delete key sent)" on success or "(error: message)" on failure.
@@ -237,7 +237,7 @@
 - FIX-1265 Common use case: Compare variable to literal string `IsMatch(var1, "true")` to check boolean results or validate expected values.
 
 ## Update: New Custom Procedure Operation - And (2025-11-09)
-- FR-1270 Add new operation "And" to SpyWindow Custom Procedures for boolean logic operations with two Var arguments.
+- FR-1270 Add new operation "And" to AutomationWindow Custom Procedures for boolean logic operations with two Var arguments.
 - FR-1271 Operation MUST accept Arg1=Var and Arg2=Var, both representing boolean values ("true" or "false").
 - FR-1272 Operation returns "true" if BOTH arguments are "true" (case-insensitive), otherwise returns "false".
 - FR-1273 Preview text MUST show result and both input values: `"true (true AND true)"` or `"false (true AND false)"`.
@@ -246,15 +246,15 @@
 - FR-1276 Rationale: Enables combining multiple boolean conditions (e.g., `IsMatch` results) for complex validation logic without branching.
 - FR-1277 Use cases: Validate multiple conditions simultaneously, combine visibility checks, verify multiple field matches, gate automation steps.
 - FR-1278 Best practices: Chain with IsMatch/IsVisible/IsAlmostMatch operations; use for multi-condition validation; combine with conditional execution patterns.
-- FR-1279 Common patterns: `IsMatch(var1, "expected") â†’ var2`, `IsMatch(var3, "expected2") â†’ var4`, `And(var2, var4) â†’ var5` to check if both conditions pass.
+- FR-1279 Common patterns: `IsMatch(var1, "expected") ¡æ var2`, `IsMatch(var3, "expected2") ¡æ var4`, `And(var2, var4) ¡æ var5` to check if both conditions pass.
 
 ## Enhancement: SendReport Module Retry Logic (2025-11-09)
 - FR-1280 Update "SendReport" automation module to implement comprehensive retry flow with user interaction.
-- FR-1281 Module execution flow: (1) Run SendReport custom procedure â†’ (2) If result="true", run InvokeSendReport and succeed â†’ (3) If result="false", prompt user with "Send failed. Retry?" messagebox.
-- FR-1282 Retry flow: If user clicks OK â†’ Run ClearReport custom procedure â†’ If result="true", retry SendReport from step 1 â†’ If result="false", show "Clear Report failed. Retry?" messagebox.
-- FR-1283 Nested retry: If ClearReport fails and user clicks OK on retry prompt, retry ClearReport â†’ If succeeds, continue to SendReport retry â†’ If user clicks Cancel at any point, abort entire procedure.
-- FR-1284 Success path: SendReport returns "true" â†’ InvokeSendReport executes â†’ Procedure completes with success message.
-- FR-1285 Abort points: User cancels on "Send failed. Retry?" OR user cancels on "Clear Report failed. Retry?" â†’ Procedure aborts with error status.
+- FR-1281 Module execution flow: (1) Run SendReport custom procedure ¡æ (2) If result="true", run InvokeSendReport and succeed ¡æ (3) If result="false", prompt user with "Send failed. Retry?" messagebox.
+- FR-1282 Retry flow: If user clicks OK ¡æ Run ClearReport custom procedure ¡æ If result="true", retry SendReport from step 1 ¡æ If result="false", show "Clear Report failed. Retry?" messagebox.
+- FR-1283 Nested retry: If ClearReport fails and user clicks OK on retry prompt, retry ClearReport ¡æ If succeeds, continue to SendReport retry ¡æ If user clicks Cancel at any point, abort entire procedure.
+- FR-1284 Success path: SendReport returns "true" ¡æ InvokeSendReport executes ¡æ Procedure completes with success message.
+- FR-1285 Abort points: User cancels on "Send failed. Retry?" OR user cancels on "Clear Report failed. Retry?" ¡æ Procedure aborts with error status.
 - FR-1286 Rationale: Provides robust error recovery for intermittent PACS send failures; allows user to clear stale UI state and retry without restarting entire workflow.
 - FR-1287 Implementation: New `RunSendReportModuleWithRetryAsync()` method with nested retry loops; outer loop for SendReport retry, inner loop for ClearReport retry.
 - FR-1288 User experience: Clear prompts for each failure scenario; OK/Cancel buttons for user control; status messages reflect current operation state.

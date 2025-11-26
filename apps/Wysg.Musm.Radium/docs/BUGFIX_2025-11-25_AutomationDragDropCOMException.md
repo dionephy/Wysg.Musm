@@ -11,7 +11,7 @@ System.Runtime.InteropServices.COMException
   (Message: A drag operation is already in progress)
 ```
 
-**Location**: `SpyWindow.Automation.cs` ¡æ `OnAutomationProcDrag` ¡æ `DragDrop.DoDragDrop()`
+**Location**: `AutomationWindow.Automation.cs` ¡æ `OnAutomationProcDrag` ¡æ `DragDrop.DoDragDrop()`
 
 ## Root Cause
 
@@ -42,10 +42,10 @@ Implemented the same drag threshold pattern used in `SettingsWindow.OnProcDrag`:
 
 ### 1. Added Drag State Fields
 
-**File**: `SpyWindow.Automation.cs`
+**File**: `AutomationWindow.Automation.cs`
 
 ```csharp
-public partial class SpyWindow
+public partial class AutomationWindow
 {
     private SettingsViewModel? _automationViewModel;
     private Point _automationDragStart;           // NEW: Track initial mouse position
@@ -54,7 +54,7 @@ public partial class SpyWindow
 
 ### 2. Capture Initial Mouse Position
 
-**File**: `SpyWindow.Automation.cs`
+**File**: `AutomationWindow.Automation.cs`
 
 ```csharp
 private void InitializeAutomationTab()
@@ -81,7 +81,7 @@ private void OnAutomationListMouseDown(object sender, MouseButtonEventArgs e)
 
 ### 3. Fixed Drag Initiation Logic
 
-**File**: `SpyWindow.Automation.cs`
+**File**: `AutomationWindow.Automation.cs`
 
 ```csharp
 private void OnAutomationProcDrag(object sender, MouseEventArgs e)
@@ -128,9 +128,9 @@ private void OnAutomationProcDrag(object sender, MouseEventArgs e)
 
 ## Pattern Consistency
 
-This fix aligns `SpyWindow.Automation` with the existing `SettingsWindow` implementation:
+This fix aligns `AutomationWindow.Automation` with the existing `SettingsWindow` implementation:
 
-| Feature | SettingsWindow | SpyWindow.Automation |
+| Feature | SettingsWindow | AutomationWindow.Automation |
 |---------|----------------|----------------------|
 | Drag start tracking | `_dragStart` (Point) | `_automationDragStart` (Point) |
 | Mouse down capture | `OnPreviewMouseLeftButtonDown` | `OnAutomationListMouseDown` |
@@ -164,7 +164,7 @@ This fix aligns `SpyWindow.Automation` with the existing `SettingsWindow` implem
 
 | File | Changes |
 |------|---------|
-| `SpyWindow.Automation.cs` | Added drag state fields, mouse down handler, fixed drag logic |
+| `AutomationWindow.Automation.cs` | Added drag state fields, mouse down handler, fixed drag logic |
 
 **Total**: 1 file modified, ~30 lines changed
 

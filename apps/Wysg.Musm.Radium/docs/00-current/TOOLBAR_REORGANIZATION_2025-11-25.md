@@ -1,8 +1,8 @@
-# SpyWindow Toolbar Reorganization - 2025-11-25
+# AutomationWindow Toolbar Reorganization - 2025-11-25
 
 ## Summary
 
-Reorganized SpyWindow toolbar to improve workflow by grouping bookmark-related operations together on row 2.
+Reorganized AutomationWindow toolbar to improve workflow by grouping bookmark-related operations together on row 2.
 
 ---
 
@@ -69,7 +69,7 @@ Crawl Editor: [...toolbar without Save button...]
    - **Necessary:** RARELY - Only for edge cases (manual JSON editing, multi-instance sync)
    - **Recommendation:** Could be removed or hidden without affecting most users
 
-For detailed explanation, see: `SPYWINDOW_BUTTON_FUNCTIONS.md`
+For detailed explanation, see: `AutomationWindow_BUTTON_FUNCTIONS.md`
 
 ---
 
@@ -100,9 +100,9 @@ For detailed explanation, see: `SPYWINDOW_BUTTON_FUNCTIONS.md`
 
 ## Files Changed
 
-- **SpyWindow.xaml** - Toolbar layout reorganization
-- **ENHANCEMENT_2025-11-25_SpyWindowUICleanup.md** - Updated documentation
-- **SPYWINDOW_BUTTON_FUNCTIONS.md** - NEW - Button explanation guide
+- **AutomationWindow.xaml** - Toolbar layout reorganization
+- **ENHANCEMENT_2025-11-25_AutomationWindowUICleanup.md** - Updated documentation
+- **AutomationWindow_BUTTON_FUNCTIONS.md** - NEW - Button explanation guide
 
 ---
 

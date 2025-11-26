@@ -589,7 +589,7 @@ if (isLandscape)
                     ev.Key == Key.S)
                 {
                     ev.Handled = true;
-                    SpyWindow.ShowInstance();
+                    AutomationWindow.ShowInstance();
                 }
             };
         }
@@ -611,7 +611,7 @@ if (isLandscape)
 
         private void OnOpenSpy(object sender, RoutedEventArgs e)
         {
-            SpyWindow.ShowInstance();
+            AutomationWindow.ShowInstance();
         }
 
         private async void OnLogout(object sender, RoutedEventArgs e)

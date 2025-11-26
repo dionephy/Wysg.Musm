@@ -1,8 +1,8 @@
-# SpyWindow Map Method Explanation
+# AutomationWindow Map Method Explanation
 
 ## What is "Map Method"?
 
-The **Map Method** ComboBox in the SpyWindow's Crawl Editor determines how UI elements are located and resolved in the PACS application. It offers two strategies for finding UI elements.
+The **Map Method** ComboBox in the AutomationWindow's Crawl Editor determines how UI elements are located and resolved in the PACS application. It offers two strategies for finding UI elements.
 
 ---
 
@@ -142,7 +142,7 @@ The Map Method selector exists because:
 ### Visual Guide:
 
 **When you click "Pick" or "Pick Web":**
-1. SpyWindow captures the element and builds a chain
+1. AutomationWindow captures the element and builds a chain
 2. It automatically detects if the element has a usable AutomationId
 3. The chain is saved with the current Map Method selection
 
@@ -201,7 +201,7 @@ If you have old bookmarks using AutomationIdOnly that are now unreliable:
 
 1. Select the bookmark
 2. Click "Pick" to re-capture the element
-3. SpyWindow will build a new chain automatically
+3. AutomationWindow will build a new chain automatically
 4. Change Map Method to "Chain"
 5. Click "Save"
 6. Click "Validate" to verify it works

@@ -56,7 +56,7 @@ Only the PACS label remains at the top level for constant visibility:
 
 ## Files Modified
 
-1. **`Views/SpyWindow.xaml`**
+1. **`Views/AutomationWindow.xaml`**
    - Restructured main grid from 4 rows to 3 rows
    - Added TabControl with two TabItems
    - Moved controls into appropriate tabs
@@ -64,9 +64,9 @@ Only the PACS label remains at the top level for constant visibility:
    - TabControl occupies Grid.Row="1"
    - Status textbox in Grid.Row="2"
 
-2. **`Views/SpyWindow.Styles.xaml`**
-   - Added `SpyWindowTabControlStyle` for TabControl styling
-   - Added `SpyWindowTabItemStyle` for TabItem styling with hover effects
+2. **`Views/AutomationWindow.Styles.xaml`**
+   - Added `AutomationWindowTabControlStyle` for TabControl styling
+   - Added `AutomationWindowTabItemStyle` for TabItem styling with hover effects
    - Tab styling matches existing dark theme
 
 ## Technical Details
@@ -82,14 +82,14 @@ Only the PACS label remains at the top level for constant visibility:
 
 ### Tab Control Structure
 ```xml
-<TabControl Grid.Row="1" Style="{StaticResource SpyWindowTabControlStyle}">
-    <TabItem Header="UI Bookmark" Style="{StaticResource SpyWindowTabItemStyle}">
+<TabControl Grid.Row="1" Style="{StaticResource AutomationWindowTabControlStyle}">
+    <TabItem Header="UI Bookmark" Style="{StaticResource AutomationWindowTabItemStyle}">
         <!-- Process, Delay, Pick controls -->
         <!-- Bookmark management -->
         <!-- Crawl Editor -->
     </TabItem>
     
-    <TabItem Header="Procedure" Style="{StaticResource SpyWindowTabItemStyle}">
+    <TabItem Header="Procedure" Style="{StaticResource AutomationWindowTabItemStyle}">
         <!-- Custom Procedures -->
     </TabItem>
 </TabControl>

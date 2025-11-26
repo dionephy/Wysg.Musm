@@ -18,7 +18,7 @@
 **Root Cause**: Trying to access ProcedureExecutor.Load() which is internal/private
 
 **Solution**: 
-- Implemented `LoadProcedures()` using the same pattern as SpyWindow
+- Implemented `LoadProcedures()` using the same pattern as AutomationWindow
 - Loads procedures directly from ui-procedures.json file
 - Uses `GetProcPath()` to locate PACS-specific procedure file
 - Deserializes JSON to extract procedure names
@@ -290,7 +290,7 @@ This ensures users cannot save without selecting all required options.
 - ?? Better visual feedback (styled display panel)
 
 ### For Developers
-- ?? Correct procedure loading pattern (matches SpyWindow)
+- ?? Correct procedure loading pattern (matches AutomationWindow)
 - ?? Proper PACS-scoped procedure loading
 - ?? Clean initialization flow with _isInitializing flag
 - ?? Event-driven auto-naming (reactive)
@@ -321,7 +321,7 @@ This ensures users cannot save without selecting all required options.
 **Root Cause**: Trying to access ProcedureExecutor.Load() which is internal/private
 
 **Solution**: 
-- Implemented `LoadProcedures()` using the same pattern as SpyWindow
+- Implemented `LoadProcedures()` using the same pattern as AutomationWindow
 - Loads procedures directly from ui-procedures.json file
 - Uses `GetProcPath()` to locate PACS-specific procedure file
 - Deserializes JSON to extract procedure names
@@ -557,7 +557,7 @@ User interactions:
 - ?? Faster module creation workflow
 
 ### For Developers
-- ?? Correct procedure loading pattern (matches SpyWindow)
+- ?? Correct procedure loading pattern (matches AutomationWindow)
 - ?? Proper PACS-scoped procedure loading
 - ?? Clean initialization flow with _isInitializing flag
 - ?? Event-driven auto-naming (reactive)

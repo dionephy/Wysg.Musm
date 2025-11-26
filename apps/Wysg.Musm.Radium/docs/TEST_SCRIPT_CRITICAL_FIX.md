@@ -29,15 +29,15 @@
 
 ### Debug Output (Check Output Window)
 ```
-[SpyWindow][GetCurrentPatientNumber] Starting operation
-[SpyWindow][GetCurrentPatientNumber] MainWindow found
-[SpyWindow][GetCurrentPatientNumber] SUCCESS: PatientNumber='132508'
+[AutomationWindow][GetCurrentPatientNumber] Starting operation
+[AutomationWindow][GetCurrentPatientNumber] MainWindow found
+[AutomationWindow][GetCurrentPatientNumber] SUCCESS: PatientNumber='132508'
 ```
 
 ### ? If You See Empty
 **Debug shows:**
 ```
-[SpyWindow][GetCurrentPatientNumber] FAIL: MainWindow.DataContext is (null)
+[AutomationWindow][GetCurrentPatientNumber] FAIL: MainWindow.DataContext is (null)
 ```
 
 **Cause:** MainWindow not yet loaded or DataContext not set
@@ -65,7 +65,7 @@
 
 ### Debug Output
 ```
-[SpyWindow][GetCurrentStudyDateTime] SUCCESS: StudyDateTime='2025-10-17 00:36:54'
+[AutomationWindow][GetCurrentStudyDateTime] SUCCESS: StudyDateTime='2025-10-17 00:36:54'
 ```
 
 ---
@@ -170,7 +170,7 @@
 **Solution:**
 - Check separator exactly matches URL/HTML structure
 - Look for typos (case-sensitive!)
-- Test separator manually in SpyWindow
+- Test separator manually in AutomationWindow
 
 #### Issue: "FAIL: MainViewModel is null"
 **Cause:** This should NOT happen after the fix

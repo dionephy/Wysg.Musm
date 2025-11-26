@@ -1,4 +1,4 @@
-﻿# ENHANCEMENT: Web Browser Element Picker
+# ENHANCEMENT: Web Browser Element Picker
 
 **Date**: 2025-11-10  
 **Type**: Feature Enhancement  
@@ -9,7 +9,7 @@
 
 ## Overview
 
-Added "Pick Web" button to SpyWindow that captures web browser UI elements with automatic optimization for web stability. Works exactly like regular "Pick" button, but applies smart defaults to create robust bookmarks that work even when browser tab titles change.
+Added "Pick Web" button to AutomationWindow that captures web browser UI elements with automatic optimization for web stability. Works exactly like regular "Pick" button, but applies smart defaults to create robust bookmarks that work even when browser tab titles change.
 
 ---
 
@@ -17,7 +17,7 @@ Added "Pick Web" button to SpyWindow that captures web browser UI elements with 
 
 ### Step-by-Step Process
 
-1. **Click "Pick Web"** button in SpyWindow toolbar
+1. **Click "Pick Web"** button in AutomationWindow toolbar
 2. **Move mouse** to target web browser element (1500ms delay)
 3. **Element captured** with automatic web optimization applied
 4. **Click "Validate"** to verify the bookmark works
@@ -74,16 +74,16 @@ Added "Pick Web" button to SpyWindow that captures web browser UI elements with 
 ### Problem with Standard "Pick"
 
 ```
-Browser tab: "ITR Worklist Report - ���� - Microsoft? Edge"
+Browser tab: "ITR Worklist Report - ???? - Microsoft? Edge"
 Standard Pick captures: UseName=true with exact title
 User switches tabs or window title changes
-Bookmark fails: "ITR Worklist Report - Microsoft Edge" �� captured title ?
+Bookmark fails: "ITR Worklist Report - Microsoft Edge" ?? captured title ?
 ```
 
 ### Solution with "Pick Web"
 
 ```
-Browser tab: "ITR Worklist Report - ���� - Microsoft? Edge"
+Browser tab: "ITR Worklist Report - ???? - Microsoft? Edge"
 Pick Web captures: UseName=false, UseClassName=true (Chrome_WidgetWin_1)
 User switches tabs or window title changes
 Bookmark succeeds: ClassName match, title ignored ?
@@ -122,15 +122,15 @@ Bookmark succeeds: ClassName match, title ignored ?
 
 ## Technical Implementation
 
-### Button in UI (SpyWindow.xaml)
+### Button in UI (AutomationWindow.xaml)
 
 ```xaml
 <Button Content="Pick Web" Margin="6,0,0,0" Click="OnPickWeb" 
-        Style="{StaticResource SpyWindowButtonStyle}" 
+        Style="{StaticResource AutomationWindowButtonStyle}" 
         ToolTip="Pick element from web browser with web-optimized defaults"/>
 ```
 
-### Handler Logic (SpyWindow.Bookmarks.cs)
+### Handler Logic (AutomationWindow.Bookmarks.cs)
 
 ```csharp
 private async void OnPickWeb(object sender, RoutedEventArgs e)
@@ -236,7 +236,7 @@ Select bookmark from dropdown and click Save to map."
 
 **Initial Capture**:
 ```
-Window: "ITR Worklist Report - ���� - Microsoft? Edge"
+Window: "ITR Worklist Report - ???? - Microsoft? Edge"
 Element: textarea (AutomationId="job-report-view-report-text")
 Optimization: Applied ?
 Validation: Success (45 ms)
@@ -245,11 +245,11 @@ Validation: Success (45 ms)
 **After Tab Title Changes**:
 ```
 Window: "ITR Worklist Report - Microsoft Edge" (Korean removed)
-Step 1: UseName=false, ClassName='Chrome_WidgetWin_1' �� Match ?
-Step 2: UseName=false, ClassName='BrowserRootView' �� Match ?
-Step 3: ClassName='NonClientView' �� Match ?
+Step 1: UseName=false, ClassName='Chrome_WidgetWin_1' ?? Match ?
+Step 2: UseName=false, ClassName='BrowserRootView' ?? Match ?
+Step 3: ClassName='NonClientView' ?? Match ?
 ...
-Step 14: AutomationId='job-report-view-report-text' �� Match ?
+Step 14: AutomationId='job-report-view-report-text' ?? Match ?
 Result: Found and highlighted (45 ms) ?
 ```
 
@@ -295,8 +295,8 @@ Common KnownControl bookmarks to map with "Pick Web":
 
 ## Files Modified
 
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.xaml` - Added "Pick Web" button with tooltip
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.Bookmarks.cs` - Implemented OnPickWeb handler with optimization logic
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.xaml` - Added "Pick Web" button with tooltip
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.Bookmarks.cs` - Implemented OnPickWeb handler with optimization logic
 
 ---
 
@@ -308,6 +308,6 @@ Common KnownControl bookmarks to map with "Pick Web":
 ---
 
 **Status**: ? Complete  
-**Workflow**: Pick Web �� Validate �� Select Bookmark �� Save  
+**Workflow**: Pick Web ?? Validate ?? Select Bookmark ?? Save  
 **Auto-Save**: No (user must select bookmark and click Save)  
 **Optimization**: Automatic (smart defaults applied on capture)

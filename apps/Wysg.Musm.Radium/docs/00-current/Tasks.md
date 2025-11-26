@@ -1,4 +1,4 @@
-Ôªø# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
+# Tasks: Radium Cumulative (Reporting Workflow + Editor + Mapping + PACS)
 
 ## Added
 - [X] T621 Design study technique database schema with 8 tables in med schema: technique_prefix, technique_tech, technique_suffix, technique, technique_combination, technique_combination_item, rad_studyname_technique_combination, rad_study_technique_combination (FR-453..FR-460).
@@ -81,7 +81,7 @@
 - [X] T558 Disable line numbers on editorChiefComplaint/editorPatientHistory.
 - [X] T559 Add "Edit Study Technique" and "Edit Comparison" buttons (placeholders for future dialogs).
 - [X] T526 Fix snippet option parsing to allow empty text values (e.g., `0^` for empty string choice) in CodeSnippet.ParseOptions() (FR-371).
-- [X] T515 Fix snippet completion display to show "{trigger} ‚Üí {description}" instead of "{trigger} ‚Üí {snippet text}" in MusmCompletionData and EditorCompletionData (FR-362).
+- [X] T515 Fix snippet completion display to show "{trigger} °Ê {description}" instead of "{trigger} °Ê {snippet text}" in MusmCompletionData and EditorCompletionData (FR-362).
 - [X] T516 Implement proper mode extraction from placeholder index prefix (1^, 2^, 3^) in CodeSnippet.Expand() method (FR-363).
 - [X] T517 Add modification tracking to Session class: CurrentPlaceholderModified flag and CurrentPlaceholderOriginalText storage (FR-364, FR-365).
 - [X] T518 Update SelectPlaceholder to record original placeholder text and reset modification flag when switching placeholders (FR-369).
@@ -92,26 +92,26 @@
 - [X] T523 Update Spec.md with FR-362..FR-370 documenting snippet logic implementation fixes (cumulative).
 - [X] T524 Update Plan.md with change log entry for snippet logic fixes including approach, test plan, and risk mitigation (cumulative).
 - [X] T525 Update Tasks.md with completed snippet logic tasks (this file, cumulative).
-- [X] T493 Add "Get HTML" button to SpyWindow ‚Üí Crawl Editor toolbar and wire Click to `OnGetHtml` (FR-339).
+- [X] T493 Add "Get HTML" button to AutomationWindow °Ê Crawl Editor toolbar and wire Click to `OnGetHtml` (FR-339).
 - [X] T494 Implement `OnGetHtml` to fetch URL from clipboard (http/https), reuse shared HttpClient, and output HTML or error to `txtStatus` (FR-339, aligns with Custom Procedure `GetHTML`).
 - [X] T495 Update Spec/Plan/Tasks with FR-339 entries and implementation notes.
 - [X] T496 Register `CodePagesEncodingProvider` at startup to enable legacy encodings (EUC-KR/CP949) (FR-340).
-- [X] T497 Implement smart HTML decoding (`HttpGetHtmlSmartAsync`) with charset detection (header ‚Üí meta) and CP949 fallback when UTF-8 looks corrupted; use it for both button and procedure `GetHTML` (FR-340).
+- [X] T497 Implement smart HTML decoding (`HttpGetHtmlSmartAsync`) with charset detection (header °Ê meta) and CP949 fallback when UTF-8 looks corrupted; use it for both button and procedure `GetHTML` (FR-340).
 - [ ] T498 Add unit tests for smart decoding using fixture pages (UTF-8 vs CP949) and corruption heuristic.
 - [X] T499 Extend `ProcedureExecutor` to support `GetHTML` for background PACS execution parity; reuse the same smart decoding helper (or shared utility).
 - [ ] T500 Stream-decoding optimization for very large HTML responses (optional backlog).
-- [X] T486 Add "Spy" button next to "Save Automation" in Settings ‚Üí Automation tab (XAML) (FR-335).
-- [X] T487 Wire `OnOpenSpy` handler in `SettingsWindow.xaml.cs` to open `SpyWindow` (owned by Settings) matching Main Window behavior (FR-335).
-- [X] T488 Update Spec/Plan/Tasks with FR-335 and change log entry for Settings ‚Üí Automation Spy button.
-- [X] T489 Add PACS method "Get current patient remark" to SpyWindow Custom Procedures combo (Tag `GetCurrentPatientRemark`) and wire PacsService wrapper `GetCurrentPatientRemarkAsync` (FR-336).
+- [X] T486 Add "Spy" button next to "Save Automation" in Settings °Ê Automation tab (XAML) (FR-335).
+- [X] T487 Wire `OnOpenSpy` handler in `SettingsWindow.xaml.cs` to open `AutomationWindow` (owned by Settings) matching Main Window behavior (FR-335).
+- [X] T488 Update Spec/Plan/Tasks with FR-335 and change log entry for Settings °Ê Automation Spy button.
+- [X] T489 Add PACS method "Get current patient remark" to AutomationWindow Custom Procedures combo (Tag `GetCurrentPatientRemark`) and wire PacsService wrapper `GetCurrentPatientRemarkAsync` (FR-336).
 - [X] T490 Add Custom Procedure op `Replace` (Arg1 Var, Arg2 String, Arg3 String) with presets and ExecuteSingle implementation (FR-337).
 - [X] T491 Add Custom Procedure op `GetHTML` (Arg1 Var URL) with async fetch via HttpClient in ExecuteSingleAsync; integrate into Set/Run flows (FR-338).
 - [X] T492 Update Spec/Plan/Tasks with FR-336..FR-338 entries and implementation notes.
 - [X] T512 Fix `ProcedureExecutor` early-return that bypassed fallback/auto-seed and caused previous-value to persist when `GetHTML` executed.
 - [X] T513 Support reading/writing procedure variables by both implicit `var{i}` and custom `OutputVar` names so `GetHTML` Arg1 Type=Var can use named variables.
 - [X] T514 Register encoding provider in `ProcedureExecutor` and apply basic header/meta charset handling when decoding HTML.
-- [X] T700 Procedure Split Parity: Update `ProcedureExecutor.Split` to support `re:`/`regex:` prefix, C#-style escape decoding, and CRLF retry to match SpyWindow behavior (FR-343..FR-346, acceptance: patient remark parity).
-- [X] T701 Validate Patient Remark parity: With a procedure that trims trailing HTML via regex split, verify New Study "GetPatientRemark" result equals SpyWindow preview (after Trim). Document in Plan/Spec and set sample.
+- [X] T700 Procedure Split Parity: Update `ProcedureExecutor.Split` to support `re:`/`regex:` prefix, C#-style escape decoding, and CRLF retry to match AutomationWindow behavior (FR-343..FR-346, acceptance: patient remark parity).
+- [X] T701 Validate Patient Remark parity: With a procedure that trims trailing HTML via regex split, verify New Study "GetPatientRemark" result equals AutomationWindow preview (after Trim). Document in Plan/Spec and set sample.
 - [X] T702 Design dark, intuitive scrollbar UX and enumerate FR-469..FR-475 in Spec.md.
 - [X] T703 Implement dark ScrollBar templates and Thumb style in `Themes/DarkTheme.xaml` with hover/drag states.
 - [X] T704 Apply global `ScrollBar` and `ScrollViewer` styles so TextBox/DataGrid/Editor/Combo popup inherit styling.
@@ -122,21 +122,21 @@
 - [X] T709 Edit Study Technique layout: convert to left/right panels with GridSplitter; left uses rows (Add Technique [Auto], Current Combination [*]); right shows studyname combinations with Set Default (FR-478, FR-479).
 - [X] T710 Fix ComboBox selected text: update dark ComboBox template to use SelectedItem.Text via PriorityBinding and set TextSearch.TextPath=Text (FR-480).
 - [X] T711 Inline add for Prefix/Tech/Suffix: add "+" buttons with prompt, call VM methods to persist and reload, auto-select new item (FR-481, FR-482).
-- [X] T725 Add `AddPreviousStudy` to Settings ‚Üí Automation available modules.
+- [X] T725 Add `AddPreviousStudy` to Settings °Ê Automation available modules.
 - [X] T726 Implement `RunAddPreviousStudyModuleAsync` and map small `+` to run `AutomationAddStudySequence` (known modules only).
-- [X] T730 SpyWindow: add PACS method `InvokeOpenStudy` (label: "Invoke open study") to Custom Procedures combo (FR-516).
+- [X] T730 AutomationWindow: add PACS method `InvokeOpenStudy` (label: "Invoke open study") to Custom Procedures combo (FR-516).
 - [X] T731 PacsService: add `InvokeOpenStudyAsync()` that executes `InvokeOpenStudy` procedure (FR-517).
 - [X] T732 ProcedureExecutor: auto-seed default for `InvokeOpenStudy` with single `Invoke` op on `SelectedStudyInSearch` (FR-518).
 - [X] T733 Custom Procedure op `Invoke`: ensure Arg1 Type preset to `Element` and Arg2/Arg3 disabled in editor; support in headless executor (FR-519..FR-521).
 - [X] T734 UI Spy: add KnownControl `TestInvoke` and Map-to dropdown item "Test invoke" (FR-522..FR-524).
-- [X] T735 Add PACS methods "Custom mouse click 1/2" to SpyWindow Custom Procedures list (FR-525).
+- [X] T735 Add PACS methods "Custom mouse click 1/2" to AutomationWindow Custom Procedures list (FR-525).
 - [X] T736 Add operation `MouseClick` to procedures editor and execution (Arg1=X, Arg2=Y) (FR-526, FR-527).
 - [X] T737 Add auto-seed fallback for CustomMouseClick1/2 with a single MouseClick row (FR-529).
 - [X] T738 PacsService: add wrappers `CustomMouseClick1Async` and `CustomMouseClick2Async` (FR-528).
-- [X] T739 SpyWindow: add read-only `txtPickedPoint` to show picked screen coordinates (FR-530, FR-531).
+- [X] T739 AutomationWindow: add read-only `txtPickedPoint` to show picked screen coordinates (FR-530, FR-531).
 - [X] T760 Add local tenant table `app.tenant` with `(account_id, pacs_key)` unique and `created_at`.
-- [X] T761 Add `tenant_id` column (FK ‚Üí app.tenant) to `med.patient`; change unique to `(tenant_id, patient_number)`.
-- [X] T762 Add `tenant_id` column (FK ‚Üí app.tenant) to `med.rad_studyname`; change unique to `(tenant_id, studyname)`.
+- [X] T761 Add `tenant_id` column (FK °Ê app.tenant) to `med.patient`; change unique to `(tenant_id, patient_number)`.
+- [X] T762 Add `tenant_id` column (FK °Ê app.tenant) to `med.rad_studyname`; change unique to `(tenant_id, studyname)`.
 - [X] T763 Rename technique tables to account-scoped `rad_technique*` and add `account_id` with unique constraints per account:
       `rad_technique_prefix`, `rad_technique_tech`, `rad_technique_suffix`, `rad_technique`, `rad_technique_combination`, `rad_technique_combination_item`.
 - [X] T764 Create/refresh views `med.v_technique_display` and `med.v_technique_combination_display` to use the new table names.
@@ -147,57 +147,57 @@
 - [X] T769 Docs: Update Spec.md (FR-600..FR-609) and Plan.md with approach/test/risks for tenancy and technique renames.
 - [X] V210 Build passes after repository and schema name changes.
 
-## New (2025-10-14 ‚Äì PACS Display Source + Settings PACS Tab Simplification)
+## New (2025-10-14 ? PACS Display Source + Settings PACS Tab Simplification)
 - [X] T780 Bind status bar PACS display to `ITenantContext.CurrentPacsKey` with fallback to `default_pacs` and subscribe to `PacsKeyChanged`.
 - [X] T781 Add `PacsKeyChanged` event to `ITenantContext` and raise in `TenantContext` when `CurrentPacsKey` changes.
 - [X] T782 Remove legacy local PACS profile initialization in MainWindow to avoid showing "Default PACS".
-- [X] T783 Settings ‚Üí PACS tab: remove unsupported Actions column (Rename/Remove buttons).
-- [X] T784 Settings ‚Üí PACS tab: remove Close button below grid; rely on window close.
+- [X] T783 Settings °Ê PACS tab: remove unsupported Actions column (Rename/Remove buttons).
+- [X] T784 Settings °Ê PACS tab: remove Close button below grid; rely on window close.
 - [X] V220 Verify status bar shows "PACS: default_pacs" on startup and updates on selection change.
 - [X] V221 Verify PACS grid has no Rename/Remove, only Add PACS, and row selection applies current PACS.
 
-## New (2025-10-14 ‚Äì Instant PACS Switch + PACS Text Display)
+## New (2025-10-14 ? Instant PACS Switch + PACS Text Display)
 - [X] T785 Automation: set `SelectedPacsForAutomation` in `OnSelectedPacsProfileChanged` to reload sequences immediately.
 - [X] T786 SettingsWindow: expose `CurrentPacsKey` property and subscribe to `ITenantContext.PacsKeyChanged`; update spy path and VM selection.
-- [X] T787 SpyWindow: show PACS key in top bar and subscribe to `PacsKeyChanged` for live updates.
+- [X] T787 AutomationWindow: show PACS key in top bar and subscribe to `PacsKeyChanged` for live updates.
 - [X] T788 Automation tab: add PACS label bound to `SettingsWindow.CurrentPacsKey`.
 - [X] V230 Change PACS selection and verify Automation panes reload and label updates instantly.
-- [X] V231 Open SpyWindow and change PACS in Settings; verify label updates instantly and procedures save under new PACS path.
+- [X] V231 Open AutomationWindow and change PACS in Settings; verify label updates instantly and procedures save under new PACS path.
 
-## New (2025-10-14 ‚Äì Per-PACS Spy Persistence + Invoke Test)
+## New (2025-10-14 ? Per-PACS Spy Persistence + Invoke Test)
 - [X] T789 Persist UiBookmarks per PACS by setting `UiBookmarks.GetStorePathOverride` on login and on PACS change.
 - [X] T790 Persist Procedures per PACS by setting `ProcedureExecutor.SetProcPathOverride` on login and on PACS change.
-- [X] T791 Add new custom method `InvokeTest` to SpyWindow ComboBox and seed default procedure in ProcedureExecutor.
+- [X] T791 Add new custom method `InvokeTest` to AutomationWindow ComboBox and seed default procedure in ProcedureExecutor.
 - [X] T792 Add new Automation module `TestInvoke` to Available Modules.
 - [X] T793 Wire `TestInvoke` execution in MainViewModel to call `PacsService.InvokeTestAsync()`.
 - [X] V232 Verify each PACS has its own `bookmarks.json` and `ui-procedures.json` directory and files after editing/saving in Spy.
 - [X] V233 Verify Automation `TestInvoke` triggers an Invoke on the element mapped to `TestInvoke` KnownControl.
- - [X] V234 Verify SpyWindow loads/saves procedures from the PACS-scoped `ui-procedures.json` and no longer uses legacy global file during a session.
+ - [X] V234 Verify AutomationWindow loads/saves procedures from the PACS-scoped `ui-procedures.json` and no longer uses legacy global file during a session.
 
-## New (2025-10-14 ‚Äì Test Automation Module ShowTestMessage)
+## New (2025-10-14 ? Test Automation Module ShowTestMessage)
 - [X] T794 Add `ShowTestMessage` to SettingsViewModel.AvailableModules.
 - [X] T795 Handle `ShowTestMessage` in MainViewModel automation runner (New/Add/Shortcut) to display a MessageBox("Test").
 - [X] V240 Verify running sequences containing `ShowTestMessage` displays the modal box with title/content "Test".
 
-## New (2025-10-14 ‚Äì PACS-scoped Automation Execution Fix)
+## New (2025-10-14 ? PACS-scoped Automation Execution Fix)
 - [X] T796 Replace reads of `_localSettings.Automation*` with PACS-scoped `automation.json` loader.
-- [ ] V241 New Study pane set to only `ShowTestMessage` ‚Üí pressing New shows the message and does not lock study.
-- [ ] V242 Add `LockStudy` to New Study pane explicitly ‚Üí pressing New locks study as designed.
+- [ ] V241 New Study pane set to only `ShowTestMessage` °Ê pressing New shows the message and does not lock study.
+- [ ] V242 Add `LockStudy` to New Study pane explicitly °Ê pressing New locks study as designed.
 
-## New (2025-10-14 ‚Äì Global Hotkey routes to Shortcut Sequences)
+## New (2025-10-14 ? Global Hotkey routes to Shortcut Sequences)
 - [X] T800 Register global Open Study hotkey from Settings and handle WM_HOTKEY in MainWindow to call `RunOpenStudyShortcut()`.
-- [X] V245 With ‚ÄúShortcut: Open study (new)‚Äù containing `ShowTestMessage`, pressing the configured hotkey pops the ‚ÄúTest‚Äù box.
+- [X] V245 With °∞Shortcut: Open study (new)°± containing `ShowTestMessage`, pressing the configured hotkey pops the °∞Test°± box.
 - [X] V246 Verify switching to locked state or after-open state picks the corresponding shortcut pane.
 
-## New (2025-10-14 ‚Äì Window Placement Persistence)
+## New (2025-10-14 ? Window Placement Persistence)
 - [X] T805 Add `MainWindowPlacement` to local settings and implement save on close and restore on load (with safe clamping and state handling).
 - [X] V250 Verify window restores position/size/state after restart; off-screen corrected.
 
-## New (2025-10-14 ‚Äì Reportify Clarification and Removal)
+## New (2025-10-14 ? Reportify Clarification and Removal)
 - [X] T808 Remove `PreserveKnownTokens` from SettingsViewModel and MainViewModel.ReportifyHelpers; ignore legacy key when parsing.
 - [X] V251 Confirm new Reportify JSON omits `preserve_known_tokens` and app behavior unchanged.
 
-## New (2025-01-14 ‚Äì Editor Phrase-Based Syntax Highlighting)
+## New (2025-01-14 ? Editor Phrase-Based Syntax Highlighting)
 - [X] T810 Create `PhraseHighlightRenderer` class in `src/Wysg.Musm.Editor/Ui/` implementing `IBackgroundRenderer` (FR-700).
 - [X] T811 Implement phrase tokenization logic to find words and multi-word phrases up to 5 words (FR-706).
 - [X] T812 Add case-insensitive phrase matching using HashSet for O(1) lookup performance (FR-705).
@@ -211,13 +211,13 @@
 - [X] T820 Update Tasks.md with completed phrase highlighting tasks (this file, cumulative).
 - [X] V252 Build passes with no errors after adding PhraseHighlightRenderer.
 
-## Verification (2025-01-14 ‚Äì Phrase Highlighting)
-- [ ] V253 Load phrase snapshot into EditorControl ‚Üí verify phrases highlight with correct colors.
-- [ ] V254 Type text with snapshot phrases ‚Üí verify #4A4A4A highlighting.
-- [ ] V255 Type text with non-snapshot phrases ‚Üí verify red highlighting.
-- [ ] V256 Type multi-word phrases (2-5 words) ‚Üí verify entire phrase highlights as single unit.
-- [ ] V257 Update phrase snapshot at runtime ‚Üí verify highlighting updates immediately.
-- [ ] V258 Scroll document ‚Üí verify highlighting only processes visible text regions.
+## Verification (2025-01-14 ? Phrase Highlighting)
+- [ ] V253 Load phrase snapshot into EditorControl °Ê verify phrases highlight with correct colors.
+- [ ] V254 Type text with snapshot phrases °Ê verify #4A4A4A highlighting.
+- [ ] V255 Type text with non-snapshot phrases °Ê verify red highlighting.
+- [ ] V256 Type multi-word phrases (2-5 words) °Ê verify entire phrase highlights as single unit.
+- [ ] V257 Update phrase snapshot at runtime °Ê verify highlighting updates immediately.
+- [ ] V258 Scroll document °Ê verify highlighting only processes visible text regions.
 - [ ] V259 Verify text remains readable with background highlighting active.
 - [ ] V260 Test performance with large documents (1000+ lines) and many phrases (500+).
 
@@ -226,7 +226,7 @@
 - [ ] T822 Add phrase highlighting configuration UI in Settings window (future work).
 - [ ] T823 Implement phrase hover tooltips showing SNOMED CT information (future work).
 
-## New (2025-10-15 ‚Äì Phrase-to-SNOMED Mapping Central Database)
+## New (2025-10-15 ? Phrase-to-SNOMED Mapping Central Database)
 - [X] T900 Design phrase-to-SNOMED mapping schema with three tables: snomed.concept_cache, radium.global_phrase_snomed, radium.phrase_snomed (FR-900, FR-901, FR-902).
 - [X] T901 Create snomed.concept_cache table with concept_id (PK), concept_id_str (UNIQUE), fsn, pt, module_id, active, cached_at, expires_at (FR-900).
 - [X] T902 Create radium.global_phrase_snomed table with phrase_id (UNIQUE FK), concept_id (FK), mapping_type, confidence, notes, mapped_by, timestamps (FR-901).
@@ -248,10 +248,10 @@
 - [X] T918 Update Tasks.md with completed phrase-to-SNOMED mapping schema tasks (this file, cumulative).
 - [ ] T919 Implement C# service SnowstormService with SearchConceptsAsync and GetConceptDetailsAsync methods (FR-908, future work).
 - [ ] T920 Implement C# service PhraseSnomedService with UpsertConceptAsync, MapGlobalPhraseAsync, MapAccountPhraseAsync methods (FR-906, FR-907, future work).
-- [ ] T921 Add SNOMED search panel to Settings ‚Üí Global Phrases tab with search textbox, results grid, and map button (FR-909, future work).
+- [ ] T921 Add SNOMED search panel to Settings °Ê Global Phrases tab with search textbox, results grid, and map button (FR-909, future work).
 - [ ] T922 Add mapping details panel to Global Phrases tab with concept display, mapping type dropdown, confidence slider, notes textbox, save/remove buttons (FR-909, future work).
 - [ ] T923 Extend GlobalPhrasesViewModel with SNOMED search and mapping commands (FR-909, future work).
-- [ ] T924 Add SNOMED search and mapping UI to Settings ‚Üí Phrases tab (account-specific) (FR-910, future work).
+- [ ] T924 Add SNOMED search and mapping UI to Settings °Ê Phrases tab (account-specific) (FR-910, future work).
 - [ ] T925 Extend PhrasesViewModel with SNOMED search and mapping commands (FR-910, future work).
 - [ ] T926 Update PhraseHighlightRenderer to query phrase-SNOMED mappings and apply semantic category colors (FR-911, future work).
 - [ ] T927 Extend phrase completion dropdown to display SNOMED concept ID and FSN in tooltip or secondary line (FR-912, future work).
@@ -261,18 +261,18 @@
 
 ## Verification (Phrase-to-SNOMED Mapping)
 - [X] V300 SQL file deploys without errors on Azure SQL Database.
-- [ ] V301 Call snomed.upsert_concept with test data ‚Üí verify concept cached with correct fields.
-- [ ] V302 Call radium.map_global_phrase_to_snomed with global phrase ‚Üí verify mapping created.
-- [ ] V303 Call radium.map_phrase_to_snomed with account phrase ‚Üí verify mapping created.
-- [ ] V304 Attempt to map account phrase via global procedure ‚Üí verify RAISERROR.
-- [ ] V305 Attempt to map global phrase via account procedure ‚Üí verify RAISERROR.
-- [ ] V306 Delete phrase ‚Üí verify mapping CASCADE deleted.
-- [ ] V307 Attempt to delete concept with existing mappings ‚Üí verify FK RESTRICT violation.
-- [ ] V308 Update mapping fields ‚Üí verify updated_at changes; update non-tracked fields ‚Üí verify updated_at unchanged.
-- [ ] V309 Query v_phrase_snomed_combined ‚Üí verify UNION ALL returns global and account mappings with correct mapping_source.
+- [ ] V301 Call snomed.upsert_concept with test data °Ê verify concept cached with correct fields.
+- [ ] V302 Call radium.map_global_phrase_to_snomed with global phrase °Ê verify mapping created.
+- [ ] V303 Call radium.map_phrase_to_snomed with account phrase °Ê verify mapping created.
+- [ ] V304 Attempt to map account phrase via global procedure °Ê verify RAISERROR.
+- [ ] V305 Attempt to map global phrase via account procedure °Ê verify RAISERROR.
+- [ ] V306 Delete phrase °Ê verify mapping CASCADE deleted.
+- [ ] V307 Attempt to delete concept with existing mappings °Ê verify FK RESTRICT violation.
+- [ ] V308 Update mapping fields °Ê verify updated_at changes; update non-tracked fields °Ê verify updated_at unchanged.
+- [ ] V309 Query v_phrase_snomed_combined °Ê verify UNION ALL returns global and account mappings with correct mapping_source.
 - [ ] V310 Build passes with no errors after schema deployment.
 
-## New (2025-10-15 ‚Äì PhraseSnomedLinkWindow UX Improvements)
+## New (2025-10-15 ? PhraseSnomedLinkWindow UX Improvements)
 - [X] T931 Pre-fill search textbox with phrase text in PhraseSnomedLinkWindow constructor (FR-916a).
 - [X] T932 Implement manual SelectedConcept property to call MapCommand.NotifyCanExecuteChanged() when concept selected (FR-916b).
 - [X] T933 Update Spec.md with FR-916 documenting mapping window UX improvements (cumulative).
@@ -280,23 +280,23 @@
 - [X] T935 Update Tasks.md with completed mapping window UX tasks (this file, cumulative).
 
 ## Verification (PhraseSnomedLinkWindow UX)
-- [X] V311 Open "Link SNOMED" from Global Phrases ‚Üí verify search box pre-filled with phrase text.
-- [X] V312 Press Enter or click Search ‚Üí verify Snowstorm search executes with pre-filled text.
+- [X] V311 Open "Link SNOMED" from Global Phrases °Ê verify search box pre-filled with phrase text.
+- [X] V312 Press Enter or click Search °Ê verify Snowstorm search executes with pre-filled text.
 - [X] V313 Map button is disabled when no concept selected.
-- [X] V314 Select a concept from search results ‚Üí verify Map button enables immediately.
-- [X] V315 Click Map button ‚Üí verify mapping saves successfully and confirmation appears.
-- [X] V316 Select different concept ‚Üí verify Map button remains enabled.
-- [X] V317 Clear selection ‚Üí verify Map button disables.
+- [X] V314 Select a concept from search results °Ê verify Map button enables immediately.
+- [X] V315 Click Map button °Ê verify mapping saves successfully and confirmation appears.
+- [X] V316 Select different concept °Ê verify Map button remains enabled.
+- [X] V317 Clear selection °Ê verify Map button disables.
 
-## New (2025-10-15 ‚Äì UI Bookmark Robustness Improvements)
+## New (2025-10-15 ? UI Bookmark Robustness Improvements)
 - [X] T936 Update `Walk` method in `UiBookmarks.cs` to require ALL enabled attributes for step 0 root acceptance (FR-920).
 - [X] T937 Update `DiscoverRoots` method to filter existing roots using first node attributes instead of rescanning desktop (FR-921).
 - [X] T938 Add exact match filtering followed by relaxed match (without ControlTypeId) fallback (FR-921).
 - [X] T939 Add ClassName filtering when multiple root matches remain (FR-924).
 - [X] T940 Implement `CalculateNodeSimilarity` helper to score roots (AutomationId=200, Name=100, ClassName=50, ControlType=25) (FR-925).
 - [X] T941 Sort filtered roots by similarity score for deterministic selection (FR-925).
-- [X] T942 Add `ValidateBookmark` method in `SpyWindow.Bookmarks.cs` to validate before save (FR-922).
-- [X] T943 Validate process name not empty, chain not empty, first node has ‚â•1 enabled attribute (FR-922).
+- [X] T942 Add `ValidateBookmark` method in `AutomationWindow.Bookmarks.cs` to validate before save (FR-922).
+- [X] T943 Validate process name not empty, chain not empty, first node has °√1 enabled attribute (FR-922).
 - [X] T944 Warn about nodes relying solely on UseIndex=true with IndexAmongMatches=0 (FR-922).
 - [X] T945 Call `ValidateBookmark` in `OnSaveEdited` and display validation errors preventing save (FR-922).
 - [X] T946 Enhance trace output in `Walk` to show attribute match results for step 0 (FR-923).
@@ -306,34 +306,34 @@
 - [X] T950 Update Tasks.md with completed bookmark robustness tasks (this file, cumulative).
 
 ## Verification (UI Bookmark Robustness)
-- [ ] V320 Open PACS with main + toolbar windows; capture bookmark with ClassName enabled ‚Üí verify root matches main window consistently across 5 reopens.
-- [ ] V321 Edit bookmark to leave only 1 attribute enabled on first node ‚Üí verify validation error prevents save.
-- [ ] V322 Enable second attribute ‚Üí verify validation passes and save succeeds.
-- [ ] V323 Capture bookmark with unique AutomationId ‚Üí verify similarity scoring selects correct root when multiple candidates exist.
-- [ ] V324 Simulate ControlTypeId change ‚Üí verify relaxed match fallback succeeds with trace message.
-- [ ] V325 Resolve bookmark with trace ‚Üí verify trace shows attribute match results (Name=true, Class=true, Auto=false, Ct=true) and timing info (e.g., "Step 0: Accept root... (12 ms)").
-- [ ] V326 Resolve bookmark after ClassName filter ‚Üí verify trace shows "ClassName filter applied: N roots remain".
+- [ ] V320 Open PACS with main + toolbar windows; capture bookmark with ClassName enabled °Ê verify root matches main window consistently across 5 reopens.
+- [ ] V321 Edit bookmark to leave only 1 attribute enabled on first node °Ê verify validation error prevents save.
+- [ ] V322 Enable second attribute °Ê verify validation passes and save succeeds.
+- [ ] V323 Capture bookmark with unique AutomationId °Ê verify similarity scoring selects correct root when multiple candidates exist.
+- [ ] V324 Simulate ControlTypeId change °Ê verify relaxed match fallback succeeds with trace message.
+- [ ] V325 Resolve bookmark with trace °Ê verify trace shows attribute match results (Name=true, Class=true, Auto=false, Ct=true) and timing info (e.g., "Step 0: Accept root... (12 ms)").
+- [ ] V326 Resolve bookmark after ClassName filter °Ê verify trace shows "ClassName filter applied: N roots remain".
 - [ ] V327 Verify bookmarks saved before fix continue to work (no regression for existing bookmarks).
-- [ ] V328 Resolve bookmark with multiple steps ‚Üí verify each step shows timing (e.g., "Step 2: Completed (45 ms)").
-- [ ] V329 Click Validate button in SpyWindow ‚Üí verify diagnostic table includes timing column showing per-step milliseconds.
-- [ ] V330 Click "Resolve" with trace on slow bookmark ‚Üí verify trace shows retry breakdown with query time, retry delay, and attempt count for each step.
-- [ ] V331 Click "Validate" on any bookmark ‚Üí verify status textbox shows last 100 lines of trace with detailed timing for all steps (even on success).
-- [ ] V332 Click "Validate" on Calculator bookmark ‚Üí verify trace shows "Detected 'not supported' error, skipping remaining retries" and resolution completes in <1 second.
-- [ ] V333 Compare Calculator bookmark timing before/after fix ‚Üí verify resolution is 4-6x faster (from ~2900ms to ~500-800ms).
+- [ ] V328 Resolve bookmark with multiple steps °Ê verify each step shows timing (e.g., "Step 2: Completed (45 ms)").
+- [ ] V329 Click Validate button in AutomationWindow °Ê verify diagnostic table includes timing column showing per-step milliseconds.
+- [ ] V330 Click "Resolve" with trace on slow bookmark °Ê verify trace shows retry breakdown with query time, retry delay, and attempt count for each step.
+- [ ] V331 Click "Validate" on any bookmark °Ê verify status textbox shows last 100 lines of trace with detailed timing for all steps (even on success).
+- [ ] V332 Click "Validate" on Calculator bookmark °Ê verify trace shows "Detected 'not supported' error, skipping remaining retries" and resolution completes in <1 second.
+- [ ] V333 Compare Calculator bookmark timing before/after fix °Ê verify resolution is 4-6x faster (from ~2900ms to ~500-800ms).
 
-## New (2025-10-15 ‚Äì OpenStudy fallback to per-PACS WorklistViewButton)
+## New (2025-10-15 ? OpenStudy fallback to per-PACS WorklistViewButton)
 - [X] T860 Change `ProcedureExecutor` fallback for `InvokeOpenStudy` to `Invoke` `KnownControl.WorklistViewButton` so it uses per-PACS UiBookmarks mapping.
 - [X] T861 Update Spec.md FR-518 to reflect WorklistViewButton default and per-PACS storage note.
 - [X] T862 Update Plan.md with change log entry, approach, test plan, and risks for the new fallback behavior.
-- [ ] T863 Validate SpyWindow mapping flow for `WorklistViewButton` across two PACS profiles (mapping persists under each PACS folder).
+- [ ] T863 Validate AutomationWindow mapping flow for `WorklistViewButton` across two PACS profiles (mapping persists under each PACS folder).
 
-## Verification (2025-10-15 ‚Äì OpenStudy fallback)
+## Verification (2025-10-15 ? OpenStudy fallback)
 - [X] V262 If `InvokeOpenStudy` procedure is missing, opening editor auto-seeds with a single `Invoke` step targeting `WorklistViewButton`.
 - [X] V263 Mapping `WorklistViewButton` to the PACS View/Open UI element and running the procedure opens the viewer.
 - [X] V264 Running Automation module `OpenStudy` triggers `PacsService.InvokeOpenStudyAsync()` and sets `StudyOpened=true`.
 - [ ] V265 Switch PACS profile and verify the fallback reads the mapped `WorklistViewButton` from the new PACS folder.
 
-## Added (2025-10-15 ‚Äì OpenStudy reliability + sequential execution + AddPreviousStudy guard/perf)
+## Added (2025-10-15 ? OpenStudy reliability + sequential execution + AddPreviousStudy guard/perf)
 - [X] T870 Execute automation modules sequentially in New/Add/Shortcut flows via `RunModulesSequentially` (await each module in order).
 - [X] T871 Convert remark acquisition helpers to `Task` and await in sequencing to preserve ordering.
 - [X] T872 Add abort checks in `RunAddPreviousStudyModuleAsync`: skip when related study `studyname` or `studydatetime` is null/empty.
@@ -341,14 +341,14 @@
 - [X] T874 Improve AddPreviousStudy performance: run `LoadPreviousStudiesForPatientAsync` in background after persistence; do not block module chain.
 - [X] T875 Add retry to `PacsService.InvokeOpenStudyAsync` (3 attempts with small backoff) while preserving strict throw-if-undefined behavior.
 
-## Verification (2025-10-15 ‚Äì Sequencing + AddPreviousStudy + OpenStudy)
+## Verification (2025-10-15 ? Sequencing + AddPreviousStudy + OpenStudy)
 - [X] V270 New/Add/Shortcut sequences run modules one-by-one in configured order; no interleaving.
-- [X] V271 Related study missing name/datetime ‚Üí `AddPreviousStudy` aborts gracefully; status shows reason.
-- [X] V272 Related study equals current by name+datetime ‚Üí `AddPreviousStudy` aborts; status shows reason.
+- [X] V271 Related study missing name/datetime °Ê `AddPreviousStudy` aborts gracefully; status shows reason.
+- [X] V272 Related study equals current by name+datetime °Ê `AddPreviousStudy` aborts; status shows reason.
 - [X] V273 After saving previous study, viewer opens promptly because reload runs in background; `OpenStudy` executes reliably next.
 - [X] V274 `OpenStudy` succeeds when procedure is present; transient failures are retried; if undefined, an error is thrown and surfaced in status.
 
-## New (2025-10-15 ‚Äì Status Log, Bookmarks, PACS Methods, ClickElement)
+## New (2025-10-15 ? Status Log, Bookmarks, PACS Methods, ClickElement)
 - [X] T950 Replace TextBox with RichTextBox in StatusPanel.xaml for multi-color support and auto-scroll
 - [X] T951 Implement UpdateStatusText method in StatusPanel.xaml.cs with line-by-line colorization logic (error lines red, others default)
 - [X] T952 Add DataContextChanged handler to subscribe to MainViewModel.StatusText and StatusIsError property changes
@@ -363,22 +363,22 @@
 - [X] T961 Update Tasks.md with T950-T964 and V270-V279 (this file, cumulative)
 - [X] T962 Verify build passes with no compilation errors
 - [X] T963 Fix StatusPanel to remove unnecessary line breaks between lines (completed)
-- [ ] T964 Manual: Add new bookmarks to SpyWindow.xaml Map-to ComboBox (see MANUAL_UPDATES_NEEDED.md)
-- [ ] T965 Manual: Add new PACS methods to SpyWindow.xaml Custom Procedures combo (see MANUAL_UPDATES_NEEDED.md)
-- [ ] T966 Manual: Add ClickElement operation to SpyWindow.xaml Operations combo (see MANUAL_UPDATES_NEEDED.md)
+- [ ] T964 Manual: Add new bookmarks to AutomationWindow.xaml Map-to ComboBox (see MANUAL_UPDATES_NEEDED.md)
+- [ ] T965 Manual: Add new PACS methods to AutomationWindow.xaml Custom Procedures combo (see MANUAL_UPDATES_NEEDED.md)
+- [ ] T966 Manual: Add ClickElement operation to AutomationWindow.xaml Operations combo (see MANUAL_UPDATES_NEEDED.md)
 
 ## Verification (Status Log, Bookmarks, PACS Methods, ClickElement)
 - [X] V270 Status textbox auto-scrolls to show latest message (verified with test)
 - [X] V271 Error lines appear in red (#FF5A5A), normal lines in default (#D0D0D0) - line-by-line colorization works
 - [X] V271a No unnecessary line breaks between status lines (fixed with conditional LineBreak insertion)
-- [ ] V272 Open SpyWindow Map-to dropdown ‚Üí verify "Screen_main current study tab" and "Screen_sub previous study tab" listed (pending manual XAML update)
-- [ ] V273 Map Screen_MainCurrentStudyTab bookmark to PACS main screen current study area ‚Üí verify saved and resolves correctly (pending manual XAML update)
-- [ ] V274 Map Screen_SubPreviousStudyTab bookmark to PACS sub screen previous study area ‚Üí verify saved and resolves correctly (pending manual XAML update)
-- [ ] V275 Open SpyWindow Custom Procedures ‚Üí verify "Set current study in main screen" and "Set previous study in sub screen" listed (pending manual XAML update)
-- [ ] V276 Select SetCurrentStudyInMainScreen method ‚Üí verify auto-seeded with ClickElement operation targeting Screen_MainCurrentStudyTab (pending manual XAML update)
-- [ ] V277 Run SetCurrentStudyInMainScreen procedure ‚Üí verify click occurs at bookmark center and preview shows coordinates (pending manual XAML update)
-- [ ] V278 Open SpyWindow Operations dropdown ‚Üí verify ClickElement operation listed (pending manual XAML update)
-- [ ] V279 Select ClickElement operation ‚Üí verify Arg1 preset to Element type, Arg2/Arg3 disabled, Run button clickable after mapping bookmark (pending manual XAML update)
+- [ ] V272 Open AutomationWindow Map-to dropdown °Ê verify "Screen_main current study tab" and "Screen_sub previous study tab" listed (pending manual XAML update)
+- [ ] V273 Map Screen_MainCurrentStudyTab bookmark to PACS main screen current study area °Ê verify saved and resolves correctly (pending manual XAML update)
+- [ ] V274 Map Screen_SubPreviousStudyTab bookmark to PACS sub screen previous study area °Ê verify saved and resolves correctly (pending manual XAML update)
+- [ ] V275 Open AutomationWindow Custom Procedures °Ê verify "Set current study in main screen" and "Set previous study in sub screen" listed (pending manual XAML update)
+- [ ] V276 Select SetCurrentStudyInMainScreen method °Ê verify auto-seeded with ClickElement operation targeting Screen_MainCurrentStudyTab (pending manual XAML update)
+- [ ] V277 Run SetCurrentStudyInMainScreen procedure °Ê verify click occurs at bookmark center and preview shows coordinates (pending manual XAML update)
+- [ ] V278 Open AutomationWindow Operations dropdown °Ê verify ClickElement operation listed (pending manual XAML update)
+- [ ] V279 Select ClickElement operation °Ê verify Arg1 preset to Element type, Arg2/Arg3 disabled, Run button clickable after mapping bookmark (pending manual XAML update)
 - [X] V280 Build passes with no compilation errors (verified)
 
 ## Note on msctls_statusbar32 Reliability (PP6)
@@ -390,13 +390,13 @@ The issue where msctls_statusbar32 bookmarks fail validation intermittently but 
 - **Performance**: Validation that previously took ~2900ms now completes in ~500-800ms by skipping unnecessary retries
 - **User Impact**: After re-pick, the bookmark works consistently because the exact same element is captured with the same attributes. The underlying UIA behavior is unchanged, but the resolver is more robust.
 
-## New (2025-01-16 ‚Äì Element Staleness Detection with Auto-Retry)
+## New (2025-01-16 ? Element Staleness Detection with Auto-Retry)
 - [X] T970 Add ElementResolveMaxAttempts and ElementResolveRetryDelayMs constants to ProcedureExecutor
 - [X] T971 Implement IsElementAlive() helper method that validates element by checking Name property
 - [X] T972 Rewrite ResolveElement() with retry loop:
-  - Check cache ‚Üí validate with IsElementAlive() ‚Üí return if valid
+  - Check cache °Ê validate with IsElementAlive() °Ê return if valid
   - Clear stale cache entries immediately
-  - Resolve fresh from bookmark ‚Üí validate before caching
+  - Resolve fresh from bookmark °Ê validate before caching
   - Retry with exponential backoff (150ms, 300ms, 450ms) on failure
 - [X] T973 Test normal case: element resolves on first attempt and is cached
 - [X] T974 Update Plan.md with change log entry for element staleness detection (cumulative)
@@ -405,13 +405,13 @@ The issue where msctls_statusbar32 bookmarks fail validation intermittently but 
 
 ## Verification (Element Staleness Detection)
 - [X] V290 Normal case: procedure GetText operation completes on first attempt (cache hit after initial resolve)
-- [ ] V291 Stale cache: PACS window hierarchy changes ‚Üí cached element becomes stale ‚Üí automatic retry resolves fresh element
-- [ ] V292 Transient failure: UI busy during resolution ‚Üí first attempt fails ‚Üí retry after 150ms succeeds
-- [ ] V293 Permanent failure: bookmark points to non-existent element ‚Üí all 3 attempts fail ‚Üí operation reports "(no element)" error
+- [ ] V291 Stale cache: PACS window hierarchy changes °Ê cached element becomes stale °Ê automatic retry resolves fresh element
+- [ ] V292 Transient failure: UI busy during resolution °Ê first attempt fails °Ê retry after 150ms succeeds
+- [ ] V293 Permanent failure: bookmark points to non-existent element °Ê all 3 attempts fail °Ê operation reports "(no element)" error
 - [ ] V294 Performance: measure resolution time with cache hit (<10ms) vs. cache miss with retry (<1 second for 3 attempts)
-- [ ] V295 Integration: run automation sequence with 10+ operations ‚Üí verify no stale element errors
+- [ ] V295 Integration: run automation sequence with 10+ operations °Ê verify no stale element errors
 
-## New (2025-01-16 ‚Äì ResolveWithRetry with Progressive Constraint Relaxation)
+## New (2025-01-16 ? ResolveWithRetry with Progressive Constraint Relaxation)
 - [X] T1010 Add ResolveWithRetry() public method to UiBookmarks with maxAttempts parameter (default 3)
 - [X] T1011 Implement RelaxBookmarkControlType() helper that creates bookmark copy with UseControlTypeId=false
 - [X] T1012 Implement RelaxBookmarkClassName() helper that creates bookmark copy with UseClassName=false + UseControlTypeId=false
@@ -426,23 +426,23 @@ The issue where msctls_statusbar32 bookmarks fail validation intermittently but 
 - [ ] T1017 Update ProcedureExecutor.ResolveElement() to use ResolveWithRetry() instead of Resolve() (optional enhancement)
 
 ## Verification (ResolveWithRetry)
-- [ ] V300 Exact match success: bookmark resolves on first attempt ‚Üí no relaxation, no retry delay
-- [ ] V301 ControlType relaxation: PACS UI update changes control types ‚Üí second attempt succeeds
-- [ ] V302 ClassName relaxation: major UI rearrangement ‚Üí third attempt succeeds with Name + AutomationId only
-- [ ] V303 Complete failure: bookmark completely invalid ‚Üí all 3 attempts fail, return (IntPtr.Zero, null)
+- [ ] V300 Exact match success: bookmark resolves on first attempt °Ê no relaxation, no retry delay
+- [ ] V301 ControlType relaxation: PACS UI update changes control types °Ê second attempt succeeds
+- [ ] V302 ClassName relaxation: major UI rearrangement °Ê third attempt succeeds with Name + AutomationId only
+- [ ] V303 Complete failure: bookmark completely invalid °Ê all 3 attempts fail, return (IntPtr.Zero, null)
 - [ ] V304 Performance: measure first attempt (~100ms), retry overhead (150-300ms only when needed)
-- [ ] V305 Integration: run automation sequence where one bookmark requires relaxation ‚Üí verify automatic recovery
+- [ ] V305 Integration: run automation sequence where one bookmark requires relaxation °Ê verify automatic recovery
 
 ## Future Robustness Strategies (Documented, Not Implemented)
 
-### FR-960: Multi-Root Window Discovery (Medium Priority) - ‚ö†Ô∏è Partially Implemented
+### FR-960: Multi-Root Window Discovery (Medium Priority) - ?? Partially Implemented
 - [X] T980 Document pattern from legacy InitializeWorklistAsync() (eViewer1/eViewer2 dual check)
 - [X] T981 Document current DiscoverRoots() behavior (tries multiple approaches but doesn't store window handles)
 - [ ] T982 Enhancement: Add window handle storage (hwndViewer1, hwndViewer2) to Bookmark class
 - [ ] T983 Enhancement: Explicitly alternate between viewer instances when process has multiple top-level windows
 - [ ] T984 Implementation trigger: user reports worklist appearing in secondary PACS window
 
-**Status**: ‚ö†Ô∏è Partially addressed by ResolveWithRetry (tries multiple roots via DiscoverRoots), but doesn't explicitly handle dual-viewer pattern like legacy.
+**Status**: ?? Partially addressed by ResolveWithRetry (tries multiple roots via DiscoverRoots), but doesn't explicitly handle dual-viewer pattern like legacy.
 
 **Implementation Location**: `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs` - `DiscoverRoots()` method
 
@@ -453,12 +453,12 @@ The issue where msctls_statusbar32 bookmarks fail validation intermittently but 
 - [ ] T985 Design IndexPath property for Node class (int[] array for hierarchical index path)
 - [ ] T986 Add PreferIndexPath bool flag to control fallback behavior
 - [ ] T987 Update Walk() method to try index-based navigation when attribute matching fails
-- [ ] T988 Update SpyWindow.Bookmarks capture UI to record both attribute-based and index-based paths
+- [ ] T988 Update AutomationWindow.Bookmarks capture UI to record both attribute-based and index-based paths
 - [ ] T989 Implementation trigger: user reports bookmarks breaking after PACS UI updates (new buttons, panels)
 
 **Implementation Location**: 
 - `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs` - `Node` class and `Walk()` method
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.Bookmarks.cs` - Bookmark capture UI
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.Bookmarks.cs` - Bookmark capture UI
 
 **Estimated Effort**: 8 hours (data model + resolver logic + UI + testing)
 
@@ -470,7 +470,7 @@ The issue where msctls_statusbar32 bookmarks fail validation intermittently but 
 - [ ] T992 Add initialization procedure execution before each operation
 - [ ] T993 Update ProcedureExecutor to support initialization tags
 - [ ] T994 Update UiBookmarks to support initialization metadata in Bookmark class
-- [ ] T995 Implementation trigger: user reports procedures working after manual SpyWindow resolution but failing in automation
+- [ ] T995 Implementation trigger: user reports procedures working after manual AutomationWindow resolution but failing in automation
 
 **Implementation Location**: 
 - `apps\Wysg.Musm.Radium\Services\ProcedureExecutor.cs` - Add optional InitProcedure tag
@@ -481,7 +481,7 @@ The issue where msctls_statusbar32 bookmarks fail validation intermittently but 
 **Benefit**: Mimics legacy's "try-catch-reinit" pattern in a generalized way for user-authored procedures.
 
 ### FR-963: Progressive Constraint Relaxation (Low Priority)
-- [ ] T996 Document legacy pattern: AutomationId ‚Üí ClassName fallback
+- [ ] T996 Document legacy pattern: AutomationId °Ê ClassName fallback
 - [ ] T997 Design multi-level constraint relaxation strategy:
   - Level 0: All enabled attributes (Name + ClassName + AutomationId + ControlType)
   - Level 1: Relax ControlType (already implemented)
@@ -497,12 +497,12 @@ The issue where msctls_statusbar32 bookmarks fail validation intermittently but 
 
 **Caution**: More relaxation = higher risk of wrong element matches. Only implement when needed.
 
-### FR-964: Dual Pattern Fallback (Invoke ‚Üí Toggle)
-- [X] T1001 Verify Invoke ‚Üí Toggle fallback already implemented in ProcedureExecutor
+### FR-964: Dual Pattern Fallback (Invoke °Ê Toggle)
+- [X] T1001 Verify Invoke °Ê Toggle fallback already implemented in ProcedureExecutor
 
-**Status**: ‚úÖ Already implemented in `ProcedureExecutor.ExecuteElemental()` for `Invoke` operation.
+**Status**: ? Already implemented in `ProcedureExecutor.ExecuteElemental()` for `Invoke` operation.
 
-### FR-966: Pure Index-Based Navigation (Legacy Pattern) - ‚úÖ IMPLEMENTED (2025-01-16)
+### FR-966: Pure Index-Based Navigation (Legacy Pattern) - ? IMPLEMENTED (2025-01-16)
 - [X] T1020 Document legacy pattern: GetChildByIndexAsync(parent, index) - no attributes
 - [X] T1021 Design pure index navigation: when all attributes disabled + UseIndex=true + Scope=Children
 - [X] T1022 Implement in UiBookmarks.Walk(): detect pure index mode and use FindAllChildren()[index]
@@ -534,24 +534,24 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 ```
 
 **Benefits**:
-- ‚úÖ Exact legacy pattern replication (`GetChildByIndexAsync`)
-- ‚úÖ Fast (no attribute matching)
-- ‚úÖ Works when attributes unstable
+- ? Exact legacy pattern replication (`GetChildByIndexAsync`)
+- ? Fast (no attribute matching)
+- ? Works when attributes unstable
 
 **Trade-offs**:
-- ‚ö†Ô∏è Brittle (breaks if children reordered)
-- ‚ö†Ô∏è Not self-documenting
-- ‚ö†Ô∏è Only works with Scope=Children
+- ?? Brittle (breaks if children reordered)
+- ?? Not self-documenting
+- ?? Only works with Scope=Children
 
 ## Verification (Pure Index Navigation)
-- [ ] V310 Normal case: pure index node with UseIndex=true, all attributes=false ‚Üí resolves to correct child
-- [ ] V311 Out of range: index=5 but only 3 children ‚Üí fails gracefully with clear error
-- [ ] V312 Descendants scope: pure index with Scope=Descendants ‚Üí skipped (not supported)
-- [ ] V313 Legacy replication: test with ePanWorklistToolBar pattern (index 1 from worklist) ‚Üí matches legacy behavior
-- [ ] V314 Integration: full bookmark chain with pure index step ‚Üí resolves successfully
-- [ ] V315 Performance: pure index vs. attribute matching ‚Üí pure index faster (<10ms)
+- [ ] V310 Normal case: pure index node with UseIndex=true, all attributes=false °Ê resolves to correct child
+- [ ] V311 Out of range: index=5 but only 3 children °Ê fails gracefully with clear error
+- [ ] V312 Descendants scope: pure index with Scope=Descendants °Ê skipped (not supported)
+- [ ] V313 Legacy replication: test with ePanWorklistToolBar pattern (index 1 from worklist) °Ê matches legacy behavior
+- [ ] V314 Integration: full bookmark chain with pure index step °Ê resolves successfully
+- [ ] V315 Performance: pure index vs. attribute matching °Ê pure index faster (<10ms)
 
-## New (2025-10-18 ‚Äì Save as New Combination Button Enablement Fix)
+## New (2025-10-18 ? Save as New Combination Button Enablement Fix)
 - [X] T1180 Modify AddTechniqueCommand to call RaiseCanExecuteChanged() on SaveNewCombinationCommand after adding item (FR-1053)
 - [X] T1181 Modify SaveNewCombinationCommand to call RaiseCanExecuteChanged() after clearing CurrentCombinationItems (FR-1054)
 - [X] T1182 Update Spec.md with FR-1050 through FR-1054 documenting button enablement fix (cumulative)
@@ -560,19 +560,19 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [X] T1185 Verify build passes with no compilation errors
 
 ## Verification (Save as New Combination Button Enablement)
-- [ ] V420 Open "Manage Studyname Techniques" window ‚Üí verify "Save as New Combination" button is disabled initially
-- [ ] V421 Select Prefix, Tech, Suffix ‚Üí click "Add to Combination" ‚Üí verify button becomes enabled immediately
-- [ ] V422 Add 2-3 more techniques ‚Üí verify button remains enabled
-- [ ] V423 Click "Save as New Combination" ‚Üí verify saves successfully
+- [ ] V420 Open "Manage Studyname Techniques" window °Ê verify "Save as New Combination" button is disabled initially
+- [ ] V421 Select Prefix, Tech, Suffix °Ê click "Add to Combination" °Ê verify button becomes enabled immediately
+- [ ] V422 Add 2-3 more techniques °Ê verify button remains enabled
+- [ ] V423 Click "Save as New Combination" °Ê verify saves successfully
 - [ ] V424 Verify Current Combination list clears after save
 - [ ] V425 Verify button disables immediately after save
 - [ ] V426 Verify new combination appears in right panel DataGrid
-- [ ] V427 Repeat add/save cycle 2-3 times ‚Üí verify button enables/disables correctly each time
-- [ ] V428 Add items then close window without saving ‚Üí verify items not persisted
-- [ ] V429 Test with studyname not set ‚Üí verify button remains disabled even when adding items (safeguard)
-- [ ] V430 Performance test: add 10 items rapidly ‚Üí verify button state updates responsively without lag
+- [ ] V427 Repeat add/save cycle 2-3 times °Ê verify button enables/disables correctly each time
+- [ ] V428 Add items then close window without saving °Ê verify items not persisted
+- [ ] V429 Test with studyname not set °Ê verify button remains disabled even when adding items (safeguard)
+- [ ] V430 Performance test: add 10 items rapidly °Ê verify button state updates responsively without lag
 
-## New (2025-10-18 ‚Äì ReportInputsAndJsonPanel Side-by-Side Row Layout)
+## New (2025-10-18 ? ReportInputsAndJsonPanel Side-by-Side Row Layout)
 - [X] T1220 Restructure ReportInputsAndJsonPanel XAML from column-based to side-by-side row layout for natural Y-coordinate alignment (FR-1081)
 - [X] T1221 Add named references to main textboxes: txtChiefComplaint, txtPatientHistory, txtFindings, txtConclusion (FR-1083..FR-1086)
 - [X] T1222 Set MinHeight="60" on Chief Complaint and Patient History main textboxes (FR-1083, FR-1084)
@@ -592,24 +592,24 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [X] T1236 Verify build passes with no compilation errors
 
 ## Verification (ReportInputsAndJsonPanel Side-by-Side Row Layout)
-- [ ] V480 Open Main Window in portrait mode ‚Üí verify Chief Complaint upper border aligns with Chief Complaint (PR)
+- [ ] V480 Open Main Window in portrait mode °Ê verify Chief Complaint upper border aligns with Chief Complaint (PR)
 - [ ] V481 Verify Patient History upper border aligns with Patient History (PR)
 - [ ] V482 Verify Findings upper border aligns with Findings (PR)
 - [ ] V483 Verify Conclusion upper border aligns with Conclusion (PR)
-- [ ] V484 Type multi-line content into Chief Complaint ‚Üí verify both main and proofread textboxes grow proportionally
-- [ ] V485 Type multi-line content into Patient History ‚Üí verify alignment maintained during height changes
-- [ ] V486 Rotate to landscape mode ‚Üí verify same alignment behavior in gridSideTop panel
-- [ ] V487 Scroll proofread column ‚Üí verify main column scrolls in sync
-- [ ] V488 Scroll main column ‚Üí verify operates independently (no feedback sync back to proofread)
-- [ ] V489 Toggle Reverse Reports ‚Üí verify columns swap and alignment maintained
-- [ ] V490 Toggle Reverse back ‚Üí verify alignment restored
-- [ ] V491 Add 50+ lines to both columns ‚Üí verify scroll synchronization works smoothly without lag
+- [ ] V484 Type multi-line content into Chief Complaint °Ê verify both main and proofread textboxes grow proportionally
+- [ ] V485 Type multi-line content into Patient History °Ê verify alignment maintained during height changes
+- [ ] V486 Rotate to landscape mode °Ê verify same alignment behavior in gridSideTop panel
+- [ ] V487 Scroll proofread column °Ê verify main column scrolls in sync
+- [ ] V488 Scroll main column °Ê verify operates independently (no feedback sync back to proofread)
+- [ ] V489 Toggle Reverse Reports °Ê verify columns swap and alignment maintained
+- [ ] V490 Toggle Reverse back °Ê verify alignment restored
+- [ ] V491 Add 50+ lines to both columns °Ê verify scroll synchronization works smoothly without lag
 - [ ] V492 Verify no visual glitches or overlap when textboxes have different content lengths
-- [ ] V493 Resize window horizontally ‚Üí verify textboxes and proofread columns resize proportionally
-- [ ] V494 Test with empty fields ‚Üí verify alignment maintained with minimal heights
-- [ ] V495 Compare portrait and landscape layouts ‚Üí verify consistent behavior across orientations
+- [ ] V493 Resize window horizontally °Ê verify textboxes and proofread columns resize proportionally
+- [ ] V494 Test with empty fields °Ê verify alignment maintained with minimal heights
+- [ ] V495 Compare portrait and landscape layouts °Ê verify consistent behavior across orientations
 
-## New (2025-10-18 ‚Äì Current Combination Quick Delete and All Combinations Library)
+## New (2025-10-18 ? Current Combination Quick Delete and All Combinations Library)
 - [X] T1190 Add MouseDoubleClick event handler to "Current Combination" ListBox (FR-1060, FR-1061)
 - [X] T1191 Implement RemoveFromCurrentCombination(item) method in StudynameTechniqueViewModel (FR-1062, FR-1069)
 - [X] T1192 Update RemoveFromCurrentCombination to call RaiseCanExecuteChanged on SaveNewCombinationCommand (FR-1062)
@@ -641,29 +641,29 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [X] T1218 Verify build passes with no compilation errors
 
 ## Verification (Current Combination Quick Delete and All Combinations Library)
-- [ ] V440 Open "Manage Studyname Techniques" window ‚Üí verify both "Current Combination" and "All Combinations" ListBoxes are visible
+- [ ] V440 Open "Manage Studyname Techniques" window °Ê verify both "Current Combination" and "All Combinations" ListBoxes are visible
 - [ ] V441 Verify "Current Combination" header includes "(double-click to remove)" hint text
 - [ ] V442 Verify "All Combinations" header includes "(double-click to load)" hint text
 - [ ] V443 Verify both ListBoxes have equal vertical space (both Star-sized rows)
 - [ ] V444 Add 3-4 techniques to Current Combination manually
-- [ ] V445 Double-click an item in Current Combination ‚Üí verify it removes immediately without confirmation
+- [ ] V445 Double-click an item in Current Combination °Ê verify it removes immediately without confirmation
 - [ ] V446 Verify Save button disables when last item removed via double-click
-- [ ] V447 Double-click multiple items rapidly ‚Üí verify all remove correctly
+- [ ] V447 Double-click multiple items rapidly °Ê verify all remove correctly
 - [ ] V448 Verify "All Combinations" ListBox populates with existing combinations
 - [ ] V449 Verify combinations in All Combinations display formatted text (e.g., "axial T1, T2; coronal T1")
 - [ ] V450 Verify All Combinations list is ordered by ID descending (newest first)
 - [ ] V451 Verify All Combinations includes combinations not linked to current studyname
-- [ ] V452 Double-click a combination in All Combinations with empty Current Combination ‚Üí verify techniques load
+- [ ] V452 Double-click a combination in All Combinations with empty Current Combination °Ê verify techniques load
 - [ ] V453 Verify loaded techniques appear with correct prefix/tech/suffix display text
 - [ ] V454 Verify sequence_order starts at 1 for first loaded technique
-- [ ] V455 Add 2 techniques manually, then double-click a combination ‚Üí verify new techniques append (sequence continues)
-- [ ] V456 Double-click same combination twice ‚Üí verify no duplicates added second time
-- [ ] V457 Manually add "axial T1", then double-click combination containing "axial T1" ‚Üí verify that technique skipped
-- [ ] V458 Double-click combination with techniques having null prefix/suffix ‚Üí verify techniques load correctly
+- [ ] V455 Add 2 techniques manually, then double-click a combination °Ê verify new techniques append (sequence continues)
+- [ ] V456 Double-click same combination twice °Ê verify no duplicates added second time
+- [ ] V457 Manually add "axial T1", then double-click combination containing "axial T1" °Ê verify that technique skipped
+- [ ] V458 Double-click combination with techniques having null prefix/suffix °Ê verify techniques load correctly
 - [ ] V459 Verify Save button enables after loading techniques from All Combinations
-- [ ] V460 Load techniques from All Combinations, modify list (add/remove), then save ‚Üí verify new combination created
+- [ ] V460 Load techniques from All Combinations, modify list (add/remove), then save °Ê verify new combination created
 
-## New (2025-02-08 ‚Äì Disable Auto-Save on Previous Study Tab Switch)
+## New (2025-02-08 ? Disable Auto-Save on Previous Study Tab Switch)
 - [X] T1320 Disable auto-save logic when switching between previous study tabs per user request (FR-DISABLE-AUTOSAVE-001)
 - [X] T1321 Comment out JSON capture and apply code in SelectedPreviousStudy setter (FR-DISABLE-AUTOSAVE-002)
 - [X] T1322 Add comments explaining disabled behavior and rationale (FR-DISABLE-AUTOSAVE-003)
@@ -676,7 +676,7 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [X] V341 Verify changes ARE saved when clicking "Save Previous Study to DB" button before switching tabs
 - [X] V342 Verify behavior change documented clearly with warnings about data loss risk
 
-## New (2025-02-08 ‚Äì Fix Save Button Not Updating Previous Study JSON)
+## New (2025-02-08 ? Fix Save Button Not Updating Previous Study JSON)
 - [X] T1330 Investigate why "Save Previous Study to DB" button not saving current edits (FR-SAVE-JSON-001)
 - [X] T1331 Identify root cause: PreviousReportJson not synchronized with UI state when auto-save disabled (FR-SAVE-JSON-002)
 - [X] T1332 Add UpdatePreviousReportJson() call before RunSavePreviousStudyToDBAsync() in OnSavePreviousStudyToDB() (FR-SAVE-JSON-003)
@@ -689,7 +689,7 @@ if (node.UseIndex && node.Scope == SearchScope.Children)
 - [X] V353 Verify multiple edits with mixed focus changes are all saved when clicking Save button
 - [X] V354 Verify behavior is consistent regardless of which textbox has focus when Save is clicked
 
-## New (2025-02-08 ‚Äì Fix Previous Report Split Ranges Loading Order)
+## New (2025-02-08 ? Fix Previous Report Split Ranges Loading Order)
 - [X] T1370 Investigate why conclusion editor shows concatenated content when reselecting reports (FR-SPLIT-ORDER-001)
 - [X] T1371 Identify root cause: split ranges loaded AFTER setting Findings/Conclusion, causing stale ranges (FR-SPLIT-ORDER-002)
 - [X] T1372 Reorder ApplyReportSelection() to update RawJson first (FR-SPLIT-ORDER-003)

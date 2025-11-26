@@ -1,4 +1,4 @@
-﻿# FIX: PropertyNotSupportedException Infinite Loop (RECURRENCE)
+# FIX: PropertyNotSupportedException Infinite Loop (RECURRENCE)
 
 **Date:** 2025-02-05  
 **Issue:** Infinite loop of `PropertyNotSupportedException` from FlaUI (recurrence of previously fixed issue)  
@@ -9,9 +9,9 @@
 The infinite loop of `PropertyNotSupportedException` has returned, despite the previous fix applied on 2025-11-02. Users are seeing:
 
 ```
-���� �߻�: 'FlaUI.Core.Exceptions.PropertyNotSupportedException'(FlaUI.Core.dll)
-���� �߻�: 'FlaUI.Core.Exceptions.PropertyNotSupportedException'(FlaUI.Core.dll)
-���� �߻�: 'FlaUI.Core.Exceptions.PropertyNotSupportedException'(FlaUI.Core.dll)
+???? ???: 'FlaUI.Core.Exceptions.PropertyNotSupportedException'(FlaUI.Core.dll)
+???? ???: 'FlaUI.Core.Exceptions.PropertyNotSupportedException'(FlaUI.Core.dll)
+???? ???: 'FlaUI.Core.Exceptions.PropertyNotSupportedException'(FlaUI.Core.dll)
 ... (repeating indefinitely)
 ```
 
@@ -30,7 +30,7 @@ The fix was **NOT applied** to the `ManualFindMatches` method in `UiBookmarks.cs
 ### Where the Infinite Loop Happens
 
 File: `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs`  
-Method: `ManualFindMatches` �� Inner function: `Match(AutomationElement el)`
+Method: `ManualFindMatches` ?? Inner function: `Match(AutomationElement el)`
 
 ### The Problem Code (BEFORE FIX)
 
@@ -95,28 +95,28 @@ bool Match(AutomationElement el)
         if (node.UseName)
         {
             string? elName = null;
-            try { elName = el.Name; } catch { }  // �� Exception caught immediately
+            try { elName = el.Name; } catch { }  // ?? Exception caught immediately
             if (!string.Equals(elName, node.Name, StringComparison.Ordinal)) return false;
         }
         
         if (node.UseClassName)
         {
             string? elClass = null;
-            try { elClass = el.ClassName; } catch { }  // �� Exception caught immediately
+            try { elClass = el.ClassName; } catch { }  // ?? Exception caught immediately
             if (!string.Equals(elClass, node.ClassName, StringComparison.Ordinal)) return false;
         }
         
         if (node.UseAutomationId && !string.IsNullOrEmpty(node.AutomationId))
         {
             string? elAutoId = null;
-            try { elAutoId = el.AutomationId; } catch { }  // �� Exception caught immediately
+            try { elAutoId = el.AutomationId; } catch { }  // ?? Exception caught immediately
             if (!string.Equals(elAutoId, node.AutomationId, StringComparison.Ordinal)) return false;
         }
         
         if (node.UseControlTypeId)
         {
             int ct = -1;
-            try { ct = (int)el.Properties.ControlType.Value; } catch { return false; }  // �� Already had this
+            try { ct = (int)el.Properties.ControlType.Value; } catch { return false; }  // ?? Already had this
             if (!node.ControlTypeId.HasValue || ct != node.ControlTypeId.Value) return false;
         }
         
@@ -144,43 +144,43 @@ Each property access now:
 ### Before the Fix (INFINITE LOOP)
 ```
 ManualFindMatches walks 1000 elements
-��
+??
 For each element, Match() is called
-��
+??
 el.Name throws PropertyNotSupportedException (first-chance exception #1)
-��
+??
 el.ClassName throws PropertyNotSupportedException (first-chance exception #2)
-��
+??
 el.AutomationId throws PropertyNotSupportedException (first-chance exception #3)
-��
+??
 ... repeated for all 1000 elements = 3000 first-chance exceptions
-��
+??
 Visual Studio debugger floods output window
-��
+??
 User sees infinite exception loop ?
 ```
 
 ### After the Fix (CLEAN)
 ```
 ManualFindMatches walks 1000 elements
-��
+??
 For each element, Match() is called
-��
-try { el.Name } catch { } �� Exception caught immediately, no propagation
-��
-try { el.ClassName } catch { } �� Exception caught immediately, no propagation
-��
-try { el.AutomationId } catch { } �� Exception caught immediately, no propagation
-��
+??
+try { el.Name } catch { } ?? Exception caught immediately, no propagation
+??
+try { el.ClassName } catch { } ?? Exception caught immediately, no propagation
+??
+try { el.AutomationId } catch { } ?? Exception caught immediately, no propagation
+??
 All 1000 elements processed cleanly
-��
+??
 No visible exceptions to user ?
 ```
 
 ## Files Modified
 
 **File**: `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs`  
-**Method**: `ManualFindMatches` �� Inner function `Match`  
+**Method**: `ManualFindMatches` ?? Inner function `Match`  
 **Lines Changed**: ~25 lines in the `Match` function
 
 ## Related Previous Fix
@@ -223,10 +223,10 @@ After this fix, verify:
 
 ### Before Fix
 ```
-���� �߻�: 'FlaUI.Core.Exceptions.PropertyNotSupportedException'(FlaUI.Core.dll)
-���� �߻�: 'FlaUI.Core.Exceptions.PropertyNotSupportedException'(FlaUI.Core.dll)
-���� �߻�: 'FlaUI.Core.Exceptions.PropertyNotSupportedException'(FlaUI.Core.dll)
-... (��1000s)
+???? ???: 'FlaUI.Core.Exceptions.PropertyNotSupportedException'(FlaUI.Core.dll)
+???? ???: 'FlaUI.Core.Exceptions.PropertyNotSupportedException'(FlaUI.Core.dll)
+???? ???: 'FlaUI.Core.Exceptions.PropertyNotSupportedException'(FlaUI.Core.dll)
+... (??1000s)
 ```
 
 ### After Fix
@@ -266,7 +266,7 @@ try { name = el.Name; } catch { }
 ### Other Potential Locations
 
 Files that **may** need similar fixes (to be reviewed):
-- `SpyWindow.xaml.cs` - UI Spy tool (uses FlaUI)
+- `AutomationWindow.xaml.cs` - UI Spy tool (uses FlaUI)
 - `PacsService.cs` - PACS automation (if it accesses properties directly)
 - Any custom bookmark or element resolution code
 

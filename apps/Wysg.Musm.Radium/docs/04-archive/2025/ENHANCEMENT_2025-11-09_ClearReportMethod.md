@@ -1,12 +1,12 @@
-﻿# Enhancement: New PACS Method - ClearReport (2025-11-09)
+# Enhancement: New PACS Method - ClearReport (2025-11-09)
 
 ## Overview
 Added a new "Clear report" PACS method to the UI Spy window Custom Procedures section, enabling automated clearing of report text fields in PACS systems.
 
 ## Changes Made
 
-### 1. SpyWindow.PacsMethodItems.xaml
-**Path**: `apps\Wysg.Musm.Radium\Views\SpyWindow.PacsMethodItems.xaml`
+### 1. AutomationWindow.PacsMethodItems.xaml
+**Path**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.PacsMethodItems.xaml`
 
 **Changes**:
 - Added `<ComboBoxItem Tag="ClearReport">Clear report</ComboBoxItem>`
@@ -57,7 +57,7 @@ Clear report if send operation fails:
 ```
 Automation Sequence:
 1. InvokeSendReport
-2. If error detected �� ClearReport
+2. If error detected ?? ClearReport
 3. Restart report process
 ```
 
@@ -67,7 +67,7 @@ Clear existing report before copying from template:
 PACS Method: PrepareReportFromTemplate
 
 Step 1: ClearReport
-Step 2: GetText from template �� var1
+Step 2: GetText from template ?? var1
 Step 3: SetValue to findings  Arg2: var1
 ```
 
@@ -87,7 +87,7 @@ Step 4: SetValue  Arg1: AddendumField       Arg2: ""
 ### Step-by-Step Setup in UI Spy
 
 1. **Open UI Spy**
-   - Tools �� UI Spy or SpyWindow.ShowInstance()
+   - Tools ?? UI Spy or AutomationWindow.ShowInstance()
 
 2. **Select PACS Profile**
    - Ensure correct PACS selected in top-left dropdown
@@ -140,8 +140,8 @@ SetValue(NotesField, "")
 ### Clear with Confirmation
 ```
 SetValue(FindingsField, "")
-GetText(FindingsField) �� var1
-IsMatch(var1, "") �� var2
+GetText(FindingsField) ?? var1
+IsMatch(var1, "") ?? var2
 # var2 = "true" if cleared successfully
 ```
 
@@ -301,7 +301,7 @@ public async Task<bool> ClearReportAsync()
 - Add undo/restore functionality
 
 ## Conclusion
-The ClearReport PACS method provides a standardized, reliable way to clear report text fields in PACS systems. Users configure the procedure once per PACS profile and can then use it consistently in manual testing (SpyWindow) and automated workflows (MainViewModel automation).
+The ClearReport PACS method provides a standardized, reliable way to clear report text fields in PACS systems. Users configure the procedure once per PACS profile and can then use it consistently in manual testing (AutomationWindow) and automated workflows (MainViewModel automation).
 
 ---
 

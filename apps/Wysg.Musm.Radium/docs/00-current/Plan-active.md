@@ -84,7 +84,7 @@ Detailed implementation plans for Radium project features from the last 90 days.
 - TrimString: New operation removes substring from start/end
 - Both: Support String and Var argument types
 
-**Files Modified**: 3 (SpyWindow files, ProcedureExecutor.cs)
+**Files Modified**: 3 (AutomationWindow files, ProcedureExecutor.cs)
 
 ---
 
@@ -96,7 +96,7 @@ Detailed implementation plans for Radium project features from the last 90 days.
 - Feedback: Shows attempt count on success
 - Error: Detailed message after all attempts fail
 
-**Files Modified**: 2 (SpyWindow.Procedures.Exec.cs, ProcedureExecutor.cs)
+**Files Modified**: 2 (AutomationWindow.Procedures.Exec.cs, ProcedureExecutor.cs)
 
 ---
 

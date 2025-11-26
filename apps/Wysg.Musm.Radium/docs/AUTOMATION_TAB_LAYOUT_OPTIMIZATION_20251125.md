@@ -4,11 +4,11 @@
 ? **COMPLETE** - Build Successful, All Improvements Applied
 
 ## Summary
-Optimized the layout of the Automation tab in **both** the Settings window and the SpyWindow (Automation window) to ensure better usability at different window sizes. The main improvements focus on making buttons always visible and adding appropriate scrolling behavior to content areas.
+Optimized the layout of the Automation tab in **both** the Settings window and the AutomationWindow (Automation window) to ensure better usability at different window sizes. The main improvements focus on making buttons always visible and adding appropriate scrolling behavior to content areas.
 
 ## Affected Windows
 1. ? **Settings Window** ¡æ Automation Tab (SettingsWindow ¡æ AutomationSettingsTab)
-2. ? **SpyWindow (Automation Window)** ¡æ Automation Tab (SpyWindow.xaml ¡æ TabItem "Automation")
+2. ? **AutomationWindow (Automation Window)** ¡æ Automation Tab (AutomationWindow.xaml ¡æ TabItem "Automation")
 
 ---
 
@@ -290,7 +290,7 @@ All automation pane ListBoxes have:
 | File | Changes | Lines |
 |------|---------|-------|
 | AutomationSettingsTab.xaml (Settings Window) | Layout restructure, ScrollViewer additions, ListBox height constraints | ~40 |
-| SpyWindow.xaml (Automation Tab) | Layout restructure, ScrollViewer additions, ListBox height constraints | ~45 |
+| AutomationWindow.xaml (Automation Tab) | Layout restructure, ScrollViewer additions, ListBox height constraints | ~45 |
 
 **Total**: 2 files, ~85 lines modified
 

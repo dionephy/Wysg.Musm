@@ -7,14 +7,14 @@ using Ude;
 
 namespace Wysg.Musm.Radium.Views
 {
-    public partial class SpyWindow
+    public partial class AutomationWindow
     {
         private static string SanitizeFileName(string name)
         {
             var invalid = System.IO.Path.GetInvalidFileNameChars();
             return string.Join("_", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
         }
-        static SpyWindow()
+        static AutomationWindow()
         {
             TryRegisterCodePages();
         }

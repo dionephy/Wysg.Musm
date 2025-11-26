@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
@@ -479,10 +479,10 @@ namespace Wysg.Musm.Radium.Views
         }
 
         // ---- Integrated Spy Tab Handlers (minimal reuse) ----
-        private Views.SpyWindow? _spyDelegate; // lazy delegate instance to reuse existing logic
-        private SpyWindow EnsureSpyDelegate()
+        private Views.AutomationWindow? _spyDelegate; // lazy delegate instance to reuse existing logic
+        private AutomationWindow EnsureSpyDelegate()
         {
-            if (_spyDelegate == null) { _spyDelegate = new SpyWindow(); _spyDelegate.Hide(); }
+            if (_spyDelegate == null) { _spyDelegate = new AutomationWindow(); _spyDelegate.Hide(); }
             return _spyDelegate;
         }
         private void Spy_OnPick(object sender, RoutedEventArgs e) => EnsureSpyDelegate().GetType().GetMethod("OnPick", System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)?.Invoke(_spyDelegate, new object?[]{sender,e});
@@ -502,7 +502,7 @@ namespace Wysg.Musm.Radium.Views
         // New: open Spy window directly from Settings Automation tab
         public void OnOpenSpy(object sender, RoutedEventArgs e)
         {
-            SpyWindow.ShowInstance();
+            AutomationWindow.ShowInstance();
         }
 
         // Keyboard hotkey capture: capture modifiers + key and write as string into bound TextBox

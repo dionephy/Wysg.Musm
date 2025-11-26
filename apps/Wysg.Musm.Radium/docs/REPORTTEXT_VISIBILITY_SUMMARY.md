@@ -6,7 +6,7 @@ Implemented intelligent getter selection in the AddPreviousStudy automation modu
 ## Changes Implemented (2025-01-17)
 
 ### 1. New PACS Method: ReportTextIsVisible
-- **Location**: `apps\Wysg.Musm.Radium\Views\SpyWindow.PacsMethodItems.xaml`
+- **Location**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.PacsMethodItems.xaml`
 - **Method Tag**: `ReportTextIsVisible`
 - **Description**: Checks if the report text editor element is visible in the current PACS view
 - **Returns**: "true" if visible, "false" if not visible or bookmark not mapped
@@ -58,13 +58,13 @@ Implemented intelligent getter selection in the AddPreviousStudy automation modu
 ### For End Users
 
 1. **Map the ReportText Bookmark** (one-time setup per PACS profile):
-   - Open SpyWindow
+   - Open AutomationWindow
    - Select "Map to" ¡æ "ReportText" (note: requires manual addition to KnownControl enum and XAML - see Manual Updates section)
    - Click "Pick" and capture the PACS report text editor element
    - Click "Save" to persist the mapping
 
 2. **Test the Visibility Check**:
-   - Open SpyWindow ¡æ Custom Procedures
+   - Open AutomationWindow ¡æ Custom Procedures
    - Select "ReportText is visible" from PACS Method dropdown
    - Click "Run" to verify it returns "true" when editor is visible
    - Close report panel or change view ¡æ verify it returns "false"
@@ -108,8 +108,8 @@ string result = PickLonger(getter1Task.Result, getter2Task.Result);
    - File: `apps\Wysg.Musm.Radium\Services\UiBookmarks.cs`
    - Add: `ReportText` entry to the `KnownControl` enum
 
-2. **Add ReportText to SpyWindow Map-to ComboBox**:
-   - File: `apps\Wysg.Musm.Radium\Views\SpyWindow.KnownControlItems.xaml` (or similar)
+2. **Add ReportText to AutomationWindow Map-to ComboBox**:
+   - File: `apps\Wysg.Musm.Radium\Views\AutomationWindow.KnownControlItems.xaml` (or similar)
    - Add: `<ComboBoxItem Tag="ReportText">ReportText</ComboBoxItem>`
 
 3. **Add auto-seed for ReportTextIsVisible procedure**:
@@ -157,20 +157,20 @@ See `apps\Wysg.Musm.Radium\docs\MANUAL_UPDATES_NEEDED.md` for detailed instructi
 
 ### Problem: "ReportText not visible" but editor is clearly visible
 - **Cause**: ReportText bookmark may be mapped incorrectly or not mapped at all
-- **Solution**: Re-map ReportText bookmark in SpyWindow to the correct PACS report editor element
+- **Solution**: Re-map ReportText bookmark in AutomationWindow to the correct PACS report editor element
 
 ### Problem: Previous study content is empty or incorrect
 - **Cause**: Wrong getter methods being used for current UI state
 - **Solution**: 
-  1. Verify visibility check returns correct value in SpyWindow
-  2. Test primary and alternate getters individually in SpyWindow
+  1. Verify visibility check returns correct value in AutomationWindow
+  2. Test primary and alternate getters individually in AutomationWindow
   3. Re-map ReportText or target elements if needed
 
 ### Problem: Status shows visibility check but extraction still fails
 - **Cause**: Target elements for getters may have changed or be inaccessible
 - **Solution**: 
   1. Verify bookmarks for GetCurrentFindings/Conclusion elements
-  2. Test each getter in SpyWindow Custom Procedures
+  2. Test each getter in AutomationWindow Custom Procedures
   3. Re-map bookmarks if PACS UI has changed
 
 ## Related Documentation

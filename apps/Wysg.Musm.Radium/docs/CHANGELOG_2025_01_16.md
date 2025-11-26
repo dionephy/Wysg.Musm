@@ -43,14 +43,14 @@ Any module in the library can be used, including:
 - `AbortIfPatientNumberNotMatch` - Validates patient before sending
 - `AbortIfStudyDateTimeNotMatch` - Validates study before sending  
 - `OpenWorklist` - Opens worklist after sending
-- Custom modules configured via SpyWindow
+- Custom modules configured via AutomationWindow
 
 ---
 
 ## 2. Fixed GetCurrentPatientNumber Operation
 
 ### Problem
-`GetCurrentPatientNumber` operation was returning "(empty)" when executed from SpyWindow Custom Procedures, even though `PatientNumber` was properly populated in MainViewModel (e.g., "58926" from label "±Ë√¢»Ò(F/070Y) - 58926").
+`GetCurrentPatientNumber` operation was returning "(empty)" when executed from AutomationWindow Custom Procedures, even though `PatientNumber` was properly populated in MainViewModel (e.g., "58926" from label "±Ë√¢»Ò(F/070Y) - 58926").
 
 ### Root Cause
 The operation was trying to execute a procedure that didn't exist or wasn't properly configured. There was no fallback to read directly from MainViewModel.
@@ -94,11 +94,11 @@ if (string.Equals(methodTag, "GetCurrentPatientNumber", StringComparison.Ordinal
 
 ### Verification
 **Before Fix:**
-- SpyWindow °Ê Custom Procedures °Ê Run `GetCurrentPatientNumber` °Ê Output: "(empty)"
+- AutomationWindow °Ê Custom Procedures °Ê Run `GetCurrentPatientNumber` °Ê Output: "(empty)"
 - MainViewModel.PatientNumber: "58926"
 
 **After Fix:**
-- SpyWindow °Ê Custom Procedures °Ê Run `GetCurrentPatientNumber` °Ê Output: "58926"
+- AutomationWindow °Ê Custom Procedures °Ê Run `GetCurrentPatientNumber` °Ê Output: "58926"
 - Matches MainViewModel.PatientNumber exactly
 
 ---
@@ -143,11 +143,11 @@ if (string.Equals(methodTag, "GetCurrentStudyDateTime", StringComparison.Ordinal
 
 ### Verification
 **Before Fix:**
-- SpyWindow °Ê Custom Procedures °Ê Run `GetCurrentStudyDateTime` °Ê Output: "(empty)"
+- AutomationWindow °Ê Custom Procedures °Ê Run `GetCurrentStudyDateTime` °Ê Output: "(empty)"
 - MainViewModel.StudyDateTime: "2025-10-16 15:25:50"
 
 **After Fix:**
-- SpyWindow °Ê Custom Procedures °Ê Run `GetCurrentStudyDateTime` °Ê Output: "2025-10-16 15:25:50"
+- AutomationWindow °Ê Custom Procedures °Ê Run `GetCurrentStudyDateTime` °Ê Output: "2025-10-16 15:25:50"
 - Matches MainViewModel.StudyDateTime exactly
 
 ---
@@ -155,7 +155,7 @@ if (string.Equals(methodTag, "GetCurrentStudyDateTime", StringComparison.Ordinal
 ## 4. GetStudyRemark and GetPatientRemark Modules Documentation
 
 ### Current Implementation Status
-Both `GetStudyRemark` and `GetPatientRemark` automation modules are **working correctly**. They execute custom procedures defined in SpyWindow and return parsed text as programmed.
+Both `GetStudyRemark` and `GetPatientRemark` automation modules are **working correctly**. They execute custom procedures defined in AutomationWindow and return parsed text as programmed.
 
 ### How They Work
 
@@ -248,7 +248,7 @@ The `RemoveDuplicateLinesInPatientRemark()` method removes duplicate lines where
   - Auto-seeds fallback procedures if not defined
 
 ### Custom Procedure Configuration
-Users can configure these procedures in SpyWindow:
+Users can configure these procedures in AutomationWindow:
 
 1. **For GetCurrentStudyRemark:**
    - Open Settings °Ê Automation °Ê Spy
@@ -266,14 +266,14 @@ Users can configure these procedures in SpyWindow:
 ### Troubleshooting
 
 **If modules return empty:**
-1. Check if procedures are defined in SpyWindow
+1. Check if procedures are defined in AutomationWindow
 2. Verify UI elements are mapped correctly in bookmarks
-3. Test procedure manually in SpyWindow °Ê Custom Procedures °Ê Run
+3. Test procedure manually in AutomationWindow °Ê Custom Procedures °Ê Run
 4. Check debug output for error messages
 5. Verify PACS UI elements haven't changed (class names, automation IDs)
 
 **If modules return incorrect data:**
-1. Review procedure steps in SpyWindow
+1. Review procedure steps in AutomationWindow
 2. Adjust `Split`, `Replace`, or `Trim` operations as needed
 3. Test with current PACS UI state
 4. Update bookmarks if UI structure changed
@@ -428,7 +428,7 @@ Added **~130 lines** of comprehensive debug logging to diagnose and fix PACS aut
 - **AcquireStudyRemarkAsync:** Raw PACS result, length, property updates
 - **AcquirePatientRemarkAsync:** Deduplication tracing, before/after lengths
 
-#### 4. SpyWindow.Procedures.Exec.cs (~30 lines)
+#### 4. AutomationWindow.Procedures.Exec.cs (~30 lines)
 - **GetCurrentPatientNumber case:** Manual procedure execution diagnostics
 - **GetCurrentStudyDateTime case:** Same as PatientNumber
 
@@ -444,7 +444,7 @@ Added **~130 lines** of comprehensive debug logging to diagnose and fix PACS aut
 [ProcedureExecutor]  - Core execution flow
 [PacsService]        - PACS method calls
 [Automation]         - Module execution
-[SpyWindow]          - Manual testing
+[AutomationWindow]          - Manual testing
 ```
 
 ### Typical Debug Output Example
@@ -514,7 +514,7 @@ Added **~130 lines** of comprehensive debug logging to diagnose and fix PACS aut
 
 #### Issue: GetCurrentPatientRemark unparsed
 
-**Same as Study Remark** - configure proper parsing procedure in SpyWindow
+**Same as Study Remark** - configure proper parsing procedure in AutomationWindow
 
 ### Performance Impact
 

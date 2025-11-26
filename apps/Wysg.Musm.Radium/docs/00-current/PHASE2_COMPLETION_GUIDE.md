@@ -24,12 +24,12 @@ After removing `KnownControl` enum, the following build errors need fixing:
    - Obsolete `ResolveWithRetry(KnownControl)` method
    - Obsolete `RelaxBookmarkControlType` and `RelaxBookmarkClassName` helper methods
 
-2. **SpyWindow.xaml.cs**: 5 errors
+2. **AutomationWindow.xaml.cs**: 5 errors
    - `KnownControlTags` list references removed enum
    - `OnExportKnownControls` references removed enum (can be deleted after export)
    - `LoadBookmarksIntoComboBox` no longer needs enum handling
 
-3. **SpyWindow.Bookmarks.cs**: 4 errors
+3. **AutomationWindow.Bookmarks.cs**: 4 errors
    - `OnKnownSelectionChanged` tries to parse removed enum
    - `OnSaveEdited` tries to call removed `SaveMapping` method
 
@@ -38,10 +38,10 @@ After removing `KnownControl` enum, the following build errors need fixing:
    - `GetCached` / `StoreCache` use removed enum
    - `ResolveElement` tries to parse removed enum
 
-5. **SpyWindow.Procedures.Exec.cs**: 2 errors
+5. **AutomationWindow.Procedures.Exec.cs**: 2 errors
    - `ResolveElement` tries to parse removed enum
 
-6. **SpyWindow.xaml**: 1 error
+6. **AutomationWindow.xaml**: 1 error
    - Export button can be removed after users complete export
 
 ---
@@ -92,7 +92,7 @@ public static (IntPtr hwnd, AutomationElement? element) Resolve(string name)
 
 ---
 
-## File 2: SpyWindow.xaml.cs
+## File 2: AutomationWindow.xaml.cs
 
 ### Changes Needed
 
@@ -150,7 +150,7 @@ private void OnExportKnownControls(object sender, RoutedEventArgs e)
 
 ---
 
-## File 3: SpyWindow.Bookmarks.cs
+## File 3: AutomationWindow.Bookmarks.cs
 
 ### Changes Needed
 
@@ -313,7 +313,7 @@ internal static (AutomationElement? element, string message) ResolveElement(stri
 
 ---
 
-## File 5: SpyWindow.Procedures.Exec.cs
+## File 5: AutomationWindow.Procedures.Exec.cs
 
 ### Changes Needed
 
@@ -348,7 +348,7 @@ private (AutomationElement? element, string message) ResolveElement(string tag)
 
 ---
 
-## File 6: SpyWindow.xaml
+## File 6: AutomationWindow.xaml
 
 ### Changes Needed (Optional - can be done later)
 
@@ -356,7 +356,7 @@ private (AutomationElement? element, string message) ResolveElement(string tag)
 ```xaml
 <!-- REMOVE THIS BUTTON: -->
 <Button Content="Export KnownControls" Margin="0,0,0,0" Click="OnExportKnownControls" 
-        Style="{StaticResource SpyWindowButtonStyle}" 
+        Style="{StaticResource AutomationWindowButtonStyle}" 
         ToolTip="Export all hardcoded KnownControl mappings as regular bookmarks" 
         Background="#3C5C00"/>
 ```
@@ -370,7 +370,7 @@ private (AutomationElement? element, string message) ResolveElement(string tag)
 After making all changes:
 
 - [ ] Build succeeds without errors
-- [ ] SpyWindow opens without errors
+- [ ] AutomationWindow opens without errors
 - [ ] Bookmark dropdown shows all bookmarks
 - [ ] Can select and load bookmarks
 - [ ] Can save changes to bookmarks
@@ -384,7 +384,7 @@ After making all changes:
 ## Migration Notes for Users
 
 **Before upgrading to Phase 2:**
-1. Open SpyWindow ¡æ UI Bookmark tab
+1. Open AutomationWindow ¡æ UI Bookmark tab
 2. Click "Export KnownControls" button
 3. Confirm export
 4. Verify all bookmarks appear in dropdown
@@ -403,10 +403,10 @@ After making all changes:
 | File | Lines Changed |
 |------|--------------|
 | UiBookmarks.cs | ~110 |
-| SpyWindow.xaml.cs | ~90 |
-| SpyWindow.Bookmarks.cs | ~40 |
+| AutomationWindow.xaml.cs | ~90 |
+| AutomationWindow.Bookmarks.cs | ~40 |
 | ProcedureExecutor.Elements.cs | ~30 |
-| SpyWindow.Procedures.Exec.cs | ~20 |
+| AutomationWindow.Procedures.Exec.cs | ~20 |
 | **Total** | **~290** |
 
 ---

@@ -74,9 +74,9 @@ namespace Wysg.Musm.Radium.Services
             {
                 Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] Procedure '{methodTag}' not found in store");
                 
-                // No fallbacks - all procedures must be explicitly defined in SpyWindow
-                Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] No fallback available for '{methodTag}' - must be configured in SpyWindow");
-                throw new InvalidOperationException($"Custom procedure '{methodTag}' is not defined. Please configure it in SpyWindow ¡æ Custom Procedures for this PACS profile.");
+                // No fallbacks - all procedures must be explicitly defined in AutomationWindow
+                Debug.WriteLine($"[ProcedureExecutor][ExecuteInternal] No fallback available for '{methodTag}' - must be configured in AutomationWindow");
+                throw new InvalidOperationException($"Custom procedure '{methodTag}' is not defined. Please configure it in AutomationWindow ¡æ Custom Procedures for this PACS profile.");
             }
             else
             {

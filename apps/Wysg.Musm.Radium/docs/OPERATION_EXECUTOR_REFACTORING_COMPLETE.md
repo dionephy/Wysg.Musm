@@ -8,7 +8,7 @@
 
 ## Timeline
 
-1. **Phase 1: Consolidation** - Merged duplicate code from SpyWindow and ProcedureExecutor
+1. **Phase 1: Consolidation** - Merged duplicate code from AutomationWindow and ProcedureExecutor
 2. **Phase 2: Partial Class Split** - Organized monolithic file into focused files
 
 ---
@@ -16,14 +16,14 @@
 ## Phase 1: Consolidation
 
 ### Problem
-- Operation logic duplicated in SpyWindow (1300 lines) and ProcedureExecutor (900 lines)
-- GetHTML worked in SpyWindow but failed in ProcedureExecutor (encoding issues)
+- Operation logic duplicated in AutomationWindow (1300 lines) and ProcedureExecutor (900 lines)
+- GetHTML worked in AutomationWindow but failed in ProcedureExecutor (encoding issues)
 - Bug fixes needed in two places
 - Code drift between implementations
 
 ### Solution
 - Created shared `OperationExecutor.cs` (1500 lines)
-- Moved sophisticated HTTP/encoding logic from SpyWindow
+- Moved sophisticated HTTP/encoding logic from AutomationWindow
 - Both callers now delegate to shared service
 - Eliminated ~1500 lines of duplicate code
 
@@ -81,7 +81,7 @@ Split into 8 focused partial class files:
 ### Benefits Achieved
 
 #### 1. GetHTML Bug Fixed ?
-- **Before**: Worked in SpyWindow, failed in ProcedureExecutor
+- **Before**: Worked in AutomationWindow, failed in ProcedureExecutor
 - **After**: Works everywhere with smart encoding detection
 
 #### 2. Code Duplication Eliminated ?
@@ -110,18 +110,18 @@ Split into 8 focused partial class files:
 
 ### Before Refactoring
 ```
-SpyWindow.Procedures.Exec.cs (1300 lines)
+AutomationWindow.Procedures.Exec.cs (1300 lines)
 戍式式 ExecuteSingle
 戍式式 30+ operation implementations
 戍式式 ResolveElement/ResolveString
 戌式式 UI-specific handlers
 
-SpyWindow.Procedures.Http.cs (300 lines)
+AutomationWindow.Procedures.Http.cs (300 lines)
 戍式式 HttpGetHtmlSmartAsync
 戍式式 DecodeMixedUtf8Cp949
 戌式式 Korean encoding helpers
 
-SpyWindow.Procedures.Encoding.cs (200 lines)
+AutomationWindow.Procedures.Encoding.cs (200 lines)
 戍式式 NormalizeKoreanMojibake
 戍式式 RepairLatin1Runs
 戌式式 Encoding detection logic
@@ -138,9 +138,9 @@ OperationExecutor.cs (1500 lines) - NEW
 戍式式 ExecuteOperation/ExecuteOperationAsync
 戍式式 30+ operation implementations (ONCE)
 戍式式 HttpGetHtmlSmartAsync (sophisticated)
-戌式式 All encoding helpers (moved from SpyWindow)
+戌式式 All encoding helpers (moved from AutomationWindow)
 
-SpyWindow.Procedures.Exec.cs (150 lines)
+AutomationWindow.Procedures.Exec.cs (150 lines)
 戍式式 Delegates to OperationExecutor
 戍式式 ResolveElement/ResolveString (kept)
 戌式式 UI-specific handlers (kept)
@@ -217,7 +217,7 @@ OperationExecutor.Helpers.cs (100 lines)
 - [x] API compatibility maintained
 
 ### Manual (Pending) ??
-- [ ] SpyWindow: Execute procedure with GetHTML on Korean site
+- [ ] AutomationWindow: Execute procedure with GetHTML on Korean site
 - [ ] ProcedureExecutor: Run automation with GetHTML
 - [ ] Verify all 30+ operations in both contexts
 - [ ] Test element caching (GetSelectedElement ⊥ ClickElement)
@@ -250,7 +250,7 @@ OperationExecutor.Helpers.cs (100 lines)
 ## Next Steps
 
 ### Immediate
-- [ ] Runtime testing (SpyWindow and ProcedureExecutor)
+- [ ] Runtime testing (AutomationWindow and ProcedureExecutor)
 - [ ] Verify GetHTML with Korean encoding
 - [ ] Test all operations end-to-end
 
@@ -291,12 +291,12 @@ OperationExecutor.Helpers.cs (100 lines)
 - `Services/OperationExecutor.Helpers.cs` (100 lines)
 
 **Modified**:
-- `Views/SpyWindow.Procedures.Exec.cs` (1300 ⊥ 150 lines)
+- `Views/AutomationWindow.Procedures.Exec.cs` (1300 ⊥ 150 lines)
 - `Services/ProcedureExecutor.Operations.cs` (900 ⊥ 30 lines)
 
 **Removed**:
-- `Views/SpyWindow.Procedures.Http.cs` (logic moved)
-- `Views/SpyWindow.Procedures.Encoding.cs` (logic moved)
+- `Views/AutomationWindow.Procedures.Http.cs` (logic moved)
+- `Views/AutomationWindow.Procedures.Encoding.cs` (logic moved)
 
 ---
 
@@ -305,7 +305,7 @@ OperationExecutor.Helpers.cs (100 lines)
 ### Must Have ?
 - [x] Build succeeds without errors
 - [x] All operations implemented once
-- [x] SpyWindow delegates correctly
+- [x] AutomationWindow delegates correctly
 - [x] ProcedureExecutor delegates correctly
 - [x] Documentation complete
 - [x] Files split by logical responsibility
@@ -313,7 +313,7 @@ OperationExecutor.Helpers.cs (100 lines)
 
 ### Should Have ??
 - [ ] GetHTML with Korean encoding tested
-- [ ] All operations tested in SpyWindow
+- [ ] All operations tested in AutomationWindow
 - [ ] All operations tested in ProcedureExecutor
 - [ ] No behavioral regressions
 
@@ -328,5 +328,5 @@ OperationExecutor.Helpers.cs (100 lines)
 **Status**: ? Phase 1 Complete, ? Phase 2 Complete  
 **Build**: ? Success  
 **Runtime Testing**: ?? Pending  
-**Next**: Manual verification in SpyWindow and ProcedureExecutor
+**Next**: Manual verification in AutomationWindow and ProcedureExecutor
 

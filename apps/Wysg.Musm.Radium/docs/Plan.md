@@ -1,6 +1,6 @@
-ï»¿# Implementation Plan: Radium (Cumulative)
+# Implementation Plan: Radium (Cumulative)
 
-> **âš ï¸ DEPRECATION NOTICE (2025-10-19)**  
+> **?? DEPRECATION NOTICE (2025-10-19)**  
 > This file is being phased out in favor of an archive-based structure.
 > 
 > **Please use instead:**
@@ -15,7 +15,7 @@
 
 [Original content preserved below for transition period...]
 
-## Change Log Addition (2025-10-15 â€“ Fix: Shortcut Key Missing NewStudy and LockStudy Modules)
+## Change Log Addition (2025-10-15 ? Fix: Shortcut Key Missing NewStudy and LockStudy Modules)
 - **Problem**: The "Shortcut: Open study (new)" automation sequence was not executing `NewStudy` and `LockStudy` modules that are present in the "New Study" button sequence, causing incomplete study initialization.
 - **Symptoms**:
   1. Current study label not changing (NewStudy module not running)
@@ -28,8 +28,8 @@
 ### Approach (Shortcut Key Fix)
 1) Analyze difference between `OnNewStudy()` (working) and `RunOpenStudyShortcut()` (broken) execution paths.
 2) Add missing module handlers to `RunOpenStudyShortcut()`:
-   - `NewStudy` â†’ calls `RunNewStudyProcedureAsync()` to load patient/study context
-   - `LockStudy` â†’ calls `_lockStudyProc.ExecuteAsync(this)` to set PatientLocked state
+   - `NewStudy` ¡æ calls `RunNewStudyProcedureAsync()` to load patient/study context
+   - `LockStudy` ¡æ calls `_lockStudyProc.ExecuteAsync(this)` to set PatientLocked state
 3) Maintain exact same module ordering as `OnNewStudy()` for consistency.
 4) No changes to Settings UI or persistence; fix is purely in runtime execution.
 
@@ -43,12 +43,12 @@
   3. Study remark and patient remark fields populate (GetStudyRemark/GetPatientRemark executed)
   4. Previous study added successfully without "Patient mismatch" error (AddPreviousStudy executed after patient context loaded)
   5. Viewer opens if configured (OpenStudy executed)
-- Compare behavior with clicking "New" button â†’ should be identical
+- Compare behavior with clicking "New" button ¡æ should be identical
 - Verify "Shortcut: Open study (add)" and "Shortcut: Open study (after open)" sequences also support NewStudy/LockStudy if configured
 
 ### Risks / Mitigations (Shortcut Key Fix)
 - **Risk**: Adding LockStudy to shortcut sequences when not desired by user
-  - **Mitigation**: Modules are only executed if explicitly present in saved sequence; users control via Settings â†’ Automation
+  - **Mitigation**: Modules are only executed if explicitly present in saved sequence; users control via Settings ¡æ Automation
 - **Risk**: Breaking existing shortcut configurations that worked around the missing modules
   - **Mitigation**: If users added workarounds (e.g., manual lock steps), they can remove them; standard configuration now works
 - **Risk**: Execution order differences between button and shortcut
@@ -67,7 +67,7 @@
 - Enables full parity between "New" button (FR-540) and global hotkey execution (FR-660, FR-661)
 - Supports proper patient context loading for FR-511 (Add Previous Study automation module)
 
-## Change Log Addition (2025-10-13 â€“ Open Study Shortcut Panes)
+## Change Log Addition (2025-10-13 ? Open Study Shortcut Panes)
 - Added three Automation panes to configure Open Study hotkey action lists by state: (new/add/after open).
 - Persisted sequences to local settings as `auto_shortcut_open_new`, `auto_shortcut_open_add`, `auto_shortcut_open_after_open`.
 - Implemented `MainViewModel.RunOpenStudyShortcut()` to choose the proper sequence based on `PatientLocked` and `StudyOpened`.
@@ -85,11 +85,11 @@
 ### Risks / Mitigations
 - Overlapping modules could produce unexpected order; user config governs. Drag-and-drop reordering supported.
 
-## Change Log Addition (2025-10-13 â€“ Automation Modules + Keyboard Tab + Study Opened Toggle)
-- Added new Automation modules to Settings â†’ Automation library: `OpenStudy`, `MouseClick1`, `MouseClick2`.
+## Change Log Addition (2025-10-13 ? Automation Modules + Keyboard Tab + Study Opened Toggle)
+- Added new Automation modules to Settings ¡æ Automation library: `OpenStudy`, `MouseClick1`, `MouseClick2`.
 - Implemented handlers in MainViewModel to run these during New/Add sequences:
-  - `OpenStudy` â†’ PacsService.InvokeOpenStudyAsync(); sets `StudyOpened=true` on success.
-  - `MouseClick1` / `MouseClick2` â†’ PacsService wrappers to run respective procedures.
+  - `OpenStudy` ¡æ PacsService.InvokeOpenStudyAsync(); sets `StudyOpened=true` on success.
+  - `MouseClick1` / `MouseClick2` ¡æ PacsService wrappers to run respective procedures.
 - Added a new "Keyboard" tab in Settings with two fields (Open study, Send study) that capture pressed combinations and save to local settings.
 - Replaced the small icon-only toggle next to "Study locked" with a text toggle "Study opened" bound to VM `StudyOpened`.
 - Removed the icon-only Reportified toggle in the Previous Report area (kept the text toggle elsewhere).
@@ -102,19 +102,19 @@
 5) Update MainWindow XAML to replace the icon toggle and remove previous area icon toggle.
 
 ### Test Plan
-- Settings â†’ Automation: verify library lists `OpenStudy`, `MouseClick1`, `MouseClick2`; drag into sequences; Save Automation.
+- Settings ¡æ Automation: verify library lists `OpenStudy`, `MouseClick1`, `MouseClick2`; drag into sequences; Save Automation.
 - New/Add sequence run containing `OpenStudy`: verify `StudyOpened` toggles on and status updated.
 - MouseClick1/2: ensure procedures exist; running sequence triggers clicks (visually validated).
-- Settings â†’ Keyboard: focus each TextBox and press combinations like Ctrl+Alt+S; verify text shown and saved to disk; restart app verifies persistence.
+- Settings ¡æ Keyboard: focus each TextBox and press combinations like Ctrl+Alt+S; verify text shown and saved to disk; restart app verifies persistence.
 - MainWindow: confirm "Study opened" toggle appears next to "Study locked" and is initially off.
 - Previous report area: confirm removal of icon-only Reportified toggle while text toggle remains elsewhere.
 
 ### Risks / Mitigations
-- Global hotkey registration not implemented in this increment â†’ documented; only capture+persist now.
-- Procedure tags may be missing â†’ headless executor auto-seeds defaults; status messaging handles failures.
-- UI real estate changes could shift layout â†’ kept consistent DarkToggleButtonStyle and text label for clarity.
+- Global hotkey registration not implemented in this increment ¡æ documented; only capture+persist now.
+- Procedure tags may be missing ¡æ headless executor auto-seeds defaults; status messaging handles failures.
+- UI real estate changes could shift layout ¡æ kept consistent DarkToggleButtonStyle and text label for clarity.
 
-## Change Log Addition (2025-01-12 â€“ Study Technique Feature Database Schema)
+## Change Log Addition (2025-01-12 ? Study Technique Feature Database Schema)
 - Designed and implemented database schema for study technique management feature.
 - Created 8 new tables in med schema to support technique component management:
   - Lookup tables: technique_prefix, technique_tech, technique_suffix (with display_order)
@@ -135,48 +135,48 @@
 6) Use nullable FKs for optional components (prefix, suffix) and NOT NULL for required (tech)
 
 ### Test Plan (Database Schema)
-- Insert sample prefixes, techs, suffixes â†’ verify unique constraints work
-- Create techniques with various component combinations â†’ verify composite unique constraint
-- Create technique combinations with multiple items â†’ verify sequencing and joins
-- Link combinations to studynames with default flag â†’ verify only one default per studyname
-- Link combinations to studies â†’ verify unique study_id constraint (zero-or-one)
-- Query v_technique_display â†’ verify proper formatting with spacing and trimming
-- Query v_technique_combination_display â†’ verify proper " + " joining and sequencing
-- Test CASCADE delete: delete studyname â†’ verify studyname_technique_combination rows deleted
-- Test RESTRICT delete: attempt to delete tech in use â†’ verify constraint prevents deletion
+- Insert sample prefixes, techs, suffixes ¡æ verify unique constraints work
+- Create techniques with various component combinations ¡æ verify composite unique constraint
+- Create technique combinations with multiple items ¡æ verify sequencing and joins
+- Link combinations to studynames with default flag ¡æ verify only one default per studyname
+- Link combinations to studies ¡æ verify unique study_id constraint (zero-or-one)
+- Query v_technique_display ¡æ verify proper formatting with spacing and trimming
+- Query v_technique_combination_display ¡æ verify proper " + " joining and sequencing
+- Test CASCADE delete: delete studyname ¡æ verify studyname_technique_combination rows deleted
+- Test RESTRICT delete: attempt to delete tech in use ¡æ verify constraint prevents deletion
 
 ### Risks / Mitigations (Study Technique Schema)
-- Complex joins may impact query performance â†’ mitigated by adding indexes on all FK columns and join columns
-- Empty string vs NULL for blank prefix/suffix could cause confusion â†’ documented clearly; empty string is valid
-- Default flag enforcement per studyname not database-constrained â†’ will need application-level validation in future UI
-- Combination name optional may lead to unlabeled combinations â†’ display view provides auto-generated name fallback
+- Complex joins may impact query performance ¡æ mitigated by adding indexes on all FK columns and join columns
+- Empty string vs NULL for blank prefix/suffix could cause confusion ¡æ documented clearly; empty string is valid
+- Default flag enforcement per studyname not database-constrained ¡æ will need application-level validation in future UI
+- Combination name optional may lead to unlabeled combinations ¡æ display view provides auto-generated name fallback
 
-## Change Log Addition (2025-10-12 â€“ Fix: Patient Remark mismatch on New Study due to Split parity)
-- Problem: Patient remark captured during New Study included trailing HTML markup compared to the PACS method "Get current patient remark" executed from SpyWindow. Root cause: headless `ProcedureExecutor.Split` lacked regex and escape support used by user-authored procedures, so the final split step was not applied.
-- Fix: Updated `ProcedureExecutor.Split` to achieve full parity with SpyWindow:
+## Change Log Addition (2025-10-12 ? Fix: Patient Remark mismatch on New Study due to Split parity)
+- Problem: Patient remark captured during New Study included trailing HTML markup compared to the PACS method "Get current patient remark" executed from AutomationWindow. Root cause: headless `ProcedureExecutor.Split` lacked regex and escape support used by user-authored procedures, so the final split step was not applied.
+- Fix: Updated `ProcedureExecutor.Split` to achieve full parity with AutomationWindow:
   - Supports `re:`/`regex:` prefix to split using `Regex.Split` with Singleline | IgnoreCase.
   - Supports C#-style escapes (e.g., `\n`, `\r\n`, `\t`) for literal separators via `Regex.Unescape`.
   - Best-effort CRLF retry when only LF is provided but input uses Windows `\r\n`.
   - Preserves Arg3 index behavior (select specific part) else joins with U+001F.
-- Effect: New Study automation now returns exactly the same `patient_remark` string as running the procedure in SpyWindow (after Trim). Example HTML tail ("</TR></TABLE></BR>...</HTML>") is no longer included when the procedure uses a regex split boundary.
+- Effect: New Study automation now returns exactly the same `patient_remark` string as running the procedure in AutomationWindow (after Trim). Example HTML tail ("</TR></TABLE></BR>...</HTML>") is no longer included when the procedure uses a regex split boundary.
 
 ### Approach (Split parity)
-1) Port SpyWindow Split logic into `ProcedureExecutor` (regex mode, escape handling, CRLF retry).
+1) Port AutomationWindow Split logic into `ProcedureExecutor` (regex mode, escape handling, CRLF retry).
 2) Keep existing Replace/GetHTML parity already implemented; no change to other ops.
 3) Do not alter persistence or PACS wrappers; fix contained to `ProcedureExecutor`.
 
 ### Test Plan (Patient Remark Split)
-- Author a `GetCurrentPatientRemark` procedure in SpyWindow that ends with:
+- Author a `GetCurrentPatientRemark` procedure in AutomationWindow that ends with:
   - `Split(Arg1=varN, Arg2=regex:</TR>\s*</TABLE></BR>\s*</CENTER>\s*</BODY>\s*</HTML>, Arg3=0)`
-- Run in SpyWindow â†’ capture preview.
-- Run New Study automation with `GetPatientRemark` module â†’ verify `PatientRemark` equals the SpyWindow result (string-equal after Trim()).
-- Verify non-regex separator with `\r\n` and only `\n` in Arg2 â†’ both split correctly due to retry.
+- Run in AutomationWindow ¡æ capture preview.
+- Run New Study automation with `GetPatientRemark` module ¡æ verify `PatientRemark` equals the AutomationWindow result (string-equal after Trim()).
+- Verify non-regex separator with `\r\n` and only `\n` in Arg2 ¡æ both split correctly due to retry.
 
 ### Risks / Mitigations
-- Regex patterns authored by users could be invalid â†’ handled by returning `(regex error: ...)` preview in SpyWindow; in headless executor we safely return null part for that step. Users can adjust patterns in UI.
-- Potential behavior change for existing procedures relying on legacy behavior â†’ documented; parity with UI is the intended contract.
+- Regex patterns authored by users could be invalid ¡æ handled by returning `(regex error: ...)` preview in AutomationWindow; in headless executor we safely return null part for that step. Users can adjust patterns in UI.
+- Potential behavior change for existing procedures relying on legacy behavior ¡æ documented; parity with UI is the intended contract.
 
-## Change Log Addition (2025-10-12 â€“ Auto/Generate Buttons and Proofread/Reportified Toggles)
+## Change Log Addition (2025-10-12 ? Auto/Generate Buttons and Proofread/Reportified Toggles)
 - Added auto toggles and generate buttons next to specified labels:
   - Chief Complaint (top/side top), Patient History (top/side top), Conclusion (top).
   - Study Techniques (bottom), Comparison (bottom).
@@ -198,22 +198,22 @@
 - New Proofread/Reportified toggles bind to VM properties and preserve state.
 
 ### Risks / Mitigations
-- Many bindings referencing Window DataContext could break if visual tree changes â†’ mitigated by AncestorType=Window binding where needed.
-- Command skeleton not functional â†’ documented as placeholder.
+- Many bindings referencing Window DataContext could break if visual tree changes ¡æ mitigated by AncestorType=Window binding where needed.
+- Command skeleton not functional ¡æ documented as placeholder.
 
-## Change Log Addition (2025-10-12 â€“ PrevReport Extended Fields + UI)
+## Change Log Addition (2025-10-12 ? PrevReport Extended Fields + UI)
 - Added fields to PreviousStudyTab: StudyRemark, PatientRemark, ChiefComplaint, PatientHistory, StudyTechniques, Comparison.
 - Serialize/deserialize these inside `PrevReport` object in PreviousReportJson.
 - PreviousReportTextAndJsonPanel: added four editors (chief complaint, patient history, study techniques, comparison) below final conclusion.
 - Exposed DPs on the control and bound them in MainWindow to SelectedPreviousStudy.*.
 
 ### Test Plan (PrevReport Extended Fields)
-- Add dummy, toggle Splitted â†’ verify JSON includes new fields (empty strings initially).
-- Type into the four new editors â†’ verify JSON PrevReport fields update live and bindings round-trip.
-- Edit JSON PrevReport fields â†’ verify editors update.
-- Switch tabs â†’ verify values persist per tab.
+- Add dummy, toggle Splitted ¡æ verify JSON includes new fields (empty strings initially).
+- Type into the four new editors ¡æ verify JSON PrevReport fields update live and bindings round-trip.
+- Edit JSON PrevReport fields ¡æ verify editors update.
+- Switch tabs ¡æ verify values persist per tab.
 
-## Change Log Addition (2025-10-12 â€“ Previous Report Split View)
+## Change Log Addition (2025-10-12 ? Previous Report Split View)
 - Added computed properties in VM for split view: `PreviousHeaderSplitView`, `PreviousFindingsSplitView`, `PreviousConclusionSplitView`.
 - On `PreviousReportSplitted` ON:
   - If any split pair null, default per spec (header pairs 0/0, conclusion pairs len/len) using EnsureSplitDefaultsIfNeeded().
@@ -225,9 +225,9 @@
 3) Update XAML bindings using style triggers without altering base layout.
 
 ### Test Plan (Split View)
-- Toggle Splitted ON with all split fields null â†’ verify defaults applied and editors show expected composed strings.
-- Change split offsets via buttons â†’ verify computed views refresh immediately.
-- Toggle Splitted OFF â†’ editors revert to normal two-way bindings and become editable.
+- Toggle Splitted ON with all split fields null ¡æ verify defaults applied and editors show expected composed strings.
+- Change split offsets via buttons ¡æ verify computed views refresh immediately.
+- Toggle Splitted OFF ¡æ editors revert to normal two-way bindings and become editable.
 - Edge cases: zero-length texts; offsets at bounds; mismatched ranges still clamped safely (no exceptions).
 - Verify trimming: surrounding whitespace of each segment is removed before newline merge (no leading/trailing blanks).
  - Verify final trimming: the merged string has no leading/trailing whitespace/newlines after concatenation.
@@ -264,21 +264,21 @@
 ### Test Plan (PreviousReportTextAndJsonPanel)
 - Portrait mode: Verify gridBottomControl displays JSON on left, header_and_findings on right.
 - Landscape mode: Verify gridSideBottom displays header_and_findings on left, JSON on right.
-- Edit header_and_findings TextBox â†’ verify binding updates PreviousHeaderAndFindingsText in ViewModel.
-- Edit JSON TextBox â†’ verify binding updates PreviousReportJson in ViewModel.
-- Toggle Reverse Reports â†’ verify columns swap correctly in both control instances.
-- GridSplitter dragging â†’ verify resizing works smoothly in both panels.
+- Edit header_and_findings TextBox ¡æ verify binding updates PreviousHeaderAndFindingsText in ViewModel.
+- Edit JSON TextBox ¡æ verify binding updates PreviousReportJson in ViewModel.
+- Toggle Reverse Reports ¡æ verify columns swap correctly in both control instances.
+- GridSplitter dragging ¡æ verify resizing works smoothly in both panels.
 
 ### Risks / Mitigations (PreviousReportTextAndJsonPanel)
-- Dependency property bindings might fail if RelativeSource is incorrect â†’ mitigated by testing bindings in both usage contexts.
-- Column swapping in ApplyReverse might not work if control hierarchy changes â†’ mitigated by using FindName to locate elements at runtime.
-- Reverse property initial state might cause layout flash â†’ mitigated by setting Reverse in XAML declaratively.
+- Dependency property bindings might fail if RelativeSource is incorrect ¡æ mitigated by testing bindings in both usage contexts.
+- Column swapping in ApplyReverse might not work if control hierarchy changes ¡æ mitigated by using FindName to locate elements at runtime.
+- Reverse property initial state might cause layout flash ¡æ mitigated by setting Reverse in XAML declaratively.
 
 ## Change Log Addition (2025-01-11 - Previous Report Field Mapping Change)
 - Changed PreviousReportJson field mapping to use `header_and_findings` instead of `findings` and `final_conclusion` instead of `conclusion` for alignment with database schema and domain model.
 - Updated MainViewModel.PreviousStudies.cs:
-  - Renamed internal cache fields: `_prevFindingsCache` â†’ `_prevHeaderAndFindingsCache`, `_prevConclusionCache` â†’ `_prevFinalConclusionCache`.
-  - Renamed properties: `PreviousFindingsText` â†’ `PreviousHeaderAndFindingsText`, `PreviousConclusionText` â†’ `PreviousFinalConclusionText`.
+  - Renamed internal cache fields: `_prevFindingsCache` ¡æ `_prevHeaderAndFindingsCache`, `_prevConclusionCache` ¡æ `_prevFinalConclusionCache`.
+  - Renamed properties: `PreviousFindingsText` ¡æ `PreviousHeaderAndFindingsText`, `PreviousConclusionText` ¡æ `PreviousFinalConclusionText`.
   - Added backward compatibility aliases `PreviousFindingsText` and `PreviousConclusionText` as passthrough properties to avoid breaking existing references.
   - Updated JSON serialization in `UpdatePreviousReportJson()` to emit `header_and_findings` and `final_conclusion` fields.
   - Updated JSON deserialization in `ApplyJsonToPrevious()` to read `header_and_findings` and `final_conclusion` fields.
@@ -296,19 +296,19 @@
 4) Update all serialization, deserialization, and property notification paths to use new field names.
 
 ### Test Plan (Previous Report Field Mapping)
-- Load a previous study â†’ verify EditorPreviousFindings displays content from `header_and_findings`.
-- Edit EditorPreviousFindings â†’ verify `PreviousReportJson` shows updated `header_and_findings` field.
-- Edit txtPrevHeaderAndFindingsSide â†’ verify EditorPreviousFindings updates in real-time.
-- Edit `PreviousReportJson` directly (change `header_and_findings` value) â†’ verify both txtPrevHeaderAndFindingsSide and EditorPreviousFindings update.
+- Load a previous study ¡æ verify EditorPreviousFindings displays content from `header_and_findings`.
+- Edit EditorPreviousFindings ¡æ verify `PreviousReportJson` shows updated `header_and_findings` field.
+- Edit txtPrevHeaderAndFindingsSide ¡æ verify EditorPreviousFindings updates in real-time.
+- Edit `PreviousReportJson` directly (change `header_and_findings` value) ¡æ verify both txtPrevHeaderAndFindingsSide and EditorPreviousFindings update.
 - Verify backward compatibility: code referencing `PreviousFindingsText` or `PreviousConclusionText` continues to work.
 - Landscape mode: verify txtPrevHeaderAndFindingsSide appears to the left of txtPrevJsonSide with proper GridSplitter.
 
 ### Risks / Mitigations (Previous Report Field Mapping)
-- Existing code referencing old property names may break â†’ mitigated by providing backward compatibility aliases.
-- JSON parsing of old data with `findings`/`conclusion` fields will fail â†’ mitigated by updating parsing logic to expect new field names (migration may be needed for existing saved reports).
-- UI layout complexity with additional TextBox â†’ mitigated by using GridSplitter for flexible sizing.
+- Existing code referencing old property names may break ¡æ mitigated by providing backward compatibility aliases.
+- JSON parsing of old data with `findings`/`conclusion` fields will fail ¡æ mitigated by updating parsing logic to expect new field names (migration may be needed for existing saved reports).
+- UI layout complexity with additional TextBox ¡æ mitigated by using GridSplitter for flexible sizing.
 
-## Change Log Addition (2025-10-12 â€“ Dark Theme Scrollbar UX)
+## Change Log Addition (2025-10-12 ? Dark Theme Scrollbar UX)
 - Implemented dark, more intuitive scrollbars across the app.
 - Added dedicated track/thumb colors and hover/drag states; rounded thumbs.
 - Increased thickness to 12px for easier grasping; ensured paging on track click.
@@ -326,23 +326,23 @@
   - TextBox editors (current/previous, JSON boxes)
   - DataGrid lists (phrases/hotkeys/procedures)
   - ComboBox dropdown list popup
-- Hover thumb â†’ color lightens; drag â†’ color further lightens.
-- Click on empty track â†’ content pages up/down/left/right.
-- Confirm thickness â‰ˆ 12px and thumb min size respected.
+- Hover thumb ¡æ color lightens; drag ¡æ color further lightens.
+- Click on empty track ¡æ content pages up/down/left/right.
+- Confirm thickness ? 12px and thumb min size respected.
 - Build passes with no XAML errors.
 
 ### Risks / Mitigations (Scrollbars)
-- Some third-party controls might override templates â†’ global styles still cover WPF primitives; adjust per control if gaps reported.
-- Very small scrollable areas could render oversized thumbs â†’ enforced MinLength only; WPF scales appropriately.
+- Some third-party controls might override templates ¡æ global styles still cover WPF primitives; adjust per control if gaps reported.
+- Very small scrollable areas could render oversized thumbs ¡æ enforced MinLength only; WPF scales appropriately.
 
-## Change Log Addition (2025-10-13 â€“ Edit Study Technique Window UX)
+## Change Log Addition (2025-10-13 ? Edit Study Technique Window UX)
 - Problem 1: Group panels were too small and did not stretch with the window, making the preview cramped.
 - Problem 2: ComboBox selected area showed CLR type name (e.g., "Wysg.Musm.Radium....") instead of the `Text` property of the selected item.
 - Problem 3: No way to add Prefix/Tech/Suffix from the window, forcing DB pre-seed.
 
 - Fixes:
   - Layout: Converted window body to a 3-column Grid (left panel [3*], splitter [Auto], right panel [2*]). Left panel uses Grid with `Add Technique` (Auto) and `Current Combination` (*). This ensures proportional stretch. Increased default window size.
-  - ComboBox display: In the global dark `ComboBox` template, replaced the selection `ContentPresenter` with a `TextBlock` bound via `PriorityBinding` to `SelectedItem.Text` â†’ `Text` â†’ `SelectionBoxItem`, and set `TextSearch.TextPath=Text`.
+  - ComboBox display: In the global dark `ComboBox` template, replaced the selection `ContentPresenter` with a `TextBlock` bound via `PriorityBinding` to `SelectedItem.Text` ¡æ `Text` ¡æ `SelectionBoxItem`, and set `TextSearch.TextPath=Text`.
   - Inline add: Added "+" buttons next to Prefix/Tech/Suffix ComboBoxes. Buttons open a small prompt dialog, then call `StudyTechniqueViewModel.AddPrefixAndSelectAsync`, `AddTechAndSelectAsync`, `AddSuffixAndSelectAsync`. On success, lookups reload and the new item is auto-selected.
   - Studyname combinations: Added right panel `GroupBox` listing combinations for the selected studyname with a `Set Default` button bound to `SetDefaultForStudynameCommand`.
 
@@ -367,7 +367,7 @@
 - Prompt dialog is simple and modal; acceptable for admin-like add operations.
 - Studyname combinations default star indicator not fully templated; acceptable minimal UX for now.
 
-## Change Log Addition (2025-10-13 â€“ Technique Combination Grouped String + Autofill + Refresh)
+## Change Log Addition (2025-10-13 ? Technique Combination Grouped String + Autofill + Refresh)
 - Implemented grouped display logic for technique combinations (FR-500..FR-503):
   - New helper `TechniqueFormatter.BuildGroupedDisplay(IEnumerable<TechniqueGroupItem>)` groups by (prefix, suffix) preserving first-seen group order by `sequence_order` and joins techs with ", ", groups with "; ".
 - New repository extensions (FR-506):
@@ -390,24 +390,24 @@
 
 ### Test Plan
 - Unit-ish manual checks:
-  - Build `TechniqueGroupItem` list for sample scenario â†’ verify output equals: `axial T1, T2; sagittal T1; coronal T1, T2, CE-T1 of sellar fossa; sagittal T1, CE-T1 of sellar fossa`.
-  - Insert combination rows in DB, mark default for a studyname, run New Study â†’ `StudyTechniques` auto-filled accordingly.
-  - Open Edit Study Technique, add duplicate item â†’ prevented; add distinct items â†’ allowed; save as default â†’ current study `StudyTechniques` updates after window close.
-  - Change default via Set Default list â†’ window close triggers refresh; confirm updated display.
+  - Build `TechniqueGroupItem` list for sample scenario ¡æ verify output equals: `axial T1, T2; sagittal T1; coronal T1, T2, CE-T1 of sellar fossa; sagittal T1, CE-T1 of sellar fossa`.
+  - Insert combination rows in DB, mark default for a studyname, run New Study ¡æ `StudyTechniques` auto-filled accordingly.
+  - Open Edit Study Technique, add duplicate item ¡æ prevented; add distinct items ¡æ allowed; save as default ¡æ current study `StudyTechniques` updates after window close.
+  - Change default via Set Default list ¡æ window close triggers refresh; confirm updated display.
 
 ### Risks / Mitigations
-- Studyname text from PACS might not match DB exactly â†’ repo resolves by exact match; if mismatch occurs, no autofill; can enhance later with normalization.
-- Multiple windows might try to refresh concurrently â†’ idempotent setter on `StudyTechniques` handles fine.
-- Performance: extra queries on window close â†’ negligible and async.
+- Studyname text from PACS might not match DB exactly ¡æ repo resolves by exact match; if mismatch occurs, no autofill; can enhance later with normalization.
+- Multiple windows might try to refresh concurrently ¡æ idempotent setter on `StudyTechniques` handles fine.
+- Performance: extra queries on window close ¡æ negligible and async.
 
-## Change Log Addition (2025-10-13 â€“ Add Previous Study Automation + '+' Mapping)
-- Implemented new automation module `AddPreviousStudy` and wired Automation â†’ AddStudy sequence to the small `+` button in Previous Reports area.
+## Change Log Addition (2025-10-13 ? Add Previous Study Automation + '+' Mapping)
+- Implemented new automation module `AddPreviousStudy` and wired Automation ¡æ AddStudy sequence to the small `+` button in Previous Reports area.
 - Behavior:
   - Validates current patient by comparing `GetCurrentPatientNumber` with app `PatientNumber` (normalized alphanumerics uppercased).
   - Reads Related Studies list metadata: studyname, study datetime, radiologist, report datetime.
   - Reads current report text via dual getters for findings and conclusion, picks the longer variant.
   - Persists as local previous study report and selects it; sets `PreviousReportified=true`.
-- Settings â†’ Automation tab:
+- Settings ¡æ Automation tab:
   - Added `AddPreviousStudy` to Available Modules. Users can compose `AddStudy` sequence using drag and drop.
   - Clicking the small `+` button now executes modules from `AutomationAddStudySequence` in order.
 
@@ -419,83 +419,83 @@
 
 ### Test Plan
 - Compose AddStudy sequence = `AddPreviousStudy` only. Click `+`:
-  - When related patient matches current â†’ new previous study tab appears and is selected; status "Previous study added".
-  - When patient mismatch â†’ status shows error; no tab added.
+  - When related patient matches current ¡æ new previous study tab appears and is selected; status "Previous study added".
+  - When patient mismatch ¡æ status shows error; no tab added.
 - Compose AddStudy sequence = `AddPreviousStudy,GetStudyRemark,GetPatientRemark`. Click `+`:
   - Verify previous study is added first, then `StudyRemark`/`PatientRemark` fields update.
 - Unknown module names in the sequence are ignored; no crash.
 - Settings: ensure `AddPreviousStudy` appears in Available Modules list and can be dragged into AddStudy.
 
 ### Risks / Mitigations
-- PACS getters may fail or return empty â†’ handled with safe try/catch and status messages; operation aborts gracefully.
-- Time parsing differences from PACS â†’ validated with `DateTime.TryParse`; abort add when invalid.
-- Running automation out of UI thread â†’ methods are async and use awaited calls; no blocking UI expected.
+- PACS getters may fail or return empty ¡æ handled with safe try/catch and status messages; operation aborts gracefully.
+- Time parsing differences from PACS ¡æ validated with `DateTime.TryParse`; abort add when invalid.
+- Running automation out of UI thread ¡æ methods are async and use awaited calls; no blocking UI expected.
 
-## Change Log Addition (2025-10-13 â€“ PACS: Invoke Open Study + Custom Procedure Invoke Op)
-- Added SpyWindow Custom Procedures PACS method `InvokeOpenStudy` (UI label: "Invoke open study").
+## Change Log Addition (2025-10-13 ? PACS: Invoke Open Study + Custom Procedure Invoke Op)
+- Added AutomationWindow Custom Procedures PACS method `InvokeOpenStudy` (UI label: "Invoke open study").
 - Added `PacsService.InvokeOpenStudyAsync()` that executes the procedure tag `InvokeOpenStudy`.
 - Added default auto-seed for `InvokeOpenStudy` in `ProcedureExecutor`: single `Invoke` op targeting `SelectedStudyInSearch` element.
-- Ensured both SpyWindow and headless executor support `Invoke` operation with Arg1 as `Element`.
+- Ensured both AutomationWindow and headless executor support `Invoke` operation with Arg1 as `Element`.
 
 ### Approach
-1) SpyWindow.xaml: extend `cmbProcMethod` items to include `InvokeOpenStudy`.
+1) AutomationWindow.xaml: extend `cmbProcMethod` items to include `InvokeOpenStudy`.
 2) PacsService: implement `InvokeOpenStudyAsync()` that calls `ProcedureExecutor.ExecuteAsync("InvokeOpenStudy")` best-effort.
 3) ProcedureExecutor: extend `TryCreateFallbackProcedure` to auto-seed `InvokeOpenStudy` with `Invoke` op on `SelectedStudyInSearch`.
-4) Verify SpyWindow.Procedures supports op `Invoke` with Arg1 Element; it already existed; kept editor presets.
+4) Verify AutomationWindow.Procedures supports op `Invoke` with Arg1 Element; it already existed; kept editor presets.
 
 ### Test Plan
-- Open SpyWindow â†’ Custom Procedures â†’ select "Invoke open study"; click Add to add an `Invoke` row; Save; Run â†’ PACS should open viewer for selected study (where PACS supports it).
-- Delete/rename ui-procedures.json to force auto-seed â†’ Run should still perform an Invoke on `SelectedStudyInSearch`.
+- Open AutomationWindow ¡æ Custom Procedures ¡æ select "Invoke open study"; click Add to add an `Invoke` row; Save; Run ¡æ PACS should open viewer for selected study (where PACS supports it).
+- Delete/rename ui-procedures.json to force auto-seed ¡æ Run should still perform an Invoke on `SelectedStudyInSearch`.
 - Programmatic: call `await new PacsService().InvokeOpenStudyAsync()` and ensure no exceptions; observe PACS behavior.
 
 ### Risks / Mitigations
-- Different PACS may require invoking a different element (e.g., Worklist or Related list) â†’ users can edit the procedure to point to another KnownControl via SpyWindow.
-- Some lists do not support Invoke but respond to Toggle or selection-change â†’ executor falls back to Toggle pattern.
+- Different PACS may require invoking a different element (e.g., Worklist or Related list) ¡æ users can edit the procedure to point to another KnownControl via AutomationWindow.
+- Some lists do not support Invoke but respond to Toggle or selection-change ¡æ executor falls back to Toggle pattern.
 
-## Change Log Addition (2025-10-13 â€“ UI Spy: Add 'Test invoke' Map-to Bookmark)
+## Change Log Addition (2025-10-13 ? UI Spy: Add 'Test invoke' Map-to Bookmark)
 - Added a new KnownControl entry `TestInvoke` for mapping an arbitrary UI element specifically to test the Invoke operation.
-- SpyWindow Map-to dropdown now includes "Test invoke". Users can map/capture any clickable element and validate with the Crawl Editor's Invoke button.
+- AutomationWindow Map-to dropdown now includes "Test invoke". Users can map/capture any clickable element and validate with the Crawl Editor's Invoke button.
 
 ### Approach (Test invoke bookmark)
 1) Extend `UiBookmarks.KnownControl` with `TestInvoke`.
-2) Add `<ComboBoxItem Tag="TestInvoke">Test invoke</ComboBoxItem>` to `SpyWindow.xaml` Map-to list.
+2) Add `<ComboBoxItem Tag="TestInvoke">Test invoke</ComboBoxItem>` to `AutomationWindow.xaml` Map-to list.
 3) No changes required elsewhere; existing mapping/resolve/Invoke flows support any KnownControl.
 
 ### Test Plan (Test invoke)
-- Open SpyWindow, select Map to â†’ Test invoke, click Map and capture a UI element.
-- Click Invoke in the Crawl Editor toolbar â†’ verify the element action occurs (or Toggle fallback).
+- Open AutomationWindow, select Map to ¡æ Test invoke, click Map and capture a UI element.
+- Click Invoke in the Crawl Editor toolbar ¡æ verify the element action occurs (or Toggle fallback).
 - Save mapping and resolve later; ensure it highlights and invokes correctly.
 
 ### Risks / Mitigations
 - Unmapped `TestInvoke` will simply resolve to null; UI already reports friendly status. No breaking changes.
 
-## Change Log Addition (2025-10-13 â€“ PACS: Custom Mouse Clicks + MouseClick Operation + Picked Point Display)
-- Added two new PACS methods in SpyWindow Custom Procedures: "Custom mouse click 1" and "Custom mouse click 2".
+## Change Log Addition (2025-10-13 ? PACS: Custom Mouse Clicks + MouseClick Operation + Picked Point Display)
+- Added two new PACS methods in AutomationWindow Custom Procedures: "Custom mouse click 1" and "Custom mouse click 2".
 - Added new operation `MouseClick` (Arg1=X Number, Arg2=Y Number) which sets cursor position and performs left click.
 - Implemented support in headless `ProcedureExecutor` for `MouseClick`, including auto-seeded defaults for the two new methods.
 - Added `PacsService.CustomMouseClick1Async()` and `CustomMouseClick2Async()` wrappers.
 - UI: Added read-only TextBox (`txtPickedPoint`) left of "Enable Tree" to display picked coordinates, set after Pick.
 
 ### Approach
-1) SpyWindow.xaml: add the two PACS methods to the Custom Procedures combo; add `MouseClick` to operations list; add `txtPickedPoint` TextBox.
-2) SpyWindow.Procedures.cs: configure op editor for `MouseClick` to enable Arg1/Arg2 as Number; implement Execute paths calling NativeMouseHelper.ClickScreen.
+1) AutomationWindow.xaml: add the two PACS methods to the Custom Procedures combo; add `MouseClick` to operations list; add `txtPickedPoint` TextBox.
+2) AutomationWindow.Procedures.cs: configure op editor for `MouseClick` to enable Arg1/Arg2 as Number; implement Execute paths calling NativeMouseHelper.ClickScreen.
 3) ProcedureExecutor: add fallback seed for both click methods; implement `MouseClick` in executor; ensure encoding helpers intact.
 4) PacsService: add two wrapper methods executing the new procedures.
-5) SpyWindow.Bookmarks.cs: after Pick, write screen coordinates into `txtPickedPoint`.
+5) AutomationWindow.Bookmarks.cs: after Pick, write screen coordinates into `txtPickedPoint`.
 
 ### Test Plan
-- In SpyWindow, select "Custom mouse click 1" â†’ Add row `MouseClick` with X=100, Y=100 â†’ Save â†’ Run â†’ verify mouse clicks at (100,100).
+- In AutomationWindow, select "Custom mouse click 1" ¡æ Add row `MouseClick` with X=100, Y=100 ¡æ Save ¡æ Run ¡æ verify mouse clicks at (100,100).
 - Repeat for "Custom mouse click 2".
 - Verify op editor presets: selecting `MouseClick` enables Arg1/Arg2 Numbers, Arg3 disabled.
 - Pick a control; after delay, verify `txtPickedPoint` shows coordinates like "1234,567" and text is selectable.
 - Delete ui-procedures.json and re-open: both custom mouse click methods auto-seed with a `MouseClick` row.
 
 ### Risks / Mitigations
-- Moving mouse programmatically is disruptive â†’ operation is explicit; not run automatically.
-- DPI/coordinate mismatch â†’ using screen coordinates (SetCursorPos/mouse_event); users can tune values.
+- Moving mouse programmatically is disruptive ¡æ operation is explicit; not run automatically.
+- DPI/coordinate mismatch ¡æ using screen coordinates (SetCursorPos/mouse_event); users can tune values.
 
-## Change Log Addition (2025-10-14 â€“ Multi-PACS Tenant + Account-Scoped Techniques)
-- Introduced local tenant model to support multiple PACS per account. Added `app.tenant` with `(account_id, pacs_key)` unique to represent an accountÃ—PACS pairing.
+## Change Log Addition (2025-10-14 ? Multi-PACS Tenant + Account-Scoped Techniques)
+- Introduced local tenant model to support multiple PACS per account. Added `app.tenant` with `(account_id, pacs_key)` unique to represent an account¡¿PACS pairing.
 - Scoped `med.patient` and `med.rad_studyname` by tenant: added `tenant_id` FK and adjusted unique constraints to `(tenant_id, patient_number)` and `(tenant_id, studyname)`.
 - Renamed technique tables to `rad_technique*` and added `account_id` to scope technique vocabularies per account:
   - `med.rad_technique_prefix`, `med.rad_technique_tech`, `med.rad_technique_suffix`, `med.rad_technique`, `med.rad_technique_combination`, `med.rad_technique_combination_item`.
@@ -516,7 +516,7 @@
 - Create a tenant row and verify inserts of patients/studynames under that tenant; duplicates by patient_number/studyname allowed across tenants but not within the same tenant.
 - Seed a few prefixes/techs/suffixes for two accounts and verify no cross-account leakage; uniqueness enforced per account.
 - Create techniques and combinations; link defaults to a studyname; confirm `v_technique_combination_display` renders correct string.
-- Verify New Study flow persists patients/studies under the active tenant and technique UI lists only the current accountâ€™s items.
+- Verify New Study flow persists patients/studies under the active tenant and technique UI lists only the current account¡¯s items.
 - Switch `ITenantContext` values at runtime and verify queries reflect the new tenant/account.
 
 ### Risks / Mitigations
@@ -524,12 +524,12 @@
 - Existing data in old `med.technique_*` tables: migration not automated here; keep a separate migration script or dual-compat views if needed.
 - Accidental mixed-account references in combinations: combinations include `account_id` through their items; ensure UI only allows using items from same account (enforced by filtering).
 
-## Change Log Addition (2025-01-14 â€“ Multi-PACS UI Refactoring)
+## Change Log Addition (2025-01-14 ? Multi-PACS UI Refactoring)
 - Removed PACS selection combobox from MainWindow; PACS selection now managed exclusively in Settings window.
 - Added current user email and current PACS name display next to the logout button in the status bar for visibility.
 - Settings window General tab already divided into "Database" and "PACS" tabs (previous implementation).
 - Removed PACS profile combobox from Automation tab; automation settings now automatically load for the currently selected PACS from the PACS tab.
-- Removed PACS combobox from SpyWindow; spy settings automatically use the currently selected PACS from settings.
+- Removed PACS combobox from AutomationWindow; spy settings automatically use the currently selected PACS from settings.
 - PACS-specific spy and automation settings are stored per-PACS on disk in isolated directories under `%AppData%\Wysg.Musm\Radium\Pacs\{pacs_key}\`.
 
 ### Approach (Multi-PACS UI)
@@ -537,31 +537,31 @@
 2) Add `CurrentUserDisplay` and `CurrentPacsDisplay` properties to `MainViewModel` with bindings to `IAuthStorage.Email` and `ITenantContext.CurrentPacsKey`.
 3) Update `MainViewModel` constructor to accept `IAuthStorage` and set `CurrentUserDisplay` from stored email.
 4) Update `OnPacsProfileChanged` in `MainViewModel.PacsProfiles.cs` to set `CurrentPacsDisplay` when PACS changes.
-5) Remove PACS combobox from `SpyWindow.xaml` top bar.
-6) Remove PACS profile management fields and methods from `SpyWindow.xaml.cs`; spy settings path already set globally in `App.xaml.cs` after login.
+5) Remove PACS combobox from `AutomationWindow.xaml` top bar.
+6) Remove PACS profile management fields and methods from `AutomationWindow.xaml.cs`; spy settings path already set globally in `App.xaml.cs` after login.
 7) Settings window automation tab already uses `SelectedPacsForAutomation` to load/save settings per-PACS (no changes needed).
 8) Update documentation (Plan.md, Spec.md, Tasks.md) with cumulative entries for the UI refactoring.
 
 ### Test Plan (Multi-PACS UI)
 - Verify MainWindow status bar shows current user email (e.g., "User: user@example.com") next to logout button.
 - Verify MainWindow status bar shows current PACS name (e.g., "PACS: default_pacs") next to user display.
-- Open Settings â†’ PACS tab, select a different PACS profile â†’ verify MainWindow PACS display updates.
-- Open Settings â†’ Automation tab â†’ verify automation sequences load for the currently selected PACS from PACS tab.
-- Change PACS in Settings â†’ Automation tab â†’ verify sequences change to reflect the new PACS profile.
-- Open SpyWindow â†’ verify no PACS combobox is visible; spy settings automatically use current PACS from settings.
-- Create/edit/save spy procedures â†’ verify they save to the correct per-PACS directory under `%AppData%\Wysg.Musm\Radium\Pacs\{pacs_key}\ui-procedures.json`.
-- Log out and log back in â†’ verify user and PACS displays restore correctly on MainWindow.
+- Open Settings ¡æ PACS tab, select a different PACS profile ¡æ verify MainWindow PACS display updates.
+- Open Settings ¡æ Automation tab ¡æ verify automation sequences load for the currently selected PACS from PACS tab.
+- Change PACS in Settings ¡æ Automation tab ¡æ verify sequences change to reflect the new PACS profile.
+- Open AutomationWindow ¡æ verify no PACS combobox is visible; spy settings automatically use current PACS from settings.
+- Create/edit/save spy procedures ¡æ verify they save to the correct per-PACS directory under `%AppData%\Wysg.Musm\Radium\Pacs\{pacs_key}\ui-procedures.json`.
+- Log out and log back in ¡æ verify user and PACS displays restore correctly on MainWindow.
 
 ### Risks / Mitigations (Multi-PACS UI)
-- User may forget which PACS is currently selected â†’ mitigated by always showing current PACS in status bar.
-- Switching PACS in Settings does not immediately reload spy procedures in an open SpyWindow â†’ acceptable; SpyWindow loads settings on open, users can close and reopen if needed.
-- Current user email may not be available at MainViewModel construction time if using silent refresh â†’ fall back to default text until login completes; status bar updates reactively.
+- User may forget which PACS is currently selected ¡æ mitigated by always showing current PACS in status bar.
+- Switching PACS in Settings does not immediately reload spy procedures in an open AutomationWindow ¡æ acceptable; AutomationWindow loads settings on open, users can close and reopen if needed.
+- Current user email may not be available at MainViewModel construction time if using silent refresh ¡æ fall back to default text until login completes; status bar updates reactively.
 
-## Change Log Addition (2025-10-14 â€“ PACS Display Source + Settings PACS Tab Simplification)
+## Change Log Addition (2025-10-14 ? PACS Display Source + Settings PACS Tab Simplification)
 - Fixed PACS display source to use tenant DB `pacs_key` (e.g., "default_pacs") instead of legacy local profile name ("Default PACS").
 - Bound status bar `CurrentPacsDisplay` to `ITenantContext.CurrentPacsKey` with fallback to `default_pacs`; listens to `PacsKeyChanged`.
-- Settings â†’ PACS tab: removed unsupported actions `Rename` and `Remove` from the grid.
-- Settings â†’ PACS tab: removed `Close` button for consistency; selection is applied by row selection, and window-level close remains available.
+- Settings ¡æ PACS tab: removed unsupported actions `Rename` and `Remove` from the grid.
+- Settings ¡æ PACS tab: removed `Close` button for consistency; selection is applied by row selection, and window-level close remains available.
 
 ### Approach (PACS Display + Simplification)
 1) Add `PacsKeyChanged` event to `ITenantContext` and raise from `TenantContext` when `CurrentPacsKey` changes.
@@ -571,40 +571,40 @@
 
 ### Test Plan (PACS Display + Simplification)
 - Start app with a tenant whose `pacs_key = default_pacs`: status bar shows "PACS: default_pacs".
-- Change selection in Settings â†’ PACS: status bar updates to "PACS: {selected_key}" immediately.
+- Change selection in Settings ¡æ PACS: status bar updates to "PACS: {selected_key}" immediately.
 - Verify no Rename/Remove buttons appear in the PACS grid; only Add PACS button remains.
 - Verify Close button is removed from PACS tab while window-level close still works.
 
 ### Risks / Mitigations
 - Users needing rename/remove: not supported in this increment; Add PACS remains; DB-level tenant delete can be handled from admin tools.
 
-## Change Log Addition (2025-10-14 â€“ Instant PACS Switch for Automation and Spy + PACS Text Display)
+## Change Log Addition (2025-10-14 ? Instant PACS Switch for Automation and Spy + PACS Text Display)
 - Automation tab switches context immediately when PACS selection changes by updating `SelectedPacsForAutomation` and reloading sequences.
-- SpyWindow listens to `ITenantContext.PacsKeyChanged` and updates its top-bar PACS text instantly. Procedure path override is also refreshed.
-- Added "PACS: {current}" text in Automation tab header and SpyWindow top bar.
+- AutomationWindow listens to `ITenantContext.PacsKeyChanged` and updates its top-bar PACS text instantly. Procedure path override is also refreshed.
+- Added "PACS: {current}" text in Automation tab header and AutomationWindow top bar.
 
 ### Approach
 1) In `SettingsViewModel.PacsProfiles.OnSelectedPacsProfileChanged`, set `_tenant.CurrentPacsKey`, switch spy path, and assign `SelectedPacsForAutomation` to trigger reload.
 2) In `SettingsWindow`, subscribe to `ITenantContext.PacsKeyChanged` to update local `CurrentPacsKey` and push it to VM `SelectedPacsForAutomation`.
-3) In `SpyWindow`, resolve `ITenantContext` from DI, set initial text, and handle `PacsKeyChanged` to update UI instantly.
-4) In XAML, add PACS text blocks to Automation tab and SpyWindow.
+3) In `AutomationWindow`, resolve `ITenantContext` from DI, set initial text, and handle `PacsKeyChanged` to update UI instantly.
+4) In XAML, add PACS text blocks to Automation tab and AutomationWindow.
 
 ### Test Plan
-- Open Settings â†’ PACS and Automation tabs. Change PACS row selection â†’ library panes clear and refill according to the new PACS; PACS label shows new key.
-- Open SpyWindow; verify PACS label shows current key. Change PACS in Settings while SpyWindow is open â†’ label changes instantly.
+- Open Settings ¡æ PACS and Automation tabs. Change PACS row selection ¡æ library panes clear and refill according to the new PACS; PACS label shows new key.
+- Open AutomationWindow; verify PACS label shows current key. Change PACS in Settings while AutomationWindow is open ¡æ label changes instantly.
 - Save and reload procedures; ensure they write/read to `%AppData%\Wysg.Musm\Radium\Pacs\{pacs}\ui-procedures.json` for the current key.
 
 ### Risks / Mitigations
 - Race conditions if PACS is switched rapidly: operations are UI-thread-bound; ProcedureExecutor path override is cheap; acceptable.
 - Null pacs key: fallback to `default_pacs` applied everywhere.
 
-## Change Log Addition (2025-10-14 â€“ Per-PACS Spy Persistence + Invoke Test)
+## Change Log Addition (2025-10-14 ? Per-PACS Spy Persistence + Invoke Test)
 - Persist UiBookmarks (bookmarks.json) and Custom Procedures (ui-procedures.json) per PACS key under `%AppData%/Wysg.Musm/Radium/Pacs/{key}`.
-- On login and on `ITenantContext.PacsKeyChanged`, set both overrides so SpyWindow and headless executor read/write per profile.
+- On login and on `ITenantContext.PacsKeyChanged`, set both overrides so AutomationWindow and headless executor read/write per profile.
 - Added new custom procedure method `InvokeTest` and new Automation module `TestInvoke` that executes it via `PacsService.InvokeTestAsync()`.
- - SpyWindow procedure editor now reads/writes `ui-procedures.json` in the same PACS folder as bookmarks.
+ - AutomationWindow procedure editor now reads/writes `ui-procedures.json` in the same PACS folder as bookmarks.
 
-## Change Log Addition (2025-10-14 â€“ Test Automation Module ShowTestMessage)
+## Change Log Addition (2025-10-14 ? Test Automation Module ShowTestMessage)
 - Added a simple module `ShowTestMessage` to the Automation library. Executing it shows a MessageBox with title/content "Test".
 
 ### Approach
@@ -618,7 +618,7 @@
 ### Risks / Mitigations
 - Modal dialog can block automation chains; acceptable for test module. Users can dismiss to continue.
 
-## Change Log Addition (2025-10-14 â€“ PACS-scoped Automation Execution Fix)
+## Change Log Addition (2025-10-14 ? PACS-scoped Automation Execution Fix)
 - MainViewModel now reads sequences from `%AppData%/Wysg.Musm/Radium/Pacs/{pacs_key}/automation.json` via helper instead of `IRadiumLocalSettings` legacy keys.
 - Prevents unintended execution of modules like `LockStudy` that were stored in obsolete settings.
 
@@ -627,24 +627,24 @@
 2) Replaced all usages of `_localSettings?.Automation*` with calls to the helper.
 
 ### Test Plan
-- Configure New Study pane with only `ShowTestMessage`; Save Automation; click New â†’ see â€œTestâ€ message and no lock.
-- Add `LockStudy` explicitly; click New â†’ study locks as expected.
+- Configure New Study pane with only `ShowTestMessage`; Save Automation; click New ¡æ see ¡°Test¡± message and no lock.
+- Add `LockStudy` explicitly; click New ¡æ study locks as expected.
 - Configure Add Study and Shortcuts similarly; verify execution matches saved sequences per PACS.
 
-## Change Log Addition (2025-10-14 â€“ Global Hotkey routes to Shortcut Sequences)
-- Registered a system-wide hotkey based on Settings â†’ Keyboard â€œOpen studyâ€ value. On press, calls `RunOpenStudyShortcut()`.
+## Change Log Addition (2025-10-14 ? Global Hotkey routes to Shortcut Sequences)
+- Registered a system-wide hotkey based on Settings ¡æ Keyboard ¡°Open study¡± value. On press, calls `RunOpenStudyShortcut()`.
 
 ### Approach
 1) Add hotkey registration in `MainWindow` using `RegisterHotKey` and a WndProc hook.
 2) Parse the saved combo string (e.g., Ctrl+Alt+O) into user32 modifiers and VK, register/unregister on open/close.
-3) On WM_HOTKEY, dispatch to VMâ€™s `RunOpenStudyShortcut()`.
+3) On WM_HOTKEY, dispatch to VM¡¯s `RunOpenStudyShortcut()`.
 
 ### Test Plan
-- Set â€œShortcut: Open study (new)â€ to contain `ShowTestMessage`; set Keyboard Open study = Ctrl+Alt+O; Save.
-- From Main window, press Ctrl+Alt+O â†’ â€œTestâ€ message box appears.
-- Toggle PatientLocked/StudyOpened and verify it picks â€œaddâ€ or â€œafter openâ€ sequences accordingly.
+- Set ¡°Shortcut: Open study (new)¡± to contain `ShowTestMessage`; set Keyboard Open study = Ctrl+Alt+O; Save.
+- From Main window, press Ctrl+Alt+O ¡æ ¡°Test¡± message box appears.
+- Toggle PatientLocked/StudyOpened and verify it picks ¡°add¡± or ¡°after open¡± sequences accordingly.
 
-## Change Log Addition (2025-10-14 â€“ Window Placement Persistence)
+## Change Log Addition (2025-10-14 ? Window Placement Persistence)
 - Persist MainWindow placement to local settings on close and restore on load; ensure visibility safeguards and state handling.
 
 ### Approach
@@ -653,10 +653,10 @@
 3) Restore during `MainWindow.OnLoaded()` and clamp to `SystemParameters.WorkArea` if restored rect is off-screen.
 
 ### Test Plan
-- Move/resize window, maximize; close and restart â†’ restored position/size/state.
-- Place window partially off-screen (multi-monitor remove) â†’ next start clamps to visible area.
+- Move/resize window, maximize; close and restart ¡æ restored position/size/state.
+- Place window partially off-screen (multi-monitor remove) ¡æ next start clamps to visible area.
 
-## Change Log Addition (2025-10-14 â€“ Reportify Clarification and Removal)
+## Change Log Addition (2025-10-14 ? Reportify Clarification and Removal)
 - Clarified difference between RemoveExcessiveBlanks and CollapseWhitespace.
 - Removed "Preserve known tokens" option from UI model and processing; JSON parse now ignores it.
 
@@ -668,8 +668,8 @@
 - Reportify JSON generated no longer contains `preserve_known_tokens`.
 - Prior stored JSON with the key loads without error and does not affect output.
 
-## Change Log Addition (2025-10-15 â€“ Phrase-SNOMED Mapping Window UX Enhancements)
-- **Problem 1**: When opening the phrase-SNOMED link window from Settings â†’ Global Phrases, the search textbox was empty, requiring users to retype the phrase text to search for matching SNOMED concepts.
+## Change Log Addition (2025-10-15 ? Phrase-SNOMED Mapping Window UX Enhancements)
+- **Problem 1**: When opening the phrase-SNOMED link window from Settings ¡æ Global Phrases, the search textbox was empty, requiring users to retype the phrase text to search for matching SNOMED concepts.
 - **Problem 2**: The Map button remained disabled even after selecting a concept from the search results, preventing users from saving the mapping.
 
 ### Root Cause
@@ -687,21 +687,21 @@
 
 ### Test Plan (Mapping Window UX)
 - **Pre-fill Search**:
-  1. Open Settings â†’ Global Phrases
+  1. Open Settings ¡æ Global Phrases
   2. Click "Link SNOMED" button for any phrase
   3. Verify the search textbox is pre-filled with the phrase text
-  4. Press Enter or click Search â†’ verify Snowstorm search executes with the phrase text
-  5. Edit the search text and search again â†’ verify custom search works
+  4. Press Enter or click Search ¡æ verify Snowstorm search executes with the phrase text
+  5. Edit the search text and search again ¡æ verify custom search works
 
 - **Map Button State**:
   1. Open phrase-SNOMED link window
   2. Verify Map button is disabled (no concept selected)
-  3. Perform a search â†’ results appear in grid
+  3. Perform a search ¡æ results appear in grid
   4. Click on a result row to select a concept
   5. Verify Map button becomes enabled immediately
-  6. Click Map button â†’ verify mapping is saved and success message appears
-  7. Select a different concept â†’ verify Map button remains enabled
-  8. Clear selection (click outside rows or press Ctrl+click) â†’ verify Map button disables
+  6. Click Map button ¡æ verify mapping is saved and success message appears
+  7. Select a different concept ¡æ verify Map button remains enabled
+  8. Clear selection (click outside rows or press Ctrl+click) ¡æ verify Map button disables
 
 ### Risks / Mitigations (Mapping Window UX)
 - **Risk**: Replacing `[ObservableProperty]` with manual property may break INPC notifications.
@@ -718,7 +718,7 @@
 - **Risk**: Angle bracket extraction may fail on unexpected input formats.
   - **Mitigation**: Robust extraction logic handles malformed brackets safely; returns empty string for invalid cases; lines without valid brackets are always preserved.
 
-## Change Log Addition (2025-01-17 â€“ DataGrid Text Visibility Fix)
+## Change Log Addition (2025-01-17 ? DataGrid Text Visibility Fix)
 - **Problem**: The "Technique Combination" column in the right panel DataGrid was not displaying any text because WPF DataGridTextColumn cells don't automatically inherit the Foreground color from the DataGrid in dark themes.
 - **Root Cause**: DataGrid.Foreground sets the default for headers but cells use their own default Foreground (typically black in default WPF theme), making black text invisible against a black background.
 - **Solution**: Add explicit ElementStyle to DataGridTextColumn with Foreground=Gainsboro setter to ensure text visibility in dark theme.
@@ -731,7 +731,7 @@
 
 2) **Template Column Fix**:
    - Added `factory.SetValue(TextBlock.ForegroundProperty, Brushes.Gainsboro)` to checkmark column template
-   - Ensures checkmark "âœ“" is also visible in dark theme
+   - Ensures checkmark "?" is also visible in dark theme
 
 3) **DataGrid-level Foreground**:
    - Set `DataGrid.Foreground = Brushes.Gainsboro` as fallback for headers
@@ -742,12 +742,12 @@
   1. Open "Manage Studyname Techniques" window
   2. Verify "Technique Combination" column displays text in light gray color
   3. Verify text is readable against black background
-  4. Verify checkmark "âœ“" in Default column is visible
-  5. Select a row â†’ verify selection highlighting doesn't obscure text
-  6. Resize window â†’ verify text remains visible at all sizes
+  4. Verify checkmark "?" in Default column is visible
+  5. Select a row ¡æ verify selection highlighting doesn't obscure text
+  6. Resize window ¡æ verify text remains visible at all sizes
 
 - **Dark Theme Consistency**:
-  1. Compare with other DataGrids in application â†’ verify consistent text color
+  1. Compare with other DataGrids in application ¡æ verify consistent text color
   2. Verify header text color matches column text color
   3. Verify alternating row backgrounds don't affect text visibility
 
@@ -758,9 +758,9 @@
 - **Risk**: ElementStyle might conflict with cell selection styling
   - **Mitigation**: WPF selection template overrides cell style appropriately; tested with row selection
 
-## Change Log Addition (2025-10-18 â€“ MouseMoveToElement Custom Procedure Operation)
-- **User Request**: Add new operation "MouseMoveToElement" to SpyWindow â†’ Custom Procedures that moves the mouse cursor to the center of a UI element without clicking.
-- **Solution**: Implemented MouseMoveToElement operation in both ProcedureExecutor (headless) and SpyWindow (interactive) with single Element argument.
+## Change Log Addition (2025-10-18 ? MouseMoveToElement Custom Procedure Operation)
+- **User Request**: Add new operation "MouseMoveToElement" to AutomationWindow ¡æ Custom Procedures that moves the mouse cursor to the center of a UI element without clicking.
+- **Solution**: Implemented MouseMoveToElement operation in both ProcedureExecutor (headless) and AutomationWindow (interactive) with single Element argument.
 
 ### Overview
 The MouseMoveToElement operation provides non-destructive cursor positioning by moving the mouse to a UI element's center without performing a click. This is useful for hover interactions, user guidance, and UI element testing.
@@ -779,7 +779,7 @@ The MouseMoveToElement operation provides non-destructive cursor positioning by 
    - Allows direct cursor positioning without save/restore logic
    - Used by MouseMoveToElement operation
 
-3. **SpyWindow Integration**:
+3. **AutomationWindow Integration**:
    - Added MouseMoveToElement to operation dropdown
    - Added operation configuration in `OnProcOpChanged` handler (Element type, Arg2/Arg3 disabled)
    - Implemented execution in `ExecuteSingle` method
@@ -805,13 +805,13 @@ The MouseMoveToElement operation provides non-destructive cursor positioning by 
 1) Add MouseMoveToElement case to ProcedureExecutor switch statements
 2) Implement MouseMoveToElement logic in ProcedureExecutor.ExecuteElemental
 3) Make SetCursorPos public in NativeMouseHelper for direct access
-4) Add MouseMoveToElement to SpyWindow operation configuration
-5) Implement MouseMoveToElement in SpyWindow.ExecuteSingle
+4) Add MouseMoveToElement to AutomationWindow operation configuration
+5) Implement MouseMoveToElement in AutomationWindow.ExecuteSingle
 6) Update documentation (Spec.md FR-1160, Plan.md, Tasks.md)
 
 ### Test Plan (MouseMoveToElement)
-- **SpyWindow Interactive Testing**:
-  1. Open SpyWindow â†’ Custom Procedures
+- **AutomationWindow Interactive Testing**:
+  1. Open AutomationWindow ¡æ Custom Procedures
   2. Add new operation `MouseMoveToElement`
   3. Set Arg1 to a known UI element (e.g., WorklistWindow, ReportText)
   4. Click "Set" button to execute operation
@@ -821,9 +821,9 @@ The MouseMoveToElement operation provides non-destructive cursor positioning by 
   8. Verify cursor remains at element center (no restore to original position)
 
 - **Error Cases**:
-  1. Unmapped element â†’ preview shows `(no element)`
-  2. Element with zero bounds â†’ preview shows `(no bounds)`
-  3. Element off-screen â†’ operation attempts to move (may be clamped by OS)
+  1. Unmapped element ¡æ preview shows `(no element)`
+  2. Element with zero bounds ¡æ preview shows `(no bounds)`
+  3. Element off-screen ¡æ operation attempts to move (may be clamped by OS)
 
 - **Procedure Integration**:
   1. Create custom procedure with multiple MouseMoveToElement operations
@@ -834,7 +834,7 @@ The MouseMoveToElement operation provides non-destructive cursor positioning by 
 - **Headless Execution**:
   1. Create PACS method using MouseMoveToElement in automation sequence
   2. Execute via PacsService wrapper
-  3. Verify cursor positioning works identically to SpyWindow
+  3. Verify cursor positioning works identically to AutomationWindow
 
 ### Risks / Mitigations (MouseMoveToElement)
 - **Risk**: Moving cursor programmatically may interfere with user input
@@ -849,7 +849,7 @@ The MouseMoveToElement operation provides non-destructive cursor positioning by 
 - **Risk**: DPI scaling may affect coordinate calculation
   - **Mitigation**: Using screen coordinates (SetCursorPos) which handle DPI automatically; bounding rectangle from UIA is DPI-aware
 
-## Change Log Addition (2025-10-18 â€“ Save as New Combination Button Enablement Fix)
+## Change Log Addition (2025-10-18 ? Save as New Combination Button Enablement Fix)
 - **Problem**: The "Save as New Combination" button in the Manage Studyname Techniques window remained disabled even after adding techniques to the Current Combination list, preventing users from saving their work.
 - **Root Cause**: The SaveNewCombinationCommand's CanExecute predicate correctly checks if CurrentCombinationItems.Count > 0, but the command's CanExecuteChanged event was never raised when items were added or removed, so WPF never re-evaluated the button's enabled state.
 - **Solution**: Explicitly call RaiseCanExecuteChanged() on SaveNewCombinationCommand after modifying CurrentCombinationItems collection.
@@ -915,7 +915,7 @@ The MouseMoveToElement operation provides non-destructive cursor positioning by 
 - Resolves user workflow issue reported in task request
 - Maintains existing duplicate prevention logic (FR-1024)
 
-## Change Log Addition (2025-10-19 â€“ Foreign Textbox One-Way Sync Feature)
+## Change Log Addition (2025-10-19 ? Foreign Textbox One-Way Sync Feature)
 - **User Request**: Add text synchronization between the application's Findings editor and an external textbox application (e.g., Notepad) with a "Sync Text" toggle button in the Spy window UI.
 - **Solution**: Implemented full two-way text synchronization using UI Automation and polling-based change detection.
 
@@ -952,7 +952,7 @@ The Foreign Textbox Sync feature enables real-time bidirectional text synchroniz
 
 ### Technical Implementation
 
-**Write Operations** (Local â†’ Foreign):
+**Write Operations** (Local ¡æ Foreign):
 1. Primary: UIA ValuePattern.SetValue() when supported
 2. Fallback: Clipboard method when ValuePattern unavailable
    - Focus target element
@@ -962,7 +962,7 @@ The Foreign Textbox Sync feature enables real-time bidirectional text synchroniz
    - Send Ctrl+V (paste)
    - Restore previous clipboard content
 
-**Read Operations** (Foreign â†’ Local):
+**Read Operations** (Foreign ¡æ Local):
 1. Primary: UIA ValuePattern.Value when supported
 2. Fallback 1: TextPattern.DocumentRange.GetText()
 3. Fallback 2: Element.Name property
@@ -991,26 +991,26 @@ The Foreign Textbox Sync feature enables real-time bidirectional text synchroniz
 **Merge Behavior**:
 1. Enable sync with some content in foreign textbox
 2. Type additional content in Findings editor
-3. Disable sync â†’ verify FindingsText contains foreign content followed by findings content
+3. Disable sync ¡æ verify FindingsText contains foreign content followed by findings content
 4. Verify ForeignText property is empty
 5. Verify foreign textbox (Notepad) is cleared
 
 **Empty Foreign Text**:
 1. Enable sync with empty foreign textbox
 2. Type content in Findings editor only
-3. Disable sync â†’ verify no merge occurs (Findings unchanged)
+3. Disable sync ¡æ verify no merge occurs (Findings unchanged)
 4. Verify status shows "Text sync disabled" without merge message
 
 **Line Ending Preservation**:
 1. Enable sync with multi-line foreign text (2-3 lines)
 2. Add multi-line Findings text (2-3 lines)
-3. Disable sync â†’ verify merged text preserves line breaks correctly
+3. Disable sync ¡æ verify merged text preserves line breaks correctly
 4. Verify no extra blank lines or missing separators
 
 **Re-enable After Merge**:
 1. Perform merge by disabling sync
-2. Re-enable sync â†’ verify ForeignText starts empty (not showing merged content)
-3. Type in foreign textbox â†’ verify updates appear in Findings editor
+2. Re-enable sync ¡æ verify ForeignText starts empty (not showing merged content)
+3. Type in foreign textbox ¡æ verify updates appear in Findings editor
 4. Verify merged content from previous session remains in Findings
 
 ### Risks / Mitigations (Foreign Text Merge)
@@ -1053,7 +1053,7 @@ The Foreign Textbox Sync feature enables real-time bidirectional text synchroniz
 - Extends FR-1100..FR-1122 (Foreign Textbox One-Way Sync Feature)
 - Complements FR-1123 (Foreign Text Merge on Sync Disable)
 - Complements FR-1132 (Auto-Focus Findings After Foreign Text Clear)
-- Follows same pattern as FR-541 (Settings â†’ Keyboard tab for hotkey configuration)
+- Follows same pattern as FR-541 (Settings ¡æ Keyboard tab for hotkey configuration)
 
 ### Future Enhancements (Not in Current Implementation)
 - Auto-reconnect when foreign application restarts
@@ -1065,7 +1065,7 @@ The Foreign Textbox Sync feature enables real-time bidirectional text synchroniz
 
 ## Change Log Addition (2025-10-19 ? Global Hotkey for Toggle Sync Text)
 - **User Request**: Add global hotkey support for toggling the "Sync Text" feature without needing to click the toggle button in MainWindow.
-- **Solution**: Implemented system-wide hotkey registration using Win32 RegisterHotKey API with hotkey configuration in Settings â†’ Keyboard tab.
+- **Solution**: Implemented system-wide hotkey registration using Win32 RegisterHotKey API with hotkey configuration in Settings ¡æ Keyboard tab.
 
 ### Overview
 The global hotkey feature allows users to toggle text synchronization with external applications (e.g., Notepad) from anywhere using a configurable keyboard shortcut. This complements existing global hotkeys (Open Study, Send Study) and provides keyboard-first workflow for power users.
@@ -1109,8 +1109,8 @@ The global hotkey feature allows users to toggle text synchronization with exter
 - Fallback to explicit A-Z and 0-9 parsing if KeyConverter fails
 
 **Registration Flow**:
-1. User configures "Toggle sync text" hotkey in Settings â†’ Keyboard (e.g., "Ctrl+Alt+T")
-2. User clicks Save â†’ hotkey persisted to local settings
+1. User configures "Toggle sync text" hotkey in Settings ¡æ Keyboard (e.g., "Ctrl+Alt+T")
+2. User clicks Save ¡æ hotkey persisted to local settings
 3. On next app start, MainWindow reads hotkey from settings
 4. In `OnSourceInitialized`, calls `TryRegisterToggleSyncTextHotkey()`
 5. Parses hotkey string to modifiers + virtual key
@@ -1122,14 +1122,14 @@ The global hotkey feature allows users to toggle text synchronization with exter
 2. Windows routes `WM_HOTKEY` message to MainWindow
 3. WndProc receives message, extracts hotkey ID from wParam
 4. If ID == `HOTKEY_ID_TOGGLE_SYNC_TEXT`, toggles `vm.TextSyncEnabled`
-5. If sync was OFF â†’ turns ON (starts polling foreign textbox, shows foreign editor)
-6. If sync was ON â†’ turns OFF (merges foreign text, clears foreign textbox, focuses Findings editor)
+5. If sync was OFF ¡æ turns ON (starts polling foreign textbox, shows foreign editor)
+6. If sync was ON ¡æ turns OFF (merges foreign text, clears foreign textbox, focuses Findings editor)
 7. Status bar updates to show new sync state
 
 ### Approach (Global Hotkey for Toggle Sync Text)
 1) Add `GlobalHotkeyToggleSyncText` property to `IRadiumLocalSettings` interface
 2) Implement storage in `RadiumLocalSettings` using encrypted key `hotkey_toggle_sync_text`
-3) Add textbox to Settings â†’ Keyboard tab with binding to `SettingsViewModel.ToggleSyncTextHotkey`
+3) Add textbox to Settings ¡æ Keyboard tab with binding to `SettingsViewModel.ToggleSyncTextHotkey`
 4) Load persisted hotkey in ViewModel constructor
 5) Save hotkey in `SaveKeyboard()` method
 6) Add hotkey ID constant `HOTKEY_ID_TOGGLE_SYNC_TEXT = 0xB002` to MainWindow
@@ -1142,7 +1142,7 @@ The global hotkey feature allows users to toggle text synchronization with exter
 
 ### Test Plan (Global Hotkey for Toggle Sync Text)
 - Configuration:
-  - Open Settings â†’ Keyboard tab
+  - Open Settings ¡æ Keyboard tab
   - Click "Toggle sync text" textbox
   - Press Ctrl+Alt+T (or other combination)
   - Verify textbox shows "Ctrl+Alt+T"
@@ -1158,7 +1158,7 @@ The global hotkey feature allows users to toggle text synchronization with exter
   - With MainWindow in background, press Ctrl+Alt+T
   - Verify sync toggle turns ON in MainWindow
   - Verify ForeignText editor appears below Header editor
-  - Type in Notepad â†’ verify text appears in ForeignText editor
+  - Type in Notepad ¡æ verify text appears in ForeignText editor
   - Press Ctrl+Alt+T again
   - Verify sync toggle turns OFF
   - Verify foreign text merged into Findings editor
@@ -1180,7 +1180,7 @@ The global hotkey feature allows users to toggle text synchronization with exter
   - **Mitigation**: Windows automatically releases hotkeys when process terminates
 
 - **Risk**: User forgets which hotkey they configured
-  - **Mitigation**: Hotkey visible in Settings â†’ Keyboard tab; can reconfigure anytime
+  - **Mitigation**: Hotkey visible in Settings ¡æ Keyboard tab; can reconfigure anytime
 
 - **Risk**: Parsing fails for complex key combinations
   - **Mitigation**: Using same TryParseHotkey method as existing hotkeys (proven pattern)

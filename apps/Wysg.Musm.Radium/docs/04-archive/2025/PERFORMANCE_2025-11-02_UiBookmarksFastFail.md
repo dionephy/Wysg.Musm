@@ -1,4 +1,4 @@
-﻿# Performance Enhancement: UiBookmarks Fast-Fail Strategy
+# Performance Enhancement: UiBookmarks Fast-Fail Strategy
 
 **Date**: 2025-11-02  
 **Type**: Performance Optimization  
@@ -76,8 +76,8 @@ if (matches.Length == 0 && !skipRetries)
 ### Worst-Case Pathological Scenario
 ```
 Bookmark: 10-step chain, all steps fail
-Before: 10 steps �� 2 attempts �� (150ms + 300ms manual + 200ms relaxed) = ~13 seconds
-  After:  10 steps �� 1 attempt �� 100ms (immediate failure) = ~1 second
+Before: 10 steps ?? 2 attempts ?? (150ms + 300ms manual + 200ms relaxed) = ~13 seconds
+  After:  10 steps ?? 1 attempt ?? 100ms (immediate failure) = ~1 second
   Improvement: 92% faster
 ```
 
@@ -88,8 +88,8 @@ Before: 10 steps �� 2 attempts �� (150ms + 300ms manual + 200ms relaxed)
 ### File: `UiBookmarks.cs`
 
 1. **Reduced Retry Count**
-   - `StepRetryCount`: 1 �� 0 (single attempt only)
-   - `StepRetryDelayMs`: 150ms �� 50ms
+   - `StepRetryCount`: 1 ?? 0 (single attempt only)
+   - `StepRetryDelayMs`: 150ms ?? 50ms
 
 2. **Enhanced Error Detection**
    - Added `skipRetries` flag propagation to `skipFallbacks`
@@ -153,7 +153,7 @@ Before: 10 steps �� 2 attempts �� (150ms + 300ms manual + 200ms relaxed)
 ### Manual Testing
 ```
 1. Launch Radium
-2. Open SpyWindow
+2. Open AutomationWindow
 3. Try operation with non-existent bookmark (e.g., delete PACS window)
 4. Observe:
    ? Failure reported in <500ms (previously 3-5 seconds)
@@ -191,7 +191,7 @@ var (hwnd, element) = UiBookmarks.ResolveWithRetry(KnownControl.WorklistOpenButt
 - ? **Backward Compatible**: No API changes
 - ? **Existing Bookmarks**: All bookmarks still resolve correctly
 - ? **Automation Modules**: No changes required
-- ? **SpyWindow**: Operations work identically
+- ? **AutomationWindow**: Operations work identically
 - ? **ProcedureExecutor**: No impact on automation sequences
 
 ---

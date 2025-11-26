@@ -1,4 +1,4 @@
-﻿# QUICKREF: Web Browser Element Picker Troubleshooting
+# QUICKREF: Web Browser Element Picker Troubleshooting
 
 **Feature**: Web Browser Element Picker Robustness  
 **Issue Fixed**: Bookmarks failing validation due to dynamic tab titles  
@@ -30,7 +30,7 @@ Result: not found (0 ms)
 ### Before Fix (Fragile)
 ```
 Browser Window:
-  ? UseName=True �� PROBLEM! Title changes with tabs
+  ? UseName=True ?? PROBLEM! Title changes with tabs
   ? UseClassName=True
   ? UseControlTypeId=True
 ```
@@ -38,9 +38,9 @@ Browser Window:
 ### After Fix (Robust)
 ```
 Browser Window:
-  ? UseName=False �� FIXED! Ignores dynamic titles
-  ? UseClassName=True �� Structural match
-  ? UseControlTypeId=True �� Stable identifier
+  ? UseName=False ?? FIXED! Ignores dynamic titles
+  ? UseClassName=True ?? Structural match
+  ? UseControlTypeId=True ?? Stable identifier
 ```
 
 ---
@@ -64,15 +64,15 @@ Browser Window:
 ### Quick Test
 1. Create bookmark with "Pick Web"
 2. Change browser tab title
-3. Click "Validate" in SpyWindow
+3. Click "Validate" in AutomationWindow
 4. Result should show: ? "found and highlighted"
 
 ### Expected Results
 ```
-Step 1: ClassName='Chrome_WidgetWin_1' �� Match ?
-Step 2: ClassName='BrowserRootView' �� Match ?
+Step 1: ClassName='Chrome_WidgetWin_1' ?? Match ?
+Step 2: ClassName='BrowserRootView' ?? Match ?
 ...
-Step 14: AutomationId='job-report-view-report-text' �� Match ?
+Step 14: AutomationId='job-report-view-report-text' ?? Match ?
 Resolved: Found and highlighted (45 ms)
 ```
 
@@ -121,7 +121,7 @@ Resolved: Found and highlighted (45 ms)
 ### Failure (Should Not Occur)
 ```
 "Validate: not found (64 ms)"
-�� Re-capture with "Pick Web" button
+?? Re-capture with "Pick Web" button
 ```
 
 ---

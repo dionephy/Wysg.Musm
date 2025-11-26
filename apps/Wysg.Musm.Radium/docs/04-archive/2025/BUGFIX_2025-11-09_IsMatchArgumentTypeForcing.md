@@ -1,4 +1,4 @@
-﻿# Bugfix: IsMatch and IsAlmostMatch Argument Type Forcing (2025-11-09)
+# Bugfix: IsMatch and IsAlmostMatch Argument Type Forcing (2025-11-09)
 
 ## Problem
 The IsMatch and IsAlmostMatch operations were forcing both Arg1 and Arg2 to be Var type when users clicked "Set" or "Run" buttons, preventing them from using String literals for comparison values.
@@ -19,7 +19,7 @@ The IsMatch and IsAlmostMatch operations were forcing both Arg1 and Arg2 to be V
 ## Root Cause
 
 ### Before Fix
-In `SpyWindow.Procedures.Exec.cs`, the `OnProcOpChanged` method:
+In `AutomationWindow.Procedures.Exec.cs`, the `OnProcOpChanged` method:
 
 ```csharp
 case "IsMatch":
@@ -64,7 +64,7 @@ case "IsAlmostMatch":
 ## Technical Details
 
 ### Files Modified
-**File**: `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs`
+**File**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs`
 
 **Method**: `OnProcOpChanged`
 
@@ -83,36 +83,36 @@ Other operations continue to work as designed:
 
 ### 1. Compare Variable to Literal String
 ```
-GetText(TextField) �� var1
+GetText(TextField) ?? var1
 IsMatch(var1, "expected value")
 Result: "true" or "false"
 ```
 
 ### 2. Validate Boolean Results
 ```
-IsVisible(Element) �� var1
+IsVisible(Element) ?? var1
 IsMatch(var1, "true")
 Result: "true" if element visible, "false" otherwise
 ```
 
 ### 3. Check Empty String
 ```
-GetText(TextField) �� var1
+GetText(TextField) ?? var1
 IsMatch(var1, "")
 Result: "true" if field empty
 ```
 
 ### 4. Compare Two Variables
 ```
-GetText(Field1) �� var1
-GetText(Field2) �� var2
+GetText(Field1) ?? var1
+GetText(Field2) ?? var2
 IsMatch(var1, var2)
 Result: "true" if fields match
 ```
 
 ### 5. Constant Validation
 ```
-GetCurrentPatientNumber �� var1
+GetCurrentPatientNumber ?? var1
 IsMatch(var1, "12345678")
 Result: "true" if patient number is exactly "12345678"
 ```
@@ -121,7 +121,7 @@ Result: "true" if patient number is exactly "12345678"
 
 ### Before Fix
 ```
-Step 1: GetText(Field) �� var1
+Step 1: GetText(Field) ?? var1
 Step 2: IsMatch  Arg1: var1 (Var)  Arg2: "expected" (String)
 Step 3: Click "Set" button
 Result: Arg2 changes from String to Var (BUG)
@@ -129,7 +129,7 @@ Result: Arg2 changes from String to Var (BUG)
 
 ### After Fix
 ```
-Step 1: GetText(Field) �� var1
+Step 1: GetText(Field) ?? var1
 Step 2: IsMatch  Arg1: var1 (Var)  Arg2: "expected" (String)
 Step 3: Click "Set" button
 Result: Arg2 remains String (FIXED)

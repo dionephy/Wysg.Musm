@@ -1,4 +1,4 @@
-﻿# Summary: InvokeSendReport and SendReportRetry PACS Methods Implementation
+# Summary: InvokeSendReport and SendReportRetry PACS Methods Implementation
 
 ## Date: 2025-11-09
 
@@ -7,15 +7,15 @@ Add two new PACS method items "InvokeSendReport" and "SendReportRetry" to the UI
 
 ## Files Modified
 
-### 1. SpyWindow.PacsMethodItems.xaml
-**Path**: `apps\Wysg.Musm.Radium\Views\SpyWindow.PacsMethodItems.xaml`
+### 1. AutomationWindow.PacsMethodItems.xaml
+**Path**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.PacsMethodItems.xaml`
 
 **Changes**:
 - Added `<ComboBoxItem Tag="InvokeSendReport">Invoke send report</ComboBoxItem>`
 - Added `<ComboBoxItem Tag="SendReportRetry">Send report retry</ComboBoxItem>`
 - Placed under "NEW: Send Report Actions" section after existing SendReport item
 
-**Impact**: Users can now select these methods from the PACS Method dropdown in SpyWindow Custom Procedures tab.
+**Impact**: Users can now select these methods from the PACS Method dropdown in AutomationWindow Custom Procedures tab.
 
 ### 2. PacsService.cs
 **Path**: `apps\Wysg.Musm.Radium\Services\PacsService.cs`
@@ -68,8 +68,8 @@ public async Task<bool> SendReportRetryAsync()
 
 | FR ID | Description |
 |-------|-------------|
-| FR-1190 | Add "Invoke send report" PACS method to SpyWindow |
-| FR-1191 | Add "Send report retry" PACS method to SpyWindow |
+| FR-1190 | Add "Invoke send report" PACS method to AutomationWindow |
+| FR-1191 | Add "Send report retry" PACS method to AutomationWindow |
 | FR-1192 | PacsService exposes InvokeSendReportAsync() wrapper |
 | FR-1193 | PacsService exposes SendReportRetryAsync() wrapper |
 | FR-1194 | Both methods return Task<bool>, always true after execution |
@@ -81,7 +81,7 @@ public async Task<bool> SendReportRetryAsync()
 ## How to Use
 
 ### Configuration (UI Spy Window)
-1. Open UI Spy: Tools �� UI Spy or SpyWindow.ShowInstance()
+1. Open UI Spy: Tools ?? UI Spy or AutomationWindow.ShowInstance()
 2. Select PACS profile from top-left dropdown
 3. Scroll down to "Custom Procedures" section
 4. From "PACS Method" dropdown, select:

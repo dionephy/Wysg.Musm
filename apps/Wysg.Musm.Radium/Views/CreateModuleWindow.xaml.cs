@@ -41,7 +41,7 @@ namespace Wysg.Musm.Radium.Views
         {
             try
             {
-                // Load custom procedures using the same pattern as SpyWindow
+                // Load custom procedures using the same pattern as AutomationWindow
                 var procPath = GetProcPath();
                 if (System.IO.File.Exists(procPath))
                 {
@@ -74,7 +74,7 @@ namespace Wysg.Musm.Radium.Views
             }
         }
         
-        // Helper to get proc path (same as SpyWindow pattern)
+        // Helper to get proc path (same as AutomationWindow pattern)
         private static string GetProcPath()
         {
             try

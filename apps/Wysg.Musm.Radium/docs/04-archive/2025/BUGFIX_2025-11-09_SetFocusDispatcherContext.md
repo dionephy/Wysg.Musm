@@ -1,4 +1,4 @@
-﻿# Bugfix: SetFocus Operation Dispatcher Context Issue (2025-11-09)
+# Bugfix: SetFocus Operation Dispatcher Context Issue (2025-11-09)
 
 ## Problem
 The `SetFocus` operation worked when called from MainViewModel automation modules but failed when tested from UI Spy window's Custom Procedures "Run" button.
@@ -6,12 +6,12 @@ The `SetFocus` operation worked when called from MainViewModel automation module
 ## Root Cause
 The `ExecuteSetFocus` method in `OperationExecutor.ElementOps.cs` was using `System.Windows.Application.Current?.Dispatcher.BeginInvoke()` to execute focus logic on the UI thread. This approach had two issues:
 
-1. **Dispatcher Context**: When called from SpyWindow, `Application.Current.Dispatcher` refers to SpyWindow's dispatcher, not the target PACS application's dispatcher.
+1. **Dispatcher Context**: When called from AutomationWindow, `Application.Current.Dispatcher` refers to AutomationWindow's dispatcher, not the target PACS application's dispatcher.
 2. **Unnecessary Complexity**: UIA's `AutomationElement.Focus()` method can be called from any thread without requiring dispatcher marshalling.
 
 ### Error Behavior
 - ? **Worked**: When called from MainViewModel automation (same dispatcher context)
-- ? **Failed**: When called from SpyWindow "Run" button (different dispatcher context)
+- ? **Failed**: When called from AutomationWindow "Run" button (different dispatcher context)
 - **Symptom**: Operation appeared to complete but focus wasn't actually set
 
 ## Solution
@@ -80,7 +80,7 @@ private static (string preview, string? value) ExecuteSetFocus(AutomationElement
 - **Simpler**: Removes 50+ lines of dispatcher code
 
 ### Benefits
-1. ? **Works in SpyWindow**: No longer depends on Application.Current dispatcher
+1. ? **Works in AutomationWindow**: No longer depends on Application.Current dispatcher
 2. ? **Works in MainViewModel**: Still functions correctly in automation
 3. ? **Simpler Code**: Reduced from ~80 lines to ~40 lines
 4. ? **Better Performance**: No task/dispatcher overhead
@@ -96,7 +96,7 @@ private static (string preview, string? value) ExecuteSetFocus(AutomationElement
 ## Testing
 
 ### Test Scenarios
-1. **SpyWindow Custom Procedures Run Button** ?
+1. **AutomationWindow Custom Procedures Run Button** ?
    - Create procedure with SetFocus operation
    - Click "Run" button
    - Verify focus is set
@@ -130,7 +130,7 @@ Debug Output:
 ## Impact
 
 ### Before Fix
-- ? SetFocus failed in SpyWindow testing
+- ? SetFocus failed in AutomationWindow testing
 - ? Users couldn't test procedures with SetFocus
 - ? Complex dispatcher code
 - ? Potential threading issues
@@ -194,4 +194,4 @@ Consider reviewing other operations for similar dispatcher dependencies:
 - No further changes needed
 
 ## Conclusion
-Simplified SetFocus implementation by removing unnecessary dispatcher marshalling. Operation now works correctly in all contexts (SpyWindow, MainViewModel, automation modules) with cleaner, more maintainable code.
+Simplified SetFocus implementation by removing unnecessary dispatcher marshalling. Operation now works correctly in all contexts (AutomationWindow, MainViewModel, automation modules) with cleaner, more maintainable code.

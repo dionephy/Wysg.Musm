@@ -1,8 +1,8 @@
-# SpyWindow Button Functions Explained
+# AutomationWindow Button Functions Explained
 
 ## Quick Reference Guide
 
-This document explains the purpose of the **Map**, **Resolve**, and **Reload** buttons in the SpyWindow toolbar, and whether they are necessary for typical workflows.
+This document explains the purpose of the **Map**, **Resolve**, and **Reload** buttons in the AutomationWindow toolbar, and whether they are necessary for typical workflows.
 
 ---
 
@@ -22,7 +22,7 @@ This document explains the purpose of the **Map**, **Resolve**, and **Reload** b
 4. The element's chain is captured and saved to that bookmark
 
 **Alternative method:**
-- You can also use **Ctrl+Shift+Click** directly on any element while SpyWindow is open
+- You can also use **Ctrl+Shift+Click** directly on any element while AutomationWindow is open
 - This shows a quick-pick menu to choose which bookmark to map to
 
 **Real-world example:**
@@ -35,7 +35,7 @@ Scenario: You want to bookmark the "Patient Name" field
 ```
 
 **Is it necessary?** 
-? **YES** - Essential for creating/updating bookmark mappings. This is how you tell SpyWindow "this bookmark should point to this UI element."
+? **YES** - Essential for creating/updating bookmark mappings. This is how you tell AutomationWindow "this bookmark should point to this UI element."
 
 ---
 
@@ -50,7 +50,7 @@ Scenario: You want to bookmark the "Patient Name" field
 **How to use:**
 1. Select a bookmark from the dropdown (e.g., "report text")
 2. Click the **Resolve** button
-3. SpyWindow will:
+3. AutomationWindow will:
    - Search for the element using the saved chain
    - Show a colored border around it if found
    - Display "Resolved successfully" in status
@@ -93,16 +93,16 @@ Scenario: You want to verify your bookmark still works
 
 **When you might use it:**
 - After manually editing `ui-bookmarks.json` in a text editor
-- After another instance of SpyWindow saved bookmarks
+- After another instance of AutomationWindow saved bookmarks
 - To discard unsaved experimental changes
 - When bookmark dropdown seems out of sync
 
 **Real-world example:**
 ```
 Scenario: You edited the bookmark JSON file manually
-1. Close SpyWindow
+1. Close AutomationWindow
 2. Edit C:\Users\...\AppData\Roaming\Wysg.Musm\Radium\ui-bookmarks.json
-3. Open SpyWindow
+3. Open AutomationWindow
 4. Click "Reload" to load your manual changes
 ```
 
@@ -161,7 +161,7 @@ Pick element ¡æ Edit chain ¡æ Map to bookmark ¡æ Save
 1. After creating a bookmark: "Did I capture the right element?"
 2. PACS UI changed: "Does my bookmark still work?"
 3. Automation failing: "Why can't it find the element?"
-4. Learning SpyWindow: "What does this bookmark actually point to?"
+4. Learning AutomationWindow: "What does this bookmark actually point to?"
 
 **Verdict:** **Highly recommended to keep** - Provides essential validation and debugging capabilities.
 
@@ -171,7 +171,7 @@ Pick element ¡æ Edit chain ¡æ Map to bookmark ¡æ Save
 
 **Why it's rarely needed:**
 - **Automatic persistence** - Bookmarks save automatically when you add/edit/delete
-- **Single instance use** - Most users only run one SpyWindow at a time
+- **Single instance use** - Most users only run one AutomationWindow at a time
 - **No manual editing** - UI provides all bookmark management features
 - **Edge case only** - Only needed for advanced scenarios
 
@@ -184,7 +184,7 @@ Pick element ¡æ Edit chain ¡æ Map to bookmark ¡æ Save
 **Could you remove it?**
 - **Yes, safely** - 95% of users would never notice
 - **No disruption** - All normal workflows work without it
-- **Still available** - Can always restart SpyWindow to reload
+- **Still available** - Can always restart AutomationWindow to reload
 
 **Verdict:** **Consider removing or hiding** - Most users will never use this button.
 
@@ -270,9 +270,9 @@ Menu: File ¡æ Reload Bookmarks (Advanced)
 ### Workflow 4: Reload After Manual Edit (Rare)
 
 ```
-1. Exit SpyWindow
+1. Exit AutomationWindow
 2. Edit ui-bookmarks.json manually
-3. Launch SpyWindow
+3. Launch AutomationWindow
 4. Click [Reload]
 ```
 

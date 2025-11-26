@@ -1,4 +1,4 @@
-﻿# ENHANCEMENT: Spy Window UI Enhancements (2025-11-02)
+# ENHANCEMENT: Spy Window UI Enhancements (2025-11-02)
 
 **Status**: ? Implemented (Updated)
 **Date**: 2025-11-02
@@ -34,16 +34,16 @@ Three enhancements to the Spy Window for improved UI automation capabilities:
 
 ```
 GetText (Old):
-  Element not resolved yet �� "(no element)" ? Immediate failure
+  Element not resolved yet ?? "(no element)" ? Immediate failure
   
 GetTextWait (New - Fixed):
-  Attempt 1 (0ms): Element not found �� Wait 200ms
-  Attempt 2 (200ms): Element not found �� Wait 200ms
-  Attempt 3 (400ms): Element resolved but not visible �� Wait 200ms
-  Attempt 4 (600ms): Element visible �� Return text ? Success
+  Attempt 1 (0ms): Element not found ?? Wait 200ms
+  Attempt 2 (200ms): Element not found ?? Wait 200ms
+  Attempt 3 (400ms): Element resolved but not visible ?? Wait 200ms
+  Attempt 4 (600ms): Element visible ?? Return text ? Success
   
   OR if never found/visible:
-  All attempts exhausted after 5000ms �� "(timeout - not visible)" ? Clear failure reason
+  All attempts exhausted after 5000ms ?? "(timeout - not visible)" ? Clear failure reason
 ```
 
 ### Technical Details
@@ -101,12 +101,12 @@ internal static (string preview, string? value) ExecuteGetTextWaitWithRetry(
 
 ```
 Custom Procedure: GetBannerPatientNumberWait
-  Step 1: GetTextWait �� Arg1 Type: Element �� Arg1: PatientNumberBanner �� Output: var1
-  Step 2: Trim �� Arg1 Type: Var �� Arg1: var1 �� Output: patientNumber
+  Step 1: GetTextWait ?? Arg1 Type: Element ?? Arg1: PatientNumberBanner ?? Output: var1
+  Step 2: Trim ?? Arg1 Type: Var ?? Arg1: var1 ?? Output: patientNumber
 ```
 
 ### Key Files Changed
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.OperationItems.xaml` - Added GetTextWait to operations list
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.OperationItems.xaml` - Added GetTextWait to operations list
 - `apps\Wysg.Musm.Radium\Services\OperationExecutor.ElementOps.cs` - Implemented ExecuteGetTextWaitWithRetry()
 - `apps\Wysg.Musm.Radium\Services\OperationExecutor.cs` - Added special routing for GetTextWait
 
@@ -129,28 +129,28 @@ Custom Procedure: GetBannerPatientNumberWait
 
 ```
 GetCurrentFindings (Old):
-  Report section loading �� "" (empty) ? Premature read
+  Report section loading ?? "" (empty) ? Premature read
   
 GetCurrentFindingsWait (New):
-  Report section loading �� Wait up to 5s �� Report ready �� Return text ? Success
+  Report section loading ?? Wait up to 5s ?? Report ready ?? Return text ? Success
 ```
 
 ### Usage Example
 
 ```
 Custom Procedure: FetchReportForComparison
-  Step 1: GetCurrentFindingsWait �� Output: findings
-  Step 2: GetCurrentConclusion �� Output: conclusion
-  Step 3: Merge �� Arg1: findings �� Arg2: conclusion �� Output: fullReport
+  Step 1: GetCurrentFindingsWait ?? Output: findings
+  Step 2: GetCurrentConclusion ?? Output: conclusion
+  Step 3: Merge ?? Arg1: findings ?? Arg2: conclusion ?? Output: fullReport
 ```
 
 ### Key Files Changed
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.PacsMethodItems.xaml` - Added GetCurrentFindingsWait to PACS methods list
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.PacsMethodItems.xaml` - Added GetCurrentFindingsWait to PACS methods list
 - `apps\Wysg.Musm.Radium\Services\PacsService.cs` - Added GetCurrentFindingsWaitAsync() method
 
 ---
 
-## 3. "Map to:" �� "Bookmark:" Label Change
+## 3. "Map to:" ?? "Bookmark:" Label Change
 
 ### What Changed
 - Label in top toolbar changed from "Map to:" to "Bookmark:"
@@ -172,16 +172,16 @@ After:
 ```
 
 ### Key Files Changed
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.xaml` - Changed TextBlock.Text from "Map to:" to "Bookmark:"
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.xaml` - Changed TextBlock.Text from "Map to:" to "Bookmark:"
 
 ---
 
 ## Implementation Summary
 
 ### Files Modified (6)
-1. **SpyWindow.OperationItems.xaml** - Added GetTextWait to operations
-2. **SpyWindow.PacsMethodItems.xaml** - Added GetCurrentFindingsWait to PACS methods
-3. **SpyWindow.xaml** - Changed label from "Map to:" to "Bookmark:"
+1. **AutomationWindow.OperationItems.xaml** - Added GetTextWait to operations
+2. **AutomationWindow.PacsMethodItems.xaml** - Added GetCurrentFindingsWait to PACS methods
+3. **AutomationWindow.xaml** - Changed label from "Map to:" to "Bookmark:"
 4. **OperationExecutor.ElementOps.cs** - Implemented GetTextWaitWithRetry operation
 5. **OperationExecutor.cs** - Added special routing for GetTextWait
 6. **PacsService.cs** - Added GetCurrentFindingsWaitAsync() method
@@ -271,7 +271,7 @@ Element resolution happened BEFORE GetTextWait was called, so there was no oppor
 
 ### Configurable Timeouts
 - Add optional Arg2 parameter to specify custom timeout (default 5000ms)
-- Example: `GetTextWait �� Arg1: Element �� Arg2: 10000 �� Output: text`
+- Example: `GetTextWait ?? Arg1: Element ?? Arg2: 10000 ?? Output: text`
 
 ### Progress Feedback
 - Show elapsed wait time in operation output preview
@@ -293,7 +293,7 @@ Element resolution happened BEFORE GetTextWait was called, so there was no oppor
 
 ### Updated Files
 - `README.md` - Added cumulative change entry
-- `ENHANCEMENT_2025-11-02_SpyWindowUIEnhancements.md` - This document (updated with bug fix details)
+- `ENHANCEMENT_2025-11-02_AutomationWindowUIEnhancements.md` - This document (updated with bug fix details)
 
 ### Related Documentation
 - `PROCEDUREEXECUTOR_REFACTORING.md` - Architecture context

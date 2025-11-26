@@ -1,4 +1,4 @@
-﻿# COMPLETE: Web Browser Element Picker Implementation
+# COMPLETE: Web Browser Element Picker Implementation
 
 **Date**: 2025-11-10  
 **Status**: ? Complete  
@@ -10,13 +10,13 @@
 
 Successfully implemented web browser element picker feature in UI Spy window with the following components:
 
-### 1. User Interface (SpyWindow.xaml)
+### 1. User Interface (AutomationWindow.xaml)
 - Added "Pick Web" button to toolbar
 - Positioned next to existing "Pick" button
 - Tooltip: "Pick element from web browser and save with window name"
-- Button style: `SpyWindowButtonStyle` (dark theme)
+- Button style: `AutomationWindowButtonStyle` (dark theme)
 
-### 2. Event Handler (SpyWindow.Bookmarks.cs - OnPickWeb)
+### 2. Event Handler (AutomationWindow.Bookmarks.cs - OnPickWeb)
 ```csharp
 private async void OnPickWeb(object sender, RoutedEventArgs e)
 ```
@@ -29,11 +29,11 @@ private async void OnPickWeb(object sender, RoutedEventArgs e)
 - Automatic save to bookmarks store
 - List refresh after save
 
-### 3. Naming Dialog (SpyWindow.Bookmarks.cs - PromptForBookmarkName)
+### 3. Naming Dialog (AutomationWindow.Bookmarks.cs - PromptForBookmarkName)
 ```csharp
 private string? PromptForBookmarkName(string windowTitle)
 ```
-- Dark-themed WPF dialog (500��200px)
+- Dark-themed WPF dialog (500??200px)
 - Shows browser window title as context
 - Text input for bookmark name
 - Save/Cancel buttons with keyboard shortcuts
@@ -71,8 +71,8 @@ private string? PromptForBookmarkName(string windowTitle)
 2. `PromptForBookmarkName()` - Dialog creation (~100 lines)
 
 ### Modified Files
-1. `SpyWindow.xaml` - Added button (1 line)
-2. `SpyWindow.Bookmarks.cs` - Added handlers and using statements (~195 lines total)
+1. `AutomationWindow.xaml` - Added button (1 line)
+2. `AutomationWindow.Bookmarks.cs` - Added handlers and using statements (~195 lines total)
 
 ### Fixed Issues
 - Syntax error on line 479 (removed extra comma from if condition)
@@ -160,7 +160,7 @@ Build Time: <20 seconds
 - **Bookmark System**: Uses existing `UiBookmarks.Load()` / `Save()` / `GetMapping()`
 - **Element Capture**: Reuses `CaptureUnderMouse()` method
 - **UI Spy Toolbar**: Consistent with existing button layout
-- **Dark Theme**: Matches SpyWindow styling
+- **Dark Theme**: Matches AutomationWindow styling
 
 ### With Custom Procedures
 - Saved bookmarks available in Element dropdown

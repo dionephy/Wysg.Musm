@@ -1,4 +1,4 @@
-﻿# Implementation Complete: SendReportWithoutHeader
+# Implementation Complete: SendReportWithoutHeader
 
 **Date:** 2025-11-10  
 **Status:** ? Completed and Verified
@@ -6,7 +6,7 @@
 ## Changes Summary
 
 ### Files Modified
-1. **SpyWindow.PacsMethodItems.xaml**
+1. **AutomationWindow.PacsMethodItems.xaml**
    - Removed: "Send report retry" ComboBoxItem
    - Added: "Send report without header" ComboBoxItem
 
@@ -28,7 +28,7 @@
 ## Testing Checklist
 - [x] Code compiles without errors
 - [x] No breaking changes detected
-- [ ] Manual verification in SpyWindow (requires runtime testing)
+- [ ] Manual verification in AutomationWindow (requires runtime testing)
   - [ ] Verify "Send report without header" appears in dropdown
   - [ ] Verify "Send report retry" is removed from dropdown
   - [ ] Test custom procedure configuration
@@ -43,7 +43,7 @@ Users with existing SendReportRetry configurations should:
 
 ## Next Steps
 1. Deploy to test environment
-2. Perform manual testing in SpyWindow
+2. Perform manual testing in AutomationWindow
 3. Update user training materials if applicable
 4. Communicate changes to users with existing SendReportRetry configurations
 

@@ -69,7 +69,7 @@ Output: "Test_Multiple_Underscores"  // Removes consecutive underscores
 
 ### 1. New Collection
 
-**SpyWindow.xaml.cs**:
+**AutomationWindow.xaml.cs**:
 ```csharp
 // NEW: Combined collection for procedure Arg ComboBoxes
 public ObservableCollection<string> AllBookmarkTags { get; } = new();
@@ -115,7 +115,7 @@ private void LoadBookmarksIntoComboBox()
 
 ### 3. XAML Binding Update
 
-**SpyWindow.xaml** - Changed from `KnownControlTags` to `AllBookmarkTags`:
+**AutomationWindow.xaml** - Changed from `KnownControlTags` to `AllBookmarkTags`:
 
 ```xaml
 <!-- Before -->
@@ -132,7 +132,7 @@ Applied to:
 
 ### 4. Element Resolution
 
-**SpyWindow.Procedures.Exec.cs**:
+**AutomationWindow.Procedures.Exec.cs**:
 ```csharp
 private AutomationElement? ResolveElement(ProcArg arg, Dictionary<string, string?> vars)
 {
@@ -171,7 +171,7 @@ private AutomationElement? ResolveElement(ProcArg arg, Dictionary<string, string
 ### Step 1: Create Dynamic Bookmark
 
 ```
-1. Open SpyWindow -> UI Bookmark tab
+1. Open AutomationWindow -> UI Bookmark tab
 2. Use "Pick" or "Pick Web" to capture element
 3. Click "+" button
 4. Enter name: "My Custom Button"
@@ -183,7 +183,7 @@ Status shows: "Added bookmark 'My Custom Button' with tag 'My_Custom_Button'"
 ### Step 2: Use in Procedure
 
 ```
-1. Open SpyWindow -> Procedure tab
+1. Open AutomationWindow -> Procedure tab
 2. Select custom procedure
 3. Add operation: GetText
 4. Set Arg1 Type = Element
@@ -351,18 +351,18 @@ public class BookmarkItem : INotifyPropertyChanged
 
 ## Files Modified
 
-1. **SpyWindow.xaml.cs** (~50 lines added)
+1. **AutomationWindow.xaml.cs** (~50 lines added)
    - Added `AllBookmarkTags` collection
    - Added `SanitizeBookmarkTag()` method
    - Updated `LoadBookmarksIntoComboBox()` to populate tags
    - Updated `OnAddBookmark()` to show generated tag
 
-2. **SpyWindow.xaml** (3 ComboBox bindings changed)
+2. **AutomationWindow.xaml** (3 ComboBox bindings changed)
    - Changed Arg1 Element ComboBox from `KnownControlTags` to `AllBookmarkTags`
    - Changed Arg2 Element ComboBox from `KnownControlTags` to `AllBookmarkTags`
    - Changed Arg3 Element ComboBox from `KnownControlTags` to `AllBookmarkTags`
 
-3. **SpyWindow.Procedures.Exec.cs** (~10 lines added)
+3. **AutomationWindow.Procedures.Exec.cs** (~10 lines added)
    - Updated `ResolveElement()` to handle dynamic bookmarks
 
 4. **ProcedureExecutor.Elements.cs** (~10 lines added)

@@ -1,10 +1,10 @@
-# SpyWindow ComboBox Display Fix - 2025-11-25
+# AutomationWindow ComboBox Display Fix - 2025-11-25
 
 ## Quick Summary
 
 **Problem**: Bookmark ComboBox was showing "Wysg.Musm.Radium.Views.BookmarkItem" instead of bookmark names.
 
-**Solution**: Fixed `SpyWindowComboBoxStyle` template to use `ContentPresenter` instead of `TextBlock` with `PriorityBinding`.
+**Solution**: Fixed `AutomationWindowComboBoxStyle` template to use `ContentPresenter` instead of `TextBlock` with `PriorityBinding`.
 
 **Result**: ? Bookmark names now display correctly in the ComboBox.
 
@@ -12,7 +12,7 @@
 
 ## What Was Changed
 
-### File: `apps/Wysg.Musm.Radium/Views/SpyWindow.Styles.xaml`
+### File: `apps/Wysg.Musm.Radium/Views/AutomationWindow.Styles.xaml`
 
 **Before:**
 ```xaml
@@ -67,7 +67,7 @@
 - Example: "report text" instead of "Wysg.Musm.Radium.Views.BookmarkItem"
 
 ### ? No Breaking Changes
-- All existing ComboBoxes using `SpyWindowComboBoxStyle` still work
+- All existing ComboBoxes using `AutomationWindowComboBoxStyle` still work
 - DisplayMemberPath continues to work as expected
 - Custom templates and selectors still supported
 
@@ -77,7 +77,7 @@
 
 - **MAP_METHOD_EXPLANATION.md** - Explains what "Map Method" is for
 - **ENHANCEMENT_2025-11-25_DynamicUIBookmarks.md** - Full dynamic bookmarks feature documentation
-- **ENHANCEMENT_2025-11-25_SpyWindowUICleanup.md** - UI cleanup changes
+- **ENHANCEMENT_2025-11-25_AutomationWindowUICleanup.md** - UI cleanup changes
 
 ---
 
@@ -87,7 +87,7 @@ Since you asked about the "Map Method" ComboBox:
 
 ### What is Map Method?
 
-The Map Method determines HOW the SpyWindow locates UI elements in the PACS application.
+The Map Method determines HOW the AutomationWindow locates UI elements in the PACS application.
 
 ### Two Options:
 

@@ -1,4 +1,4 @@
-﻿# Debug Logging Implementation - 2025-01-16
+# Debug Logging Implementation - 2025-01-16
 
 ## Summary
 Added comprehensive debug logging to diagnose and fix 4 critical issues with PACS automation operations.
@@ -51,10 +51,10 @@ The `GetCurrentStudyDateTime` operation now automatically formats the datetime v
 
 **Implementation**:
 - `ProcedureExecutor.cs`: Format in `ExecuteInternal` method
-- `SpyWindow.Procedures.Exec.cs`: Format in `ExecuteSingle` method
+- `AutomationWindow.Procedures.Exec.cs`: Format in `ExecuteSingle` method
 
 ### IsMatch Operation
-Added new `IsMatch` operation to SpyWindow Custom Procedures for comparing two variable values.
+Added new `IsMatch` operation to AutomationWindow Custom Procedures for comparing two variable values.
 
 **Purpose**: Compare two variables and return "true" if they match (case-sensitive), "false" otherwise.
 
@@ -68,14 +68,14 @@ Added new `IsMatch` operation to SpyWindow Custom Procedures for comparing two v
 **Preview Format**: `{result} ('{value1}' vs '{value2}')`
 
 **Example Usage**:
-1. GetCurrentPatientNumber �� var1
-2. GetText from PatientIdField �� var2  
-3. IsMatch(var1, var2) �� var3
+1. GetCurrentPatientNumber ?? var1
+2. GetText from PatientIdField ?? var2  
+3. IsMatch(var1, var2) ?? var3
 4. Result: var3 = "true" if patient numbers match, "false" otherwise
 
 **Implementation Locations**:
 - `ProcedureExecutor.cs` - Headless executor for automation
-- `SpyWindow.Procedures.Exec.cs` - Interactive editor for testing
-- `SpyWindow.OperationItems.xaml` - Operation dropdown list
+- `AutomationWindow.Procedures.Exec.cs` - Interactive editor for testing
+- `AutomationWindow.OperationItems.xaml` - Operation dropdown list
 
 ---

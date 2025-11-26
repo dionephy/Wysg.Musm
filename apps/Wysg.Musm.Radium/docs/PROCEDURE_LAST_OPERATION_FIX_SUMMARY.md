@@ -73,7 +73,7 @@ return lastOperationResult ?? string.Empty;  // FIX: Return blank if null
 - No more "ghost data" from previous successful operations
 
 ### 3. Better Debugging
-- SpyWindow preview column shows actual operation status
+- AutomationWindow preview column shows actual operation status
 - Users can see which operation failed in the sequence
 - Clear distinction between "empty content" vs. "extraction failed"
 
@@ -84,7 +84,7 @@ return lastOperationResult ?? string.Empty;  // FIX: Return blank if null
 
 ## Testing Recommendations
 
-### SpyWindow Manual Tests
+### AutomationWindow Manual Tests
 
 **Test 1: Success Path**
 1. Create procedure: GetText(ReportText) ¡æ Split("\n", 0) ¡æ Trim()
@@ -116,7 +116,7 @@ return lastOperationResult ?? string.Empty;  // FIX: Return blank if null
 1. Configure GetCurrentConclusion: GetText ¡æ Split("WRONG_SEP", 0)
 2. Run AddPreviousStudy automation module
 3. **Expected**: Previous study has blank conclusion field
-4. **Expected**: Can debug by testing procedure in SpyWindow
+4. **Expected**: Can debug by testing procedure in AutomationWindow
 
 **Test 6: Regression - Existing Working Procedures**
 1. Test GetCurrentStudyRemark (single operation)
@@ -134,7 +134,7 @@ return lastOperationResult ?? string.Empty;  // FIX: Return blank if null
 
 **Scenario B: Your procedure sometimes failed, but you didn't notice**
 - After fix: You'll now see blank results when final operation fails
-- **Action**: Review your procedures in SpyWindow to ensure all operations succeed
+- **Action**: Review your procedures in AutomationWindow to ensure all operations succeed
 - **Benefit**: You'll now be aware of failures instead of seeing stale data
 
 **Scenario C: You worked around the bug by putting critical operations last**
@@ -148,7 +148,7 @@ return lastOperationResult ?? string.Empty;  // FIX: Return blank if null
 
 ### Debugging Procedures After Fix
 
-1. **Test in SpyWindow first**: Always test procedures before deploying to automation
+1. **Test in AutomationWindow first**: Always test procedures before deploying to automation
 2. **Check preview column**: Shows status for each operation ("(null)", "(error)", "(no element)")
 3. **Use Set button**: Test each operation individually to isolate failures
 4. **Review order**: Put most reliable operations first, critical operation last
@@ -190,16 +190,16 @@ Changed from `return last;` to `return lastOperationResult ?? string.Empty;`:
 A: If your procedures always succeeded, no change. If they sometimes failed, you'll now see accurate (blank) results instead of stale data.
 
 ### Q: Why do I get blank results after this fix?
-A: Your procedure's final operation is failing or returning null. Test it in SpyWindow to identify which operation is failing.
+A: Your procedure's final operation is failing or returning null. Test it in AutomationWindow to identify which operation is failing.
 
 ### Q: Can I still get intermediate results from a procedure?
-A: Yes, but you need to explicitly reference them. Use variable assignment (`OutputVar` column in SpyWindow) and reference the variable in subsequent operations or return the variable in a final operation.
+A: Yes, but you need to explicitly reference them. Use variable assignment (`OutputVar` column in AutomationWindow) and reference the variable in subsequent operations or return the variable in a final operation.
 
 ### Q: What if I want the old behavior back?
 A: The old behavior was a bug that masked failures. To get partial results, restructure your procedure to return the intermediate result you want as the final operation, or add a final operation that references the intermediate variable.
 
 ### Q: How do I debug a procedure that now returns blank?
-A: Open SpyWindow, load the procedure, click "Run" to see all operation previews. The preview column will show which operation failed and why ("(null)", "(error)", "(no element)", etc.).
+A: Open AutomationWindow, load the procedure, click "Run" to see all operation previews. The preview column will show which operation failed and why ("(null)", "(error)", "(no element)", etc.).
 
 ## Example Refactoring
 
@@ -244,4 +244,4 @@ This fix eliminates a critical bug that masked procedure failures and made autom
 - **Debuggable**: Failures are visible, not hidden
 - **Correct**: Matches standard programming semantics
 
-Users should test their existing procedures in SpyWindow and refactor any that relied on the accumulation bug to return stale data on failure.
+Users should test their existing procedures in AutomationWindow and refactor any that relied on the accumulation bug to return stale data on failure.

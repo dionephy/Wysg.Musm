@@ -40,9 +40,9 @@ This layout clarifies the distinction between:
 
 ## Files Modified
 
-1. **`Views/SpyWindow.xaml`** - Updated button text and layout
-2. **`Views/SpyWindow.PacsMethods.cs`** - Updated status messages and dialog titles
-3. **`Views/SpyWindow.Procedures.Exec.cs`** - Updated status messages
+1. **`Views/AutomationWindow.xaml`** - Updated button text and layout
+2. **`Views/AutomationWindow.PacsMethods.cs`** - Updated status messages and dialog titles
+3. **`Views/AutomationWindow.Procedures.Exec.cs`** - Updated status messages
 4. **`docs/00-current/DYNAMIC_PACS_METHODS.md`** - Updated documentation
 
 ## Status Messages Updated

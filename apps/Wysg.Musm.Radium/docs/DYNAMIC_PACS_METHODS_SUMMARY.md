@@ -7,7 +7,7 @@ Successfully implemented dynamic PACS method management system for Wysg.Musm.Rad
 ## What Changed
 
 ### Before ?
-- PACS methods hard-coded in `SpyWindow.PacsMethodItems.xaml`
+- PACS methods hard-coded in `AutomationWindow.PacsMethodItems.xaml`
 - No way to add custom methods without code changes
 - Same methods for all PACS profiles
 
@@ -21,15 +21,15 @@ Successfully implemented dynamic PACS method management system for Wysg.Musm.Rad
 
 1. **`Models/PacsMethod.cs`** - Data model for PACS method
 2. **`Services/PacsMethodManager.cs`** - CRUD operations and storage
-3. **`Views/SpyWindow.PacsMethods.cs`** - UI management logic
+3. **`Views/AutomationWindow.PacsMethods.cs`** - UI management logic
 4. **`docs/04-archive/2025/FEATURE_2025-02-02_DynamicPacsMethods.md`** - Full documentation
 5. **`docs/PACS_METHODS_QUICKREF.md`** - Quick reference guide
 
 ## Files Modified
 
-1. **`Views/SpyWindow.xaml.cs`** - Added `InitializePacsMethods()` call
-2. **`Views/SpyWindow.xaml`** - Changed ComboBox binding to dynamic collection, added management buttons
-3. **`Views/SpyWindow.Procedures.Exec.cs`** - Updated handlers to support new format
+1. **`Views/AutomationWindow.xaml.cs`** - Added `InitializePacsMethods()` call
+2. **`Views/AutomationWindow.xaml`** - Changed ComboBox binding to dynamic collection, added management buttons
+3. **`Views/AutomationWindow.Procedures.Exec.cs`** - Updated handlers to support new format
 
 ## Build Status
 

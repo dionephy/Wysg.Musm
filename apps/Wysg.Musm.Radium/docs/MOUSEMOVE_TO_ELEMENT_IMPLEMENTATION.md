@@ -1,7 +1,7 @@
-﻿# MouseMoveToElement Implementation Summary (2025-10-18)
+# MouseMoveToElement Implementation Summary (2025-10-18)
 
 ## User Request
-Add a new operation "MouseMoveToElement" to SpyWindow �� Custom Procedures that moves the mouse cursor to the center of a UI element without clicking.
+Add a new operation "MouseMoveToElement" to AutomationWindow ?? Custom Procedures that moves the mouse cursor to the center of a UI element without clicking.
 
 ## Implementation Complete ?
 
@@ -13,7 +13,7 @@ Add a new operation "MouseMoveToElement" to SpyWindow �� Custom Procedures t
    - Moves cursor using Win32 SetCursorPos API
    - Returns preview: `(moved to element center X,Y)`
 
-2. **SpyWindow Support** (Interactive Testing)
+2. **AutomationWindow Support** (Interactive Testing)
    - Added MouseMoveToElement to operation dropdown
    - Configured as Element-only operation (Arg2/Arg3 disabled)
    - Implements same logic as headless executor
@@ -32,7 +32,7 @@ Add a new operation "MouseMoveToElement" to SpyWindow �� Custom Procedures t
 2. `apps\Wysg.Musm.Radium\Services\NativeMouseHelper.cs`
    - Changed SetCursorPos from private to public
 
-3. `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs`
+3. `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs`
    - Added MouseMoveToElement to OnProcOpChanged
    - Implemented MouseMoveToElement case in ExecuteSingle
 
@@ -82,7 +82,7 @@ Add a new operation "MouseMoveToElement" to SpyWindow �� Custom Procedures t
 ?? SQL warnings present (expected) - PostgreSQL syntax in documentation files
 
 ### Testing Instructions
-1. Open SpyWindow (Settings �� Automation �� Spy button)
+1. Open AutomationWindow (Settings ?? Automation ?? Spy button)
 2. Navigate to Custom Procedures tab
 3. Click "Add" to add a new operation row
 4. Select "MouseMoveToElement" from operation dropdown

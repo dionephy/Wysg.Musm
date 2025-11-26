@@ -38,7 +38,7 @@
 **Root Cause**: In FlaUI library, `AutomationElement.SetFocus()` is a protected method, not public. The correct public method is `Focus()`.
 
 **Fix**: Changed `element.SetFocus()` to `element.Focus()` in both files:
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs` (line 223)
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs` (line 223)
 - `apps\Wysg.Musm.Radium\Services\ProcedureExecutor.cs` (line 329)
 
 ---
@@ -63,7 +63,7 @@
    - Removed duplicate `SearchResultsList` enum entry
    - Fixed extra closing brace
 
-2. `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs`
+2. `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs`
    - Changed `SetFocus()` to `Focus()`
 
 3. `apps\Wysg.Musm.Radium\Services\ProcedureExecutor.cs`
@@ -105,8 +105,8 @@ All requested features are now **fully implemented and building successfully**:
 
 The implementation is complete. You can now:
 
-1. **Test in SpyWindow**:
-   - Open SpyWindow (Settings ¡æ Automation ¡æ Spy)
+1. **Test in AutomationWindow**:
+   - Open AutomationWindow (Settings ¡æ Automation ¡æ Spy)
    - Verify new PACS methods appear in dropdown
    - Map UI elements to new KnownControls
    - Test SetFocus operation

@@ -1,24 +1,24 @@
-# SpyWindow.xaml Refactoring Summary
+# AutomationWindow.xaml Refactoring Summary
 
 ## Overview
-The SpyWindow.xaml file has been successfully split into multiple resource dictionary files to improve maintainability and reduce file size. This refactoring addresses the issue of the single XAML file being too long (~750 lines) and difficult to maintain.
+The AutomationWindow.xaml file has been successfully split into multiple resource dictionary files to improve maintainability and reduce file size. This refactoring addresses the issue of the single XAML file being too long (~750 lines) and difficult to maintain.
 
 ## Files Created
 
-### 1. SpyWindow.Styles.xaml (~200 lines)
+### 1. AutomationWindow.Styles.xaml (~200 lines)
 **Purpose**: Contains all control styles and templates
 **Contents**:
 - Dark theme color brushes (Background, Panel, Accent, Border, etc.)
-- Button style (SpyWindowButtonStyle)
+- Button style (AutomationWindowButtonStyle)
 - TextBox style (DarkTextBox)
-- ComboBox style and template (SpyWindowComboBoxStyle)
+- ComboBox style and template (AutomationWindowComboBoxStyle)
 - CheckBox style and template (DarkCheckBox)
 - ScrollBar style
 - TreeView and TreeViewItem styles
 - DataGrid, DataGridColumnHeader, and DataGridCell styles
 - GroupBox and TextBlock styles
 
-### 2. SpyWindow.PacsMethodItems.xaml (~50 lines)
+### 2. AutomationWindow.PacsMethodItems.xaml (~50 lines)
 **Purpose**: Contains all PACS Method ComboBox items
 **Contents**: x:Array of ComboBoxItem elements including:
 - Search Results List getters (ID, Name, Sex, BirthDate, Age, etc.)
@@ -29,7 +29,7 @@ The SpyWindow.xaml file has been successfully split into multiple resource dicti
 - Screen control (SetCurrentStudyInMainScreen, SetPreviousStudyInSubScreen)
 - **NEW**: WorklistIsVisible visibility check
 
-### 3. SpyWindow.OperationItems.xaml (~20 lines)
+### 3. AutomationWindow.OperationItems.xaml (~20 lines)
 **Purpose**: Contains all Operation ComboBox items
 **Contents**: x:Array of ComboBoxItem elements including:
 - GetText, GetName, GetTextOCR
@@ -39,7 +39,7 @@ The SpyWindow.xaml file has been successfully split into multiple resource dicti
 - **NEW**: ClickElement (click element center)
 - **NEW**: IsVisible (check element visibility)
 
-### 4. SpyWindow.KnownControlItems.xaml (~50 lines)
+### 4. AutomationWindow.KnownControlItems.xaml (~50 lines)
 **Purpose**: Contains all Known Control (Map-to) ComboBox items
 **Contents**: x:Array of ComboBoxItem elements organized by category:
 - Worklist Controls (CloseWorklistButton, OpenWorklistButton, WorklistWindow, etc.)
@@ -51,7 +51,7 @@ The SpyWindow.xaml file has been successfully split into multiple resource dicti
 - **NEW**: Screen Areas (Screen_MainCurrentStudyTab, Screen_SubPreviousStudyTab)
 - Test (TestInvoke)
 
-## Main SpyWindow.xaml Changes
+## Main AutomationWindow.xaml Changes
 
 ### Before Refactoring
 - **~750 lines** of XAML
@@ -62,7 +62,7 @@ The SpyWindow.xaml file has been successfully split into multiple resource dicti
 
 ### After Refactoring
 - **~450 lines** of XAML (40% reduction)
-- Styles referenced from SpyWindow.Styles.xaml
+- Styles referenced from AutomationWindow.Styles.xaml
 - ComboBox items referenced from separate resource dictionaries
 - Clean, maintainable structure
 - Easy to add new items
@@ -78,10 +78,10 @@ The SpyWindow.xaml file has been successfully split into multiple resource dicti
 <Window.Resources>
     <ResourceDictionary>
         <ResourceDictionary.MergedDictionaries>
-            <ResourceDictionary Source="SpyWindow.Styles.xaml"/>
-            <ResourceDictionary Source="SpyWindow.PacsMethodItems.xaml"/>
-            <ResourceDictionary Source="SpyWindow.OperationItems.xaml"/>
-            <ResourceDictionary Source="SpyWindow.KnownControlItems.xaml"/>
+            <ResourceDictionary Source="AutomationWindow.Styles.xaml"/>
+            <ResourceDictionary Source="AutomationWindow.PacsMethodItems.xaml"/>
+            <ResourceDictionary Source="AutomationWindow.OperationItems.xaml"/>
+            <ResourceDictionary Source="AutomationWindow.KnownControlItems.xaml"/>
         </ResourceDictionary.MergedDictionaries>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     </ResourceDictionary>
@@ -95,7 +95,7 @@ The SpyWindow.xaml file has been successfully split into multiple resource dicti
 
 <!-- After: ItemsSource from resource -->
 <ComboBox x:Name="cmbKnown" ItemsSource="{StaticResource KnownControlItems}"
-          Style="{StaticResource SpyWindowComboBoxStyle}"/>
+          Style="{StaticResource AutomationWindowComboBoxStyle}"/>
 ```
 
 ## Benefits
@@ -112,13 +112,13 @@ The SpyWindow.xaml file has been successfully split into multiple resource dicti
 
 ### 3. Consistency
 - ? All controls use named styles consistently
-- ? Style references are explicit (e.g., `Style="{StaticResource SpyWindowButtonStyle}"`)
+- ? Style references are explicit (e.g., `Style="{StaticResource AutomationWindowButtonStyle}"`)
 - ? Reduced risk of inconsistent styling
 
 ### 4. Scalability
-- ? Adding new operations: edit SpyWindow.OperationItems.xaml
-- ? Adding new PACS methods: edit SpyWindow.PacsMethodItems.xaml
-- ? Adding new bookmarks: edit SpyWindow.KnownControlItems.xaml
+- ? Adding new operations: edit AutomationWindow.OperationItems.xaml
+- ? Adding new PACS methods: edit AutomationWindow.PacsMethodItems.xaml
+- ? Adding new bookmarks: edit AutomationWindow.KnownControlItems.xaml
 - ? No need to touch main XAML for new items
 
 ### 5. No Manual Updates
@@ -131,19 +131,19 @@ The SpyWindow.xaml file has been successfully split into multiple resource dicti
 ### For Developers Adding New Items
 
 **To add a new PACS method:**
-1. Edit `SpyWindow.PacsMethodItems.xaml`
+1. Edit `AutomationWindow.PacsMethodItems.xaml`
 2. Add a new `<ComboBoxItem Tag="YourMethod">Your Label</ComboBoxItem>`
 3. Build and run - item automatically appears
 
 **To add a new operation:**
-1. Edit `SpyWindow.OperationItems.xaml`
+1. Edit `AutomationWindow.OperationItems.xaml`
 2. Add a new `<ComboBoxItem Content="YourOperation"/>`
-3. Implement operation logic in SpyWindow.Procedures.Exec.cs and ProcedureExecutor.cs
+3. Implement operation logic in AutomationWindow.Procedures.Exec.cs and ProcedureExecutor.cs
 4. Build and run - item automatically appears
 
 **To add a new bookmark:**
 1. Add enum value to `UiBookmarks.KnownControl` in UiBookmarks.cs
-2. Edit `SpyWindow.KnownControlItems.xaml`
+2. Edit `AutomationWindow.KnownControlItems.xaml`
 3. Add a new `<ComboBoxItem Tag="YourControl">Your Label</ComboBoxItem>`
 4. Build and run - item automatically appears
 
@@ -168,7 +168,7 @@ The SpyWindow.xaml file has been successfully split into multiple resource dicti
 ## Testing Checklist
 
 - [X] Build passes without errors
-- [ ] SpyWindow launches without XAML parse errors
+- [ ] AutomationWindow launches without XAML parse errors
 - [ ] All Map-to dropdown items visible and functional
 - [ ] All PACS Method dropdown items visible and functional
 - [ ] All Operations dropdown items visible and functional
@@ -191,4 +191,4 @@ The SpyWindow.xaml file has been successfully split into multiple resource dicti
 
 ## Conclusion
 
-The SpyWindow.xaml refactoring successfully addresses the original issue of the file being too long and difficult to maintain. The new structure provides better organization, easier maintenance, and automatic inclusion of all UI elements through resource dictionaries. All previously manual XAML updates are now automated, and adding new features in the future will be significantly easier.
+The AutomationWindow.xaml refactoring successfully addresses the original issue of the file being too long and difficult to maintain. The new structure provides better organization, easier maintenance, and automatic inclusion of all UI elements through resource dictionaries. All previously manual XAML updates are now automated, and adding new features in the future will be significantly easier.

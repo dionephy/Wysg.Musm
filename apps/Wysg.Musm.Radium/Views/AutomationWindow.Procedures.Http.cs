@@ -11,7 +11,7 @@ using Ude;
 
 namespace Wysg.Musm.Radium.Views
 {
-    public partial class SpyWindow
+    public partial class AutomationWindow
     {
         private static readonly HttpClient _http = CreateHttp();
         private static HttpClient CreateHttp()

@@ -145,7 +145,7 @@ Result: ? Pass
 ## Related Features
 
 - FR-XXXX: Editor Autofocus Feature (see `ENHANCEMENT_2025-11-11_EditorAutofocus.md`)
-- Bookmark management in UI Spy (`SpyWindow.Bookmarks.cs`)
+- Bookmark management in UI Spy (`AutomationWindow.Bookmarks.cs`)
 - Dynamic bookmark system (removed hardcoded `KnownControl` enum)
 
 ---

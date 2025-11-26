@@ -1,4 +1,4 @@
-# SpyWindow Button Differences and Reload Removal - 2025-11-25
+# AutomationWindow Button Differences and Reload Removal - 2025-11-25
 
 ## Summary (Updated)
 
@@ -60,7 +60,7 @@ Use Validate button in Crawl Editor:
 **Why Removed:**
 - Edge case only (manual JSON editing, multi-instance sync)
 - Most users never used it
-- Can restart SpyWindow instead if needed
+- Can restart AutomationWindow instead if needed
 
 ---
 
@@ -108,7 +108,7 @@ Use Validate button in Crawl Editor:
 **Removed from Row 2:**
 - ~~Map~~ (use Pick + Save instead)
 - ~~Resolve~~ (use Validate instead)
-- ~~Reload~~ (restart SpyWindow instead)
+- ~~Reload~~ (restart AutomationWindow instead)
 
 ---
 
@@ -154,7 +154,7 @@ Use Validate button in Crawl Editor:
 
 ### If you used Reload button:
 **Old:** Click Reload  
-**New:** Close and reopen SpyWindow (or make changes directly)
+**New:** Close and reopen AutomationWindow (or make changes directly)
 
 **Why better:** Simpler UI, rarely needed anyway
 
@@ -169,7 +169,7 @@ Use Validate button in Crawl Editor:
 | **Save** | ? Kept | Save edited chain | - |
 | **Map** | ? Removed | Quick capture+save | Use Pick + Save |
 | **Resolve** | ? Removed | Test bookmark | Use Validate |
-| **Reload** | ? Removed | Reload from disk | Restart SpyWindow |
+| **Reload** | ? Removed | Reload from disk | Restart AutomationWindow |
 | **+** | ? Kept | Add bookmark | - |
 | **Rename** | ? Kept | Rename bookmark | - |
 | **Delete** | ? Kept | Delete bookmark | - |

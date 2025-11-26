@@ -1,4 +1,4 @@
-﻿# Summary: SimulateSelectAll Custom Procedure Operation Implementation
+# Summary: SimulateSelectAll Custom Procedure Operation Implementation
 
 ## Date: 2025-11-09
 
@@ -8,8 +8,8 @@ Add a new "SimulateSelectAll" operation to UI Spy window Custom Procedures, enab
 ## ? Implementation Complete
 
 ### Files Modified (4)
-1. ? **SpyWindow.OperationItems.xaml** - Added SimulateSelectAll to operations dropdown
-2. ? **SpyWindow.Procedures.Exec.cs** - Configured operation (no arguments)
+1. ? **AutomationWindow.OperationItems.xaml** - Added SimulateSelectAll to operations dropdown
+2. ? **AutomationWindow.Procedures.Exec.cs** - Configured operation (no arguments)
 3. ? **OperationExecutor.cs** - Added operation routing
 4. ? **OperationExecutor.SystemOps.cs** - Implemented `ExecuteSimulateSelectAll()` method
 

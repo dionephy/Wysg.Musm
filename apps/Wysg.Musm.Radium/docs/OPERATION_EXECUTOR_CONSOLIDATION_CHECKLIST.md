@@ -16,11 +16,11 @@
   - [x] System operations (MouseClick, SetClipboard, SimulateTab, SimulatePaste, Delay)
   - [x] MainViewModel operations (GetCurrentPatientNumber, GetCurrentStudyDateTime, etc.)
   - [x] HTTP operations (GetHTML with smart encoding)
-  - [x] Encoding helpers (from SpyWindow.Procedures.Encoding.cs)
-  - [x] HTTP helpers (from SpyWindow.Procedures.Http.cs)
+  - [x] Encoding helpers (from AutomationWindow.Procedures.Encoding.cs)
+  - [x] HTTP helpers (from AutomationWindow.Procedures.Http.cs)
   - [x] Header helpers (GetHeaderTexts, GetRowCellValues, NormalizeHeader)
 
-- [x] **Update SpyWindow.Procedures.Exec.cs** - Delegate to OperationExecutor
+- [x] **Update AutomationWindow.Procedures.Exec.cs** - Delegate to OperationExecutor
   - [x] Simplify ExecuteSingle() to delegation
   - [x] Simplify ExecuteSingleAsync() to delegation
   - [x] Keep ResolveElement() (UI-specific)
@@ -34,8 +34,8 @@
   - [x] Simplify ExecuteElemental() to delegation (redirect to ExecuteRow)
 
 - [x] **Remove duplicate files** (logic moved to OperationExecutor)
-  - [x] SpyWindow.Procedures.Http.cs (logic moved)
-  - [x] SpyWindow.Procedures.Encoding.cs (logic moved)
+  - [x] AutomationWindow.Procedures.Http.cs (logic moved)
+  - [x] AutomationWindow.Procedures.Encoding.cs (logic moved)
 
 ### Phase 2: Build & Verification ?
 
@@ -94,8 +94,8 @@
 
 ### Manual Testing Required ??
 
-**SpyWindow (UI Testing Context)**
-- [ ] Open SpyWindow
+**AutomationWindow (UI Testing Context)**
+- [ ] Open AutomationWindow
 - [ ] Create test procedure with GetHTML operation
 - [ ] Target Korean website (e.g., naver.com)
 - [ ] Execute procedure step
@@ -144,7 +144,7 @@ Test all 30+ operations in both contexts:
    - Impact: Operations may fail if Dispatcher unavailable
 
 3. **Element caching**
-   - Each caller manages own cache (SpyWindow instance, ProcedureExecutor static)
+   - Each caller manages own cache (AutomationWindow instance, ProcedureExecutor static)
    - No automatic cache invalidation
    - Staleness detection only in ProcedureExecutor
    - Impact: Stale elements may cause errors
@@ -163,13 +163,13 @@ If issues arise during runtime testing:
 
 ### Option 1: Quick Fix
 1. Fix specific operation in OperationExecutor.cs
-2. Both SpyWindow and ProcedureExecutor benefit immediately
+2. Both AutomationWindow and ProcedureExecutor benefit immediately
 3. No code duplication to maintain
 
 ### Option 2: Rollback (Worst Case)
-1. Restore SpyWindow.Procedures.Http.cs from git history
-2. Restore SpyWindow.Procedures.Encoding.cs from git history
-3. Restore original SpyWindow.Procedures.Exec.cs ExecuteSingle implementation
+1. Restore AutomationWindow.Procedures.Http.cs from git history
+2. Restore AutomationWindow.Procedures.Encoding.cs from git history
+3. Restore original AutomationWindow.Procedures.Exec.cs ExecuteSingle implementation
 4. Restore original ProcedureExecutor.Operations.cs ExecuteRow implementation
 5. Remove OperationExecutor.cs
 
@@ -182,7 +182,7 @@ git log --diff-filter=D --summary
 git checkout <commit-hash> -- <file-path>
 
 # Example
-git checkout HEAD~1 -- apps/Wysg.Musm.Radium/Views/SpyWindow.Procedures.Http.cs
+git checkout HEAD~1 -- apps/Wysg.Musm.Radium/Views/AutomationWindow.Procedures.Http.cs
 ```
 
 ---
@@ -192,14 +192,14 @@ git checkout HEAD~1 -- apps/Wysg.Musm.Radium/Views/SpyWindow.Procedures.Http.cs
 ### Must Have (Blocking) ?
 - [x] Build succeeds without errors
 - [x] All operations implemented in OperationExecutor
-- [x] SpyWindow delegates correctly
+- [x] AutomationWindow delegates correctly
 - [x] ProcedureExecutor delegates correctly
 - [x] Documentation complete
 
 ### Should Have (Critical) ??
-- [ ] GetHTML works with Korean encoding in SpyWindow
+- [ ] GetHTML works with Korean encoding in AutomationWindow
 - [ ] GetHTML works with Korean encoding in ProcedureExecutor
-- [ ] All 30+ operations tested in SpyWindow
+- [ ] All 30+ operations tested in AutomationWindow
 - [ ] All 30+ operations tested in ProcedureExecutor
 
 ### Nice to Have (Enhancement)
@@ -216,7 +216,7 @@ git checkout HEAD~1 -- apps/Wysg.Musm.Radium/Views/SpyWindow.Procedures.Http.cs
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
 | Total Lines | 2200 | 1680 | **-24%** |
-| SpyWindow.Exec | 1300 | 150 | **-88%** |
+| AutomationWindow.Exec | 1300 | 150 | **-88%** |
 | ProcedureExecutor.Ops | 900 | 30 | **-97%** |
 | Shared Service | 0 | 1500 | **NEW** |
 
@@ -243,7 +243,7 @@ git checkout HEAD~1 -- apps/Wysg.Musm.Radium/Views/SpyWindow.Procedures.Http.cs
 **Status**: COMPLETE
 
 ### Testing Phase ??
-- [ ] SpyWindow manual testing
+- [ ] AutomationWindow manual testing
 - [ ] ProcedureExecutor manual testing
 - [ ] Encoding detection verified
 - [ ] All operations tested
@@ -266,7 +266,7 @@ git checkout HEAD~1 -- apps/Wysg.Musm.Radium/Views/SpyWindow.Procedures.Http.cs
 ## Next Steps
 
 1. **Manual Testing** (Priority: HIGH)
-   - Test GetHTML with Korean websites in SpyWindow
+   - Test GetHTML with Korean websites in AutomationWindow
    - Test GetHTML with Korean websites in ProcedureExecutor automation
    - Verify encoding detection logs
 

@@ -16,12 +16,12 @@ This feature allows users to create custom automation modules that combine modul
 2. **UI Layer** (TO CREATE)
    - `CreateModuleWindow.xaml` - Dialog for creating custom modules
    - `CreateModuleWindow.xaml.cs` - Code-behind for dialog logic
-   - Updates to `SpyWindow.xaml` - Add Custom Modules pane
-   - Updates to `SpyWindow.Automation.cs` - Wire up Create Module button
+   - Updates to `AutomationWindow.xaml` - Add Custom Modules pane
+   - Updates to `AutomationWindow.Automation.cs` - Wire up Create Module button
 
 3. **ViewModel Layer** (TO UPDATE)
    - `SettingsViewModel.cs` - Add CustomModules collection
-   - `SpyWindow.Automation.cs` - Initialize custom modules list
+   - `AutomationWindow.Automation.cs` - Initialize custom modules list
 
 4. **Execution Layer** (TO UPDATE)
    - `MainViewModel.Commands.Automation.cs` - Add custom module execution logic
@@ -222,9 +222,9 @@ namespace Wysg.Musm.Radium.Views
 }
 ```
 
-### Step 2: Add Custom Modules Pane to SpyWindow
+### Step 2: Add Custom Modules Pane to AutomationWindow
 
-Update `apps/Wysg.Musm.Radium/Views/SpyWindow.xaml` Automation tab:
+Update `apps/Wysg.Musm.Radium/Views/AutomationWindow.xaml` Automation tab:
 
 Add after Available Modules pane:
 
@@ -239,7 +239,7 @@ Add after Available Modules pane:
                        Margin="0,0,0,4" Foreground="#D0D0D0"/>
             <Button x:Name="btnCreateModule" Content="Create Module" 
                     Margin="0,0,0,8" Click="OnCreateModule" 
-                    Style="{StaticResource SpyWindowButtonStyle}"/>
+                    Style="{StaticResource AutomationWindowButtonStyle}"/>
         </StackPanel>
         <ListBox x:Name="lstCustomModules" Background="#1E1E1E" 
                  Foreground="#D0D0D0" BorderBrush="#3C3C3C" 
@@ -262,7 +262,7 @@ Update Grid.ColumnDefinitions:
 
 ### Step 3: Wire Up Custom Modules Logic
 
-Update `apps/Wysg.Musm.Radium/Views/SpyWindow.Automation.cs`:
+Update `apps/Wysg.Musm.Radium/Views/AutomationWindow.Automation.cs`:
 
 ```csharp
 private ObservableCollection<string> _customModules = new();
@@ -293,7 +293,7 @@ private void LoadCustomModules()
     }
     catch (Exception ex)
     {
-        System.Diagnostics.Debug.WriteLine($"[SpyWindow] Error loading custom modules: {ex.Message}");
+        System.Diagnostics.Debug.WriteLine($"[AutomationWindow] Error loading custom modules: {ex.Message}");
     }
 }
 
@@ -337,7 +337,7 @@ private void OnCreateModule(object sender, RoutedEventArgs e)
     }
     catch (Exception ex)
     {
-        System.Diagnostics.Debug.WriteLine($"[SpyWindow] Error creating module: {ex.Message}");
+        System.Diagnostics.Debug.WriteLine($"[AutomationWindow] Error creating module: {ex.Message}");
         MessageBox.Show($"Error creating module: {ex.Message}", "Error", 
             MessageBoxButton.OK, MessageBoxImage.Error);
     }
@@ -614,7 +614,7 @@ Custom modules are stored in `%AppData%\Wysg.Musm\Radium\custom-modules.json`:
 **Implementation**: REQUIRES CODING  
 **Estimated Effort**: 4-6 hours  
 **Files to Create**: 2 (CreateModuleWindow.xaml, CreateModuleWindow.xaml.cs)  
-**Files to Modify**: 4 (SpyWindow.xaml, SpyWindow.Automation.cs, SettingsViewModel.cs, MainViewModel.Commands.Automation.cs)  
+**Files to Modify**: 4 (AutomationWindow.xaml, AutomationWindow.Automation.cs, SettingsViewModel.cs, MainViewModel.Commands.Automation.cs)  
 
 ---
 

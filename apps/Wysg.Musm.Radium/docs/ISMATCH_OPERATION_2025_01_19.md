@@ -1,7 +1,7 @@
-﻿# IsMatch Operation Implementation - 2025-10-19
+# IsMatch Operation Implementation - 2025-10-19
 
 ## Summary
-Implemented new `IsMatch` operation for SpyWindow Custom Procedures that compares two variable values and returns "true" or "false".
+Implemented new `IsMatch` operation for AutomationWindow Custom Procedures that compares two variable values and returns "true" or "false".
 
 ## User Request
 "In spy window -> Custom Procedures, i want a new operation, 'isMatch', which has two var args. if the value of first var and value of second var are the same, it outputs true. else, ouputs false."
@@ -20,9 +20,9 @@ Implemented new `IsMatch` operation for SpyWindow Custom Procedures that compare
 
 ### Example
 ```
-Step 1: GetCurrentPatientNumber �� var1 = "123456"
-Step 2: GetText(PatientIdField) �� var2 = "123456"  
-Step 3: IsMatch(var1, var2) �� var3 = "true"
+Step 1: GetCurrentPatientNumber ?? var1 = "123456"
+Step 2: GetText(PatientIdField) ?? var2 = "123456"  
+Step 3: IsMatch(var1, var2) ?? var3 = "true"
 ```
 
 ### Use Cases
@@ -35,7 +35,7 @@ Step 3: IsMatch(var1, var2) �� var3 = "true"
 
 ### Files Modified
 
-#### 1. `SpyWindow.OperationItems.xaml`
+#### 1. `AutomationWindow.OperationItems.xaml`
 Added IsMatch to operation dropdown:
 ```xml
 <ComboBoxItem Content="IsMatch"/>
@@ -57,7 +57,7 @@ case "IsMatch":
 }
 ```
 
-#### 3. `SpyWindow.Procedures.Exec.cs`
+#### 3. `AutomationWindow.Procedures.Exec.cs`
 Added operation configuration in `OnProcOpChanged`:
 ```csharp
 case "IsMatch":
@@ -87,28 +87,28 @@ case "IsMatch":
 ### Test Plan
 
 #### Basic Comparison
-1. Open SpyWindow �� Custom Procedures
+1. Open AutomationWindow ?? Custom Procedures
 2. Create procedure "TestIsMatch":
-   - Step 1: GetText(element1) �� var1
-   - Step 2: GetText(element2) �� var2
-   - Step 3: IsMatch(var1, var2) �� var3
+   - Step 1: GetText(element1) ?? var1
+   - Step 2: GetText(element2) ?? var2
+   - Step 3: IsMatch(var1, var2) ?? var3
 3. Click "Set" on step 3
 4. **Expected**: Preview shows `true ('value1' vs 'value1')` or `false ('value1' vs 'value2')`
 
 #### Edge Cases
-- **Empty strings**: IsMatch("", "") �� "true"
-- **Null handling**: IsMatch(null, null) �� "true" (both converted to empty string)
-- **Case sensitivity**: IsMatch("ABC", "abc") �� "false"
-- **Whitespace**: IsMatch(" text ", "text") �� "false" (exact match required)
+- **Empty strings**: IsMatch("", "") ?? "true"
+- **Null handling**: IsMatch(null, null) ?? "true" (both converted to empty string)
+- **Case sensitivity**: IsMatch("ABC", "abc") ?? "false"
+- **Whitespace**: IsMatch(" text ", "text") ?? "false" (exact match required)
 
 #### Integration Testing
 1. Create procedure with IsMatch followed by conditional logic
 2. Save procedure and execute via PacsService
-3. Verify headless executor produces same result as SpyWindow
+3. Verify headless executor produces same result as AutomationWindow
 
 ### Test Results
 ? Build succeeded with 0 errors  
-? Operation appears in SpyWindow dropdown  
+? Operation appears in AutomationWindow dropdown  
 ? Arg1/Arg2 correctly configured as Var types  
 ? Arg3 disabled as expected  
 ? Preview format shows comparison result and values
@@ -118,7 +118,7 @@ case "IsMatch":
 2. **Reusable**: Works with any variable types
 3. **Clear Output**: Human-readable "true"/"false" strings
 4. **Preview Feedback**: Shows actual values being compared for debugging
-5. **Consistent Behavior**: Same logic in SpyWindow and headless executor
+5. **Consistent Behavior**: Same logic in AutomationWindow and headless executor
 
 ## Future Enhancements (Not Implemented)
 - Case-insensitive comparison mode (optional flag)
@@ -134,8 +134,8 @@ case "IsMatch":
 
 ## Completion Checklist
 - [x] Implemented in ProcedureExecutor.cs
-- [x] Implemented in SpyWindow.Procedures.Exec.cs
-- [x] Added to SpyWindow.OperationItems.xaml
+- [x] Implemented in AutomationWindow.Procedures.Exec.cs
+- [x] Added to AutomationWindow.OperationItems.xaml
 - [x] Build verification (0 errors)
 - [x] Documentation created (this file)
 - [x] DEBUG_LOGGING_IMPLEMENTATION.md updated

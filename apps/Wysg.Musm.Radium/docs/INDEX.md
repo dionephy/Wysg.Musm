@@ -1,4 +1,4 @@
-﻿# Documentation Index
+# Documentation Index
 
 **Last Updated**: 2025-11-25
 
@@ -287,7 +287,7 @@ Historical documentation
 |--------|---------------|
 | MainWindow | ENHANCEMENT_2025-11-11_WindowTitleAutofocus.md |
 | SettingsWindow | ENHANCEMENT_2025-11-11_HotkeysSnippetsEditFeature.md |
-| SpyWindow | ENHANCEMENT_2025-11-10_WebBrowserElementPicker.md |
+| AutomationWindow | ENHANCEMENT_2025-11-10_WebBrowserElementPicker.md |
 
 ---
 

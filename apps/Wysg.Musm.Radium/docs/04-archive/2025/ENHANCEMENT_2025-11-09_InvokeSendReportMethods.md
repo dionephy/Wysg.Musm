@@ -1,12 +1,12 @@
-﻿# Enhancement: New PACS Method Items - InvokeSendReport and SendReportRetry (2025-11-09)
+# Enhancement: New PACS Method Items - InvokeSendReport and SendReportRetry (2025-11-09)
 
 ## Overview
 Added two new PACS method items in the UI Spy window's Custom Procedures section to support send report automation workflows with retry capabilities.
 
 ## Changes Made
 
-### 1. SpyWindow UI - New PACS Method Items
-**File**: `apps\Wysg.Musm.Radium\Views\SpyWindow.PacsMethodItems.xaml`
+### 1. AutomationWindow UI - New PACS Method Items
+**File**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.PacsMethodItems.xaml`
 
 Added two new ComboBoxItem entries to the PACS method dropdown:
 - **InvokeSendReport**: "Invoke send report" - Primary send report action
@@ -35,7 +35,7 @@ public async Task<bool> SendReportRetryAsync()
 ## User Workflow
 
 ### Configuration in UI Spy
-1. Open UI Spy window (Tools �� UI Spy)
+1. Open UI Spy window (Tools ?? UI Spy)
 2. Select PACS profile from dropdown
 3. Navigate to "Custom Procedures" section
 4. Select "Invoke send report" or "Send report retry" from PACS Method dropdown

@@ -1,11 +1,11 @@
-﻿# Fix: SetFocusSearchResultsList Element Chaining Issue (2025-10-20)
+# Fix: SetFocusSearchResultsList Element Chaining Issue (2025-10-20)
 
 ## Problem
 
-The `SetFocusSearchResultsList` procedure worked correctly in the SpyWindow interactive execution but failed when run as an automation module. The procedure used two operations:
+The `SetFocusSearchResultsList` procedure worked correctly in the AutomationWindow interactive execution but failed when run as an automation module. The procedure used two operations:
 
-1. `GetSelectedElement(SearchResultsList)` �� stores selected element in cache and returns cache key to `var1`
-2. `ClickElementAndStay(var1)` �� should click the cached element
+1. `GetSelectedElement(SearchResultsList)` ?? stores selected element in cache and returns cache key to `var1`
+2. `ClickElementAndStay(var1)` ?? should click the cached element
 
 **Error Symptom:**
 ```
@@ -28,7 +28,7 @@ When `ClickElementAndStay` tried to resolve a `Var` type argument:
 2. The method couldn't resolve `var1` to its actual value (`"SelectedElement:MRI Brain"`)  
 3. Without the actual cache key, it couldn't look up the element in `_elementCache`
 
-The same issue existed in SpyWindow's `ResolveElement` method, but the user had tested it in a scenario where it happened to work.
+The same issue existed in AutomationWindow's `ResolveElement` method, but the user had tested it in a scenario where it happened to work.
 
 ## Solution
 
@@ -58,8 +58,8 @@ The same issue existed in SpyWindow's `ResolveElement` method, but the user had 
   ```
 - Updated all calls to `ResolveElement` to pass `vars` dictionary
 
-**2. apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs**
-- Applied identical fix to SpyWindow's `ResolveElement` method for consistency
+**2. apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs**
+- Applied identical fix to AutomationWindow's `ResolveElement` method for consistency
 
 ### Debug Logging Added
 
@@ -105,7 +105,7 @@ This fix enables:
 
 Test the following scenarios:
 1. Run `SetFocusSearchResultsList` from automation module (should now work)
-2. Verify SpyWindow interactive execution still works  
+2. Verify AutomationWindow interactive execution still works  
 3. Test multi-step procedures with element chaining
 4. Verify element staleness detection (change selection between steps)
 5. Test with different list controls (SearchResultsList, RelatedStudiesList, etc.)

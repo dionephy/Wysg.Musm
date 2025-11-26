@@ -42,7 +42,7 @@ This document summarizes the implementation of three new PACS methods, one new c
 - **Use Cases**: Setting keyboard focus on lists, text fields, or other UI elements for user interaction
 
 #### Implementation Files
-- `SpyWindow.Procedures.Exec.cs` - SpyWindow execution and preset configuration
+- `AutomationWindow.Procedures.Exec.cs` - AutomationWindow execution and preset configuration
 - `ProcedureExecutor.cs` - Headless execution for automation sequences
 
 ### 3. New KnownControl Enum Entries
@@ -78,8 +78,8 @@ Added three new bookmark targets in `UiBookmarks.cs`:
 
 ## User Configuration Workflow
 
-### Step 1: Map UI Elements in SpyWindow
-1. Open SpyWindow (Settings ¡æ Automation ¡æ Spy button)
+### Step 1: Map UI Elements in AutomationWindow
+1. Open AutomationWindow (Settings ¡æ Automation ¡æ Spy button)
 2. Use Pick tool to capture UI elements:
    - Map worklist open button to `WorklistOpenButton`
    - Map search results list to `SearchResultsList`
@@ -87,7 +87,7 @@ Added three new bookmark targets in `UiBookmarks.cs`:
 3. Save bookmarks
 
 ### Step 2: Configure Custom Procedures
-1. In SpyWindow, select PACS method from dropdown:
+1. In AutomationWindow, select PACS method from dropdown:
    - "Invoke open worklist"
    - "Set focus search results list"
    - "Send report"
@@ -119,14 +119,14 @@ Added three new bookmark targets in `UiBookmarks.cs`:
   - Added: Auto-seed fallback procedures for three new methods
   - Added: `SetFocus` operation execution
 
-### SpyWindow UI and Execution
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.PacsMethodItems.xaml`
+### AutomationWindow UI and Execution
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.PacsMethodItems.xaml`
   - Added: Three ComboBoxItems for new PACS methods
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.OperationItems.xaml`
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.OperationItems.xaml`
   - Added: `SetFocus` operation ComboBoxItem
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.KnownControlItems.xaml`
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.KnownControlItems.xaml`
   - Added: Three ComboBoxItems for new known controls
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs`
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs`
   - Added: `SetFocus` operation preset configuration and execution
 
 ### Bookmarks
@@ -148,8 +148,8 @@ Added three new bookmark targets in `UiBookmarks.cs`:
 
 ## Testing Checklist
 
-### SpyWindow Testing
-- [ ] Launch SpyWindow without errors
+### AutomationWindow Testing
+- [ ] Launch AutomationWindow without errors
 - [ ] Verify "Invoke open worklist" appears in PACS Method dropdown
 - [ ] Verify "Set focus search results list" appears in PACS Method dropdown
 - [ ] Verify "Send report" appears in PACS Method dropdown
@@ -198,13 +198,13 @@ Added three new bookmark targets in `UiBookmarks.cs`:
 
 ### Recommended Tasks.md Additions
 ```markdown
-- [X] T1100 Add InvokeOpenWorklist PACS method to SpyWindow.PacsMethodItems.xaml
-- [X] T1101 Add SetFocusSearchResultsList PACS method to SpyWindow.PacsMethodItems.xaml
-- [X] T1102 Add SendReport PACS method to SpyWindow.PacsMethodItems.xaml
-- [X] T1103 Add SetFocus operation to SpyWindow.OperationItems.xaml
+- [X] T1100 Add InvokeOpenWorklist PACS method to AutomationWindow.PacsMethodItems.xaml
+- [X] T1101 Add SetFocusSearchResultsList PACS method to AutomationWindow.PacsMethodItems.xaml
+- [X] T1102 Add SendReport PACS method to AutomationWindow.PacsMethodItems.xaml
+- [X] T1103 Add SetFocus operation to AutomationWindow.OperationItems.xaml
 - [X] T1104 Add WorklistOpenButton, SearchResultsList, SendReportButton to KnownControl enum
-- [X] T1105 Add three new KnownControl items to SpyWindow.KnownControlItems.xaml
-- [X] T1106 Implement SetFocus operation in SpyWindow.Procedures.Exec.cs
+- [X] T1105 Add three new KnownControl items to AutomationWindow.KnownControlItems.xaml
+- [X] T1106 Implement SetFocus operation in AutomationWindow.Procedures.Exec.cs
 - [X] T1107 Implement SetFocus operation in ProcedureExecutor.cs for headless execution
 - [X] T1108 Add auto-seed procedures for three new PACS methods in ProcedureExecutor.cs
 - [X] T1109 Add PacsService wrappers: InvokeOpenWorklistAsync, SetFocusSearchResultsListAsync, SendReportAsync
@@ -247,7 +247,7 @@ Added three new bookmark targets in `UiBookmarks.cs`:
 - Current implementation is a placeholder; actual report submission may require:
   - Text input operations to fill findings/conclusion fields
   - Multiple UI interactions (tabs, buttons, confirmations)
-  - User must author complete procedure in SpyWindow
+  - User must author complete procedure in AutomationWindow
 
 ### 2. Element Mapping Required
 - All three KnownControls must be mapped by user per PACS installation
@@ -274,6 +274,6 @@ Added three new bookmark targets in `UiBookmarks.cs`:
 - Conditional worklist open only if closed
 
 ## Conclusion
-The three new PACS methods and corresponding automation modules enhance the Radium workflow by automating worklist management and report submission tasks. The SetFocus operation provides a reusable building block for UI navigation. All features integrate seamlessly with the existing SpyWindow custom procedure and automation framework.
+The three new PACS methods and corresponding automation modules enhance the Radium workflow by automating worklist management and report submission tasks. The SetFocus operation provides a reusable building block for UI navigation. All features integrate seamlessly with the existing AutomationWindow custom procedure and automation framework.
 
 Users can now create fully automated workflows that open the worklist, navigate to search results, open studies, and submit reports with minimal manual intervention.

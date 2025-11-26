@@ -51,8 +51,8 @@ if (mainWindow != null)
 2. ? GetCurrentStudyDateTime (ProcedureExecutor.cs)
 3. ? PatientNumberMatch (ProcedureExecutor.cs)
 4. ? StudyDateTimeMatch (ProcedureExecutor.cs)
-5. ? SpyWindow GetCurrentPatientNumber operation
-6. ? SpyWindow GetCurrentStudyDateTime operation
+5. ? AutomationWindow GetCurrentPatientNumber operation
+6. ? AutomationWindow GetCurrentStudyDateTime operation
 
 ---
 
@@ -82,7 +82,7 @@ No more Constructor calls! No more empty values!
 [ProcedureExecutor][ExecuteInternal] Step 2 result: preview='1 parts'  <-- NOT SPLITTING!
 ```
 
-**Problem:** Your Split separators in the SpyWindow procedure don't match the URL structure.
+**Problem:** Your Split separators in the AutomationWindow procedure don't match the URL structure.
 
 **URL Structure:**
 ```
@@ -149,8 +149,8 @@ When you see **"2 parts"** (or more), it means the Split worked!
 - **StudyDateTimeMatch** now compares correctly
 
 ### ?? USER ACTION REQUIRED
-- **GetCurrentStudyRemark** - Fix Split separators in SpyWindow procedure
-- **GetCurrentPatientRemark** - Fix Split separators in SpyWindow procedure
+- **GetCurrentStudyRemark** - Fix Split separators in AutomationWindow procedure
+- **GetCurrentPatientRemark** - Fix Split separators in AutomationWindow procedure
 
 ### Build Status
 - ? **0 errors**
@@ -173,7 +173,7 @@ When you see **"2 parts"** (or more), it means the Split worked!
 
 ### Fix Issues #3 & #4 (USER ACTION)
 
-1. **Open SpyWindow** (Settings ¡æ Automation ¡æ Spy)
+1. **Open AutomationWindow** (Settings ¡æ Automation ¡æ Spy)
 2. **Fix GetCurrentStudyRemark procedure** (see instructions above)
 3. **Test procedure** (Run Procedure button)
 4. **Verify output** shows only `026Y,M,CT Brain...` (no URL)

@@ -38,9 +38,9 @@ Row 2: Add operation | Run procedure
 
 ## Files Updated
 
-? `Views/SpyWindow.xaml` - UI layout and button text  
-? `Views/SpyWindow.PacsMethods.cs` - Status messages and dialogs  
-? `Views/SpyWindow.Procedures.Exec.cs` - Status messages  
+? `Views/AutomationWindow.xaml` - UI layout and button text  
+? `Views/AutomationWindow.PacsMethods.cs` - Status messages and dialogs  
+? `Views/AutomationWindow.Procedures.Exec.cs` - Status messages  
 ? `docs/00-current/DYNAMIC_PACS_METHODS.md` - Documentation  
 ? `docs/00-current/UI_TERMINOLOGY_UPDATE_20251125.md` - Update details  
 

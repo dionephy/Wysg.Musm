@@ -277,7 +277,7 @@ OperationExecutor.ExecuteOperation(
 - [x] No namespace issues
 
 ### Runtime Testing ??
-- [ ] All operations still work in SpyWindow
+- [ ] All operations still work in AutomationWindow
 - [ ] All operations still work in ProcedureExecutor
 - [ ] No behavioral changes
 - [ ] GetHTML with Korean encoding works

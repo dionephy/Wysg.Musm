@@ -88,7 +88,7 @@ These controls already had D2Coding font applied via their own styles:
 The style is defined in `MainWindow.Resources`, so it applies to:
 - All TextBox controls in MainWindow.xaml
 - All TextBox controls in child UserControls (ReportInputsAndJsonPanel, PreviousReportTextAndJsonPanel, etc.)
-- Does NOT apply to windows outside MainWindow (e.g., SettingsWindow, SpyWindow)
+- Does NOT apply to windows outside MainWindow (e.g., SettingsWindow, AutomationWindow)
 
 ### Override Capability
 Individual TextBox controls can still override the global style by setting properties directly:
@@ -131,7 +131,7 @@ WPF style precedence (highest to lowest):
 ## Future Enhancements (Not Implemented)
 
 - [ ] Apply same style to SettingsWindow TextBoxes
-- [ ] Apply same style to SpyWindow TextBoxes
+- [ ] Apply same style to AutomationWindow TextBoxes
 - [ ] Create application-level style in App.xaml for global consistency
 - [ ] Add RichTextBox style for status log
 - [ ] Add TextBox validation error styling (red border on validation errors)

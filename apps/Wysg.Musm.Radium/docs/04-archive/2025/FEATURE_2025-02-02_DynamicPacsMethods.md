@@ -31,8 +31,8 @@ Manages PACS method CRUD operations:
 
 **Storage**: `%APPDATA%\Wysg.Musm\Radium\Pacs\{pacsKey}\pacs-methods.json`
 
-### 3. New Partial File: `SpyWindow.PacsMethods.cs`
-**Location**: `apps/Wysg.Musm.Radium/Views/SpyWindow.PacsMethods.cs`
+### 3. New Partial File: `AutomationWindow.PacsMethods.cs`
+**Location**: `apps/Wysg.Musm.Radium/Views/AutomationWindow.PacsMethods.cs`
 
 UI logic for PACS method management:
 - `InitializePacsMethods()` - Load methods for current PACS
@@ -44,16 +44,16 @@ UI logic for PACS method management:
 
 ### 4. Updated Files
 
-#### `SpyWindow.xaml.cs`
+#### `AutomationWindow.xaml.cs`
 - Added `InitializePacsMethods()` call in constructor
 - Added `PacsMethods` observable collection property
 
-#### `SpyWindow.xaml`
+#### `AutomationWindow.xaml`
 - Changed ComboBox binding from static resource to dynamic collection
 - Added three management buttons: "+ Method", "Edit Method", "Delete Method"
-- Removed reference to `SpyWindow.PacsMethodItems.xaml` resource
+- Removed reference to `AutomationWindow.PacsMethodItems.xaml` resource
 
-#### `SpyWindow.Procedures.Exec.cs`
+#### `AutomationWindow.Procedures.Exec.cs`
 - Updated `OnProcMethodChanged()` to handle both legacy and new formats
 - Updated `OnSaveProcedure()` to extract tag from new format
 - Updated `OnRunProcedure()` to extract tag from new format
@@ -308,7 +308,7 @@ public async Task<string?> GetCurrentPatientAddressAsync()
 
 ### For Developers
 - New PACS methods should be added via `PacsMethodManager.GetBuiltInMethods()`
-- Legacy `SpyWindow.PacsMethodItems.xaml` can be deleted
+- Legacy `AutomationWindow.PacsMethodItems.xaml` can be deleted
 - Custom method implementations follow same pattern
 
 ## Troubleshooting
@@ -334,7 +334,7 @@ public async Task<string?> GetCurrentPatientAddressAsync()
 ### File Locations
 - Model: `apps/Wysg.Musm.Radium/Models/PacsMethod.cs`
 - Manager: `apps/Wysg.Musm.Radium/Services/PacsMethodManager.cs`
-- UI Logic: `apps/Wysg.Musm.Radium/Views/SpyWindow.PacsMethods.cs`
+- UI Logic: `apps/Wysg.Musm.Radium/Views/AutomationWindow.PacsMethods.cs`
 - Storage: `%APPDATA%\Wysg.Musm\Radium\Pacs\{pacsKey}\pacs-methods.json`
 
 ### Dependencies

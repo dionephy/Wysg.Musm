@@ -1,4 +1,4 @@
-ï»¿# Quick Reference: SendReportWithoutHeader
+# Quick Reference: SendReportWithoutHeader
 
 **Date**: 2025-11-25  
 **Type**: Quick Reference  
@@ -24,7 +24,7 @@ This guide provides quick reference information for users. For detailed implemen
 Provides a custom procedure entry point for sending reports without header information. Useful for PACS systems that require reports without header components or for specific workflow scenarios.
 
 ## Configuration Location
-SpyWindow â†’ Custom Procedures â†’ PACS Method: "Send report without header"
+AutomationWindow ¡æ Custom Procedures ¡æ PACS Method: "Send report without header"
 
 ## Typical Procedure Steps
 ```
@@ -53,12 +53,12 @@ If you were using SendReportRetry:
 ## Example Usage Pattern
 ```
 // Validation-based send without header
-1. GetText (findings field) â†’ var1
-2. IsMatch (var1, "") â†’ var2
+1. GetText (findings field) ¡æ var1
+2. IsMatch (var1, "") ¡æ var2
 3. [If var2="false"] SetValue (findings field, content)
 4. SendReportWithoutHeader procedure
-5. IsVisible (success indicator) â†’ var3
-6. IsMatch (var3, "true") â†’ final result
+5. IsVisible (success indicator) ¡æ var3
+6. IsMatch (var3, "true") ¡æ final result
 ```
 
 ## Notes

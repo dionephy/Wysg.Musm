@@ -2,13 +2,13 @@
 
 ## Overview
 
-This document lists all 13 hardcoded fallback procedures that were removed from `ProcedureExecutor.TryCreateFallbackProcedure()`. Users can recreate these procedures manually in SpyWindow ¡æ Custom Procedures tab if needed for their PACS profile.
+This document lists all 13 hardcoded fallback procedures that were removed from `ProcedureExecutor.TryCreateFallbackProcedure()`. Users can recreate these procedures manually in AutomationWindow ¡æ Custom Procedures tab if needed for their PACS profile.
 
 ## Migration Strategy
 
 **Phase 1**: Document all hardcoded procedures (this file)  
 **Phase 2**: Remove `TryCreateFallbackProcedure()` method  
-**Phase 3**: Users define procedures as needed per-PACS in SpyWindow
+**Phase 3**: Users define procedures as needed per-PACS in AutomationWindow
 
 ## Hardcoded Procedures List
 
@@ -124,16 +124,16 @@ Operation: GetCurrentStudyDateTime
 
 For each procedure you need:
 
-1. **Open SpyWindow** ¡æ Custom Procedures tab
+1. **Open AutomationWindow** ¡æ Custom Procedures tab
 2. **Select PACS Method** from dropdown
 3. **Add Row** for each operation
 4. **Configure Operation** (Op, Arg1, Arg2, Arg3)
-5. **Map UI Elements** using SpyWindow ¡æ UI Bookmark tab
+5. **Map UI Elements** using AutomationWindow ¡æ UI Bookmark tab
 6. **Save Procedure**
 
 ### Example: Recreating GetCurrentPatientRemark
 
-1. Open SpyWindow ¡æ Custom Procedures
+1. Open AutomationWindow ¡æ Custom Procedures
 2. Select "Get current patient remark" from PACS Method dropdown
 3. Click "Add" to add a row
 4. Set Operation = "GetText"
@@ -145,7 +145,7 @@ For each procedure you need:
 ## Special Cases
 
 ### InvokeOpenStudy
-This procedure was intentionally **NOT** given a hardcoded fallback. It **MUST** be explicitly configured per-PACS profile in SpyWindow. If missing, the system throws an error indicating the procedure needs to be configured.
+This procedure was intentionally **NOT** given a hardcoded fallback. It **MUST** be explicitly configured per-PACS profile in AutomationWindow. If missing, the system throws an error indicating the procedure needs to be configured.
 
 ### PatientNumberMatch and StudyDateTimeMatch
 These procedures previously used special direct comparison logic accessing MainViewModel properties. The comparison logic has been moved to `ProcedureExecutor.ComparePatientNumber()` and `ProcedureExecutor.CompareStudyDateTime()` which are called by `PatientNumberMatch` and `StudyDateTimeMatch` procedures respectively.
@@ -160,24 +160,24 @@ Users should define these procedures to return the current values, and the compa
 - No per-PACS customization
 
 ### After Removal
-- Procedures must be explicitly defined in SpyWindow
+- Procedures must be explicitly defined in AutomationWindow
 - Full per-PACS customization
 - No hidden fallback behavior
 - Clear error messages when procedures are missing
 
 ## User Action Required
 
-**None immediately** - The application will work without these procedures until they are needed. When automation modules try to use missing procedures, users will see clear error messages and can define them in SpyWindow at that time.
+**None immediately** - The application will work without these procedures until they are needed. When automation modules try to use missing procedures, users will see clear error messages and can define them in AutomationWindow at that time.
 
 ### For Existing Users
 Existing users who already have these procedures defined (from previous exports or manual creation) will not be affected. Their custom procedures will continue to work.
 
 ### For New Users
-New users will need to define procedures as they configure automation for their specific PACS system. This is the intended workflow - per-PACS configuration in SpyWindow.
+New users will need to define procedures as they configure automation for their specific PACS system. This is the intended workflow - per-PACS configuration in AutomationWindow.
 
 ## Related Documentation
 
-- [SpyWindow User Guide](../02-user/SpyWindow.md) - How to use SpyWindow
+- [AutomationWindow User Guide](../02-user/AutomationWindow.md) - How to use AutomationWindow
 - [Custom Procedures Guide](../02-user/CustomProcedures.md) - How to define custom procedures
 - [UI Bookmarks Guide](../02-user/UIBookmarks.md) - How to map UI elements
 - [Automation Guide](../02-user/Automation.md) - How to use automation modules

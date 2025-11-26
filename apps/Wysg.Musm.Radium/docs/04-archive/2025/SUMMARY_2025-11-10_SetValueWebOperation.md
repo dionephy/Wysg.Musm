@@ -1,4 +1,4 @@
-﻿# SUMMARY: SetValueWeb Operation for Web Elements
+# SUMMARY: SetValueWeb Operation for Web Elements
 
 **Date**: 2025-11-10  
 **Status**: ? Complete
@@ -70,11 +70,11 @@ Result: "(web value set, 16 chars)"
 ## Special Characters
 
 Automatically escapes SendKeys special chars:
-- `+` �� `{+}` (Shift)
-- `^` �� `{^}` (Ctrl)
-- `%` �� `{%}` (Alt)
-- `~` �� `{~}` (Enter)
-- `(){}[]` �� `{(}{)}{{}{}}{[}{]}`
+- `+` ?? `{+}` (Shift)
+- `^` ?? `{^}` (Ctrl)
+- `%` ?? `{%}` (Alt)
+- `~` ?? `{~}` (Enter)
+- `(){}[]` ?? `{(}{)}{{}{}}{[}{]}`
 
 ---
 
@@ -88,7 +88,7 @@ SetValueWeb(WebReportText, "CT shows normal findings.")
 
 ### Copy Between Fields
 ```
-GetText(SourceField) �� var1
+GetText(SourceField) ?? var1
 SetValueWeb(TargetField, var1)
 ```
 
@@ -101,10 +101,10 @@ SetValueWeb(WebInput, "")
 
 ## Files Modified
 
-- `SpyWindow.OperationItems.xaml` - Added to dropdown
+- `AutomationWindow.OperationItems.xaml` - Added to dropdown
 - `OperationExecutor.ElementOps.cs` - Implementation
 - `OperationExecutor.cs` - Routing
-- `SpyWindow.Procedures.Exec.cs` - Configuration
+- `AutomationWindow.Procedures.Exec.cs` - Configuration
 
 ---
 

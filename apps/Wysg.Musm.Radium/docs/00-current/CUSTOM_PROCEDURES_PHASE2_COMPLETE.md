@@ -43,7 +43,7 @@ User calls procedure "GetCurrentPatientRemark"
 ¡æ Not found in ui-procedures.json
 ¡æ Throws InvalidOperationException with message:
    "Custom procedure 'GetCurrentPatientRemark' is not defined.
-    Please configure it in SpyWindow ¡æ Custom Procedures for this PACS profile."
+    Please configure it in AutomationWindow ¡æ Custom Procedures for this PACS profile."
 ```
 
 ## User Impact
@@ -55,8 +55,8 @@ User calls procedure "GetCurrentPatientRemark"
 
 ### New Users
 - **Impact**: Medium
-- **Reason**: Must explicitly define procedures in SpyWindow for each PACS profile
-- **Action Required**: Configure procedures as needed using SpyWindow ¡æ Custom Procedures tab
+- **Reason**: Must explicitly define procedures in AutomationWindow for each PACS profile
+- **Action Required**: Configure procedures as needed using AutomationWindow ¡æ Custom Procedures tab
 - **Guidance**: See [HARDCODED_PROCEDURES_MIGRATION.md](HARDCODED_PROCEDURES_MIGRATION.md) for procedure definitions
 
 ### Power Users
@@ -70,7 +70,7 @@ User calls procedure "GetCurrentPatientRemark"
 1. **[HARDCODED_PROCEDURES_MIGRATION.md](HARDCODED_PROCEDURES_MIGRATION.md)**
    - Lists all 13 removed procedures
    - Provides default implementations for each
-   - Explains how to recreate in SpyWindow
+   - Explains how to recreate in AutomationWindow
    - Documents special cases
 
 2. **[PHASE2_COMPLETION_GUIDE.md](PHASE2_COMPLETION_GUIDE.md)** (this file)
@@ -85,7 +85,7 @@ User calls procedure "GetCurrentPatientRemark"
 **Test**: Call undefined procedure
 ```
 Result: InvalidOperationException thrown
-Message: "Custom procedure 'XYZ' is not defined. Please configure it in SpyWindow..."
+Message: "Custom procedure 'XYZ' is not defined. Please configure it in AutomationWindow..."
 Status: ? Pass
 ```
 
@@ -107,7 +107,7 @@ Status: ? Pass
 **Test**: Run automation module that calls undefined procedure
 ```
 Result: Module fails with clear error message
-Action: User defines procedure in SpyWindow
+Action: User defines procedure in AutomationWindow
 Status: ? Expected behavior
 ```
 
@@ -178,7 +178,7 @@ Status: ? Expected behavior
 ### For Users
 1. Continue using application normally
 2. When automation fails due to missing procedure:
-   - Open SpyWindow ¡æ Custom Procedures
+   - Open AutomationWindow ¡æ Custom Procedures
    - Define the procedure for your PACS
    - Reference [HARDCODED_PROCEDURES_MIGRATION.md](HARDCODED_PROCEDURES_MIGRATION.md) for defaults
 3. Test procedure using "Run" button before using in automation

@@ -1,4 +1,4 @@
-ï»¿# Quick Reference: Automation Module Split and Related Studies ID (2025-11-09)
+# Quick Reference: Automation Module Split and Related Studies ID (2025-11-09)
 
 **Date**: 2025-11-25  
 **Type**: Quick Reference  
@@ -17,7 +17,7 @@ This guide provides quick reference information for users. For detailed implemen
 
 ## Summary
 Two improvements to automation system:
-1. ? Added "Get Selected Id From Related Studies List" to SpyWindow Custom Procedures
+1. ? Added "Get Selected Id From Related Studies List" to AutomationWindow Custom Procedures
 2. ? Split "UnlockStudy" module into "UnlockStudy" (patient/study) + "ToggleOff" (proofread/reportified)
 
 ## Module Behavior Changes
@@ -46,13 +46,13 @@ ToggleOff
 ```
 
 ## Quick Test
-1. Settings â†’ Automation â†’ Verify "ToggleOff" in library
-2. Create test sequence: "UnlockStudy" â†’ Verify only patient/study toggles off
-3. Create test sequence: "ToggleOff" â†’ Verify only proofread/reportified toggles off
-4. Create test sequence: "UnlockStudy, ToggleOff" â†’ Verify all 4 toggles off
+1. Settings ¡æ Automation ¡æ Verify "ToggleOff" in library
+2. Create test sequence: "UnlockStudy" ¡æ Verify only patient/study toggles off
+3. Create test sequence: "ToggleOff" ¡æ Verify only proofread/reportified toggles off
+4. Create test sequence: "UnlockStudy, ToggleOff" ¡æ Verify all 4 toggles off
 
 ## Files Changed
-- `SpyWindow.PacsMethodItems.xaml` - Added GetSelectedIdFromRelatedStudies
+- `AutomationWindow.PacsMethodItems.xaml` - Added GetSelectedIdFromRelatedStudies
 - `MainViewModel.Commands.Automation.cs` - Split module logic
 - `SettingsViewModel.cs` - Added ToggleOff to library
 

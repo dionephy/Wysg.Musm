@@ -21,7 +21,7 @@
     <SolidColorBrush x:Key="Path.Deep"   Color="#333A3D41"/>
 
     <!-- Button Style -->
-    <Style x:Key="SpyWindowButtonStyle" TargetType="Button">
+    <Style x:Key="AutomationWindowButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="{StaticResource Dark.Accent}"/>
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
@@ -57,7 +57,7 @@
     </ControlTemplate>
 
     <!-- ComboBox Style -->
-    <Style x:Key="SpyWindowComboBoxStyle" TargetType="ComboBox">
+    <Style x:Key="AutomationWindowComboBoxStyle" TargetType="ComboBox">
         <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
@@ -109,7 +109,7 @@
         </Setter>
     </Style>
 
-    <Style x:Key="SpyWindowComboBoxItemStyle" TargetType="ComboBoxItem">
+    <Style x:Key="AutomationWindowComboBoxItemStyle" TargetType="ComboBoxItem">
         <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
     </Style>
@@ -144,20 +144,20 @@
     </Style>
 
     <!-- ScrollBar Style -->
-    <Style x:Key="SpyWindowScrollBarStyle" TargetType="ScrollBar">
+    <Style x:Key="AutomationWindowScrollBarStyle" TargetType="ScrollBar">
         <Setter Property="Background" Value="{StaticResource Dark.Accent}"/>
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
     </Style>
 
     <!-- TreeView Styles -->
-    <Style x:Key="SpyWindowTreeViewStyle" TargetType="TreeView">
+    <Style x:Key="AutomationWindowTreeViewStyle" TargetType="TreeView">
         <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
 
-    <Style x:Key="SpyWindowTreeViewItemStyle" TargetType="TreeViewItem">
+    <Style x:Key="AutomationWindowTreeViewItemStyle" TargetType="TreeViewItem">
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
         <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
         <Style.Triggers>
@@ -171,7 +171,7 @@
     </Style>
 
     <!-- DataGrid Styles -->
-    <Style x:Key="SpyWindowDataGridStyle" TargetType="DataGrid">
+    <Style x:Key="AutomationWindowDataGridStyle" TargetType="DataGrid">
         <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
@@ -182,37 +182,37 @@
         <Setter Property="AlternatingRowBackground" Value="#262626"/>
     </Style>
 
-    <Style x:Key="SpyWindowDataGridColumnHeaderStyle" TargetType="DataGridColumnHeader">
+    <Style x:Key="AutomationWindowDataGridColumnHeaderStyle" TargetType="DataGridColumnHeader">
         <Setter Property="Background" Value="{StaticResource Dark.Accent}"/>
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
     </Style>
 
-    <Style x:Key="SpyWindowDataGridCellStyle" TargetType="DataGridCell">
+    <Style x:Key="AutomationWindowDataGridCellStyle" TargetType="DataGridCell">
         <Setter Property="Background" Value="{StaticResource Dark.Panel}"/>
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
     </Style>
 
     <!-- GroupBox Style -->
-    <Style x:Key="SpyWindowGroupBoxStyle" TargetType="GroupBox">
+    <Style x:Key="AutomationWindowGroupBoxStyle" TargetType="GroupBox">
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
     </Style>
 
     <!-- TextBlock Style -->
-    <Style x:Key="SpyWindowTextBlockStyle" TargetType="TextBlock">
+    <Style x:Key="AutomationWindowTextBlockStyle" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
     </Style>
 
     <!-- TabControl Style -->
-    <Style x:Key="SpyWindowTabControlStyle" TargetType="TabControl">
+    <Style x:Key="AutomationWindowTabControlStyle" TargetType="TabControl">
         <Setter Property="Background" Value="{StaticResource Dark.Background}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
 
     <!-- TabItem Style -->
-    <Style x:Key="SpyWindowTabItemStyle" TargetType="TabItem">
+    <Style x:Key="AutomationWindowTabItemStyle" TargetType="TabItem">
         <Setter Property="Background" Value="{StaticResource Dark.Accent}"/>
         <Setter Property="Foreground" Value="{StaticResource Dark.Foreground}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Dark.Border}"/>

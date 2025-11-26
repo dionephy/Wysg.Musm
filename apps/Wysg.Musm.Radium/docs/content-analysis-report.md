@@ -1,4 +1,4 @@
-﻿# Documentation Content Analysis Report
+# Documentation Content Analysis Report
 
 **Generated**: 2025-11-24 14:50:29  
 **Total Files Analyzed**: 390
@@ -186,7 +186,7 @@
 - **IMPLEMENTATION_SUMMARY_2025-01-28_PreviousReportProofreadModeWithFallback.md** (Score: 50) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\04-archive\2025\IMPLEMENTATION_SUMMARY_2025-01-28_PreviousReportProofreadModeWithFallbackmd
 - **IMPLEMENTATION_SUMMARY_2025-01-29_ClearJSONOnNewStudy.md** (Score: 50) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\04-archive\2025\IMPLEMENTATION_SUMMARY_2025-01-29_ClearJSONOnNewStudymd
 - **IMPLEMENTATION_SUMMARY_2025-11-02_PreviousReportSelector.md** (Score: 40) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\04-archive\2025\IMPLEMENTATION_SUMMARY_2025-11-02_PreviousReportSelectormd
-- **IMPLEMENTATION_SUMMARY_2025-11-02_SpyWindowUIEnhancements.md** (Score: 50) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\04-archive\2025\IMPLEMENTATION_SUMMARY_2025-11-02_SpyWindowUIEnhancementsmd
+- **IMPLEMENTATION_SUMMARY_2025-11-02_AutomationWindowUIEnhancements.md** (Score: 50) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\04-archive\2025\IMPLEMENTATION_SUMMARY_2025-11-02_AutomationWindowUIEnhancementsmd
 - **IMPLEMENTATION_SUMMARY_2025-11-02_NewStudyEmptyAllJson.md** (Score: 40) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\04-archive\2025\IMPLEMENTATION_SUMMARY_2025-11-02_NewStudyEmptyAllJsonmd
 - **IMPLEMENTATION_SUMMARY_2025-11-02_CollapsibleJsonPanels.md** (Score: 50) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\04-archive\2025\IMPLEMENTATION_SUMMARY_2025-11-02_CollapsibleJsonPanelsmd
 - **IMPLEMENTATION_SUMMARY_2025-11-02_ConsiderArrowBulletContinuation.md** (Score: 55) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\04-archive\2025\IMPLEMENTATION_SUMMARY_2025-11-02_ConsiderArrowBulletContinuationmd
@@ -258,7 +258,7 @@
 - **DEBUG_2025-01-30_OrientationAwareAltUpNavigation.md** (Score: 40) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\04-archive\2025\DEBUG_2025-01-30_OrientationAwareAltUpNavigationmd
 - **BUGFIX_2025-11-11_GoogleLoginConnectionStringError.md** (Score: 40) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\04-archive\2025\BUGFIX_2025-11-11_GoogleLoginConnectionStringErrormd
 - **SPLIT_DIAGNOSTIC_2025_01_19.md** (Score: 40) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\SPLIT_DIAGNOSTIC_2025_01_19md
-- **SPYWINDOW_REFACTORING_SUMMARY.md** (Score: 50) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\SPYWINDOW_REFACTORING_SUMMARYmd
+- **AutomationWindow_REFACTORING_SUMMARY.md** (Score: 50) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\AutomationWindow_REFACTORING_SUMMARYmd
 - **SOLUTION_SUMMARY.md** (Score: 40) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\SOLUTION_SUMMARYmd
 - **SEND_REPORT_COMPLETE_2025_01_19.md** (Score: 40) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\SEND_REPORT_COMPLETE_2025_01_19md
 - **SNOMED_BROWSER_FEATURE_SUMMARY.md** (Score: 40) - C:\Users\dhkim\source\repos\dionephy\WysgMusm\apps\WysgMusmRadium\docs\SNOMED_BROWSER_FEATURE_SUMMARYmd

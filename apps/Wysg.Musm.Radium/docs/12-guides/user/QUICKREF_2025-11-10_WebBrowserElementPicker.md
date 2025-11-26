@@ -1,4 +1,4 @@
-ï»¿# QUICKREF: Web Browser Element Picker
+# QUICKREF: Web Browser Element Picker
 
 **Date**: 2025-11-25  
 **Type**: Quick Reference  
@@ -15,7 +15,7 @@ This guide provides quick reference information for users. For detailed implemen
 
 # QUICKREF: Web Browser Element Picker
 
-**Button**: "Pick Web" (next to "Pick" button in SpyWindow)  
+**Button**: "Pick Web" (next to "Pick" button in AutomationWindow)  
 **Purpose**: Capture web elements with automatic optimization for stability
 
 ---
@@ -54,19 +54,19 @@ This guide provides quick reference information for users. For detailed implemen
 ## Example
 
 ```
-Click "Pick Web" â†’ Point to textarea
+Click "Pick Web" ¡æ Point to textarea
 Status: "Captured web element from 'msedge' (optimized for web stability)"
 Grid shows optimized settings
-Click "Validate" â†’ "found and highlighted (45 ms)" ?
+Click "Validate" ¡æ "found and highlighted (45 ms)" ?
 Select "ReportText" from Bookmark dropdown
-Click "Save" â†’ "Saved mapping for ReportText"
+Click "Save" ¡æ "Saved mapping for ReportText"
 ```
 
 ---
 
 ## Why Use It?
 
-**Problem**: Browser tab titles change â†’ bookmarks break  
+**Problem**: Browser tab titles change ¡æ bookmarks break  
 **Solution**: Pick Web ignores titles, uses structure + AutomationId  
 **Result**: Bookmarks work with any tab title
 
@@ -97,11 +97,11 @@ Click "Save" â†’ "Saved mapping for ReportText"
 ## Files
 
 - Bookmarks saved to: `%APPDATA%\Wysg.Musm\Radium\ui-bookmarks.json`
-- Reload list: Click "Reload" button in SpyWindow
+- Reload list: Click "Reload" button in AutomationWindow
 
 ---
 
 **Status**: ? Complete  
-**Workflow**: Pick Web â†’ Validate â†’ Select â†’ Save  
+**Workflow**: Pick Web ¡æ Validate ¡æ Select ¡æ Save  
 **Auto-Save**: No
 

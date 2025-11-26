@@ -1,17 +1,17 @@
-﻿# Enhancement: Automation Module Split and Related Studies ID Getter (2025-11-09)
+# Enhancement: Automation Module Split and Related Studies ID Getter (2025-11-09)
 
 ## Overview
 This enhancement implements two user-requested improvements to the automation system:
-1. Added "Get Selected Id From Related Studies List" to SpyWindow Custom Procedures
+1. Added "Get Selected Id From Related Studies List" to AutomationWindow Custom Procedures
 2. Split the "UnlockStudy" automation module into two separate modules for finer control
 
 ## Changes Implemented
 
 ### 1. New PACS Method: Get Selected Id From Related Studies List
 
-**File**: `apps\Wysg.Musm.Radium\Views\SpyWindow.PacsMethodItems.xaml`
+**File**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.PacsMethodItems.xaml`
 
-Added new PACS method item to the Custom Procedures dropdown in SpyWindow:
+Added new PACS method item to the Custom Procedures dropdown in AutomationWindow:
 ```xaml
 <ComboBoxItem Tag="GetSelectedIdFromRelatedStudies">Get selected ID from related studies list</ComboBoxItem>
 ```
@@ -20,7 +20,7 @@ Added new PACS method item to the Custom Procedures dropdown in SpyWindow:
 
 **Use Case**: Allows users to create custom procedures that read the selected patient/study ID from the Related Studies list in PACS UI.
 
-### 2. Automation Module Split: UnlockStudy �� UnlockStudy + ToggleOff
+### 2. Automation Module Split: UnlockStudy ?? UnlockStudy + ToggleOff
 
 **Problem**: The original "UnlockStudy" module performed four toggle operations at once:
 - Turned off `PatientLocked`
@@ -69,7 +69,7 @@ else if (string.Equals(m, "ToggleOff", StringComparison.OrdinalIgnoreCase))
 #### Settings Integration
 **File**: `apps\Wysg.Musm.Radium\ViewModels\SettingsViewModel.cs`
 
-Added "ToggleOff" to the available modules list in Settings �� Automation:
+Added "ToggleOff" to the available modules list in Settings ?? Automation:
 ```csharp
 private ObservableCollection<string> availableModules = new(new[] { 
     "NewStudy", "LockStudy", "UnlockStudy", "ToggleOff", "GetStudyRemark", 
@@ -120,14 +120,14 @@ Users can now create procedures that:
 
 ### Functional Testing Checklist
 
-**SpyWindow Custom Procedures**:
-- [ ] Open SpyWindow �� Custom Procedures
+**AutomationWindow Custom Procedures**:
+- [ ] Open AutomationWindow ?? Custom Procedures
 - [ ] Verify "Get selected ID from related studies list" appears in PACS methods dropdown
 - [ ] Create procedure using this method
 - [ ] Verify it reads selected ID correctly from Related Studies list
 
-**Settings �� Automation**:
-- [ ] Open Settings �� Automation
+**Settings ?? Automation**:
+- [ ] Open Settings ?? Automation
 - [ ] Verify "ToggleOff" appears in Available Modules list
 - [ ] Drag "ToggleOff" into a sequence (e.g., Send Report)
 - [ ] Save automation settings
@@ -171,7 +171,7 @@ OLD: UnlockStudy
 NEW: UnlockStudy, ToggleOff
 ```
 
-This can be done in Settings �� Automation by dragging "ToggleOff" after "UnlockStudy" in sequences that previously used "UnlockStudy" alone.
+This can be done in Settings ?? Automation by dragging "ToggleOff" after "UnlockStudy" in sequences that previously used "UnlockStudy" alone.
 
 ## Related Features
 - FR-Related Studies: Infrastructure for related studies list interaction
@@ -179,7 +179,7 @@ This can be done in Settings �� Automation by dragging "ToggleOff" after "Un
 - FR-Settings Automation: Drag-and-drop sequence editor
 
 ## Files Modified
-1. `apps\Wysg.Musm.Radium\Views\SpyWindow.PacsMethodItems.xaml` - Added new PACS method item
+1. `apps\Wysg.Musm.Radium\Views\AutomationWindow.PacsMethodItems.xaml` - Added new PACS method item
 2. `apps\Wysg.Musm.Radium\ViewModels\MainViewModel.Commands.Automation.cs` - Split UnlockStudy logic
 3. `apps\Wysg.Musm.Radium\ViewModels\SettingsViewModel.cs` - Added ToggleOff to available modules
 4. `apps\Wysg.Musm.Radium\docs\ENHANCEMENT_2025-11-09_AutomationModuleSplit.md` - This documentation

@@ -1,4 +1,4 @@
-﻿# Enhancement: Replace SendReportRetry with SendReportWithoutHeader
+# Enhancement: Replace SendReportRetry with SendReportWithoutHeader
 
 **Date:** 2025-11-10  
 **Type:** Enhancement  
@@ -9,7 +9,7 @@ Removed the "Send report retry" PACS method item and replaced it with "Send repo
 
 ## Changes Made
 
-### 1. SpyWindow.PacsMethodItems.xaml
+### 1. AutomationWindow.PacsMethodItems.xaml
 - **Removed:** `<ComboBoxItem Tag="SendReportRetry">Send report retry</ComboBoxItem>`
 - **Added:** `<ComboBoxItem Tag="SendReportWithoutHeader">Send report without header</ComboBoxItem>`
 
@@ -21,7 +21,7 @@ Removed the "Send report retry" PACS method item and replaced it with "Send repo
 The "Send report retry" item was redundant with the existing retry logic built into the SendReport automation module (FR-1280 to FR-1289). The new "Send report without header" method provides a cleaner way to send reports that don't include header information, which is a common requirement in certain PACS workflows.
 
 ## Usage
-Users can configure the "Send report without header" custom procedure in SpyWindow to define the exact UI interaction sequence for sending reports without headers. This procedure is configured per-PACS profile and must be authored explicitly by the user.
+Users can configure the "Send report without header" custom procedure in AutomationWindow to define the exact UI interaction sequence for sending reports without headers. This procedure is configured per-PACS profile and must be authored explicitly by the user.
 
 ## Related Features
 - FR-1190 to FR-1198: Original InvokeSendReport and SendReportRetry implementation
@@ -30,4 +30,4 @@ Users can configure the "Send report without header" custom procedure in SpyWind
 
 ## Testing
 - Build verification: No compilation errors
-- Manual testing required: Verify SpyWindow Custom Procedures dropdown shows "Send report without header" instead of "Send report retry"
+- Manual testing required: Verify AutomationWindow Custom Procedures dropdown shows "Send report without header" instead of "Send report retry"

@@ -1,4 +1,4 @@
-﻿# BUGFIX: Web Browser Element Picker - Robust Bookmark Creation
+# BUGFIX: Web Browser Element Picker - Robust Bookmark Creation
 
 **Date**: 2025-11-10  
 **Type**: Bug Fix  
@@ -10,14 +10,14 @@
 ## Problem
 
 Initial implementation of "Pick Web" button created bookmarks that failed validation due to:
-1. **Dynamic Window Titles** - Browser window names change with tabs (e.g., "ITR Worklist Report - ���� - Microsoft? Edge" vs "ITR Worklist Report - Microsoft Edge")
+1. **Dynamic Window Titles** - Browser window names change with tabs (e.g., "ITR Worklist Report - ???? - Microsoft? Edge" vs "ITR Worklist Report - Microsoft Edge")
 2. **Name Matching Enabled** - UseName=True caused mismatches when tab titles changed
 3. **Index Dependency** - UseIndex=True made bookmarks fragile to browser layout changes
 
 ### Example Failure
 ```
 Step 2: Looking for Name='ITR Worklist Report - Microsoft Edge', ClassName='BrowserRootView'
-Actual element: Name='ITR Worklist Report - ���� - Microsoft? Edge' (different!)
+Actual element: Name='ITR Worklist Report - ???? - Microsoft? Edge' (different!)
 Result: not found (0 ms)
 ```
 
@@ -114,7 +114,7 @@ Step 14: UseName=False, UseClassName=True, UseControlTypeId=True, UseAutomationI
 ### Test Case: Edge Browser with Dynamic Tab Title
 
 **Initial Capture**:
-- Window: "ITR Worklist Report - ���� - Microsoft? Edge"
+- Window: "ITR Worklist Report - ???? - Microsoft? Edge"
 - Target: textarea with AutomationId="job-report-view-report-text"
 
 **After Tab Title Change**:
@@ -122,11 +122,11 @@ Step 14: UseName=False, UseClassName=True, UseControlTypeId=True, UseAutomationI
 
 **Validation**: ? **Success**
 ```
-Step 1: ClassName='Chrome_WidgetWin_1', ControlType=50032 �� Match ?
-Step 2: ClassName='BrowserRootView', ControlType=50033 �� Match ?
-Step 3: ClassName='NonClientView', ControlType=50033 �� Match ?
+Step 1: ClassName='Chrome_WidgetWin_1', ControlType=50032 ?? Match ?
+Step 2: ClassName='BrowserRootView', ControlType=50033 ?? Match ?
+Step 3: ClassName='NonClientView', ControlType=50033 ?? Match ?
 ...
-Step 14: AutomationId='job-report-view-report-text' �� Match ?
+Step 14: AutomationId='job-report-view-report-text' ?? Match ?
 Resolved: Found and highlighted (45 ms)
 ```
 
@@ -168,18 +168,18 @@ Level 14: Target Element (AutomationId stable)
 ## Testing
 
 - [x] Capture element from Edge with Korean tab title
-- [x] Change tab title (Korean �� English)
-- [x] Validate bookmark �� Success ?
-- [x] Resolve element �� Found and highlighted ?
-- [x] Test with Chrome browser �� Success ?
-- [x] Test with Firefox browser �� Success ?
-- [x] Test with multiple tabs �� Success ?
+- [x] Change tab title (Korean ?? English)
+- [x] Validate bookmark ?? Success ?
+- [x] Resolve element ?? Found and highlighted ?
+- [x] Test with Chrome browser ?? Success ?
+- [x] Test with Firefox browser ?? Success ?
+- [x] Test with multiple tabs ?? Success ?
 
 ---
 
 ## Files Modified
 
-- `apps\Wysg.Musm.Radium\Views\SpyWindow.Bookmarks.cs` - Enhanced OnPickWeb with optimization logic
+- `apps\Wysg.Musm.Radium\Views\AutomationWindow.Bookmarks.cs` - Enhanced OnPickWeb with optimization logic
 
 ---
 

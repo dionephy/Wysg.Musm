@@ -1,6 +1,6 @@
-﻿# SUMMARY: Web Browser Element Picker
+# SUMMARY: Web Browser Element Picker
 
-**Feature**: Web-optimized element capture for SpyWindow  
+**Feature**: Web-optimized element capture for AutomationWindow  
 **Status**: ? Complete  
 **Date**: 2025-11-10
 
@@ -8,15 +8,15 @@
 
 ## What Changed
 
-Added "Pick Web" button to SpyWindow that works exactly like "Pick" but applies automatic optimization for web browser stability.
+Added "Pick Web" button to AutomationWindow that works exactly like "Pick" but applies automatic optimization for web browser stability.
 
 ---
 
 ## Workflow
 
 ```
-Click "Pick Web" �� Move mouse to element �� Captured with optimization
-�� Click "Validate" �� Select bookmark from dropdown �� Click "Save"
+Click "Pick Web" ?? Move mouse to element ?? Captured with optimization
+?? Click "Validate" ?? Select bookmark from dropdown ?? Click "Save"
 ```
 
 **NO AUTO-SAVE** - User must select predefined bookmark and click Save button.
@@ -42,7 +42,7 @@ Click "Pick Web" �� Move mouse to element �� Captured with optimization
 
 ## Why It Matters
 
-**Problem**: Tab titles change �� bookmarks break  
+**Problem**: Tab titles change ?? bookmarks break  
 **Solution**: Ignore names, use structure + AutomationId  
 **Result**: Bookmarks work even when tab titles change
 
@@ -51,11 +51,11 @@ Click "Pick Web" �� Move mouse to element �� Captured with optimization
 ## Example
 
 ```
-User clicks "Pick Web" �� Element captured
+User clicks "Pick Web" ?? Element captured
 Grid shows: UseName=off, UseClassName=on for first 3 levels
-User clicks "Validate" �� Success (45 ms)
+User clicks "Validate" ?? Success (45 ms)
 User selects "ReportText" from dropdown
-User clicks "Save" �� Bookmark mapped and saved
+User clicks "Save" ?? Bookmark mapped and saved
 ```
 
 ---
@@ -71,8 +71,8 @@ User clicks "Save" �� Bookmark mapped and saved
 
 ## Files Modified
 
-- `SpyWindow.xaml` - Added button
-- `SpyWindow.Bookmarks.cs` - Added OnPickWeb with optimization logic
+- `AutomationWindow.xaml` - Added button
+- `AutomationWindow.Bookmarks.cs` - Added OnPickWeb with optimization logic
 
 ---
 

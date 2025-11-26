@@ -1,4 +1,4 @@
-# ENHANCEMENT: SpyWindow UI Cleanup - Tree Removal and Toolbar Reorganization (2025-11-25)
+# ENHANCEMENT: AutomationWindow UI Cleanup - Tree Removal and Toolbar Reorganization (2025-11-25)
 
 **Status**: ? Implemented (Updated 2025-11-25)
 **Date**: 2025-11-25
@@ -8,7 +8,7 @@
 
 ## Summary
 
-Removed the UI Tree pane from SpyWindow and reorganized the toolbar into two rows for better visibility and usability. This cleanup streamlines the interface by removing unused/disabled functionality and improves toolbar organization.
+Removed the UI Tree pane from AutomationWindow and reorganized the toolbar into two rows for better visibility and usability. This cleanup streamlines the interface by removing unused/disabled functionality and improves toolbar organization.
 
 **Update 2025-11-25 (Latest):** Moved Bookmark ComboBox and Save button to second toolbar row for better workflow grouping.
 
@@ -52,8 +52,8 @@ Row 2: Bookmark, Save, Map, Resolve, Reload, +, Rename, Delete
 - Left column GroupBox containing TreeView (`tvAncestry`)
 - TextBox for selected node properties (`txtNodeProps`)
 - "Enable Tree" CheckBox (`chkEnableTree`)
-- `SpyWindow.Tree.cs` partial class file
-- Tree-related fields in `SpyWindow.xaml.cs`
+- `AutomationWindow.Tree.cs` partial class file
+- Tree-related fields in `AutomationWindow.xaml.cs`
 
 **Why:**
 - Tree view functionality was disabled (minimal implementation)
@@ -99,7 +99,7 @@ Row 2: Bookmark, Save, Map, Resolve, Reload, +, Rename, Delete
 
 ### Files Modified (3)
 
-1. **SpyWindow.xaml** (~60 lines modified)
+1. **AutomationWindow.xaml** (~60 lines modified)
    - Removed UI Tree GroupBox (Grid.Column="0" in Grid.Row="1")
    - Removed txtNodeProps GroupBox
    - Removed chkEnableTree CheckBox
@@ -110,11 +110,11 @@ Row 2: Bookmark, Save, Map, Resolve, Reload, +, Rename, Delete
    - **NEW**: Moved Picked Point to end of row 1
    - Fixed duplicate closing `</Window>` tag
 
-2. **SpyWindow.xaml.cs** (~5 lines modified)
+2. **AutomationWindow.xaml.cs** (~5 lines modified)
    - Removed `_chkEnableTree` field accessor
    - Removed tree-related code references
 
-3. **SpyWindow.Tree.cs** (DELETED)
+3. **AutomationWindow.Tree.cs** (DELETED)
    - Removed entire partial class file
    - Contained `TreeNode` class and minimal tree logic
    - `ShowAncestryTree` and `OnAncestrySelected` methods removed
@@ -172,7 +172,7 @@ Row 2: Bookmark, Save, Map, Resolve, Reload, +, Rename, Delete
 ## Button Functions Explained
 
 For detailed explanation of what Map, Resolve, and Reload buttons do, see:
-**`SPYWINDOW_BUTTON_FUNCTIONS.md`**
+**`AutomationWindow_BUTTON_FUNCTIONS.md`**
 
 ### Quick Summary:
 
@@ -245,7 +245,7 @@ For detailed explanation of what Map, Resolve, and Reload buttons do, see:
 - Bookmark selection now on same row as Save (more intuitive)
 
 ### For Developers
-- `SpyWindow.Tree.cs` no longer exists
+- `AutomationWindow.Tree.cs` no longer exists
 - Tree-related methods removed:
   - `ShowAncestryTree()`
   - `OnAncestrySelected()`
@@ -289,10 +289,10 @@ For detailed explanation of what Map, Resolve, and Reload buttons do, see:
 
 ## Related Documentation
 
-- **`SPYWINDOW_BUTTON_FUNCTIONS.md`** - Detailed explanation of Map, Resolve, Reload buttons
+- **`AutomationWindow_BUTTON_FUNCTIONS.md`** - Detailed explanation of Map, Resolve, Reload buttons
 - **`ENHANCEMENT_2025-11-25_DynamicUIBookmarks.md`** - Dynamic bookmark system
 - **`MAP_METHOD_EXPLANATION.md`** - Chain vs AutomationIdOnly explanation
-- **`ENHANCEMENT_2025-11-02_SpyWindowUIEnhancements.md`** - Previous SpyWindow improvements
+- **`ENHANCEMENT_2025-11-02_AutomationWindowUIEnhancements.md`** - Previous AutomationWindow improvements
 - **`README.md`** - Updated with summary
 
 ---

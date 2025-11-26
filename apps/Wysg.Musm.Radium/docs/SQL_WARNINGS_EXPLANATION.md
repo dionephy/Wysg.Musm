@@ -32,7 +32,7 @@ All C# source files compile without errors:
 - ? `MainViewModel.Commands.cs` - No errors
 - ? `SettingsViewModel.cs` - No errors
 - ? `UiBookmarks.cs` - No errors
-- ? `SpyWindow.Procedures.Exec.cs` - No errors
+- ? `AutomationWindow.Procedures.Exec.cs` - No errors
 
 ## How to Handle These Warnings
 
@@ -72,7 +72,7 @@ The SQL warnings are **cosmetic only** and do not indicate any problems with you
 ## Next Steps
 
 You can proceed with:
-1. Testing the new PACS methods in SpyWindow
+1. Testing the new PACS methods in AutomationWindow
 2. Configuring automation sequences in Settings
 3. Mapping UI elements to new KnownControls
 4. Running automated workflows

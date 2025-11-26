@@ -1,4 +1,4 @@
-﻿# Clipboard and Keyboard Simulation Operations (2025-10-18)
+# Clipboard and Keyboard Simulation Operations (2025-10-18)
 
 ## User Request
 Add three new operations to Custom Procedures:
@@ -64,10 +64,10 @@ Add three new operations to Custom Procedures:
 
 **Files Modified:**
 
-1. **`apps\Wysg.Musm.Radium\Views\SpyWindow.OperationItems.xaml`**
+1. **`apps\Wysg.Musm.Radium\Views\AutomationWindow.OperationItems.xaml`**
    - Added SetClipboard, SimulateTab, SimulatePaste to operation dropdown
 
-2. **`apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs`**
+2. **`apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs`**
    - Added SetClipboard configuration (Arg1=String enabled)
    - Added SimulateTab/SimulatePaste configuration (all args disabled)
    - Implemented SetClipboard: `Clipboard.SetText()` with character count
@@ -93,7 +93,7 @@ Add three new operations to Custom Procedures:
 
 #### SetClipboard Implementation
 ```csharp
-// SpyWindow (on UI thread)
+// AutomationWindow (on UI thread)
 System.Windows.Clipboard.SetText(clipText);
 
 // ProcedureExecutor (headless - requires STA thread)
@@ -116,27 +116,27 @@ Both Tab and Paste use `System.Windows.Forms.SendKeys.SendWait()`:
 
 #### Workflow 1: Copy PACS Data to External App
 ```
-1. GetText(PatientName) �� extracts name to var1
-2. SetClipboard(var1) �� copies name to clipboard
+1. GetText(PatientName) ?? extracts name to var1
+2. SetClipboard(var1) ?? copies name to clipboard
 3. [User switches to external app]
-4. SimulatePaste �� pastes name into external app
+4. SimulatePaste ?? pastes name into external app
 ```
 
 #### Workflow 2: Navigate PACS Form
 ```
-1. SetFocus(FirstField) �� focus first input
-2. SimulateTab �� move to second field
-3. SimulateTab �� move to third field
-4. SimulateTab �� move to submit button
-5. Invoke(SubmitButton) �� submit form
+1. SetFocus(FirstField) ?? focus first input
+2. SimulateTab ?? move to second field
+3. SimulateTab ?? move to third field
+4. SimulateTab ?? move to submit button
+5. Invoke(SubmitButton) ?? submit form
 ```
 
 #### Workflow 3: Automated Data Entry
 ```
-1. SetClipboard("Patient: John Doe, Age: 45") �� prepare text
-2. ClickElement(RemarkField) �� focus remarks
-3. SimulatePaste �� paste prepared text
-4. SimulateTab �� move to next field
+1. SetClipboard("Patient: John Doe, Age: 45") ?? prepare text
+2. ClickElement(RemarkField) ?? focus remarks
+3. SimulatePaste ?? paste prepared text
+4. SimulateTab ?? move to next field
 ```
 
 ### Build Status
@@ -145,7 +145,7 @@ Both Tab and Paste use `System.Windows.Forms.SendKeys.SendWait()`:
 ### Testing Instructions
 
 #### Test SetClipboard:
-1. Open SpyWindow �� Custom Procedures
+1. Open AutomationWindow ?? Custom Procedures
 2. Add operation `SetClipboard` with Arg1="Test text 123"
 3. Click "Set" button
 4. Verify preview shows `(clipboard set, 13 chars)`
@@ -172,7 +172,7 @@ Both Tab and Paste use `System.Windows.Forms.SendKeys.SendWait()`:
 
 #### Test Combined Workflow:
 1. Create procedure:
-   - `GetText(PatientName)` �� var1
+   - `GetText(PatientName)` ?? var1
    - `SetClipboard(var1)`
    - `ClickElement(RemarkField)`
    - `SimulatePaste`

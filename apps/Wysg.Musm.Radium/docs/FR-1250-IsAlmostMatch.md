@@ -1,7 +1,7 @@
 # FR-1250: IsAlmostMatch Custom Procedure Operation
 
 ## Overview
-Add new string comparison operation `IsAlmostMatch` to SpyWindow Custom Procedures that compares two strings for exact or fuzzy similarity, with special handling for datetime patterns affected by OCR errors.
+Add new string comparison operation `IsAlmostMatch` to AutomationWindow Custom Procedures that compares two strings for exact or fuzzy similarity, with special handling for datetime patterns affected by OCR errors.
 
 ## Requirements
 
@@ -79,8 +79,8 @@ GetTextOCR(element) ¡æ var2        # From PACS: "2025-10-24 0456126" (OCR colons
 IsAlmostMatch(var1, var2) ¡æ var3  # Returns "true" (datetime similar)
 ```
 
-### FR-1251: SpyWindow Operation Configuration
-**Requirement**: SpyWindow Custom Procedures editor MUST include `IsAlmostMatch` operation with proper argument configuration.
+### FR-1251: AutomationWindow Operation Configuration
+**Requirement**: AutomationWindow Custom Procedures editor MUST include `IsAlmostMatch` operation with proper argument configuration.
 
 **Editor Presets**:
 - Operation name: `IsAlmostMatch` (listed in operations dropdown)
@@ -96,7 +96,7 @@ IsAlmostMatch(var1, var2) ¡æ var3  # Returns "true" (datetime similar)
 
 **Implementation**:
 - Located in: `apps\Wysg.Musm.Radium\Services\OperationExecutor.StringOps.cs`
-- Same comparison logic as SpyWindow (shared via OperationExecutor)
+- Same comparison logic as AutomationWindow (shared via OperationExecutor)
 - No dependencies on UI thread (pure string processing)
 - Thread-safe for concurrent execution
 
@@ -114,7 +114,7 @@ IsAlmostMatch(var1, var2) ¡æ var3  # Returns "true" (datetime similar)
    - Added `IsAlmostMatch` case to operation switch in `ExecuteOperation` method
    - Routes to `ExecuteIsAlmostMatch()` with Arg1 and Arg2 string resolution
 
-3. **SpyWindow.Procedures.Exec.cs** (SpyWindow operation editor):
+3. **AutomationWindow.Procedures.Exec.cs** (AutomationWindow operation editor):
    - Added `IsAlmostMatch` case to `OnProcOpChanged` event handler
    - Configures Arg1=Var, Arg2=Var, Arg3=disabled when operation selected
 
@@ -158,7 +158,7 @@ private static bool IsDateTimeSimilar(string value1, string value2)
 
 ## Test Plan
 
-### Manual Testing in SpyWindow
+### Manual Testing in AutomationWindow
 
 1. **Exact Match Test**:
    - Create procedure with two variables containing identical strings
@@ -286,7 +286,7 @@ private static bool IsDateTimeSimilar(string value1, string value2)
 
 ## Acceptance Criteria
 
-- [x] IsAlmostMatch operation available in SpyWindow operations dropdown
+- [x] IsAlmostMatch operation available in AutomationWindow operations dropdown
 - [x] Operation accepts two Var arguments and returns "true" or "false"
 - [x] Exact match comparison works correctly
 - [x] Normalized match removes punctuation and compares case-insensitively
@@ -294,7 +294,7 @@ private static bool IsDateTimeSimilar(string value1, string value2)
 - [x] Preview text shows match result and reason
 - [x] ProcedureExecutor supports headless execution
 - [x] Build succeeds with no errors
-- [ ] Manual testing in SpyWindow confirms expected behavior
+- [ ] Manual testing in AutomationWindow confirms expected behavior
 - [ ] Integration testing with PatientNumberMatch procedure succeeds
 - [ ] Integration testing with StudyDateTimeMatch procedure succeeds
 

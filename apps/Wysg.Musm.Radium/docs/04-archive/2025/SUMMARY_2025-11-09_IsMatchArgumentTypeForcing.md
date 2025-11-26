@@ -1,4 +1,4 @@
-﻿# Summary: IsMatch/IsAlmostMatch Argument Type Forcing Bugfix
+# Summary: IsMatch/IsAlmostMatch Argument Type Forcing Bugfix
 
 ## Date: 2025-11-09
 
@@ -35,7 +35,7 @@ case "IsAlmostMatch":
 
 ## Files Modified (1)
 
-**SpyWindow.Procedures.Exec.cs**
+**AutomationWindow.Procedures.Exec.cs**
 - Changed IsMatch and IsAlmostMatch cases
 - Removed type forcing for Arg1 and Arg2
 - Added explanatory comment
@@ -44,29 +44,29 @@ case "IsAlmostMatch":
 
 ### ? Compare Variable to Literal
 ```
-GetText(TextField) �� var1
+GetText(TextField) ?? var1
 IsMatch(var1, "expected")
 Result: Works correctly
 ```
 
 ### ? Validate Boolean
 ```
-IsVisible(Element) �� var1
+IsVisible(Element) ?? var1
 IsMatch(var1, "true")
 Result: Works correctly
 ```
 
 ### ? Check Empty String
 ```
-GetText(TextField) �� var1
+GetText(TextField) ?? var1
 IsMatch(var1, "")
 Result: Works correctly
 ```
 
 ### ? Compare Two Variables
 ```
-GetText(Field1) �� var1
-GetText(Field2) �� var2
+GetText(Field1) ?? var1
+GetText(Field2) ?? var2
 IsMatch(var1, var2)
 Result: Still works
 ```

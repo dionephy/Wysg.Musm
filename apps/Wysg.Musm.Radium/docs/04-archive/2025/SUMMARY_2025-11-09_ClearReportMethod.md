@@ -1,4 +1,4 @@
-﻿# Summary: ClearReport PACS Method Implementation
+# Summary: ClearReport PACS Method Implementation
 
 ## Date: 2025-11-09
 
@@ -8,7 +8,7 @@ Add a new "Clear report" PACS method to UI Spy window Custom Procedures, enablin
 ## ? Implementation Complete
 
 ### Files Modified (3)
-1. ? **SpyWindow.PacsMethodItems.xaml** - Added ClearReport to PACS method dropdown
+1. ? **AutomationWindow.PacsMethodItems.xaml** - Added ClearReport to PACS method dropdown
 2. ? **PacsService.cs** - Added `ClearReportAsync()` wrapper method
 3. ? **Spec.md** - Added FR-1220 through FR-1226
 
@@ -45,7 +45,7 @@ public async Task<bool> ClearReportAsync()
 ## How to Use
 
 ### Configuration in UI Spy
-1. Open UI Spy (Tools �� UI Spy)
+1. Open UI Spy (Tools ?? UI Spy)
 2. Select PACS profile
 3. Go to Custom Procedures
 4. Select "Clear report" from PACS Method dropdown

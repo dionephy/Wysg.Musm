@@ -1,12 +1,12 @@
-﻿# Enhancement: New Custom Procedure Operation - SimulateDelete (2025-11-09)
+# Enhancement: New Custom Procedure Operation - SimulateDelete (2025-11-09)
 
 ## Overview
 Added a new "SimulateDelete" operation to the UI Spy window Custom Procedures section, enabling automated deletion of selected text or character at cursor position by sending the Delete key.
 
 ## Changes Made
 
-### 1. SpyWindow.OperationItems.xaml
-**Path**: `apps\Wysg.Musm.Radium\Views\SpyWindow.OperationItems.xaml`
+### 1. AutomationWindow.OperationItems.xaml
+**Path**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.OperationItems.xaml`
 
 **Changes**:
 - Added `<ComboBoxItem Content="SimulateDelete"/>` to operations list
@@ -14,8 +14,8 @@ Added a new "SimulateDelete" operation to the UI Spy window Custom Procedures se
 
 **Impact**: Users can now select SimulateDelete from the Operation dropdown in Custom Procedures.
 
-### 2. SpyWindow.Procedures.Exec.cs
-**Path**: `apps\Wysg.Musm.Radium\Views\SpyWindow.Procedures.Exec.cs`
+### 2. AutomationWindow.Procedures.Exec.cs
+**Path**: `apps\Wysg.Musm.Radium\Views\AutomationWindow.Procedures.Exec.cs`
 
 **Changes**:
 Added operation configuration:
@@ -148,8 +148,8 @@ Result: Field cleared then filled with clipboard content
 
 ### Pattern 4: Conditional Clear
 ```
-Operation: GetText           Arg1: TextField (Element) �� var1
-Operation: IsMatch           var1  "expected" �� var2
+Operation: GetText           Arg1: TextField (Element) ?? var1
+Operation: IsMatch           var1  "expected" ?? var2
 # If var2 = "false" then clear:
 Operation: SetFocus          Arg1: TextField (Element)
 Operation: SimulateSelectAll
@@ -265,7 +265,7 @@ SimulateDelete
 
 # Good: Validate after operation
 SimulateDelete
-GetText(TextField) �� var1
+GetText(TextField) ?? var1
 # Check if var1 is empty or expected
 ```
 
@@ -414,8 +414,8 @@ Step 6: SimulatePaste
 ```
 PACS Method: ConditionalClear
 
-Step 1: GetText         Arg1: TextField (Element) �� var1
-Step 2: IsMatch         var1  "old value" �� var2
+Step 1: GetText         Arg1: TextField (Element) ?? var1
+Step 2: IsMatch         var1  "old value" ?? var2
 # If var2 = "true" then clear:
 Step 3: SetFocus        Arg1: TextField (Element)
 Step 4: SimulateSelectAll

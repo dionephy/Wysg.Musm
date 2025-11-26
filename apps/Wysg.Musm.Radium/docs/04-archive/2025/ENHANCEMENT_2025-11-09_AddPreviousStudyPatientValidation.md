@@ -1,4 +1,4 @@
-﻿# Enhancement: AddPreviousStudy Patient Number Validation (2025-11-09)
+# Enhancement: AddPreviousStudy Patient Number Validation (2025-11-09)
 
 ## Overview
 Enhanced the AddPreviousStudy automation module to validate that the selected study in the Related Studies list belongs to the same patient as the current study before attempting to fetch and save the report.
@@ -60,19 +60,19 @@ Debug.WriteLine($"[AddPreviousStudyModule] Patient number validated: {normalized
 
 #### Before Enhancement
 ```
-1. Validate PACS current patient matches app patient �� Continue
-2. Read study metadata from Related Studies list �� Continue
-3. Read report text from PACS �� Continue
-4. Save to database �� Data inconsistency possible
+1. Validate PACS current patient matches app patient ?? Continue
+2. Read study metadata from Related Studies list ?? Continue
+3. Read report text from PACS ?? Continue
+4. Save to database ?? Data inconsistency possible
 ```
 
 #### After Enhancement
 ```
-0. Validate Related Studies patient matches current study patient �� Abort if mismatch
-1. Validate PACS current patient matches app patient �� Abort if mismatch
-2. Read study metadata from Related Studies list �� Continue
-3. Read report text from PACS �� Continue
-4. Save to database �� Data consistency guaranteed
+0. Validate Related Studies patient matches current study patient ?? Abort if mismatch
+1. Validate PACS current patient matches app patient ?? Abort if mismatch
+2. Read study metadata from Related Studies list ?? Continue
+3. Read report text from PACS ?? Continue
+4. Save to database ?? Data consistency guaranteed
 ```
 
 ## User-Facing Behavior
@@ -305,7 +305,7 @@ Both validations work together to ensure:
 ### Implementation Files
 - `MainViewModel.Commands.AddPreviousStudy.cs`: Module implementation
 - `PacsService.cs`: `GetSelectedIdFromRelatedStudiesAsync()` method
-- `SpyWindow.PacsMethodItems.xaml`: "Get selected ID from related studies list" UI item
+- `AutomationWindow.PacsMethodItems.xaml`: "Get selected ID from related studies list" UI item
 
 ## Backward Compatibility
 

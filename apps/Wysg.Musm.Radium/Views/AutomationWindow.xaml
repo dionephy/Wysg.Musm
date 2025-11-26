@@ -1,4 +1,4 @@
-<Window x:Class="Wysg.Musm.Radium.Views.SpyWindow"
+<Window x:Class="Wysg.Musm.Radium.Views.AutomationWindow"
 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 x:Name="Root"
@@ -8,9 +8,9 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
         <!-- Merge external resource dictionaries -->
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="SpyWindow.Styles.xaml"/>
-                <ResourceDictionary Source="SpyWindow.PacsMethodItems.xaml"/>
-                <ResourceDictionary Source="SpyWindow.OperationItems.xaml"/>
+                <ResourceDictionary Source="AutomationWindow.Styles.xaml"/>
+                <ResourceDictionary Source="AutomationWindow.PacsMethodItems.xaml"/>
+                <ResourceDictionary Source="AutomationWindow.OperationItems.xaml"/>
                 <!-- Removed KnownControlItems.xaml - now dynamic -->
             </ResourceDictionary.MergedDictionaries>
             
@@ -32,9 +32,9 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
         </StackPanel>
 
         <!-- Main TabControl -->
-        <TabControl Grid.Row="1" Style="{StaticResource SpyWindowTabControlStyle}">
+        <TabControl Grid.Row="1" Style="{StaticResource AutomationWindowTabControlStyle}">
             <!-- UI Bookmark Tab -->
-            <TabItem Header="UI Bookmark" Style="{StaticResource SpyWindowTabItemStyle}">
+            <TabItem Header="UI Bookmark" Style="{StaticResource AutomationWindowTabItemStyle}">
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -54,8 +54,8 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                             <TextBox x:Name="txtProcess" Width="160" Text="" Style="{StaticResource DarkTextBox}"/>
                             <TextBlock Text="Delay(ms):" VerticalAlignment="Center" Margin="8,0,4,0"/>
                             <TextBox x:Name="txtDelay" Width="60" Text="1500" Style="{StaticResource DarkTextBox}"/>
-                            <Button Content="Pick" Margin="8,0,0,0" Click="OnPick" Style="{StaticResource SpyWindowButtonStyle}"/>
-                            <Button Content="Pick Web" Margin="6,0,0,0" Click="OnPickWeb" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Pick element from web browser and save with window name"/>
+                            <Button Content="Pick" Margin="8,0,0,0" Click="OnPick" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                            <Button Content="Pick Web" Margin="6,0,0,0" Click="OnPickWeb" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Pick element from web browser and save with window name"/>
                             <TextBox x:Name="txtPickedPoint" Width="120" IsReadOnly="True" Margin="12,0,0,0" ToolTip="Picked point (X,Y)" Style="{StaticResource DarkTextBox}"/>
                         </StackPanel>
                         
@@ -63,49 +63,49 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                         <StackPanel Orientation="Horizontal" Grid.Row="1">
                             <TextBlock Text="Bookmark:" Margin="0,0,6,0" VerticalAlignment="Center"/>
                             <ComboBox x:Name="cmbKnown" Width="240" SelectionChanged="OnKnownSelectionChanged"
-                                      Style="{StaticResource SpyWindowComboBoxStyle}" 
+                                      Style="{StaticResource AutomationWindowComboBoxStyle}" 
                                       ItemsSource="{Binding BookmarkItems, RelativeSource={RelativeSource AncestorType=Window}}"
                                       DisplayMemberPath="Name"/>
-                            <Button Content="Save" Margin="6,0,0,0" Click="OnSaveEdited" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Save current chain to selected bookmark"/>
-                            <Button Content="+" Margin="12,0,0,0" Click="OnAddBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Add new bookmark"/>
-                            <Button Content="Rename" Margin="6,0,0,0" Click="OnRenameBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Rename selected bookmark"/>
-                            <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Delete selected bookmark"/>
+                            <Button Content="Save" Margin="6,0,0,0" Click="OnSaveEdited" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Save current chain to selected bookmark"/>
+                            <Button Content="+" Margin="12,0,0,0" Click="OnAddBookmark" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Add new bookmark"/>
+                            <Button Content="Rename" Margin="6,0,0,0" Click="OnRenameBookmark" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Rename selected bookmark"/>
+                            <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteBookmark" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Delete selected bookmark"/>
                             <Separator Margin="12,0" Width="10"/>
-                            <Button Content="Export KnownControls" Margin="0,0,0,0" Click="OnExportKnownControls" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Export all hardcoded KnownControl mappings as regular bookmarks" Background="#3C5C00"/>
+                            <Button Content="Export KnownControls" Margin="0,0,0,0" Click="OnExportKnownControls" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Export all hardcoded KnownControl mappings as regular bookmarks" Background="#3C5C00"/>
                         </StackPanel>
                     </Grid>
 
                     <!-- Crawl Editor -->
-                    <GroupBox Grid.Row="1" Header="Crawl Editor" Style="{StaticResource SpyWindowGroupBoxStyle}">
+                    <GroupBox Grid.Row="1" Header="Crawl Editor" Style="{StaticResource AutomationWindowGroupBoxStyle}">
             <DockPanel>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,6">
                     <TextBlock Text="Map Method:" VerticalAlignment="Center"/>
-                    <ComboBox x:Name="cmbMethod" Width="150" Margin="6,0,12,0" Style="{StaticResource SpyWindowComboBoxStyle}">
+                    <ComboBox x:Name="cmbMethod" Width="150" Margin="6,0,12,0" Style="{StaticResource AutomationWindowComboBoxStyle}">
                         <ComboBoxItem Tag="Chain">Chain</ComboBoxItem>
                         <ComboBoxItem Tag="AutomationIdOnly">AutomationIdOnly</ComboBoxItem>
                     </ComboBox>
-                    <Button Content="Validate" Click="OnValidateChain" Style="{StaticResource SpyWindowButtonStyle}"/>
-                    <Button Content="SetFocus" Margin="6,0,0,0" Click="OnSetFocus" Style="{StaticResource SpyWindowButtonStyle}"/>
-                    <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke" Style="{StaticResource SpyWindowButtonStyle}"/>
-                    <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText" Style="{StaticResource SpyWindowButtonStyle}"/>
-                    <Button Content="Get Name" Margin="6,0,0,0" Click="OnGetName" Style="{StaticResource SpyWindowButtonStyle}"/>
-                    <Button Content="Get HTML" Margin="6,0,0,0" Click="OnGetHtml" Style="{StaticResource SpyWindowButtonStyle}"/>
-                    <Button Content="Row Data" Margin="6,0,0,0" Click="OnGetSelectedRow" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="Validate" Click="OnValidateChain" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                    <Button Content="SetFocus" Margin="6,0,0,0" Click="OnSetFocus" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                    <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                    <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                    <Button Content="Get Name" Margin="6,0,0,0" Click="OnGetName" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                    <Button Content="Get HTML" Margin="6,0,0,0" Click="OnGetHtml" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                    <Button Content="Row Data" Margin="6,0,0,0" Click="OnGetSelectedRow" Style="{StaticResource AutomationWindowButtonStyle}"/>
                     <Separator Margin="12,0" Width="10"/>
-                    <Button Content="Move Up" Click="OnMoveUp" Style="{StaticResource SpyWindowButtonStyle}"/>
-                    <Button Content="Move Down" Margin="6,0,0,0" Click="OnMoveDown" Style="{StaticResource SpyWindowButtonStyle}"/>
-                    <Button Content="Insert Above" Margin="6,0,0,0" Click="OnInsertAbove" Style="{StaticResource SpyWindowButtonStyle}"/>
-                    <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteNode" Style="{StaticResource SpyWindowButtonStyle}"/>
+                    <Button Content="Move Up" Click="OnMoveUp" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                    <Button Content="Move Down" Margin="6,0,0,0" Click="OnMoveDown" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                    <Button Content="Insert Above" Margin="6,0,0,0" Click="OnInsertAbove" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                    <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteNode" Style="{StaticResource AutomationWindowButtonStyle}"/>
                 </StackPanel>
 
                 <DataGrid x:Name="gridChain" AutoGenerateColumns="False" HeadersVisibility="Column" 
                           CanUserAddRows="True" CanUserDeleteRows="True" IsReadOnly="False" 
-                          CellEditEnding="OnGridCellEditEnding" Style="{StaticResource SpyWindowDataGridStyle}">
+                          CellEditEnding="OnGridCellEditEnding" Style="{StaticResource AutomationWindowDataGridStyle}">
                     <DataGrid.Resources>
                             <Style TargetType="CheckBox" BasedOn="{StaticResource DarkCheckBox}">
                                 <EventSetter Event="Click" Handler="OnTemplateCheckBoxClick"/>
                             </Style>
-                            <Style TargetType="ComboBox" BasedOn="{StaticResource SpyWindowComboBoxStyle}">
+                            <Style TargetType="ComboBox" BasedOn="{StaticResource AutomationWindowComboBoxStyle}">
                                 <EventSetter Event="SelectionChanged" Handler="OnTemplateComboSelectionChanged"/>
                             </Style>
                         </DataGrid.Resources>
@@ -114,7 +114,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <ComboBox SelectedIndex="{Binding LocateIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                  Width="100" Style="{StaticResource SpyWindowComboBoxStyle}">
+                                                  Width="100" Style="{StaticResource AutomationWindowComboBoxStyle}">
                                             <ComboBoxItem Content="Exclude"/>
                                             <ComboBoxItem Content="Children"/>
                                             <ComboBoxItem Content="Descendants"/>
@@ -190,33 +190,33 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
             </TabItem>
 
             <!-- Procedure Tab -->
-            <TabItem Header="Procedure" Style="{StaticResource SpyWindowTabItemStyle}">
+            <TabItem Header="Procedure" Style="{StaticResource AutomationWindowTabItemStyle}">
                 <DockPanel Margin="8">
                 <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                     <!-- First row: Procedure selection and management -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                         <TextBlock Text="Custom Procedure:" VerticalAlignment="Center"/>
                         <ComboBox x:Name="cmbProcMethod" Width="220" Margin="6,0,12,0"
-                                  Style="{StaticResource SpyWindowComboBoxStyle}" 
+                                  Style="{StaticResource AutomationWindowComboBoxStyle}" 
                                   ItemsSource="{Binding PacsMethods, RelativeSource={RelativeSource AncestorType=Window}}"
                                   DisplayMemberPath="Name"
                                   SelectedValuePath="Tag"
                                   SelectionChanged="OnProcMethodChanged"/>
-                        <Button Content="Save procedure" Margin="0,0,0,0" Click="OnSaveProcedure" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Save procedure" Margin="0,0,0,0" Click="OnSaveProcedure" Style="{StaticResource AutomationWindowButtonStyle}"/>
                         <Separator Margin="12,0" Width="10"/>
-                        <Button Content="Add procedure" Click="OnAddPacsMethod" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Add new custom procedure"/>
-                        <Button Content="Edit procedure" Margin="6,0,0,0" Click="OnEditPacsMethod" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Edit selected custom procedure"/>
-                        <Button Content="Delete procedure" Margin="6,0,0,0" Click="OnDeletePacsMethod" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Delete selected custom procedure"/>
+                        <Button Content="Add procedure" Click="OnAddPacsMethod" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Add new custom procedure"/>
+                        <Button Content="Edit procedure" Margin="6,0,0,0" Click="OnEditPacsMethod" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Edit selected custom procedure"/>
+                        <Button Content="Delete procedure" Margin="6,0,0,0" Click="OnDeletePacsMethod" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Delete selected custom procedure"/>
                     </StackPanel>
                     <!-- Second row: Operation management -->
                     <StackPanel Orientation="Horizontal">
-                        <Button Content="Add operation" Click="OnAddProcRow" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Button Content="Run procedure" Margin="6,0,0,0" Click="OnRunProcedure" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Add operation" Click="OnAddProcRow" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                        <Button Content="Run procedure" Margin="6,0,0,0" Click="OnRunProcedure" Style="{StaticResource AutomationWindowButtonStyle}"/>
                     </StackPanel>
                 </StackPanel>
                 <DataGrid x:Name="gridProcSteps" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                           VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
-                          Style="{StaticResource SpyWindowDataGridStyle}">
+                          Style="{StaticResource AutomationWindowDataGridStyle}">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Header="Operation" Width="150">
                             <DataGridTemplateColumn.CellTemplate>
@@ -227,7 +227,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                               PreviewMouseLeftButtonDown="OnOpComboPreviewMouseDown"
                                               PreviewKeyDown="OnOpComboPreviewKeyDown"
                                               SelectionChanged="OnProcOpChanged"
-                                              Style="{StaticResource SpyWindowComboBoxStyle}"
+                                              Style="{StaticResource AutomationWindowComboBoxStyle}"
                                               ItemsSource="{StaticResource OperationItems}"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -237,7 +237,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 <DataTemplate>
                                     <ComboBox Width="80" SelectedValuePath="Content" 
                                               SelectedValue="{Binding Arg1.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                              IsEnabled="{Binding Arg1Enabled}" Style="{StaticResource SpyWindowComboBoxStyle}">
+                                              IsEnabled="{Binding Arg1Enabled}" Style="{StaticResource AutomationWindowComboBoxStyle}">
                                         <ComboBoxItem Content="Element"/>
                                         <ComboBoxItem Content="String"/>
                                         <ComboBoxItem Content="Number"/>
@@ -251,7 +251,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.Resources>
-                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo" BasedOn="{StaticResource SpyWindowComboBoxStyle}">
+                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo" BasedOn="{StaticResource AutomationWindowComboBoxStyle}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </Style>
                                         </Grid.Resources>
@@ -307,7 +307,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 <DataTemplate>
                                     <ComboBox Width="80" SelectedValuePath="Content" 
                                               SelectedValue="{Binding Arg2.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                              IsEnabled="{Binding Arg2Enabled}" Style="{StaticResource SpyWindowComboBoxStyle}">
+                                              IsEnabled="{Binding Arg2Enabled}" Style="{StaticResource AutomationWindowComboBoxStyle}">
                                         <ComboBoxItem Content="Element"/>
                                         <ComboBoxItem Content="String"/>
                                         <ComboBoxItem Content="Number"/>
@@ -321,7 +321,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.Resources>
-                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo2" BasedOn="{StaticResource SpyWindowComboBoxStyle}">
+                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo2" BasedOn="{StaticResource AutomationWindowComboBoxStyle}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </Style>
                                         </Grid.Resources>
@@ -380,7 +380,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 <DataTemplate>
                                     <ComboBox Width="80" SelectedValuePath="Content" 
                                               SelectedValue="{Binding Arg3.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                              IsEnabled="{Binding Arg3Enabled}" Style="{StaticResource SpyWindowComboBoxStyle}">
+                                              IsEnabled="{Binding Arg3Enabled}" Style="{StaticResource AutomationWindowComboBoxStyle}">
                                         <ComboBoxItem Content="Element"/>
                                         <ComboBoxItem Content="String"/>
                                         <ComboBoxItem Content="Number"/>
@@ -394,7 +394,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.Resources>
-                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo3" BasedOn="{StaticResource SpyWindowComboBoxStyle}">
+                                            <Style TargetType="ComboBox" x:Key="HiddenDarkCombo3" BasedOn="{StaticResource AutomationWindowComboBoxStyle}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </Style>
                                         </Grid.Resources>
@@ -455,9 +455,9 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                         <Button Content="Set" Margin="0,0,6,0" Padding="8,2" Click="OnSetProcRow" 
-                                                Tag="{Binding}" Style="{StaticResource SpyWindowButtonStyle}"/>
+                                                Tag="{Binding}" Style="{StaticResource AutomationWindowButtonStyle}"/>
                                         <Button Content="x" Padding="8,2" Click="OnRemoveProcRow" 
-                                                Tag="{Binding}" Style="{StaticResource SpyWindowButtonStyle}"/>
+                                                Tag="{Binding}" Style="{StaticResource AutomationWindowButtonStyle}"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -468,7 +468,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
             </TabItem>
 
             <!-- Automation Tab (from Settings) -->
-            <TabItem Header="Automation" Style="{StaticResource SpyWindowTabItemStyle}">
+            <TabItem Header="Automation" Style="{StaticResource AutomationWindowTabItemStyle}">
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -541,7 +541,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Top">
                                     <TextBlock Text="Custom Modules" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
-                                    <Button x:Name="btnCreateModule" Content="Create Module" Margin="0,0,0,8" Click="OnCreateModule" Style="{StaticResource SpyWindowButtonStyle}"/>
+                                    <Button x:Name="btnCreateModule" Content="Create Module" Margin="0,0,0,8" Click="OnCreateModule" Style="{StaticResource AutomationWindowButtonStyle}"/>
                                 </StackPanel>
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                     <ListBox x:Name="lstCustomModules" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="Transparent" BorderThickness="0" PreviewMouseMove="OnAutomationProcDrag" DragLeave="OnAutomationListDragLeave" Tag="CustomModules"/>
@@ -616,8 +616,8 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                     
                     <!-- Fixed button bar at bottom -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                        <Button Content="Save Automation" Width="140" Margin="0,0,8,0" Click="OnSaveAutomation" Style="{StaticResource SpyWindowButtonStyle}"/>
-                        <Button Content="Close" Width="90" Click="OnCloseWindow" Style="{StaticResource SpyWindowButtonStyle}"/>
+                        <Button Content="Save Automation" Width="140" Margin="0,0,8,0" Click="OnSaveAutomation" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                        <Button Content="Close" Width="90" Click="OnCloseWindow" Style="{StaticResource AutomationWindowButtonStyle}"/>
                     </StackPanel>
                 </Grid>
             </TabItem>

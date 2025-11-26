@@ -1,4 +1,4 @@
-﻿# Summary: And Custom Procedure Operation Implementation
+# Summary: And Custom Procedure Operation Implementation
 
 ## Date: 2025-11-09
 
@@ -8,8 +8,8 @@ Add a new "And" operation to UI Spy window Custom Procedures, enabling boolean A
 ## ? Implementation Complete
 
 ### Files Modified (4)
-1. ? **SpyWindow.OperationItems.xaml** - Added And to operations dropdown
-2. ? **SpyWindow.Procedures.Exec.cs** - Configured And operation (Arg1=Var, Arg2=Var)
+1. ? **AutomationWindow.OperationItems.xaml** - Added And to operations dropdown
+2. ? **AutomationWindow.Procedures.Exec.cs** - Configured And operation (Arg1=Var, Arg2=Var)
 3. ? **OperationExecutor.cs** - Added And operation routing
 4. ? **OperationExecutor.StringOps.cs** - Implemented `ExecuteAnd()` method
 
@@ -63,17 +63,17 @@ Result: "true" if both var1 and var2 are "true", else "false"
 
 ### Common Pattern: Dual Validation
 ```
-IsMatch(var1, "expected1") �� var2
-IsMatch(var3, "expected2") �� var4
-And(var2, var4) �� var5
+IsMatch(var1, "expected1") ?? var2
+IsMatch(var3, "expected2") ?? var4
+And(var2, var4) ?? var5
 Result: var5 = "true" if both matches pass
 ```
 
 ### Safety Gate Pattern
 ```
-PatientNumberMatch �� var1
-StudyDateTimeMatch �� var2
-And(var1, var2) �� var3
+PatientNumberMatch ?? var1
+StudyDateTimeMatch ?? var2
+And(var1, var2) ?? var3
 # Proceed only if var3 = "true"
 ```
 
@@ -88,8 +88,8 @@ And(var1, var2) �� var3
 | "false" | "false" | "false" |
 
 ### Case Insensitivity
-- ? "true", "True", "TRUE" �� recognized as true
-- ? "false", "", null, "yes", "1" �� treated as false
+- ? "true", "True", "TRUE" ?? recognized as true
+- ? "false", "", null, "yes", "1" ?? treated as false
 
 ## Feature Requirements
 
@@ -124,34 +124,34 @@ And(var1, var2) �� var3
 
 ### 1. Dual Field Validation
 ```
-GetText(Field1) �� var1
-IsMatch(var1, "expected1") �� var2
-GetText(Field2) �� var3
-IsMatch(var3, "expected2") �� var4
-And(var2, var4) �� var5
+GetText(Field1) ?? var1
+IsMatch(var1, "expected1") ?? var2
+GetText(Field2) ?? var3
+IsMatch(var3, "expected2") ?? var4
+And(var2, var4) ?? var5
 ```
 
 ### 2. Multi-Element Visibility
 ```
-IsVisible(Button1) �� var1
-IsVisible(Button2) �� var2
-And(var1, var2) �� var3
+IsVisible(Button1) ?? var1
+IsVisible(Button2) ?? var2
+And(var1, var2) ?? var3
 ```
 
 ### 3. PACS Safety Check
 ```
-PatientNumberMatch �� var1
-StudyDateTimeMatch �� var2
-And(var1, var2) �� safetyCheck
+PatientNumberMatch ?? var1
+StudyDateTimeMatch ?? var2
+And(var1, var2) ?? safetyCheck
 ```
 
 ### 4. Chained Conditions
 ```
-Condition1 �� var1
-Condition2 �� var2
-And(var1, var2) �� var3
-Condition3 �� var4
-And(var3, var4) �� finalResult
+Condition1 ?? var1
+Condition2 ?? var2
+And(var1, var2) ?? var3
+Condition3 ?? var4
+And(var3, var4) ?? finalResult
 ```
 
 ## Integration Points
@@ -166,36 +166,36 @@ And(var3, var4) �� finalResult
 
 ### Common Chains
 ```
-IsMatch �� var �� And �� result
-IsVisible �� var �� And �� result
-PACS Method �� var �� And �� result
+IsMatch ?? var ?? And ?? result
+IsVisible ?? var ?? And ?? result
+PACS Method ?? var ?? And ?? result
 ```
 
 ## Technical Details
 
 ### Behavior
-- **Null Safety**: Null �� empty string �� false
+- **Null Safety**: Null ?? empty string ?? false
 - **Case Insensitive**: "true", "True", "TRUE" all valid
 - **Strict**: Only "true" (any case) is true; everything else false
 - **No Exceptions**: Always succeeds
 
 ### Examples
 ```
-And("true", "true") �� "true"
-And("True", "TRUE") �� "true"
-And("true", "false") �� "false"
-And("true", "") �� "false"
-And("yes", "yes") �� "false"  # Only "true" recognized
+And("true", "true") ?? "true"
+And("True", "TRUE") ?? "true"
+And("true", "false") ?? "false"
+And("true", "") ?? "false"
+And("yes", "yes") ?? "false"  # Only "true" recognized
 ```
 
 ## Testing
 
 ### Manual Testing
-1. ? Both true �� returns "true"
-2. ? One false �� returns "false"
-3. ? Both false �� returns "false"
+1. ? Both true ?? returns "true"
+2. ? One false ?? returns "false"
+3. ? Both false ?? returns "false"
 4. ? Case variations work
-5. ? Non-"true" values �� false
+5. ? Non-"true" values ?? false
 
 ### Integration Testing
 1. ? Works with IsMatch
@@ -209,20 +209,20 @@ And("yes", "yes") �� "false"  # Only "true" recognized
 ### ? Do:
 ```
 # Good: Chain conditions
-IsMatch(var1, "expected") �� var2
-IsMatch(var3, "expected2") �� var4
-And(var2, var4) �� var5
+IsMatch(var1, "expected") ?? var2
+IsMatch(var3, "expected2") ?? var4
+And(var2, var4) ?? var5
 
 # Good: Use meaningful names
-IsVisible(SaveBtn) �� isSaveVisible
-IsVisible(SendBtn) �� isSendVisible
-And(isSaveVisible, isSendVisible) �� bothVisible
+IsVisible(SaveBtn) ?? isSaveVisible
+IsVisible(SendBtn) ?? isSendVisible
+And(isSaveVisible, isSendVisible) ?? bothVisible
 ```
 
 ### ? Don't:
 ```
 # Bad: Use with non-boolean
-GetText(Field) �� var1
+GetText(Field) ?? var1
 And(var1, var2)  # var1 is text, not boolean!
 
 # Bad: Forget to capture result

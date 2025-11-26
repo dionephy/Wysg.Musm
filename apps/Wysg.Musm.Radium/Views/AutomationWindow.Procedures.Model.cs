@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 
 namespace Wysg.Musm.Radium.Views
 {
-    public partial class SpyWindow
+    public partial class AutomationWindow
     {
         private enum ArgKind { Element, String, Number, Var }
 
