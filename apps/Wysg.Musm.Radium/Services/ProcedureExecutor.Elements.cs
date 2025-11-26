@@ -6,7 +6,9 @@ namespace Wysg.Musm.Radium.Services
 {
     internal static partial class ProcedureExecutor
     {
-        private static readonly Dictionary<UiBookmarks.KnownControl, AutomationElement> _controlCache = new();
+        // Changed from Dictionary<KnownControl, AutomationElement> to Dictionary<string, AutomationElement>
+        // All bookmarks now resolved by name (string key)
+        private static readonly Dictionary<string, AutomationElement> _controlCache = new();
         
         // Runtime element cache for storing elements from GetSelectedElement
         private static readonly Dictionary<string, AutomationElement> _elementCache = new();
@@ -15,18 +17,18 @@ namespace Wysg.Musm.Radium.Services
         private const int ElementResolveMaxAttempts = 3;
         private const int ElementResolveRetryDelayMs = 150;
 
-        private static AutomationElement? GetCached(UiBookmarks.KnownControl key)
+        private static AutomationElement? GetCached(string bookmarkName)
         {
-            if (_controlCache.TryGetValue(key, out var el))
+            if (_controlCache.TryGetValue(bookmarkName, out var el))
             {
-                try { _ = el.Name; return el; } catch { _controlCache.Remove(key); }
+                try { _ = el.Name; return el; } catch { _controlCache.Remove(bookmarkName); }
             }
             return null;
         }
 
-        private static void StoreCache(UiBookmarks.KnownControl key, AutomationElement el) 
+        private static void StoreCache(string bookmarkName, AutomationElement el) 
         { 
-            if (el != null) _controlCache[key] = el; 
+            if (el != null) _controlCache[bookmarkName] = el; 
         }
 
         private static bool IsElementAlive(AutomationElement el)
@@ -54,13 +56,13 @@ namespace Wysg.Musm.Radium.Services
             if (type == ArgKind.Element)
             {
                 var tag = arg.Value ?? string.Empty;
-                if (!Enum.TryParse<UiBookmarks.KnownControl>(tag, out var key)) return null;
-
+                
+                // Simplified: All bookmarks resolved by name (no enum parsing)
                 // Strategy: Try cache first, validate it, then resolve fresh with retry on staleness
                 for (int attempt = 0; attempt < ElementResolveMaxAttempts; attempt++)
                 {
                     // Attempt 1: Check cache
-                    var cached = GetCached(key);
+                    var cached = GetCached(tag);
                     if (cached != null)
                     {
                         if (IsElementAlive(cached))
@@ -70,20 +72,20 @@ namespace Wysg.Musm.Radium.Services
                         else
                         {
                             // Stale element in cache, remove it
-                            _controlCache.Remove(key);
+                            _controlCache.Remove(tag);
                         }
                     }
 
-                    // Attempt 2: Resolve fresh from bookmark
+                    // Attempt 2: Resolve fresh from bookmark by name
                     try
                     {
-                        var tuple = UiBookmarks.Resolve(key);
+                        var tuple = UiBookmarks.Resolve(tag);
                         if (tuple.element != null)
                         {
                             // Validate the newly resolved element before caching
                             if (IsElementAlive(tuple.element))
                             {
-                                StoreCache(key, tuple.element);
+                                StoreCache(tag, tuple.element);
                                 return tuple.element;
                             }
 
@@ -94,7 +96,7 @@ namespace Wysg.Musm.Radium.Services
                     catch { }
                 }
                 
-                // All attempts exhausted for Element type
+                // All attempts exhausted
                 return null;
             }
             

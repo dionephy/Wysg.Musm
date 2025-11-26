@@ -176,8 +176,8 @@ namespace Wysg.Musm.Radium.ViewModels
         public string? EditorAutofocusWindowTitle { get => _editorAutofocusWindowTitle; set => SetProperty(ref _editorAutofocusWindowTitle, value); }
         
         // NEW: Available UI bookmarks for autofocus target selection
-        public ObservableCollection<string> AvailableBookmarks { get; } = new ObservableCollection<string>(
-            Enum.GetNames(typeof(UiBookmarks.KnownControl)).OrderBy(n => n));
+        // Populated from dynamic bookmarks in ui-bookmarks.json instead of hardcoded enum
+        public ObservableCollection<string> AvailableBookmarks { get; } = new ObservableCollection<string>();
         
         // NEW: Available key types for autofocus trigger selection (multiselect via checkboxes)
         public ObservableCollection<KeyTypeOption> AvailableKeyTypes { get; } = new ObservableCollection<KeyTypeOption>
@@ -236,6 +236,9 @@ namespace Wysg.Musm.Radium.ViewModels
             EditorAutofocusBookmark = _local.EditorAutofocusBookmark ?? string.Empty;
             EditorAutofocusWindowTitle = _local.EditorAutofocusWindowTitle ?? string.Empty;
             LoadKeyTypesFromString(_local.EditorAutofocusKeyTypes ?? string.Empty);
+            
+            // NEW: Load available bookmarks from UiBookmarks
+            LoadAvailableBookmarks();
 
             // Initialize PACS profile commands and load from DB if repository is available
             InitializePacsProfileCommands();
@@ -258,6 +261,30 @@ namespace Wysg.Musm.Radium.ViewModels
             
             // Load custom modules into available modules
             LoadCustomModulesIntoAvailable();
+        }
+        
+        /// <summary>
+        /// Load available bookmarks from UiBookmarks into AvailableBookmarks collection.
+        /// This populates the dropdown in Settings ¡æ Keyboard ¡æ Editor Autofocus target.
+        /// </summary>
+        private void LoadAvailableBookmarks()
+        {
+            try
+            {
+                AvailableBookmarks.Clear();
+                
+                var store = UiBookmarks.Load();
+                foreach (var bookmark in store.Bookmarks.OrderBy(b => b.Name))
+                {
+                    AvailableBookmarks.Add(bookmark.Name);
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"[SettingsVM] Loaded {AvailableBookmarks.Count} bookmarks into AvailableBookmarks");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SettingsVM] Error loading available bookmarks: {ex.Message}");
+            }
         }
 
         private bool CanPersistSettings() => _reportifySvc != null && _tenant != null && _tenant.AccountId > 0;

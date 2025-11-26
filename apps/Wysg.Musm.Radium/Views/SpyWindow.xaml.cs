@@ -88,11 +88,13 @@ namespace Wysg.Musm.Radium.Views
         private AutomationElement? _lastResolved;        // Cached resolved element (for quick actions)
 
         // Expose known controls and procedure vars (populated in procedures partial)
-        public List<string> KnownControlTags { get; } = Enum.GetNames(typeof(UiBookmarks.KnownControl)).ToList();
         public ObservableCollection<string> ProcedureVars { get; } = new();
         
         // NEW: Dynamic bookmarks collection
         public ObservableCollection<BookmarkItem> BookmarkItems { get; } = new();
+        
+        // NEW: Combined collection for procedure Arg ComboBoxes (KnownControls + dynamic bookmarks with tags)
+        public ObservableCollection<string> AllBookmarkTags { get; } = new();
 
         // Convenient accessors to XAML controls
         private System.Windows.Controls.ComboBox CmbMethod => (System.Windows.Controls.ComboBox)FindName("cmbMethod");
@@ -164,39 +166,56 @@ namespace Wysg.Musm.Radium.Views
         // ------------------------------------------------------------------
         
         /// <summary>
-        /// Load all bookmarks (KnownControls + user bookmarks) into ComboBox
+        /// Load all bookmarks (user bookmarks only) into ComboBox
         /// </summary>
         private void LoadBookmarksIntoComboBox()
         {
             BookmarkItems.Clear();
+            AllBookmarkTags.Clear();
             
-            // Add KnownControls
-            foreach (UiBookmarks.KnownControl knownCtrl in Enum.GetValues(typeof(UiBookmarks.KnownControl)))
-            {
-                var name = knownCtrl.ToString();
-                // Format name: convert "StudyInfoBanner" to "Study Info Banner"
-                var displayName = System.Text.RegularExpressions.Regex.Replace(name, "([a-z])([A-Z])", "$1 $2");
-                displayName = System.Text.RegularExpressions.Regex.Replace(displayName, "([A-Z]+)([A-Z][a-z])", "$1 $2");
-                
-                BookmarkItems.Add(new BookmarkItem
-                {
-                    Name = displayName.ToLowerInvariant(),
-                    Tag = name,
-                    IsKnownControl = true
-                });
-            }
-            
-            // Add user bookmarks
+            // Load user bookmarks only (no hardcoded KnownControl enum)
             var store = UiBookmarks.Load();
             foreach (var bookmark in store.Bookmarks.OrderBy(b => b.Name))
             {
+                var tag = SanitizeBookmarkTag(bookmark.Name);
+                
                 BookmarkItems.Add(new BookmarkItem
                 {
                     Name = bookmark.Name,
-                    Tag = null,
-                    IsKnownControl = false
+                    Tag = tag,
+                    IsKnownControl = false // All bookmarks are now user-defined
                 });
+                
+                if (!AllBookmarkTags.Contains(tag))
+                {
+                    AllBookmarkTags.Add(tag);
+                }
             }
+        }
+        
+        /// <summary>
+        /// Sanitize bookmark name to create a valid tag for code use (no spaces, alphanumeric + underscore only)
+        /// </summary>
+        private string SanitizeBookmarkTag(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return "Bookmark";
+            
+            // Replace spaces with underscores, remove non-alphanumeric characters except underscore
+            var tag = System.Text.RegularExpressions.Regex.Replace(name, @"[^a-zA-Z0-9_]", "_");
+            
+            // Remove consecutive underscores
+            tag = System.Text.RegularExpressions.Regex.Replace(tag, @"__+", "_");
+            
+            // Trim leading/trailing underscores
+            tag = tag.Trim('_');
+            
+            // Ensure it doesn't start with a number (prepend "Bookmark_" if it does)
+            if (tag.Length > 0 && char.IsDigit(tag[0]))
+            {
+                tag = "Bookmark_" + tag;
+            }
+            
+            return string.IsNullOrWhiteSpace(tag) ? "Bookmark" : tag;
         }
         
         /// <summary>
@@ -227,7 +246,7 @@ namespace Wysg.Musm.Radium.Views
             store.Bookmarks.Add(newBookmark);
             UiBookmarks.Save(store);
             
-            LoadBookmarksIntoComboBox();
+            LoadBookmarksIntoComboBox(); // This now updates both BookmarkItems and AllBookmarkTags
             
             // Select the new bookmark
             var newItem = BookmarkItems.FirstOrDefault(b => b.Name == name && !b.IsKnownControl);
@@ -236,7 +255,7 @@ namespace Wysg.Musm.Radium.Views
                 combo.SelectedItem = newItem;
             }
             
-            txtStatus.Text = $"Added bookmark '{name}'";
+            txtStatus.Text = $"Added bookmark '{name}' with tag '{newItem?.Tag}'"; // Show tag in status
         }
         
         /// <summary>
@@ -246,12 +265,6 @@ namespace Wysg.Musm.Radium.Views
         {
             if (FindName("cmbKnown") is not System.Windows.Controls.ComboBox combo) return;
             if (combo.SelectedItem is not BookmarkItem item) return;
-            
-            if (item.IsKnownControl)
-            {
-                txtStatus.Text = "Cannot delete built-in bookmarks";
-                return;
-            }
             
             var result = MessageBox.Show(
                 $"Delete bookmark '{item.Name}'?",
@@ -280,12 +293,6 @@ namespace Wysg.Musm.Radium.Views
             if (FindName("cmbKnown") is not System.Windows.Controls.ComboBox combo) return;
             if (combo.SelectedItem is not BookmarkItem item) return;
             
-            if (item.IsKnownControl)
-            {
-                txtStatus.Text = "Cannot rename built-in bookmarks";
-                return;
-            }
-            
             var newName = PromptForBookmarkName("Rename Bookmark", item.Name);
             if (string.IsNullOrWhiteSpace(newName) || newName == item.Name) return;
             
@@ -311,6 +318,22 @@ namespace Wysg.Musm.Radium.Views
                 
                 txtStatus.Text = $"Renamed bookmark to '{newName}'";
             }
+        }
+        
+        /// <summary>
+        /// Export all KnownControl mappings as regular bookmarks (migration step)
+        /// REMOVED: This export functionality has been removed since KnownControl enum no longer exists.
+        /// Users should have exported before upgrading to this version.
+        /// </summary>
+        private void OnExportKnownControls(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "Export functionality has been removed.\n\n" +
+                "All bookmarks are now managed through the UI Bookmark tab.\n\n" +
+                "If you need to migrate old hardcoded bookmarks, please use an earlier version of the application.",
+                "Export Not Available",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
         
         /// <summary>

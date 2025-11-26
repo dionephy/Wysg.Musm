@@ -254,10 +254,16 @@ namespace Wysg.Musm.Radium.Views
             // Handle Element type (bookmark-based resolution)
             if (type == ArgKind.Element)
             {
-                var tag = arg.Value ?? string.Empty; 
-                if (!Enum.TryParse<UiBookmarks.KnownControl>(tag, out var key)) return null;
-                var tuple = UiBookmarks.Resolve(key); 
-                return tuple.element;
+                var tag = arg.Value ?? string.Empty;
+                
+                // Simplified: All bookmarks resolved by name (no enum parsing)
+                var bookmarkByTag = UiBookmarks.Resolve(tag);
+                if (bookmarkByTag.element != null)
+                {
+                    return bookmarkByTag.element;
+                }
+                
+                return null;
             }
             
             // Handle Var type (variable containing cached element reference)

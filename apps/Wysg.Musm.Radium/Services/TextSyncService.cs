@@ -109,7 +109,7 @@ namespace Wysg.Musm.Radium.Services
             {
                 try
                 {
-                    var (hwnd, element) = UiBookmarks.Resolve(UiBookmarks.KnownControl.ForeignTextbox);
+                    var (hwnd, element) = UiBookmarks.Resolve("ForeignTextbox");
                     if (element == null) return null;
                     
                     // Try ValuePattern first
@@ -155,7 +155,7 @@ namespace Wysg.Musm.Radium.Services
             {
                 try
                 {
-                    var (hwnd, element) = UiBookmarks.Resolve(UiBookmarks.KnownControl.ForeignTextbox);
+                    var (hwnd, element) = UiBookmarks.Resolve("ForeignTextbox");
                     if (element == null)
                     {
                         Debug.WriteLine("[TextSync] Write failed: element not found");

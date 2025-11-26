@@ -89,7 +89,7 @@
 
 [Other existing sections unchanged]
 
-## Update: Settings → Automation modules and Keyboard (2025-10-13)
+## Update: Settings → Automation modules and Keyboard (2025-10-13, updated 2025-11-26)
 - FR-540 Add three new Automation modules to library: `OpenStudy`, `MouseClick1`, `MouseClick2`.
   - `OpenStudy` executes PACS procedure tag `InvokeOpenStudy`.
   - `MouseClick1`/`MouseClick2` execute their respective procedure tags (headless wrappers in PacsService).
@@ -97,6 +97,7 @@
   - Provide two capture TextBoxes: "Open study" and "Send study".
   - When focused, pressing a key combination (Ctrl/Alt/Win + key allowed) MUST render human-readable text in the TextBox (e.g., "Ctrl+Alt+S").
   - Clicking Save persists values to local settings as `hotkey_open_study` and `hotkey_send_study`.
+  - **NEW (2025-11-26)**: Editor Autofocus section with "Target UI element" combobox populated from dynamic bookmarks in ui-bookmarks.json
   - Note: only capture+persist is implemented; global system-wide hook/registration occurs in a later increment.
 
 ## Update: Settings → Automation panes for Open Study Shortcut (2025-10-13)

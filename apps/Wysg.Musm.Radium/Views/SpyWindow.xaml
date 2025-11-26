@@ -70,6 +70,8 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                             <Button Content="+" Margin="12,0,0,0" Click="OnAddBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Add new bookmark"/>
                             <Button Content="Rename" Margin="6,0,0,0" Click="OnRenameBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Rename selected bookmark"/>
                             <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteBookmark" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Delete selected bookmark"/>
+                            <Separator Margin="12,0" Width="10"/>
+                            <Button Content="Export KnownControls" Margin="0,0,0,0" Click="OnExportKnownControls" Style="{StaticResource SpyWindowButtonStyle}" ToolTip="Export all hardcoded KnownControl mappings as regular bookmarks" Background="#3C5C00"/>
                         </StackPanel>
                     </Grid>
 
@@ -253,7 +255,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </Style>
                                         </Grid.Resources>
-                                        <ComboBox Width="180" ItemsSource="{Binding DataContext.KnownControlTags, ElementName=Root}"
+                                        <ComboBox Width="180" ItemsSource="{Binding DataContext.AllBookmarkTags, ElementName=Root}"
                                                   SelectedValue="{Binding Arg1.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <ComboBox.Style>
                                                 <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenDarkCombo}">
@@ -323,7 +325,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </Style>
                                         </Grid.Resources>
-                                        <ComboBox Width="180" ItemsSource="{Binding DataContext.KnownControlTags, ElementName=Root}"
+                                        <ComboBox Width="180" ItemsSource="{Binding DataContext.AllBookmarkTags, ElementName=Root}"
                                                   SelectedValue="{Binding Arg2.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <ComboBox.Style>
                                                 <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenDarkCombo2}">
@@ -396,7 +398,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </Style>
                                         </Grid.Resources>
-                                        <ComboBox Width="110" ItemsSource="{Binding DataContext.KnownControlTags, ElementName=Root}" 
+                                        <ComboBox Width="110" ItemsSource="{Binding DataContext.AllBookmarkTags, ElementName=Root}" 
                                                   SelectedValue="{Binding Arg3.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <ComboBox.Style>
                                                 <Style TargetType="ComboBox" BasedOn="{StaticResource HiddenDarkCombo3}">

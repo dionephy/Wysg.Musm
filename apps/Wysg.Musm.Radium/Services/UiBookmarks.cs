@@ -18,39 +18,6 @@ public sealed class UiBookmarks
 {
     public static Func<string>? GetStorePathOverride { get; set; }
 
-    public enum KnownControl
-    {
-        StudyInfoBanner,
-        SelectedStudyInSearch,
-        SelectedStudyInRelated,
-        CloseWorklistButton,
-        WorklistWindow,
-        WorklistToolbar,
-        WorklistViewButton,
-        WorklistPane,
-        WorklistListsPane,
-        SearchResultsList,
-        ReportPane,
-        StudyList,
-        RelatedStudyList,
-        ReportText,
-        ReportText2,
-        ReportInput,
-        ViewerWindow,
-        ViewerToolbar,
-        OpenWorklistButton,
-        ReportCommitButton,
-        StudyRemark, // existing
-        PatientRemark, // new: distinct bookmark for patient remark field
-        TestInvoke, // new: generic target for testing Invoke operation
-        Screen_MainCurrentStudyTab, // NEW: main screen current study tab area
-        Screen_SubPreviousStudyTab, // NEW: sub screen previous study tab area
-        ForeignTextbox, // NEW: external textbox for two-way sync with Findings editor
-        // NEW: Additional KnownControl entries for new features (2025-01-16)
-        WorklistOpenButton, // for InvokeOpenWorklist - button that opens worklist
-        SendReportButton // for SendReport - button that sends report in PACS
-    }
-
     public enum MapMethod { Chain = 0, AutomationIdOnly = 1 }
     public enum SearchScope { Children = 0, Descendants = 1 }
 
@@ -118,7 +85,7 @@ public sealed class UiBookmarks
     public sealed class Store
     {
         public List<Bookmark> Bookmarks { get; set; } = new();
-        public Dictionary<string, Bookmark> ControlMap { get; set; } = new();
+        // REMOVED: ControlMap dictionary - no longer needed with dynamic bookmarks only
     }
 
     private static readonly JsonSerializerOptions _opts = new(JsonSerializerDefaults.Web)
@@ -154,135 +121,6 @@ public sealed class UiBookmarks
             File.WriteAllText(p, JsonSerializer.Serialize(s, _opts));
         }
         catch { }
-    }
-
-    public static void SaveMapping(KnownControl key, Bookmark b)
-    {
-        var s = Load();
-        s.ControlMap[key.ToString()] = b;
-        Save(s);
-    }
-
-    public static Bookmark? GetMapping(KnownControl key)
-    {
-        var s = Load();
-        return s.ControlMap.TryGetValue(key.ToString(), out var b) ? b : null;
-    }
-
-    public static (IntPtr hwnd, AutomationElement? element) Resolve(KnownControl key)
-    {
-        var b = GetMapping(key);
-        return b == null ? (IntPtr.Zero, null) : ResolveBookmark(b);
-    }
-
-    /// <summary>
-    /// Resolves a KnownControl with automatic retry and progressive constraint relaxation.
-    /// Inspired by legacy PacsService pattern of trying multiple approaches (e.g., eViewer1 then eViewer2, AutomationId then ClassName).
-    /// </summary>
-    /// <param name="key">The KnownControl to resolve</param>
-    /// <param name="maxAttempts">Maximum number of resolution attempts (default 3)</param>
-    /// <returns>Tuple of (window handle, AutomationElement) or (IntPtr.Zero, null) if all attempts fail</returns>
-    public static (IntPtr hwnd, AutomationElement? element) ResolveWithRetry(KnownControl key, int maxAttempts = 3)
-    {
-        var b = GetMapping(key);
-        if (b == null) return (IntPtr.Zero, null);
-
-        for (int attempt = 0; attempt < maxAttempts; attempt++)
-        {
-            // Attempt 1: Try exact match with all constraints
-            if (attempt == 0)
-            {
-                var result = ResolveBookmark(b);
-                if (result.element != null) return result;
-            }
-            // Attempt 2: Progressive relaxation - relax ControlType for all nodes
-            else if (attempt == 1)
-            {
-                var relaxed = RelaxBookmarkControlType(b);
-                var result = ResolveBookmark(relaxed);
-                if (result.element != null) return result;
-            }
-            // Attempt 3: Further relaxation - relax ClassName (keep Name + AutomationId)
-            else if (attempt == 2)
-            {
-                var relaxed = RelaxBookmarkClassName(b);
-                var result = ResolveBookmark(relaxed);
-                if (result.element != null) return result;
-            }
-
-            // Wait before next attempt (exponential backoff)
-            if (attempt < maxAttempts - 1)
-            {
-                System.Threading.Thread.Sleep(150 * (attempt + 1)); // 150ms, 300ms
-            }
-        }
-
-        // All attempts exhausted
-        return (IntPtr.Zero, null);
-    }
-
-    /// <summary>
-    /// Creates a copy of the bookmark with ControlType constraint relaxed on all nodes.
-    /// Inspired by legacy pattern: try AutomationId first, fall back without ControlType constraint.
-    /// </summary>
-    private static Bookmark RelaxBookmarkControlType(Bookmark b)
-    {
-        return new Bookmark
-        {
-            Name = b.Name,
-            ProcessName = b.ProcessName,
-            Method = b.Method,
-            DirectAutomationId = b.DirectAutomationId,
-            CrawlFromRoot = b.CrawlFromRoot,
-            Chain = b.Chain.Select(n => new Node
-            {
-                Name = n.Name,
-                ClassName = n.ClassName,
-                ControlTypeId = n.ControlTypeId,
-                AutomationId = n.AutomationId,
-                IndexAmongMatches = n.IndexAmongMatches,
-                Include = n.Include,
-                UseName = n.UseName,
-                UseClassName = n.UseClassName,
-                UseControlTypeId = false, // Relax ControlType
-                UseAutomationId = n.UseAutomationId,
-                UseIndex = n.UseIndex,
-                Scope = n.Scope,
-                Order = n.Order
-            }).ToList()
-        };
-    }
-
-    /// <summary>
-    /// Creates a copy of the bookmark with ClassName constraint relaxed on all nodes (keeps Name + AutomationId).
-    /// Most aggressive relaxation - only use when other attempts fail.
-    /// </summary>
-    private static Bookmark RelaxBookmarkClassName(Bookmark b)
-    {
-        return new Bookmark
-        {
-            Name = b.Name,
-            ProcessName = b.ProcessName,
-            Method = b.Method,
-            DirectAutomationId = b.DirectAutomationId,
-            CrawlFromRoot = b.CrawlFromRoot,
-            Chain = b.Chain.Select(n => new Node
-            {
-                Name = n.Name,
-                ClassName = n.ClassName,
-                ControlTypeId = n.ControlTypeId,
-                AutomationId = n.AutomationId,
-                IndexAmongMatches = n.IndexAmongMatches,
-                Include = n.Include,
-                UseName = n.UseName,
-                UseClassName = false, // Relax ClassName
-                UseControlTypeId = false, // Also relax ControlType
-                UseAutomationId = n.UseAutomationId,
-                UseIndex = n.UseIndex,
-                Scope = n.Scope,
-                Order = n.Order
-            }).ToList()
-        };
     }
 
     public static (IntPtr hwnd, AutomationElement? element) Resolve(string name)
@@ -584,7 +422,7 @@ public sealed class UiBookmarks
 
             if (matches.Length == 0)
             {
-                // FIX: Skip expensive fallbacks only if permanent error at ROOT level (i=0)
+                // FIX: Skip expensive fallbacks only if permanent error at ROOT level
                 // For child steps, always try manual walker even with PropertyNotSupportedException
                 bool skipFallbacks = (i == 0 && skipRetries);
                 

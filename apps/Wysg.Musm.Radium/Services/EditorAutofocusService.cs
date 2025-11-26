@@ -500,11 +500,8 @@ namespace Wysg.Musm.Radium.Services
 
                 if (needRefresh)
                 {
-                    // Resolve bookmark (expensive FlaUI call)
-                    if (!Enum.TryParse<UiBookmarks.KnownControl>(bookmarkName, out var knownControl))
-                        return false;
-
-                    var (bookmarkHwnd, _) = UiBookmarks.Resolve(knownControl);
+                    // Resolve bookmark by name (simplified - no enum parsing)
+                    var (bookmarkHwnd, _) = UiBookmarks.Resolve(bookmarkName);
                     
                     // Cache the result
                     _cachedBookmarkHwnd = bookmarkHwnd;

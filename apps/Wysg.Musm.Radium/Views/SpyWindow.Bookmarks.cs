@@ -57,25 +57,13 @@ namespace Wysg.Musm.Radium.Views
         {
             if (FindName("cmbKnown") is not System.Windows.Controls.ComboBox combo) return;
             
-            // NEW: Handle BookmarkItem instead of ComboBoxItem
+            // Simplified: All bookmarks are now user-defined (no KnownControl enum)
             if (combo.SelectedItem is BookmarkItem item)
             {
-                if (item.IsKnownControl && !string.IsNullOrWhiteSpace(item.Tag))
-                {
-                    // Built-in KnownControl
-                    if (Enum.TryParse<UiBookmarks.KnownControl>(item.Tag, out var key))
-                    {
-                        var mapping = UiBookmarks.GetMapping(key);
-                        if (mapping != null) LoadEditor(mapping);
-                    }
-                }
-                else
-                {
-                    // User-defined bookmark
-                    var store = UiBookmarks.Load();
-                    var bookmark = store.Bookmarks.FirstOrDefault(b => string.Equals(b.Name, item.Name, StringComparison.OrdinalIgnoreCase));
-                    if (bookmark != null) LoadEditor(bookmark);
-                }
+                var store = UiBookmarks.Load();
+                var bookmark = store.Bookmarks.FirstOrDefault(b => 
+                    string.Equals(b.Name, item.Name, StringComparison.OrdinalIgnoreCase));
+                if (bookmark != null) LoadEditor(bookmark);
             }
         }
 
@@ -138,61 +126,40 @@ namespace Wysg.Musm.Radium.Views
             
             SaveEditorInto(_editing);
             
-            // NEW: Check if saving to a BookmarkItem
-            if (FindName("cmbKnown") is System.Windows.Controls.ComboBox combo && combo.SelectedItem is BookmarkItem item)
+            // Simplified: All bookmarks saved to Bookmarks list (no KnownControl SaveMapping)
+            if (FindName("cmbKnown") is System.Windows.Controls.ComboBox combo && 
+                combo.SelectedItem is BookmarkItem item)
             {
-                if (item.IsKnownControl && !string.IsNullOrWhiteSpace(item.Tag))
+                var store = UiBookmarks.Load();
+                var existing = store.Bookmarks.FirstOrDefault(b => 
+                    string.Equals(b.Name, item.Name, StringComparison.OrdinalIgnoreCase));
+                
+                if (existing != null)
                 {
-                    // Saving to KnownControl
-                    if (Enum.TryParse<UiBookmarks.KnownControl>(item.Tag, out var key))
-                    {
-                        var toSave = new UiBookmarks.Bookmark
-                        {
-                            Name = key.ToString(),
-                            ProcessName = _editing.ProcessName,
-                            Method = _editing.Method,
-                            DirectAutomationId = _editing.DirectAutomationId,
-                            CrawlFromRoot = _editing.CrawlFromRoot,
-                            Chain = _editing.Chain.ToList()
-                        };
-                        UiBookmarks.SaveMapping(key, toSave);
-                        txtStatus.Text = $"Saved mapping for {key}";
-                        return;
-                    }
+                    existing.ProcessName = _editing.ProcessName;
+                    existing.Method = _editing.Method;
+                    existing.DirectAutomationId = _editing.DirectAutomationId;
+                    existing.CrawlFromRoot = _editing.CrawlFromRoot;
+                    existing.Chain = _editing.Chain.ToList();
                 }
                 else
                 {
-                    // Saving to user bookmark
-                    var store = UiBookmarks.Load();
-                    var existing = store.Bookmarks.FirstOrDefault(b => string.Equals(b.Name, item.Name, StringComparison.OrdinalIgnoreCase));
-                    if (existing != null)
+                    existing = new UiBookmarks.Bookmark
                     {
-                        existing.ProcessName = _editing.ProcessName;
-                        existing.Method = _editing.Method;
-                        existing.DirectAutomationId = _editing.DirectAutomationId;
-                        existing.CrawlFromRoot = _editing.CrawlFromRoot;
-                        existing.Chain = _editing.Chain.ToList();
-                        UiBookmarks.Save(store);
-                        txtStatus.Text = $"Saved bookmark '{item.Name}'";
-                        LoadBookmarksIntoComboBox(); // Refresh
-                        return;
-                    }
+                        Name = item.Name,
+                        ProcessName = _editing.ProcessName,
+                        Method = _editing.Method,
+                        DirectAutomationId = _editing.DirectAutomationId,
+                        CrawlFromRoot = _editing.CrawlFromRoot,
+                        Chain = _editing.Chain.ToList()
+                    };
+                    store.Bookmarks.Add(existing);
                 }
+                
+                UiBookmarks.Save(store);
+                txtStatus.Text = $"Saved bookmark '{item.Name}'";
+                LoadBookmarksIntoComboBox();
             }
-            
-            // Fallback: save as new bookmark or update existing by name
-            var store2 = UiBookmarks.Load();
-            var name = string.IsNullOrWhiteSpace(_editing.Name) ? "Bookmark" : _editing.Name;
-            var existing2 = store2.Bookmarks.FirstOrDefault(b => string.Equals(b.Name, name, StringComparison.OrdinalIgnoreCase));
-            if (existing2 == null) { existing2 = new UiBookmarks.Bookmark { Name = name }; store2.Bookmarks.Add(existing2); }
-            existing2.ProcessName = _editing.ProcessName;
-            existing2.Method = _editing.Method;
-            existing2.DirectAutomationId = _editing.DirectAutomationId;
-            existing2.CrawlFromRoot = _editing.CrawlFromRoot;
-            existing2.Chain = _editing.Chain.ToList();
-            UiBookmarks.Save(store2);
-            LoadBookmarksIntoComboBox(); // Refresh
-            txtStatus.Text = $"Saved bookmark '{name}'";
         }
         
         // FIX: Validate bookmark to catch common robustness issues before saving
