@@ -251,7 +251,11 @@ namespace Wysg.Musm.Radium.ViewModels
                     }
 
                     // Standard modules...
-                    if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase)) { await RunNewStudyProcedureAsync(); }
+                    if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase) || 
+                        string.Equals(m, "NewStudy(Obsolete)", StringComparison.OrdinalIgnoreCase)) 
+                    { 
+                        await RunNewStudyProcedureAsync(); 
+                    }
                     else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _lockStudyProc != null) { await _lockStudyProc.ExecuteAsync(this); }
                     else if (string.Equals(m, "UnlockStudy", StringComparison.OrdinalIgnoreCase)) 
                     { 
@@ -259,7 +263,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         StudyOpened = false; 
                         SetStatus("Study unlocked (patient/study toggles off)"); 
                     }
-                    else if (string.Equals(m, "ToggleOff", StringComparison.OrdinalIgnoreCase)) 
+                    else if (string.Equals(m, "SetCurrentTogglesOff", StringComparison.OrdinalIgnoreCase)) 
                     { 
                         ProofreadMode = false;
                         Reportified = false;
@@ -411,6 +415,18 @@ namespace Wysg.Musm.Radium.ViewModels
                         Debug.WriteLine("[Automation] SavePreviousStudyToDB module - START");
                         await RunSavePreviousStudyToDBAsync();
                         Debug.WriteLine("[Automation] SavePreviousStudyToDB module - COMPLETED");
+                    }
+                    else if (string.Equals(m, "ClearPreviousFields", StringComparison.OrdinalIgnoreCase) && _clearPreviousFieldsProc != null)
+                    {
+                        await _clearPreviousFieldsProc.ExecuteAsync(this);
+                    }
+                    else if (string.Equals(m, "ClearPreviousStudies", StringComparison.OrdinalIgnoreCase) && _clearPreviousStudiesProc != null)
+                    {
+                        await _clearPreviousStudiesProc.ExecuteAsync(this);
+                    }
+                    else if (string.Equals(m, "SetCurrentStudyTechniques", StringComparison.OrdinalIgnoreCase) && _setCurrentStudyTechniquesProc != null)
+                    {
+                        await _setCurrentStudyTechniquesProc.ExecuteAsync(this);
                     }
                 }
                 catch (Exception ex)

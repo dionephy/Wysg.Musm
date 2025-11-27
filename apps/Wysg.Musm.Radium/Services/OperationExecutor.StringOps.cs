@@ -117,6 +117,20 @@ namespace Wysg.Musm.Radium.Services
             return ($"{resultStr} ({value1} AND {value2})", resultStr);
         }
 
+        private static (string preview, string? value) ExecuteNot(string? value1)
+        {
+            value1 ??= string.Empty;
+
+            // Check if value is "true" (case-insensitive)
+            bool isTrue = string.Equals(value1, "true", StringComparison.OrdinalIgnoreCase);
+
+            // Invert the boolean value
+            bool result = !isTrue;
+            string resultStr = result ? "true" : "false";
+
+            return ($"{resultStr} (NOT {value1})", resultStr);
+        }
+
         /// <summary>
         /// Normalizes a string for comparison by removing whitespace, punctuation, and converting to uppercase.
         /// </summary>

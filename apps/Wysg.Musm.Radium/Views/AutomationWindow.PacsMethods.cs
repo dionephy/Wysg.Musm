@@ -4,28 +4,25 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using Wysg.Musm.Radium.Models;
 using Wysg.Musm.Radium.Services;
 
 namespace Wysg.Musm.Radium.Views
 {
     public partial class AutomationWindow
     {
-        private PacsMethodManager? _pacsMethodManager;
-
         /// <summary>
-        /// Observable collection of PACS methods for UI binding
+        /// Observable collection of procedure names for UI binding
         /// </summary>
-        public ObservableCollection<PacsMethod> PacsMethods { get; } = new();
+        public ObservableCollection<string> ProcedureNames { get; } = new();
 
         /// <summary>
-        /// Initialize PACS method manager and load methods for current PACS
+        /// Initialize and load procedures from ui-procedures.json
         /// </summary>
         private void InitializePacsMethods()
         {
             try
             {
-                // Get current PACS key from tenant context
+                // Set the procedure path override to use PACS-specific location
                 string pacsKey = "default_pacs";
                 if (Application.Current is App app)
                 {
@@ -36,75 +33,76 @@ namespace Wysg.Musm.Radium.Views
                     }
                 }
 
-                _pacsMethodManager = new PacsMethodManager(pacsKey);
+                var appData = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey));
+                System.IO.Directory.CreateDirectory(appData);
+                var procPath = System.IO.Path.Combine(appData, "ui-procedures.json");
+
+                ProcedureExecutor.SetProcPathOverride(() => procPath);
+                
                 LoadPacsMethods();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[AutomationWindow] Error initializing PACS methods: {ex.Message}");
-                // Continue with empty list - user can add methods manually
+                Debug.WriteLine($"[AutomationWindow] Error initializing procedures: {ex.Message}");
+                // Continue with empty list - user can add procedures manually
             }
         }
 
         /// <summary>
-        /// Load PACS methods from manager into observable collection
+        /// Load procedure names from ui-procedures.json
         /// </summary>
         private void LoadPacsMethods()
         {
-            if (_pacsMethodManager == null) return;
-
             try
             {
-                PacsMethods.Clear();
-                var methods = _pacsMethodManager.GetAllMethods();
-                foreach (var method in methods.OrderBy(m => m.Name))
+                ProcedureNames.Clear();
+                var names = ProcedureExecutor.GetAllProcedureNames();
+                foreach (var name in names.OrderBy(n => n))
                 {
-                    PacsMethods.Add(method);
+                    ProcedureNames.Add(name);
                 }
 
-                Debug.WriteLine($"[AutomationWindow] Loaded {PacsMethods.Count} PACS methods");
+                Debug.WriteLine($"[AutomationWindow] Loaded {ProcedureNames.Count} procedures from ui-procedures.json");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[AutomationWindow] Error loading PACS methods: {ex.Message}");
+                Debug.WriteLine($"[AutomationWindow] Error loading procedures: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Add a new PACS method
+        /// Add a new procedure
         /// </summary>
         private void OnAddPacsMethod(object sender, RoutedEventArgs e)
         {
-            if (_pacsMethodManager == null)
-            {
-                txtStatus.Text = "Custom procedure manager not initialized";
-                return;
-            }
-
-            var dialog = CreatePacsMethodDialog("Add Custom Procedure", null);
+            var dialog = CreateProcedureNameDialog("Add Custom Procedure", null);
             if (dialog.ShowDialog() != true) return;
 
-            var (name, tag) = ((string, string))dialog.Tag;
+            var procedureName = (string)dialog.Tag;
 
             try
             {
-                var method = new PacsMethod
+                // Check if procedure already exists
+                if (ProcedureExecutor.ProcedureExists(procedureName))
                 {
-                    Name = name,
-                    Tag = tag,
-                    IsBuiltIn = false
-                };
-
-                _pacsMethodManager.AddMethod(method);
-                LoadPacsMethods();
-
-                // Select the new method
-                if (FindName("cmbProcMethod") is ComboBox cmb)
-                {
-                    cmb.SelectedItem = PacsMethods.FirstOrDefault(m => string.Equals(m.Tag, tag, StringComparison.OrdinalIgnoreCase));
+                    MessageBox.Show($"Procedure '{procedureName}' already exists", "Error", 
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
                 }
 
-                txtStatus.Text = $"Added custom procedure '{name}'";
+                // Create empty procedure (operations will be added via grid)
+                // This is done automatically when user saves operations in the grid
+                LoadPacsMethods();
+
+                // Select the new procedure
+                if (FindName("cmbProcMethod") is ComboBox cmb)
+                {
+                    cmb.SelectedItem = procedureName;
+                }
+
+                txtStatus.Text = $"Added custom procedure '{procedureName}'";
             }
             catch (Exception ex)
             {
@@ -114,84 +112,67 @@ namespace Wysg.Musm.Radium.Views
         }
 
         /// <summary>
-        /// Edit the selected PACS method
+        /// Edit the selected procedure (rename)
         /// </summary>
         private void OnEditPacsMethod(object sender, RoutedEventArgs e)
         {
-            if (_pacsMethodManager == null)
-            {
-                txtStatus.Text = "Custom procedure manager not initialized";
-                return;
-            }
-
             var cmb = (ComboBox?)FindName("cmbProcMethod");
-            if (cmb?.SelectedItem is not PacsMethod selectedMethod)
+            if (cmb?.SelectedItem is not string selectedProcedure)
             {
                 txtStatus.Text = "No custom procedure selected";
                 return;
             }
 
-            if (selectedMethod.IsBuiltIn)
-            {
-                txtStatus.Text = "Cannot edit built-in custom procedures";
-                return;
-            }
-
-            var dialog = CreatePacsMethodDialog("Edit Custom Procedure", selectedMethod);
+            var dialog = CreateProcedureNameDialog("Rename Custom Procedure", selectedProcedure);
             if (dialog.ShowDialog() != true) return;
 
-            var (name, tag) = ((string, string))dialog.Tag;
+            var newName = (string)dialog.Tag;
 
             try
             {
-                var method = new PacsMethod
+                // Check if same name
+                if (string.Equals(selectedProcedure, newName, StringComparison.OrdinalIgnoreCase))
                 {
-                    Name = name,
-                    Tag = tag,
-                    IsBuiltIn = false
-                };
+                    txtStatus.Text = "Procedure name unchanged";
+                    return;
+                }
 
-                _pacsMethodManager.UpdateMethod(selectedMethod.Tag, method);
+                // Rename procedure
+                if (!ProcedureExecutor.RenameProcedure(selectedProcedure, newName))
+                {
+                    MessageBox.Show($"Failed to rename procedure. '{newName}' may already exist.", 
+                        "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
                 LoadPacsMethods();
 
-                // Re-select the edited method
-                cmb.SelectedItem = PacsMethods.FirstOrDefault(m => string.Equals(m.Tag, tag, StringComparison.OrdinalIgnoreCase));
+                // Re-select the renamed procedure
+                cmb.SelectedItem = newName;
 
-                txtStatus.Text = $"Updated custom procedure '{name}'";
+                txtStatus.Text = $"Renamed procedure to '{newName}'";
             }
             catch (Exception ex)
             {
-                txtStatus.Text = $"Error updating custom procedure: {ex.Message}";
+                txtStatus.Text = $"Error renaming procedure: {ex.Message}";
                 MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         /// <summary>
-        /// Delete the selected PACS method
+        /// Delete the selected procedure
         /// </summary>
         private void OnDeletePacsMethod(object sender, RoutedEventArgs e)
         {
-            if (_pacsMethodManager == null)
-            {
-                txtStatus.Text = "Custom procedure manager not initialized";
-                return;
-            }
-
             var cmb = (ComboBox?)FindName("cmbProcMethod");
-            if (cmb?.SelectedItem is not PacsMethod selectedMethod)
+            if (cmb?.SelectedItem is not string selectedProcedure)
             {
                 txtStatus.Text = "No custom procedure selected";
                 return;
             }
 
-            if (selectedMethod.IsBuiltIn)
-            {
-                txtStatus.Text = "Cannot delete built-in custom procedures";
-                return;
-            }
-
             var result = MessageBox.Show(
-                $"Delete custom procedure '{selectedMethod.Name}'?\n\nThis will also delete its associated procedure steps.",
+                $"Delete custom procedure '{selectedProcedure}'?\n\nThis will delete all its operations.",
                 "Confirm Delete",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
@@ -200,28 +181,33 @@ namespace Wysg.Musm.Radium.Views
 
             try
             {
-                _pacsMethodManager.DeleteMethod(selectedMethod.Tag);
-                LoadPacsMethods();
+                if (!ProcedureExecutor.DeleteProcedure(selectedProcedure))
+                {
+                    MessageBox.Show($"Failed to delete procedure '{selectedProcedure}'", 
+                        "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
 
-                txtStatus.Text = $"Deleted custom procedure '{selectedMethod.Name}'";
+                LoadPacsMethods();
+                txtStatus.Text = $"Deleted custom procedure '{selectedProcedure}'";
             }
             catch (Exception ex)
             {
-                txtStatus.Text = $"Error deleting custom procedure: {ex.Message}";
+                txtStatus.Text = $"Error deleting procedure: {ex.Message}";
                 MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         /// <summary>
-        /// Create a dialog for adding/editing PACS methods
+        /// Create a dialog for entering/editing procedure name
         /// </summary>
-        private Window CreatePacsMethodDialog(string title, PacsMethod? existingMethod)
+        private Window CreateProcedureNameDialog(string title, string? existingName)
         {
             var dialog = new Window
             {
                 Title = title,
                 Width = 500,
-                Height = 250,
+                Height = 180,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
                 Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 30)),
@@ -234,13 +220,11 @@ namespace Wysg.Musm.Radium.Views
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             // Name label
             var lblName = new TextBlock
             {
-                Text = "Display Name:",
+                Text = "Procedure Name:",
                 Margin = new Thickness(0, 0, 0, 5)
             };
             Grid.SetRow(lblName, 0);
@@ -249,7 +233,7 @@ namespace Wysg.Musm.Radium.Views
             // Name textbox
             var txtName = new TextBox
             {
-                Text = existingMethod?.Name ?? string.Empty,
+                Text = existingName ?? string.Empty,
                 Margin = new Thickness(0, 0, 0, 15),
                 Padding = new Thickness(6, 4, 6, 4),
                 Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(45, 45, 48)),
@@ -261,37 +245,13 @@ namespace Wysg.Musm.Radium.Views
             Grid.SetRow(txtName, 1);
             grid.Children.Add(txtName);
 
-            // Tag label
-            var lblTag = new TextBlock
-            {
-                Text = "Method Tag (used in code):",
-                Margin = new Thickness(0, 0, 0, 5)
-            };
-            Grid.SetRow(lblTag, 2);
-            grid.Children.Add(lblTag);
-
-            // Tag textbox
-            var txtTag = new TextBox
-            {
-                Text = existingMethod?.Tag ?? string.Empty,
-                Margin = new Thickness(0, 0, 0, 15),
-                Padding = new Thickness(6, 4, 6, 4),
-                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(45, 45, 48)),
-                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(208, 208, 208)),
-                BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(60, 60, 60)),
-                BorderThickness = new Thickness(1),
-                CaretBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.White)
-            };
-            Grid.SetRow(txtTag, 3);
-            grid.Children.Add(txtTag);
-
             // Button panel
             var buttonPanel = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 HorizontalAlignment = HorizontalAlignment.Right
             };
-            Grid.SetRow(buttonPanel, 4);
+            Grid.SetRow(buttonPanel, 2);
 
             var btnOk = new Button
             {
@@ -304,28 +264,23 @@ namespace Wysg.Musm.Radium.Views
             btnOk.Click += (s, e) =>
             {
                 var name = txtName.Text?.Trim();
-                var tag = txtTag.Text?.Trim();
 
                 if (string.IsNullOrWhiteSpace(name))
                 {
-                    MessageBox.Show("Display name cannot be empty", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("Procedure name cannot be empty", "Validation", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                if (string.IsNullOrWhiteSpace(tag))
+                // Validate name format (alphanumeric + underscores + spaces)
+                if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z][a-zA-Z0-9_ ]*$"))
                 {
-                    MessageBox.Show("Method tag cannot be empty", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("Procedure name must start with a letter and contain only letters, numbers, underscores, and spaces", 
+                        "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                // Validate tag format (alphanumeric + underscores)
-                if (!System.Text.RegularExpressions.Regex.IsMatch(tag, @"^[a-zA-Z][a-zA-Z0-9_]*$"))
-                {
-                    MessageBox.Show("Method tag must start with a letter and contain only letters, numbers, and underscores", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                dialog.Tag = (name, tag);
+                dialog.Tag = name;
                 dialog.DialogResult = true;
                 dialog.Close();
             };

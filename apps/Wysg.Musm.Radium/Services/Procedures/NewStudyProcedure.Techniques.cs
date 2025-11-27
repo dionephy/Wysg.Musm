@@ -4,12 +4,8 @@ using Wysg.Musm.Radium.ViewModels;
 
 namespace Wysg.Musm.Radium.Services.Procedures
 {
-    public sealed partial class NewStudyProcedure : INewStudyProcedure
+    public sealed partial class NewStudyProcedure
     {
-        private readonly ITechniqueRepository _techRepo;
-        public NewStudyProcedure(ITechniqueRepository techRepo)
-        {
-            _techRepo = techRepo;
-        }
+        // Technique repository field is now defined in main partial class
     }
 }

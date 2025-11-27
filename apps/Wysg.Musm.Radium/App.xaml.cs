@@ -326,13 +326,25 @@ namespace Wysg.Musm.Radium
 
 
             // Procedures (automation) ----------------------------------------------------------
-            services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.INewStudyProcedure, Wysg.Musm.Radium.Services.Procedures.NewStudyProcedure>();
+            services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.INewStudyProcedure>(sp => new Wysg.Musm.Radium.Services.Procedures.NewStudyProcedure(
+                sp.GetService<Wysg.Musm.Radium.Services.Procedures.IClearCurrentFieldsProcedure>(),
+                sp.GetService<Wysg.Musm.Radium.Services.Procedures.IClearPreviousFieldsProcedure>(),
+                sp.GetService<Wysg.Musm.Radium.Services.Procedures.IClearPreviousStudiesProcedure>(),
+                sp.GetService<Wysg.Musm.Radium.Services.Procedures.ISetCurrentStudyTechniquesProcedure>()
+            ));
             services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.ILockStudyProcedure, Wysg.Musm.Radium.Services.Procedures.LockStudyProcedure>();
+            services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.IClearCurrentFieldsProcedure, Wysg.Musm.Radium.Services.Procedures.ClearCurrentFieldsProcedure>();
+            services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.IClearPreviousFieldsProcedure, Wysg.Musm.Radium.Services.Procedures.ClearPreviousFieldsProcedure>();
+            services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.IClearPreviousStudiesProcedure, Wysg.Musm.Radium.Services.Procedures.ClearPreviousStudiesProcedure>();
+            services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.ISetCurrentStudyTechniquesProcedure>(sp => new Wysg.Musm.Radium.Services.Procedures.SetCurrentStudyTechniquesProcedure(
+                sp.GetService<ITechniqueRepository>()
+            ));
 
             // ViewModels (transient) -----------------------------------------------------------
             services.AddTransient<SplashLoginViewModel>();
             services.AddTransient<SignUpViewModel>();
-            services.AddTransient<MainViewModel>(sp => new MainViewModel(
+            // MainViewModel
+            services.AddSingleton(sp => new MainViewModel(
                 sp.GetRequiredService<IPhraseService>(),
                 sp.GetRequiredService<ITenantContext>(),
                 sp.GetRequiredService<IPhraseCache>(),
@@ -342,6 +354,10 @@ namespace Wysg.Musm.Radium
                 sp.GetService<Wysg.Musm.Radium.Services.Procedures.INewStudyProcedure>(),
                 sp.GetService<IRadiumLocalSettings>(),
                 sp.GetService<Wysg.Musm.Radium.Services.Procedures.ILockStudyProcedure>(),
+                sp.GetService<Wysg.Musm.Radium.Services.Procedures.IClearCurrentFieldsProcedure>(),
+                sp.GetService<Wysg.Musm.Radium.Services.Procedures.IClearPreviousFieldsProcedure>(),
+                sp.GetService<Wysg.Musm.Radium.Services.Procedures.IClearPreviousStudiesProcedure>(),
+                sp.GetService<Wysg.Musm.Radium.Services.Procedures.ISetCurrentStudyTechniquesProcedure>(),
                 sp.GetService<IAuthStorage>(),
                 sp.GetService<ISnomedMapService>(),
                 sp.GetService<IStudynameLoincRepository>()

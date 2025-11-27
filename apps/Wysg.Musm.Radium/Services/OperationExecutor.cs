@@ -98,6 +98,8 @@ namespace Wysg.Musm.Radium.Services
                     return ExecuteIsAlmostMatch(resolveArg1String(), resolveArg2String());
                 case "And":
                     return ExecuteAnd(resolveArg1String(), resolveArg2String());
+                case "Not":
+                    return ExecuteNot(resolveArg1String());
                 case "TrimString":
                     return ExecuteTrimString(resolveArg1String(), resolveArg2String());
                 case "Replace":

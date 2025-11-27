@@ -124,6 +124,12 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg2.Type = nameof(ArgKind.Var); row.Arg2Enabled = true;
                             row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
+                        case "Not":
+                            // Not: Arg1=boolean var, returns "true" if Arg1 is false, "false" if Arg1 is true
+                            row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
+                            row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
+                            break;
                         case "Replace":
                         case "Merge":
                             // Replace/Merge: Arg1=input (Var), Arg2=search/input2 (String or Var), Arg3=replacement/separator (String or Var)
@@ -172,6 +178,214 @@ namespace Wysg.Musm.Radium.Views
         {
             if (FindName("gridProcSteps") is System.Windows.Controls.DataGrid procGrid) returnToList(procGrid, list => list.Add(new ProcOpRow()));
         }
+        
+        private void OnDuplicateOperations(object sender, RoutedEventArgs e)
+        {
+            var cmbSource = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
+            var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
+            
+            // Get current source procedure (now just a string)
+            string? sourceTag = cmbSource?.SelectedItem as string;
+            
+            if (string.IsNullOrWhiteSpace(sourceTag))
+            {
+                txtStatus.Text = "Select a source procedure first";
+                return;
+            }
+            
+            if (procGrid == null)
+            {
+                txtStatus.Text = "No operations grid found";
+                return;
+            }
+            
+            // Commit any pending edits
+            try { procGrid.CommitEdit(DataGridEditingUnit.Cell, true); procGrid.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
+            
+            // Get current operations
+            var sourceOps = procGrid.Items.OfType<ProcOpRow>().Where(s => !string.IsNullOrWhiteSpace(s.Op)).ToList();
+            
+            if (sourceOps.Count == 0)
+            {
+                txtStatus.Text = "No operations to duplicate (source procedure is empty)";
+                return;
+            }
+            
+            // Show selection dialog for target procedure
+            var targetTag = ShowProcedureSelectionDialog(sourceTag);
+            
+            if (string.IsNullOrWhiteSpace(targetTag))
+            {
+                txtStatus.Text = "Duplication cancelled";
+                return;
+            }
+            
+            try
+            {
+                // Load target procedure to check if it's empty
+                var targetOps = LoadProcedureForMethod(targetTag);
+                
+                if (targetOps.Count > 0)
+                {
+                    var result = System.Windows.MessageBox.Show(
+                        $"Target procedure '{targetTag}' already has {targetOps.Count} operation(s).\n\nDo you want to replace them?",
+                        "Confirm Replace",
+                        System.Windows.MessageBoxButton.YesNo,
+                        System.Windows.MessageBoxImage.Warning);
+                    
+                    if (result != System.Windows.MessageBoxResult.Yes)
+                    {
+                        txtStatus.Text = "Duplication cancelled";
+                        return;
+                    }
+                }
+                
+                // Deep copy operations (create new instances to avoid reference issues)
+                var duplicatedOps = sourceOps.Select(op => new ProcOpRow
+                {
+                    Op = op.Op,
+                    Arg1 = new ProcArg { Type = op.Arg1.Type, Value = op.Arg1.Value },
+                    Arg2 = new ProcArg { Type = op.Arg2.Type, Value = op.Arg2.Value },
+                    Arg3 = new ProcArg { Type = op.Arg3.Type, Value = op.Arg3.Value },
+                    Arg1Enabled = op.Arg1Enabled,
+                    Arg2Enabled = op.Arg2Enabled,
+                    Arg3Enabled = op.Arg3Enabled,
+                    OutputVar = null, // Clear output variables for new procedure
+                    OutputPreview = null
+                }).ToList();
+                
+                // Save duplicated operations to target procedure
+                SaveProcedureForMethod(targetTag, duplicatedOps);
+                
+                txtStatus.Text = $"Successfully duplicated {duplicatedOps.Count} operation(s) from '{sourceTag}' to '{targetTag}'";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Error duplicating operations: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[AutomationWindow] Duplicate error: {ex}");
+            }
+        }
+        
+        private string? ShowProcedureSelectionDialog(string sourceProcedure)
+        {
+            // Get all available procedures from ProcedureNames (already loaded from ui-procedures.json)
+            var availableProcedures = ProcedureNames
+                .Where(name => !string.Equals(name, sourceProcedure, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(name => name)
+                .ToList();
+            
+            if (availableProcedures.Count == 0)
+            {
+                System.Windows.MessageBox.Show(
+                    "No other procedures available.\n\nCreate a new procedure first using 'Add procedure' button.",
+                    "No Target Procedures",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+                return null;
+            }
+            
+            // Create selection dialog
+            var dialog = new System.Windows.Window
+            {
+                Title = "Select Target Procedure",
+                Width = 500,
+                Height = 400,
+                WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner,
+                Owner = this,
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 30)),
+                ResizeMode = System.Windows.ResizeMode.NoResize
+            };
+            
+            var grid = new System.Windows.Controls.Grid { Margin = new System.Windows.Thickness(20) };
+            grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = System.Windows.GridLength.Auto });
+            grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = new System.Windows.GridLength(1, System.Windows.GridUnitType.Star) });
+            grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = System.Windows.GridLength.Auto });
+            
+            // Header
+            var header = new System.Windows.Controls.TextBlock
+            {
+                Text = $"Select target procedure to copy operations from '{sourceProcedure}':",
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.White),
+                TextWrapping = System.Windows.TextWrapping.Wrap,
+                Margin = new System.Windows.Thickness(0, 0, 0, 15)
+            };
+            System.Windows.Controls.Grid.SetRow(header, 0);
+            grid.Children.Add(header);
+            
+            // ListBox with procedure names (strings)
+            var listBox = new System.Windows.Controls.ListBox
+            {
+                ItemsSource = availableProcedures,
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(45, 45, 48)),
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.White),
+                BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(60, 60, 60)),
+                Margin = new System.Windows.Thickness(0, 0, 0, 15)
+            };
+            System.Windows.Controls.Grid.SetRow(listBox, 1);
+            grid.Children.Add(listBox);
+            
+            // Buttons
+            var buttonPanel = new System.Windows.Controls.StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right
+            };
+            System.Windows.Controls.Grid.SetRow(buttonPanel, 2);
+            
+            var btnOk = new System.Windows.Controls.Button
+            {
+                Content = "OK",
+                Width = 80,
+                Margin = new System.Windows.Thickness(0, 0, 10, 0),
+                Padding = new System.Windows.Thickness(10, 5, 10, 5),
+                IsDefault = true
+            };
+            btnOk.Click += (s, e) =>
+            {
+                if (listBox.SelectedItem != null)
+                {
+                    dialog.DialogResult = true;
+                    dialog.Close();
+                }
+            };
+            buttonPanel.Children.Add(btnOk);
+            
+            var btnCancel = new System.Windows.Controls.Button
+            {
+                Content = "Cancel",
+                Width = 80,
+                Padding = new System.Windows.Thickness(10, 5, 10, 5),
+                IsCancel = true
+            };
+            btnCancel.Click += (s, e) =>
+            {
+                dialog.DialogResult = false;
+                dialog.Close();
+            };
+            buttonPanel.Children.Add(btnCancel);
+            
+            grid.Children.Add(buttonPanel);
+            dialog.Content = grid;
+            
+            // Handle double-click
+            listBox.MouseDoubleClick += (s, e) =>
+            {
+                if (listBox.SelectedItem != null)
+                {
+                    dialog.DialogResult = true;
+                    dialog.Close();
+                }
+            };
+            
+            var result = dialog.ShowDialog();
+            // Return the selected procedure name (string)
+            if (result == true && listBox.SelectedItem is string selectedName)
+            {
+                return selectedName;
+            }
+            return null;
+        }
+        
         private void OnRemoveProcRow(object sender, RoutedEventArgs e)
         {
             if (sender is System.Windows.Controls.Button b && b.Tag is ProcOpRow row && FindName("gridProcSteps") is System.Windows.Controls.DataGrid procGrid)
@@ -426,41 +640,22 @@ namespace Wysg.Musm.Radium.Views
         {
             var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
             
-            // Handle both old ComboBoxItem format and new PacsMethod format
-            string? tag = null;
-            if (cmb?.SelectedItem is System.Windows.Controls.ComboBoxItem item)
-            {
-                // Legacy format
-                tag = (item.Tag as string) ?? (item.Content as string);
-            }
-            else if (cmb?.SelectedItem is Wysg.Musm.Radium.Models.PacsMethod method)
-            {
-                // New dynamic format
-                tag = method.Tag;
-            }
+            // Get selected procedure name (now just a string)
+            string? tag = cmb?.SelectedItem as string;
             
             if (FindName("gridProcSteps") is not System.Windows.Controls.DataGrid procGrid || string.IsNullOrWhiteSpace(tag)) return;
             var steps = LoadProcedureForMethod(tag).ToList();
             procGrid.ItemsSource = steps;
             UpdateProcedureVarsFrom(steps);
         }
+        
         private void OnSaveProcedure(object sender, RoutedEventArgs e)
         {
             var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
             var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
             
-            // Handle both old ComboBoxItem format and new PacsMethod format
-            string? tag = null;
-            if (cmb?.SelectedItem is System.Windows.Controls.ComboBoxItem item)
-            {
-                // Legacy format
-                tag = (item.Tag as string) ?? (item.Content as string);
-            }
-            else if (cmb?.SelectedItem is Wysg.Musm.Radium.Models.PacsMethod method)
-            {
-                // New dynamic format
-                tag = method.Tag;
-            }
+            // Get selected procedure name (now just a string)
+            string? tag = cmb?.SelectedItem as string;
             
             if (string.IsNullOrWhiteSpace(tag)) { txtStatus.Text = "Select custom procedure"; return; }
             if (procGrid == null) { txtStatus.Text = "No steps"; return; }
@@ -469,23 +664,14 @@ namespace Wysg.Musm.Radium.Views
             SaveProcedureForMethod(tag, steps);
             txtStatus.Text = $"Saved procedure for {tag}";
         }
+        
         private async void OnRunProcedure(object sender, RoutedEventArgs e)
         {
             var cmb = (System.Windows.Controls.ComboBox?)FindName("cmbProcMethod");
             var procGrid = (System.Windows.Controls.DataGrid?)FindName("gridProcSteps");
             
-            // Handle both old ComboBoxItem format and new PacsMethod format
-            string? tag = null;
-            if (cmb?.SelectedItem is System.Windows.Controls.ComboBoxItem item)
-            {
-                // Legacy format
-                tag = (item.Tag as string) ?? (item.Content as string);
-            }
-            else if (cmb?.SelectedItem is Wysg.Musm.Radium.Models.PacsMethod method)
-            {
-                // New dynamic format
-                tag = method.Tag;
-            }
+            // Get selected procedure name (now just a string)
+            string? tag = cmb?.SelectedItem as string;
             
             if (string.IsNullOrWhiteSpace(tag)) { txtStatus.Text = "Select custom procedure"; return; }
             if (procGrid == null) { txtStatus.Text = "No steps"; return; }
