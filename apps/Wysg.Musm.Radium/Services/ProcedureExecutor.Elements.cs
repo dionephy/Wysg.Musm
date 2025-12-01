@@ -13,9 +13,37 @@ namespace Wysg.Musm.Radium.Services
         // Runtime element cache for storing elements from GetSelectedElement
         private static readonly Dictionary<string, AutomationElement> _elementCache = new();
         
+        // Session tracking: Track which session the cache belongs to
+        // When session ID changes, cache is considered stale
+        private static string? _currentSessionId = null;
+        
         // Element resolution with staleness detection and retry (inspired by legacy PacsService validation pattern)
         private const int ElementResolveMaxAttempts = 3;
         private const int ElementResolveRetryDelayMs = 150;
+
+        /// <summary>
+        /// Set the current session ID. When this changes, caches will be cleared on next access.
+        /// Call this at the START of an automation sequence, NOT for each procedure within the sequence.
+        /// </summary>
+        internal static void SetSessionId(string sessionId)
+        {
+            if (_currentSessionId != sessionId)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ProcedureExecutor][SetSessionId] Session changed: '{_currentSessionId}' -> '{sessionId}'");
+                _currentSessionId = sessionId;
+                ClearAllCaches();
+            }
+        }
+
+        /// <summary>
+        /// Clear all caches immediately. Used when session changes.
+        /// </summary>
+        internal static void ClearAllCaches()
+        {
+            _elementCache.Clear();
+            _controlCache.Clear();
+            System.Diagnostics.Debug.WriteLine($"[ProcedureExecutor][ClearAllCaches] Both caches cleared");
+        }
 
         private static AutomationElement? GetCached(string bookmarkName)
         {

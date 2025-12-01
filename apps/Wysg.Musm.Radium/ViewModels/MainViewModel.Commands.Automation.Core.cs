@@ -16,6 +16,12 @@ namespace Wysg.Musm.Radium.ViewModels
         // Execute modules sequentially to preserve user-defined order
         private async Task RunModulesSequentially(string[] modules, string sequenceName = "automation")
         {
+            // Generate a new session ID for this automation run
+            // This allows element caching within the session (fast) while clearing between sessions (fresh data)
+            var sessionId = $"{sequenceName}_{DateTime.Now.Ticks}";
+            Services.ProcedureExecutor.SetSessionId(sessionId);
+            Debug.WriteLine($"[Automation] Starting sequence '{sequenceName}' with session ID: {sessionId}");
+            
             // Stack to track if-block state: (startIndex, conditionMet)
             var ifStack = new Stack<(int startIndex, bool conditionMet, bool isNegated)>();
             bool skipExecution = false;

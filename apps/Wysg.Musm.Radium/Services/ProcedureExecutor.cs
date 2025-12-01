@@ -28,11 +28,9 @@ namespace Wysg.Musm.Radium.Services
             var sw = Stopwatch.StartNew(); // Start timing
             Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] ===== START: {methodTag} =====");
             
-            // Clear both element caches at the very start of each execution
-            // This ensures no stale cache data from previous invocations
-            _elementCache.Clear();
-            _controlCache.Clear();
-            Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] Element caches cleared (_elementCache and _controlCache)");
+            // Note: Caches are NOT cleared here anymore!
+            // Cache clearing is now session-based - call SetSessionId() at the start of automation sequences
+            // This allows caching within a single automation run (fast) while clearing between runs (fresh data)
             
             try
             {
