@@ -119,6 +119,10 @@ namespace Wysg.Musm.Radium.ViewModels
                         Reportified = false;
                         SetStatus("Toggles off (proofread/reportified off)"); 
                     }
+                    else if (string.Equals(m, "AutofillCurrentHeader", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await AutofillCurrentHeaderAsync();
+                    }
                     else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { await AcquireStudyRemarkAsync(); }
                     else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { await AcquirePatientRemarkAsync(); }
                     else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { await RunAddPreviousStudyModuleAsync(); }
@@ -297,6 +301,81 @@ namespace Wysg.Musm.Radium.ViewModels
             
             // NEW: Append green completion message after all modules succeed
             SetStatus($"? {sequenceName} completed successfully", isError: false);
+        }
+        
+        /// <summary>
+        /// Built-in module: AutofillCurrentHeader
+        /// Handles Chief Complaint and Patient History auto-filling based on toggle states.
+        /// 
+        /// Logic:
+        /// - If copy toggle is ON: Copy Study Remark to Chief Complaint
+        /// - Else if auto toggle is ON: Invoke generate button for Chief Complaint
+        /// - If Patient History auto toggle is ON: Invoke generate button for Patient History
+        /// </summary>
+        private async Task AutofillCurrentHeaderAsync()
+        {
+            Debug.WriteLine("[Automation][AutofillCurrentHeader] START");
+            
+            // Chief Complaint logic
+            if (CopyStudyRemarkToChiefComplaint)
+            {
+                Debug.WriteLine("[Automation][AutofillCurrentHeader] Copy toggle ON - copying Study Remark to Chief Complaint");
+                ChiefComplaint = StudyRemark ?? string.Empty;
+                SetStatus("Chief Complaint filled from Study Remark");
+            }
+            else if (AutoChiefComplaint)
+            {
+                Debug.WriteLine("[Automation][AutofillCurrentHeader] Auto toggle ON - invoking generate for Chief Complaint");
+                
+                // Invoke generate command on UI thread
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    if (GenerateFieldCommand != null && GenerateFieldCommand.CanExecute("chief_complaint"))
+                    {
+                        GenerateFieldCommand.Execute("chief_complaint");
+                        Debug.WriteLine("[Automation][AutofillCurrentHeader] Generate command executed for Chief Complaint");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[Automation][AutofillCurrentHeader] WARNING: Generate command not available for Chief Complaint");
+                    }
+                });
+                
+                SetStatus("Chief Complaint generate invoked");
+            }
+            else
+            {
+                Debug.WriteLine("[Automation][AutofillCurrentHeader] Both copy and auto toggles OFF - Chief Complaint not updated");
+            }
+            
+            // Patient History logic
+            if (AutoPatientHistory)
+            {
+                Debug.WriteLine("[Automation][AutofillCurrentHeader] Auto toggle ON - invoking generate for Patient History");
+                
+                // Invoke generate command on UI thread
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    if (GenerateFieldCommand != null && GenerateFieldCommand.CanExecute("patient_history"))
+                    {
+                        GenerateFieldCommand.Execute("patient_history");
+                        Debug.WriteLine("[Automation][AutofillCurrentHeader] Generate command executed for Patient History");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[Automation][AutofillCurrentHeader] WARNING: Generate command not available for Patient History");
+                    }
+                });
+                
+                SetStatus("Patient History generate invoked");
+            }
+            else
+            {
+                Debug.WriteLine("[Automation][AutofillCurrentHeader] Auto toggle OFF - Patient History not updated");
+            }
+            
+            Debug.WriteLine("[Automation][AutofillCurrentHeader] COMPLETED");
+            SetStatus("AutofillCurrentHeader completed");
         }
     }
 }
