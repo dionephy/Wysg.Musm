@@ -16,18 +16,88 @@ namespace Wysg.Musm.Radium.ViewModels
         // Execute modules sequentially to preserve user-defined order
         private async Task RunModulesSequentially(string[] modules, string sequenceName = "automation")
         {
-            foreach (var m in modules)
+            // Stack to track if-block state: (startIndex, conditionMet)
+            var ifStack = new Stack<(int startIndex, bool conditionMet, bool isNegated)>();
+            bool skipExecution = false;
+            
+            for (int i = 0; i < modules.Length; i++)
             {
+                var m = modules[i];
+                
                 try
                 {
-                    // Check if this is a custom module
+                    // Handle built-in "End if" module (must be checked first, before skipExecution)
+                    if (string.Equals(m, "End if", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (ifStack.Count == 0)
+                        {
+                            Debug.WriteLine($"[Automation] WARNING: 'End if' without matching 'If' at position {i}");
+                            continue;
+                        }
+                        
+                        ifStack.Pop();
+                        skipExecution = ifStack.Any(entry => !entry.conditionMet);
+                        Debug.WriteLine($"[Automation] End if - resuming execution (skipExecution={skipExecution})");
+                        continue;
+                    }
+                    
+                    // Check if this is a custom module (If, If not, AbortIf, Set, Run)
                     var customStore = Wysg.Musm.Radium.Models.CustomModuleStore.Load();
                     var customModule = customStore.GetModule(m);
 
                     if (customModule != null)
                     {
+                        // Handle If and If not modules (must be checked before skipExecution)
+                        if (customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.If || 
+                            customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot)
+                        {
+                            // Execute the procedure to get the condition result
+                            var result = await Services.ProcedureExecutor.ExecuteAsync(customModule.ProcedureName);
+                            
+                            // Evaluate condition (true if result is non-empty and not "false")
+                            bool conditionValue = !string.IsNullOrWhiteSpace(result) && 
+                                                  !string.Equals(result, "false", StringComparison.OrdinalIgnoreCase);
+                            
+                            // Apply negation for If not
+                            bool conditionMet = customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot 
+                                ? !conditionValue 
+                                : conditionValue;
+                            
+                            // Push to stack
+                            ifStack.Push((i, conditionMet, customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot));
+                            
+                            // Update skip flag (skip if any parent condition is false)
+                            skipExecution = !conditionMet || ifStack.Any(entry => !entry.conditionMet);
+                            
+                            Debug.WriteLine($"[Automation] {customModule.Name}: condition={conditionValue}, negated={customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot}, conditionMet={conditionMet}, skipExecution={skipExecution}");
+                            SetStatus($"{customModule.Name}: {(conditionMet ? "condition met" : "condition not met")}");
+                            continue;
+                        }
+                        
+                        // If we're inside a false if-block, skip execution of custom modules
+                        if (skipExecution)
+                        {
+                            Debug.WriteLine($"[Automation] Skipping custom module '{m}' (inside false if-block)");
+                            continue;
+                        }
+                        
+                        // Execute other custom module types (AbortIf, Set, Run)
                         await RunCustomModuleAsync(customModule);
                         continue;
+                    }
+
+                    // If we're inside a false if-block, skip standard modules (including Abort)
+                    if (skipExecution)
+                    {
+                        Debug.WriteLine($"[Automation] Skipping module '{m}' (inside false if-block)");
+                        continue;
+                    }
+
+                    // Handle built-in "Abort" module (after skipExecution check)
+                    if (string.Equals(m, "Abort", StringComparison.OrdinalIgnoreCase))
+                    {
+                        SetStatus("Automation aborted by Abort module", true);
+                        return; // Immediately abort the entire sequence
                     }
 
                     // Standard modules...
@@ -215,6 +285,14 @@ namespace Wysg.Musm.Radium.ViewModels
                     SetStatus($"Module '{m}' failed - procedure aborted", true);
                     return; // ABORT entire sequence on any exception (including GetUntilReportDateTime failure)
                 }
+            }
+            
+            // Check for unclosed if-blocks
+            if (ifStack.Count > 0)
+            {
+                Debug.WriteLine($"[Automation] WARNING: {ifStack.Count} unclosed if-block(s) at end of sequence");
+                SetStatus($"? {sequenceName} completed with {ifStack.Count} unclosed if-block(s)", isError: true);
+                return;
             }
             
             // NEW: Append green completion message after all modules succeed

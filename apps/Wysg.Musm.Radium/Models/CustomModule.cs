@@ -25,7 +25,9 @@ namespace Wysg.Musm.Radium.Models
     {
         Run,
         Set,
-        AbortIf
+        AbortIf,
+        If,
+        IfNot
     }
     
     /// <summary>

@@ -26,6 +26,8 @@
             <ComboBoxItem Content="Run"/>
             <ComboBoxItem Content="Set"/>
             <ComboBoxItem Content="Abort if"/>
+            <ComboBoxItem Content="If"/>
+            <ComboBoxItem Content="If not"/>
         </ComboBox>
         
         <!-- Property Selection (for Set type) -->

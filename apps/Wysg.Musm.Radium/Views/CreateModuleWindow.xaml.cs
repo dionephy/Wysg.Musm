@@ -155,6 +155,8 @@ namespace Wysg.Musm.Radium.Views
                 "Run" => CustomModuleType.Run,
                 "Set" => CustomModuleType.Set,
                 "Abort if" => CustomModuleType.AbortIf,
+                "If" => CustomModuleType.If,
+                "If not" => CustomModuleType.IfNot,
                 _ => CustomModuleType.Run
             };
             
@@ -249,6 +251,14 @@ namespace Wysg.Musm.Radium.Views
                 else if (type == "Abort if")
                 {
                     moduleName = $"Abort if {procedure}";
+                }
+                else if (type == "If")
+                {
+                    moduleName = $"If {procedure}";
+                }
+                else if (type == "If not")
+                {
+                    moduleName = $"If not {procedure}";
                 }
                 else // Run
                 {

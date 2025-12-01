@@ -27,6 +27,13 @@ namespace Wysg.Musm.Radium.Services
         {
             var sw = Stopwatch.StartNew(); // Start timing
             Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] ===== START: {methodTag} =====");
+            
+            // Clear both element caches at the very start of each execution
+            // This ensures no stale cache data from previous invocations
+            _elementCache.Clear();
+            _controlCache.Clear();
+            Debug.WriteLine($"[ProcedureExecutor][ExecuteAsync] Element caches cleared (_elementCache and _controlCache)");
+            
             try
             {
                 var result = ExecuteInternal(methodTag);
@@ -54,8 +61,7 @@ namespace Wysg.Musm.Radium.Services
         {
             if (string.IsNullOrWhiteSpace(methodTag)) return null;
             
-            // Clear element cache before executing procedure
-            _elementCache.Clear();
+            // Note: Element cache is now cleared in ExecuteAsync instead
             
             // Special handling for direct MainViewModel reads (no procedure needed)
             if (string.Equals(methodTag, "GetCurrentPatientNumber", StringComparison.OrdinalIgnoreCase))
