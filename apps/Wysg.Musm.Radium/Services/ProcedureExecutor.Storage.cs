@@ -61,6 +61,27 @@ namespace Wysg.Musm.Radium.Services
         }
 
         /// <summary>
+        /// Create a new empty procedure
+        /// </summary>
+        public static bool CreateEmptyProcedure(string procedureName)
+        {
+            if (string.IsNullOrWhiteSpace(procedureName))
+                return false;
+
+            var store = Load();
+            
+            // Check if procedure already exists
+            if (store.Methods.ContainsKey(procedureName))
+                return false;
+
+            // Create empty procedure with no operations
+            store.Methods[procedureName] = new System.Collections.Generic.List<ProcOpRow>();
+            
+            Save(store);
+            return true;
+        }
+
+        /// <summary>
         /// Rename a procedure (both in storage and any automation sequences that reference it)
         /// </summary>
         public static bool RenameProcedure(string oldName, string newName)

@@ -92,8 +92,15 @@ namespace Wysg.Musm.Radium.Views
                     return;
                 }
 
-                // Create empty procedure (operations will be added via grid)
-                // This is done automatically when user saves operations in the grid
+                // Create empty procedure immediately so it appears in the list
+                if (!ProcedureExecutor.CreateEmptyProcedure(procedureName))
+                {
+                    MessageBox.Show($"Failed to create procedure '{procedureName}'", "Error", 
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Reload the procedure list to show the new procedure
                 LoadPacsMethods();
 
                 // Select the new procedure
