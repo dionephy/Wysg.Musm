@@ -132,6 +132,23 @@ namespace Wysg.Musm.Radium.Services
         }
 
         /// <summary>
+        /// Compares two strings and returns the longer one.
+        /// If both strings are equal in length, returns the first one.
+        /// </summary>
+        private static (string preview, string? value) ExecuteGetLongerText(string? text1, string? text2)
+        {
+            text1 ??= string.Empty;
+            text2 ??= string.Empty;
+
+            string longerText = text1.Length >= text2.Length ? text1 : text2;
+            int len1 = text1.Length;
+            int len2 = text2.Length;
+
+            string preview = $"{longerText.Length} chars (text1: {len1}, text2: {len2})";
+            return (preview, longerText);
+        }
+
+        /// <summary>
         /// Normalizes a string for comparison by removing whitespace, punctuation, and converting to uppercase.
         /// </summary>
         private static string NormalizeForComparison(string input)

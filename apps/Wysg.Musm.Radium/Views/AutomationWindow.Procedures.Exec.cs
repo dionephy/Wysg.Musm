@@ -118,6 +118,12 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg2Enabled = true; // Allow String or Var
                             row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
+                        case "GetLongerText":
+                            // GetLongerText: Arg1=text1 (String or Var), Arg2=text2 (String or Var), returns longer text
+                            row.Arg1Enabled = true; // Allow String or Var
+                            row.Arg2Enabled = true; // Allow String or Var
+                            row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
+                            break;
                         case "And":
                             // And: Arg1=boolean var, Arg2=boolean var, returns "true" if both true
                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;

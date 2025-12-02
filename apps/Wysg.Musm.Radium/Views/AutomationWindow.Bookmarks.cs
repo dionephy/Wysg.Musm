@@ -796,5 +796,239 @@ namespace Wysg.Musm.Radium.Views
         }
 
         // Chain grid navigation use FindParent helper (defined in another partial if needed)
+        
+        /// <summary>
+        /// Duplicate the UI map from the current bookmark to another bookmark
+        /// </summary>
+        private void OnDuplicateBookmark(object sender, RoutedEventArgs e)
+        {
+            var cmbSource = (System.Windows.Controls.ComboBox?)FindName("cmbKnown");
+            
+            // Get current source bookmark
+            if (cmbSource?.SelectedItem is not BookmarkItem sourceItem)
+            {
+                txtStatus.Text = "Select a source bookmark first";
+                return;
+            }
+            
+            // Commit any pending edits to the chain grid
+            ForceCommitGridEdits();
+            
+            // Get current bookmark data
+            var store = UiBookmarks.Load();
+            var sourceBookmark = store.Bookmarks.FirstOrDefault(b => 
+                string.Equals(b.Name, sourceItem.Name, StringComparison.OrdinalIgnoreCase));
+            
+            if (sourceBookmark == null)
+            {
+                txtStatus.Text = $"Source bookmark '{sourceItem.Name}' not found";
+                return;
+            }
+            
+            if (sourceBookmark.Chain == null || sourceBookmark.Chain.Count == 0)
+            {
+                txtStatus.Text = "No UI map to duplicate (source bookmark chain is empty)";
+                return;
+            }
+            
+            // Show selection dialog for target bookmark
+            var targetName = ShowBookmarkSelectionDialog(sourceItem.Name);
+            
+            if (string.IsNullOrWhiteSpace(targetName))
+            {
+                txtStatus.Text = "Duplication cancelled";
+                return;
+            }
+            
+            try
+            {
+                // Load target bookmark
+                var targetBookmark = store.Bookmarks.FirstOrDefault(b => 
+                    string.Equals(b.Name, targetName, StringComparison.OrdinalIgnoreCase));
+                
+                if (targetBookmark == null)
+                {
+                    txtStatus.Text = $"Target bookmark '{targetName}' not found";
+                    return;
+                }
+                
+                // Check if target already has a chain
+                if (targetBookmark.Chain != null && targetBookmark.Chain.Count > 0)
+                {
+                    var result = System.Windows.MessageBox.Show(
+                        $"Target bookmark '{targetName}' already has {targetBookmark.Chain.Count} node(s) in its UI map.\n\nDo you want to replace them?",
+                        "Confirm Replace",
+                        System.Windows.MessageBoxButton.YesNo,
+                        System.Windows.MessageBoxImage.Warning);
+                    
+                    if (result != System.Windows.MessageBoxResult.Yes)
+                    {
+                        txtStatus.Text = "Duplication cancelled";
+                        return;
+                    }
+                }
+                
+                // Deep copy the chain (create new Node instances to avoid reference issues)
+                targetBookmark.Chain = sourceBookmark.Chain.Select(n => new UiBookmarks.Node
+                {
+                    Name = n.Name,
+                    ClassName = n.ClassName,
+                    ControlTypeId = n.ControlTypeId,
+                    AutomationId = n.AutomationId,
+                    IndexAmongMatches = n.IndexAmongMatches,
+                    Include = n.Include,
+                    UseName = n.UseName,
+                    UseClassName = n.UseClassName,
+                    UseControlTypeId = n.UseControlTypeId,
+                    UseAutomationId = n.UseAutomationId,
+                    UseIndex = n.UseIndex,
+                    Scope = n.Scope,
+                    Order = n.Order
+                }).ToList();
+                
+                // Also copy other settings
+                targetBookmark.ProcessName = sourceBookmark.ProcessName;
+                targetBookmark.Method = sourceBookmark.Method;
+                targetBookmark.DirectAutomationId = sourceBookmark.DirectAutomationId;
+                targetBookmark.CrawlFromRoot = sourceBookmark.CrawlFromRoot;
+                
+                // Save to storage
+                UiBookmarks.Save(store);
+                
+                txtStatus.Text = $"Successfully duplicated UI map ({sourceBookmark.Chain.Count} node(s)) from '{sourceItem.Name}' to '{targetName}'";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Error duplicating bookmark: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[AutomationWindow] Duplicate bookmark error: {ex}");
+            }
+        }
+        
+        /// <summary>
+        /// Show a selection dialog to choose target bookmark for duplication
+        /// </summary>
+        /// <param name="sourceBookmarkName">Name of the source bookmark to exclude from selection</param>
+        /// <returns>Selected target bookmark name, or null if cancelled</returns>
+        private string? ShowBookmarkSelectionDialog(string sourceBookmarkName)
+        {
+            // Get all available bookmarks excluding the source
+            var store = UiBookmarks.Load();
+            var availableBookmarks = store.Bookmarks
+                .Where(b => !string.Equals(b.Name, sourceBookmarkName, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(b => b.Name)
+                .ToList();
+            
+            if (availableBookmarks.Count == 0)
+            {
+                System.Windows.MessageBox.Show(
+                    "No other bookmarks available.\n\nCreate a new bookmark first using '+' button.",
+                    "No Target Bookmarks",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+                return null;
+            }
+            
+            // Create selection dialog
+            var dialog = new System.Windows.Window
+            {
+                Title = "Select Target Bookmark",
+                Width = 500,
+                Height = 400,
+                WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner,
+                Owner = this,
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 30)),
+                ResizeMode = System.Windows.ResizeMode.NoResize
+            };
+            
+            var grid = new System.Windows.Controls.Grid { Margin = new System.Windows.Thickness(20) };
+            grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = System.Windows.GridLength.Auto });
+            grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = new System.Windows.GridLength(1, System.Windows.GridUnitType.Star) });
+            grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = System.Windows.GridLength.Auto });
+            
+            // Header
+            var header = new System.Windows.Controls.TextBlock
+            {
+                Text = $"Select target bookmark to copy UI map from '{sourceBookmarkName}':",
+                Foreground = new SolidColorBrush(System.Windows.Media.Colors.White),
+                TextWrapping = System.Windows.TextWrapping.Wrap,
+                Margin = new System.Windows.Thickness(0, 0, 0, 15)
+            };
+            System.Windows.Controls.Grid.SetRow(header, 0);
+            grid.Children.Add(header);
+            
+            // ListBox with bookmark names
+            var listBox = new System.Windows.Controls.ListBox
+            {
+                ItemsSource = availableBookmarks.Select(b => b.Name).ToList(),
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(45, 45, 48)),
+                Foreground = new SolidColorBrush(System.Windows.Media.Colors.White),
+                BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(60, 60, 60)),
+                Margin = new System.Windows.Thickness(0, 0, 0, 15)
+            };
+            System.Windows.Controls.Grid.SetRow(listBox, 1);
+            grid.Children.Add(listBox);
+            
+            // Buttons
+            var buttonPanel = new System.Windows.Controls.StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right
+            };
+            System.Windows.Controls.Grid.SetRow(buttonPanel, 2);
+            
+            var btnOk = new System.Windows.Controls.Button
+            {
+                Content = "OK",
+                Width = 80,
+                Margin = new System.Windows.Thickness(0, 0, 10, 0),
+                Padding = new System.Windows.Thickness(10, 5, 10, 5),
+                IsDefault = true
+            };
+            btnOk.Click += (s, e) =>
+            {
+                if (listBox.SelectedItem != null)
+                {
+                    dialog.DialogResult = true;
+                    dialog.Close();
+                }
+            };
+            buttonPanel.Children.Add(btnOk);
+            
+            var btnCancel = new System.Windows.Controls.Button
+            {
+                Content = "Cancel",
+                Width = 80,
+                Padding = new System.Windows.Thickness(10, 5, 10, 5),
+                IsCancel = true
+            };
+            btnCancel.Click += (s, e) =>
+            {
+                dialog.DialogResult = false;
+                dialog.Close();
+            };
+            buttonPanel.Children.Add(btnCancel);
+            
+            grid.Children.Add(buttonPanel);
+            dialog.Content = grid;
+            
+            // Handle double-click
+            listBox.MouseDoubleClick += (s, e) =>
+            {
+                if (listBox.SelectedItem != null)
+                {
+                    dialog.DialogResult = true;
+                    dialog.Close();
+                }
+            };
+            
+            var result = dialog.ShowDialog();
+            
+            // Return the selected bookmark name
+            if (result == true && listBox.SelectedItem is string selectedName)
+            {
+                return selectedName;
+            }
+            return null;
+        }
     }
 }

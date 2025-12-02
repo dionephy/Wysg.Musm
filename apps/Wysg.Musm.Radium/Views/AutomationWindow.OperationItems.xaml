@@ -34,6 +34,7 @@
         <ComboBoxItem Content="IsAlmostMatch"/>
         <ComboBoxItem Content="And"/>
         <ComboBoxItem Content="Not"/>
+        <ComboBoxItem Content="GetLongerText"/>
         <ComboBoxItem Content="GetCurrentPatientNumber"/>
         <ComboBoxItem Content="GetCurrentStudyDateTime"/>
         <ComboBoxItem Content="GetCurrentHeader"/>
