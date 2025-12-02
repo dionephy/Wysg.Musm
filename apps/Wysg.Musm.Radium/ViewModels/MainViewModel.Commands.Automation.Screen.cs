@@ -16,12 +16,12 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 await _pacs.InvokeOpenStudyAsync();
                 StudyOpened = true;
-                SetStatus("Open study invoked");
+                SetStatus("[OpenStudy] Done.");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine("[Automation] OpenStudy error: " + ex.Message);
-                SetStatus("Open study failed", true);
+                SetStatus("[OpenStudy] Error.", true);
             }
         }
 
@@ -31,7 +31,7 @@ namespace Wysg.Musm.Radium.ViewModels
             {                
                 await _pacs.SetPreviousStudyInSubScreenAsync();
                 await _pacs.SetCurrentStudyInMainScreenAsync();
-                SetStatus("Screen layout set: current study in main, previous study in sub");
+                SetStatus("[SetCurrentInMainScreen] Done.");
                 
                 // NEW: Request focus on Study Remark textbox in top grid after screen layout is complete
                 // Small delay to allow PACS UI to settle before focusing our textbox
@@ -41,7 +41,7 @@ namespace Wysg.Musm.Radium.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine("[Automation] SetCurrentInMainScreen error: " + ex.Message);
-                SetStatus("Screen layout failed", true);
+                SetStatus("[SetCurrentInMainScreen] Error.", true);
             }
         }
 
@@ -50,12 +50,12 @@ namespace Wysg.Musm.Radium.ViewModels
             try
             {
                 await _pacs.InvokeOpenWorklistAsync();
-                SetStatus("Worklist opened");
+                SetStatus("[OpenWorklist] Done.");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine("[Automation] OpenWorklist error: " + ex.Message);
-                SetStatus("Open worklist failed", true);
+                SetStatus("[OpenWorklist] Error.", true);
             }
         }
 
@@ -72,13 +72,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 await Task.Delay(150);
                 
                 Debug.WriteLine("[Automation] ResultsListSetFocus completed successfully");
-                SetStatus("Search results list focused");
+                SetStatus("[ResultsListSetFocus] Done.");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[Automation] ResultsListSetFocus error: {ex.Message}");
                 Debug.WriteLine($"[Automation] ResultsListSetFocus stack: {ex.StackTrace}");
-                SetStatus("Set focus results list failed", true);
+                SetStatus("[ResultsListSetFocus] Error.", true);
             }
         }
     }

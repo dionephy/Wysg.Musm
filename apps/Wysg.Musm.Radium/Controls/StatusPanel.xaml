@@ -5,6 +5,9 @@
     <UserControl.Resources>
         <!-- Local converter to avoid namescope lookup failures when embedded -->
         <conv:BoolToBrushConverter x:Key="BoolToBrushConverter" TrueBrush="#FF5A5A" FalseBrush="#d0d0d0"/>
+        
+        <!-- D2Coding font for proper Unicode support (checkmark, etc.) -->
+        <FontFamily x:Key="StatusFont">pack://application:,,,/Wysg.Musm.Radium;component/Fonts/#D2Coding</FontFamily>
     </UserControl.Resources>
     <Grid Background="#1E1E1E">
         <Grid.RowDefinitions>
@@ -19,6 +22,8 @@
                  BorderBrush="#2D2D30"
                  BorderThickness="1"
                  Height="60"
+                 FontFamily="{StaticResource StatusFont}"
+                 FontSize="11"
                  VerticalScrollBarVisibility="Auto"
                  HorizontalScrollBarVisibility="Disabled"/>
     </Grid>

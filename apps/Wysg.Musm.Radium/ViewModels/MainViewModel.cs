@@ -144,9 +144,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     lock (_statusSync)
                     {
+                        // Add timestamp prefix in format: YYYY-MM-dd HH:mm:ss- (no space after dash)
+                        var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        var messageWithTimestamp = $"{timestamp}-{message ?? string.Empty}";
+                        
                         // trim to MaxStatusLines - 1 so enqueue keeps <= MaxStatusLines
                         while (_statusLines.Count >= MaxStatusLines) _statusLines.Dequeue();
-                        _statusLines.Enqueue(message ?? string.Empty);
+                        _statusLines.Enqueue(messageWithTimestamp);
                         StatusText = string.Join(Environment.NewLine, _statusLines);
                         StatusIsError = isError;
                     }
@@ -158,7 +162,8 @@ namespace Wysg.Musm.Radium.ViewModels
             catch
             {
                 // Fallback to single-line update if dispatcher unavailable
-                StatusText = message ?? string.Empty;
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                StatusText = $"{timestamp}-{message ?? string.Empty}";
                 StatusIsError = isError;
             }
         }
@@ -289,5 +294,28 @@ namespace Wysg.Musm.Radium.ViewModels
         internal async Task FetchCurrentStudyAsyncInternal() => await FetchCurrentStudyAsync();
         internal void UpdateCurrentStudyLabelInternal() => UpdateCurrentStudyLabel();
         internal void SetStatusInternal(string msg, bool err = false) => SetStatus(msg, err);
+        
+        /// <summary>
+        /// Format a value for status display: truncate to single line and add ellipsis if needed.
+        /// Used by automation modules to create concise status messages.
+        /// </summary>
+        /// <param name="value">The value to format</param>
+        /// <param name="maxLength">Maximum length before truncation (default: 80)</param>
+        /// <returns>Formatted single-line string</returns>
+        internal string FormatValueForStatus(string? value, int maxLength = 80)
+        {
+            if (string.IsNullOrEmpty(value)) return "(empty)";
+            
+            // Replace all newlines and multiple spaces with single space
+            var singleLine = System.Text.RegularExpressions.Regex.Replace(value, @"\s+", " ").Trim();
+            
+            // Truncate if needed
+            if (singleLine.Length > maxLength)
+            {
+                return singleLine.Substring(0, maxLength) + " ...";
+            }
+            
+            return singleLine;
+        }
     }
 }

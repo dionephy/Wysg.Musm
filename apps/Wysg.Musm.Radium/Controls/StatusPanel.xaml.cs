@@ -69,22 +69,30 @@ namespace Wysg.Musm.Radium.Controls
             {
                 var line = lines[i];
                 
-                // Detect completion lines (containing "completed successfully" or starting with checkmark)
+                // Detect completion lines (containing "completed successfully" or starting with >>)
                 bool isCompletionLine = line.IndexOf("completed successfully", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                        line.TrimStart().StartsWith("?", System.StringComparison.Ordinal);
+                                        line.TrimStart().StartsWith(">>", System.StringComparison.Ordinal);
+                
+                // Detect "condition not met" lines (pink color)
+                bool isConditionNotMet = line.IndexOf("Condition not met", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                
+                // Detect abort lines (pink color) - either [Abort] or ">> {sequence} aborted"
+                bool isAbortLine = line.IndexOf("[Abort]", System.StringComparison.Ordinal) >= 0 ||
+                                   line.IndexOf("aborted", System.StringComparison.OrdinalIgnoreCase) >= 0;
                 
                 // Detect error lines (containing "error", "failed", "exception", etc.)
-                bool isErrorLine = !isCompletionLine && (
+                bool isErrorLine = !isCompletionLine && !isConditionNotMet && !isAbortLine && (
                     line.IndexOf("error", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
                     line.IndexOf("failed", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
                     line.IndexOf("exception", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
                     line.IndexOf("validation failed", System.StringComparison.OrdinalIgnoreCase) >= 0);
 
-                // Choose color: green for completion, red for error, default gray otherwise
+                // Choose color: green for completion, pink for condition not met/abort, red for error, default gray otherwise
                 var run = new Run(line)
                 {
                     Foreground = isCompletionLine ? new SolidColorBrush(Color.FromRgb(0x90, 0xEE, 0x90)) :  // Light green
-                                 isErrorLine ? new SolidColorBrush(Color.FromRgb(0xFF, 0x5A, 0x5A)) :       // Red
+                                 (isConditionNotMet || isAbortLine) ? new SolidColorBrush(Color.FromRgb(0xFF, 0xB6, 0xC1)) : // Light pink
+                                 isErrorLine ? new SolidColorBrush(Color.FromRgb(0xFF, 0x00, 0x00)) :       // Red
                                                new SolidColorBrush(Color.FromRgb(0xD0, 0xD0, 0xD0))        // Default gray
                 };
                 para.Inlines.Add(run);

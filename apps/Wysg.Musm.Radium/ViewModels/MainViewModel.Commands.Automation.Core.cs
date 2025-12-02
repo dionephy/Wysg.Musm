@@ -76,7 +76,7 @@ namespace Wysg.Musm.Radium.ViewModels
                             skipExecution = !conditionMet || ifStack.Any(entry => !entry.conditionMet);
                             
                             Debug.WriteLine($"[Automation] {customModule.Name}: condition={conditionValue}, negated={customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot}, conditionMet={conditionMet}, skipExecution={skipExecution}");
-                            SetStatus($"{customModule.Name}: {(conditionMet ? "condition met" : "condition not met")}");
+                            SetStatus($"[{customModule.Name}] {(conditionMet ? "Condition met." : "Condition not met.")}");
                             continue;
                         }
                         
@@ -102,7 +102,8 @@ namespace Wysg.Musm.Radium.ViewModels
                     // Handle built-in "Abort" module (after skipExecution check)
                     if (string.Equals(m, "Abort", StringComparison.OrdinalIgnoreCase))
                     {
-                        SetStatus("Automation aborted by Abort module", true);
+                        SetStatus("[Abort]");
+                        SetStatus($">> {sequenceName} aborted");
                         return; // Immediately abort the entire sequence
                     }
 
@@ -117,13 +118,18 @@ namespace Wysg.Musm.Radium.ViewModels
                     { 
                         PatientLocked = false; 
                         StudyOpened = false; 
-                        SetStatus("Study unlocked (patient/study toggles off)"); 
+                        SetStatus("[UnlockStudy] Done."); 
                     }
                     else if (string.Equals(m, "SetCurrentTogglesOff", StringComparison.OrdinalIgnoreCase)) 
                     { 
                         ProofreadMode = false;
                         Reportified = false;
-                        SetStatus("Toggles off (proofread/reportified off)"); 
+                        SetStatus("[SetCurrentTogglesOff] Done."); 
+                    }
+                    else if (string.Equals(m, "ClearCurrentFields", StringComparison.OrdinalIgnoreCase) && _clearCurrentFieldsProc != null)
+                    {
+                        await _clearCurrentFieldsProc.ExecuteAsync(this);
+                        SetStatus("[ClearCurrentFields] Done.");
                     }
                     else if (string.Equals(m, "AutofillCurrentHeader", StringComparison.OrdinalIgnoreCase))
                     {
@@ -255,7 +261,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         Debug.WriteLine($"[Automation] Reportify module - Current Reportified value BEFORE: {Reportified}");
                         Reportified = true;
                         Debug.WriteLine($"[Automation] Reportify module - Current Reportified value AFTER: {Reportified}");
-                        SetStatus("Reportified toggled ON");
+                        SetStatus("[Reportify] Done.");
                         Debug.WriteLine("[Automation] Reportify module - COMPLETED");
                     }
                     else if (string.Equals(m, "Delay", StringComparison.OrdinalIgnoreCase))
@@ -279,10 +285,12 @@ namespace Wysg.Musm.Radium.ViewModels
                     else if (string.Equals(m, "ClearPreviousFields", StringComparison.OrdinalIgnoreCase) && _clearPreviousFieldsProc != null)
                     {
                         await _clearPreviousFieldsProc.ExecuteAsync(this);
+                        SetStatus("[ClearPreviousFields] Done.");
                     }
                     else if (string.Equals(m, "ClearPreviousStudies", StringComparison.OrdinalIgnoreCase) && _clearPreviousStudiesProc != null)
                     {
                         await _clearPreviousStudiesProc.ExecuteAsync(this);
+                        SetStatus("[ClearPreviousStudies] Done.");
                     }
                     else if (string.Equals(m, "SetCurrentStudyTechniques", StringComparison.OrdinalIgnoreCase) && _setCurrentStudyTechniquesProc != null)
                     {
@@ -305,8 +313,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 return;
             }
             
-            // NEW: Append green completion message after all modules succeed
-            SetStatus($"? {sequenceName} completed successfully", isError: false);
+            // NEW: Append success message after all modules succeed
+            SetStatus($">> {sequenceName} completed successfully", isError: false);
         }
         
         /// <summary>
@@ -327,7 +335,7 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 Debug.WriteLine("[Automation][AutofillCurrentHeader] Copy toggle ON - copying Study Remark to Chief Complaint");
                 ChiefComplaint = StudyRemark ?? string.Empty;
-                SetStatus("Chief Complaint filled from Study Remark");
+                SetStatus("[AutofillCurrentHeader] Chief Complaint filled from Study Remark.");
             }
             else if (AutoChiefComplaint)
             {
@@ -347,7 +355,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     }
                 });
                 
-                SetStatus("Chief Complaint generate invoked");
+                SetStatus("[AutofillCurrentHeader] Chief Complaint generate invoked.");
             }
             else
             {
@@ -373,7 +381,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     }
                 });
                 
-                SetStatus("Patient History generate invoked");
+                SetStatus("[AutofillCurrentHeader] Patient History generate invoked.");
             }
             else
             {
@@ -381,7 +389,7 @@ namespace Wysg.Musm.Radium.ViewModels
             }
             
             Debug.WriteLine("[Automation][AutofillCurrentHeader] COMPLETED");
-            SetStatus("AutofillCurrentHeader completed");
+            SetStatus("[AutofillCurrentHeader] Done.");
         }
     }
 }

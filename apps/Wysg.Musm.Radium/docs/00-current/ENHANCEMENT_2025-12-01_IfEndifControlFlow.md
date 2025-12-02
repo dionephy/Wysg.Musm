@@ -11,6 +11,10 @@
 
 Implemented Visual Basic-style if/endif control flow logic in the automation system with built-in "Abort" and "End if" modules, plus custom "If {Procedure}" and "If not {Procedure}" modules. This allows users to create conditional automation sequences with proper control flow.
 
+**Status Messages**:
+- If/If not modules now show status in brackets: `[If {Procedure}] Condition met.` or `[If not {Procedure}] Condition not met.`
+- Completion message uses checkmark: `? {sequence name} completed successfully`
+
 ## Problem
 
 Users had no way to implement conditional logic in automation sequences. They could only create linear sequences or use workarounds like "Abort if {proc}" which would terminate the entire automation rather than skip specific sections.
@@ -446,6 +450,14 @@ Users with existing sequences using obsolete patterns should:
 [Automation] Automation aborted by Abort module
 [Automation] WARNING: 'End if' without matching 'If' at position 5
 [Automation] WARNING: 1 unclosed if-block(s) at end of sequence
+```
+
+**Status Messages**:
+```
+[If Patient Number Match] Condition met.
+[If not Worklist Visible] Condition not met.
+[ClearCurrentFields] Done.
+? New Study completed successfully
 ```
 
 ## Related Features

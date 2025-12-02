@@ -23,7 +23,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     case Wysg.Musm.Radium.Models.CustomModuleType.Run:
                         // Just run the procedure, result ignored
-                        SetStatus($"Custom module '{module.Name}' executed");
+                        SetStatus($"[{module.Name}] Done.");
                         break;
                         
                     case Wysg.Musm.Radium.Models.CustomModuleType.AbortIf:
@@ -32,10 +32,10 @@ namespace Wysg.Musm.Radium.ViewModels
                                           !string.Equals(result, "false", StringComparison.OrdinalIgnoreCase);
                         if (shouldAbort)
                         {
-                            SetStatus($"Custom module '{module.Name}' aborted sequence", true);
+                            SetStatus($"[{module.Name}] Aborted sequence.", true);
                             throw new OperationCanceledException($"Aborted by {module.Name}");
                         }
-                        SetStatus($"Custom module '{module.Name}' condition not met, continuing");
+                        SetStatus($"[{module.Name}] Condition not met, continuing.");
                         break;
                         
                     case Wysg.Musm.Radium.Models.CustomModuleType.Set:
@@ -47,7 +47,10 @@ namespace Wysg.Musm.Radium.ViewModels
                         }
                         
                         SetPropertyValue(module.PropertyName, result ?? string.Empty);
-                        SetStatus($"Custom module '{module.Name}' set {module.PropertyName} = {result}");
+                        
+                        // Format: [ModuleName] PropertyName = value
+                        var formattedValue = FormatValueForStatus(result);
+                        SetStatus($"[{module.Name}] {module.PropertyName} = {formattedValue}");
                         break;
                 }
             }
@@ -58,7 +61,7 @@ namespace Wysg.Musm.Radium.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"[CustomModule] Error executing '{module.Name}': {ex.Message}");
-                SetStatus($"Custom module '{module.Name}' failed: {ex.Message}", true);
+                SetStatus($"[{module.Name}] Error: {ex.Message}", true);
                 throw;
             }
         }
