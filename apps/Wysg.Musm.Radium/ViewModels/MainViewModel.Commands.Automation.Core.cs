@@ -299,6 +299,12 @@ namespace Wysg.Musm.Radium.ViewModels
                         await _clearPreviousStudiesProc.ExecuteAsync(this);
                         SetStatus("[ClearPreviousStudies] Done.");
                     }
+                    else if (string.Equals(m, "FetchPreviousStudies", StringComparison.OrdinalIgnoreCase) && _fetchPreviousStudiesProc != null)
+                    {
+                        Debug.WriteLine("[Automation] FetchPreviousStudies module - START");
+                        await _fetchPreviousStudiesProc.ExecuteAsync(this);
+                        Debug.WriteLine("[Automation] FetchPreviousStudies module - COMPLETED");
+                    }
                     else if (string.Equals(m, "SetCurrentStudyTechniques", StringComparison.OrdinalIgnoreCase) && _setCurrentStudyTechniquesProc != null)
                     {
                         await _setCurrentStudyTechniquesProc.ExecuteAsync(this);
