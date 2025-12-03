@@ -669,12 +669,117 @@ namespace Wysg.Musm.Radium.Views
         {
             if (_automationViewModel != null)
             {
+                // Validate all automation panes before saving
+                var validationErrors = ValidateAutomationPanes();
+                if (validationErrors.Count > 0)
+                {
+                    var errorMessage = "Validation failed:\n\n" + string.Join("\n\n", validationErrors);
+                    MessageBox.Show(errorMessage, "Automation Validation Error", 
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return; // Do not save
+                }
+                
                 // Trigger the save command
                 if (_automationViewModel.SaveAutomationCommand.CanExecute(null))
                 {
                     _automationViewModel.SaveAutomationCommand.Execute(null);
                 }
             }
+        }
+
+        /// <summary>
+        /// Validates all automation panes to ensure "If" and "If not" modules are properly closed with "End if"
+        /// </summary>
+        /// <returns>List of validation error messages (empty if validation passes)</returns>
+        private System.Collections.Generic.List<string> ValidateAutomationPanes()
+        {
+            var errors = new System.Collections.Generic.List<string>();
+            
+            if (_automationViewModel == null) return errors;
+            
+            // Check all automation panes
+            ValidatePane("New Study", _automationViewModel.NewStudyModules, errors);
+            ValidatePane("Add Study", _automationViewModel.AddStudyModules, errors);
+            ValidatePane("Shortcut: Open (new)", _automationViewModel.ShortcutOpenNewModules, errors);
+            ValidatePane("Shortcut: Open (add)", _automationViewModel.ShortcutOpenAddModules, errors);
+            ValidatePane("Shortcut: Open (after open)", _automationViewModel.ShortcutOpenAfterOpenModules, errors);
+            ValidatePane("Send Report", _automationViewModel.SendReportModules, errors);
+            ValidatePane("Send Report Preview", _automationViewModel.SendReportPreviewModules, errors);
+            ValidatePane("Shortcut: Send Report Preview", _automationViewModel.ShortcutSendReportPreviewModules, errors);
+            ValidatePane("Shortcut: Send Report Reportified", _automationViewModel.ShortcutSendReportReportifiedModules, errors);
+            ValidatePane("Test", _automationViewModel.TestModules, errors);
+            
+            return errors;
+        }
+
+        /// <summary>
+        /// Validates a single automation pane for proper if-endif pairing
+        /// </summary>
+        private void ValidatePane(string paneName, System.Collections.ObjectModel.ObservableCollection<string> modules, 
+            System.Collections.Generic.List<string> errors)
+        {
+            if (modules == null || modules.Count == 0) return;
+            
+            var ifStack = new System.Collections.Generic.Stack<(int index, string moduleName)>();
+            
+            for (int i = 0; i < modules.Count; i++)
+            {
+                var module = modules[i];
+                
+                // Check for "If" or "If not" modules
+                if (IsIfModule(module))
+                {
+                    ifStack.Push((i + 1, module)); // Store 1-based index for user-friendly messages
+                }
+                // Check for "End if" module
+                else if (string.Equals(module, "End if", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (ifStack.Count == 0)
+                    {
+                        errors.Add($"[{paneName}] 'End if' at position {i + 1} has no matching 'If' or 'If not'");
+                    }
+                    else
+                    {
+                        ifStack.Pop();
+                    }
+                }
+            }
+            
+            // Check for unclosed if-blocks
+            if (ifStack.Count > 0)
+            {
+                var unclosed = new System.Collections.Generic.List<string>();
+                while (ifStack.Count > 0)
+                {
+                    var (index, moduleName) = ifStack.Pop();
+                    unclosed.Add($"'{moduleName}' at position {index}");
+                }
+                unclosed.Reverse(); // Show in order they appear
+                errors.Add($"[{paneName}] Unclosed if-blocks:\n  - " + string.Join("\n  - ", unclosed));
+            }
+        }
+
+        /// <summary>
+        /// Checks if a module is an "If" or "If not" custom module
+        /// </summary>
+        private bool IsIfModule(string moduleName)
+        {
+            try
+            {
+                var store = CustomModuleStore.Load();
+                var module = store.GetModule(moduleName);
+                
+                if (module != null)
+                {
+                    return module.Type == CustomModuleType.If || module.Type == CustomModuleType.IfNot;
+                }
+            }
+            catch
+            {
+                // Ignore errors and continue
+            }
+            
+            return false;
         }
 
         private void OnCloseWindow(object sender, RoutedEventArgs e)
