@@ -100,6 +100,8 @@ namespace Wysg.Musm.Radium.Services
                     return ExecuteAnd(resolveArg1String(), resolveArg2String());
                 case "Not":
                     return ExecuteNot(resolveArg1String());
+                case "IsBlank":
+                    return ExecuteIsBlank(resolveArg1String());
                 case "GetLongerText":
                     return ExecuteGetLongerText(resolveArg1String(), resolveArg2String());
                 case "TrimString":

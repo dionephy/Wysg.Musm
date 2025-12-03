@@ -132,6 +132,23 @@ namespace Wysg.Musm.Radium.Services
         }
 
         /// <summary>
+        /// Checks if a string is blank (null, empty, or whitespace only).
+        /// Returns "true" if blank, "false" otherwise.
+        /// </summary>
+        private static (string preview, string? value) ExecuteIsBlank(string? value1)
+        {
+            // Check if value is null, empty, or contains only whitespace
+            bool isBlank = string.IsNullOrWhiteSpace(value1);
+            string result = isBlank ? "true" : "false";
+
+            string displayValue = value1 == null ? "(null)" : 
+                                 value1 == string.Empty ? "(empty)" : 
+                                 $"'{value1}'";
+
+            return ($"{result} ({displayValue})", result);
+        }
+
+        /// <summary>
         /// Compares two strings and returns the longer one.
         /// If both strings are equal in length, returns the first one.
         /// </summary>
