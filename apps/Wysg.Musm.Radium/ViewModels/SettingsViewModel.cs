@@ -69,7 +69,7 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         [ObservableProperty]
-        private ObservableCollection<string> availableModules = new(new[] { "NewStudy(Obsolete)", "LockStudy", "UnlockStudy", "SetCurrentTogglesOff", "AutofillCurrentHeader", "ClearCurrentFields", "ClearPreviousFields", "ClearPreviousStudies", "SetCurrentStudyTechniques", "GetStudyRemark", "GetPatientRemark", "AddPreviousStudy", "GetUntilReportDateTime", "GetReportedReport", "OpenStudy", "MouseClick1", "MouseClick2", "TestInvoke", "ShowTestMessage", "SetCurrentInMainScreen", "AbortIfWorklistClosed", "AbortIfPatientNumberNotMatch", "AbortIfStudyDateTimeNotMatch", "OpenWorklist", "ResultsListSetFocus", "SendReport", "Reportify", "Delay", "SaveCurrentStudyToDB", "SavePreviousStudyToDB", "InsertPreviousStudy", "Abort", "End if" });
+        private ObservableCollection<string> availableModules = new(new[] { "NewStudy(Obsolete)", "LockStudy", "UnlockStudy", "SetCurrentTogglesOff", "AutofillCurrentHeader", "ClearCurrentFields", "ClearPreviousFields", "ClearPreviousStudies", "SetCurrentStudyTechniques", "GetStudyRemark", "GetPatientRemark", "AddPreviousStudy", "GetUntilReportDateTime", "GetReportedReport", "OpenStudy", "MouseClick1", "MouseClick2", "TestInvoke", "ShowTestMessage", "SetCurrentInMainScreen", "AbortIfWorklistClosed", "AbortIfPatientNumberNotMatch", "AbortIfStudyDateTimeNotMatch", "OpenWorklist", "ResultsListSetFocus", "SendReport", "Reportify", "Delay", "SaveCurrentStudyToDB", "SavePreviousStudyToDB", "InsertPreviousStudy", "InsertPreviousStudyReport", "Abort", "End if" });
         [ObservableProperty]
         private ObservableCollection<string> newStudyModules = new();
         [ObservableProperty]

@@ -282,11 +282,12 @@ namespace Wysg.Musm.Radium.ViewModels
                         await RunSavePreviousStudyToDBAsync();
                         Debug.WriteLine("[Automation] SavePreviousStudyToDB module - COMPLETED");
                     }
-                    else if (string.Equals(m, "InsertPreviousStudy", StringComparison.OrdinalIgnoreCase))
+                    else if (string.Equals(m, "InsertPreviousStudy", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(m, "InsertPreviousStudyReport", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.WriteLine("[Automation] InsertPreviousStudy module - START");
+                        Debug.WriteLine("[Automation] InsertPreviousStudyReport module - START");
                         await RunInsertPreviousStudyAsync();
-                        Debug.WriteLine("[Automation] InsertPreviousStudy module - COMPLETED");
+                        Debug.WriteLine("[Automation] InsertPreviousStudyReport module - COMPLETED");
                     }
                     else if (string.Equals(m, "ClearPreviousFields", StringComparison.OrdinalIgnoreCase) && _clearPreviousFieldsProc != null)
                     {
