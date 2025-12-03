@@ -49,6 +49,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly IClearPreviousFieldsProcedure? _clearPreviousFieldsProc;
         private readonly IClearPreviousStudiesProcedure? _clearPreviousStudiesProc;
         private readonly ISetCurrentStudyTechniquesProcedure? _setCurrentStudyTechniquesProc;
+        private readonly IInsertPreviousStudyProcedure? _insertPreviousStudyProc;
         private readonly ISnomedMapService? _snomedMapService; // SNOMED mapping service for semantic tags
         private readonly TextSyncService? _textSyncService; // Text sync service for foreign textbox sync
         private readonly IStudynameLoincRepository? _studynameLoincRepo; // LOINC mapping repository for modality extraction
@@ -194,6 +195,7 @@ namespace Wysg.Musm.Radium.ViewModels
             IClearPreviousFieldsProcedure? clearPreviousFieldsProc = null,
             IClearPreviousStudiesProcedure? clearPreviousStudiesProc = null,
             ISetCurrentStudyTechniquesProcedure? setCurrentStudyTechniquesProc = null,
+            IInsertPreviousStudyProcedure? insertPreviousStudyProc = null,
             IAuthStorage? authStorage = null,
             ISnomedMapService? snomedMapService = null,
             IStudynameLoincRepository? studynameLoincRepo = null)
@@ -208,6 +210,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 _clearPreviousFieldsProc = clearPreviousFieldsProc;
                 _clearPreviousStudiesProc = clearPreviousStudiesProc;
                 _setCurrentStudyTechniquesProc = setCurrentStudyTechniquesProc;
+                _insertPreviousStudyProc = insertPreviousStudyProc;
                 _snomedMapService = snomedMapService;
                 _studynameLoincRepo = studynameLoincRepo;
                 

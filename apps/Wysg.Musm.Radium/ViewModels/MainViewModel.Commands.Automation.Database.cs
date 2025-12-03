@@ -179,5 +179,18 @@ namespace Wysg.Musm.Radium.ViewModels
                 SetStatus("Save previous to DB error", true);
             }
         }
+        
+        private async Task RunInsertPreviousStudyAsync()
+        {
+            if (_insertPreviousStudyProc != null)
+            {
+                await _insertPreviousStudyProc.ExecuteAsync(this);
+            }
+            else
+            {
+                Debug.WriteLine("[Automation][InsertPreviousStudy] Procedure not available");
+                SetStatus("InsertPreviousStudy: Module not available", true);
+            }
+        }
     }
 }
