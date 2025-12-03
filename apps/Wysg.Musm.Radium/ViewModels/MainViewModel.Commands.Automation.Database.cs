@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Diagnostics;
 
@@ -190,6 +191,115 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 Debug.WriteLine("[Automation][InsertPreviousStudy] Procedure not available");
                 SetStatus("InsertPreviousStudy: Module not available", true);
+            }
+        }
+        
+        /// <summary>
+        /// FetchPreviousStudies automation module.
+        /// Fetches all previous studies from PostgreSQL database (excluding current study) and populates the UI.
+        /// After loading, selects the study and report matching the temporary variables set by custom procedures.
+        /// </summary>
+        private async Task RunFetchPreviousStudiesAsync()
+        {
+            try
+            {
+                Debug.WriteLine("[FetchPreviousStudies] ===== START =====");
+                var stopwatch = Stopwatch.StartNew();
+                
+                // Ensure patient number is available
+                if (string.IsNullOrWhiteSpace(PatientNumber))
+                {
+                    Debug.WriteLine("[FetchPreviousStudies] FAILED - PatientNumber is empty");
+                    SetStatus("FetchPreviousStudies: Patient number is required", true);
+                    return;
+                }
+                
+                Debug.WriteLine($"[FetchPreviousStudies] Fetching studies for patient: {PatientNumber}");
+                
+                // Load all previous studies for the patient from database
+                await LoadPreviousStudiesForPatientAsync(PatientNumber);
+                
+                Debug.WriteLine($"[FetchPreviousStudies] Loaded {PreviousStudies.Count} previous studies");
+                
+                // If temporary variables are set, select the matching study and report
+                if (!string.IsNullOrWhiteSpace(TempPreviousStudyStudyname) && 
+                    TempPreviousStudyDatetime.HasValue)
+                {
+                    Debug.WriteLine($"[FetchPreviousStudies] Attempting to select study: '{TempPreviousStudyStudyname}' @ {TempPreviousStudyDatetime:yyyy-MM-dd HH:mm:ss}");
+                    
+                    // Find the matching study tab
+                    PreviousStudyTab? matchingTab = null;
+                    
+                    foreach (var tab in PreviousStudies)
+                    {
+                        // Match by studyname and study datetime
+                        var tabStudyname = tab.SelectedReport?.Studyname ?? string.Empty;
+                        
+                        if (string.Equals(tabStudyname, TempPreviousStudyStudyname, StringComparison.OrdinalIgnoreCase) &&
+                            Math.Abs((tab.StudyDateTime - TempPreviousStudyDatetime.Value).TotalSeconds) < 60)
+                        {
+                            matchingTab = tab;
+                            Debug.WriteLine($"[FetchPreviousStudies] Found matching study tab: {tab.Title}");
+                            break;
+                        }
+                    }
+                    
+                    if (matchingTab != null)
+                    {
+                        // Select the study tab
+                        SelectedPreviousStudy = matchingTab;
+                        PreviousReportSplitted = true;
+                        
+                        Debug.WriteLine($"[FetchPreviousStudies] Selected study tab: {matchingTab.Title}");
+                        
+                        // If report datetime is specified, select the matching report
+                        if (TempPreviousStudyReportDatetime.HasValue)
+                        {
+                            Debug.WriteLine($"[FetchPreviousStudies] Attempting to select report: {TempPreviousStudyReportDatetime:yyyy-MM-dd HH:mm:ss}");
+                            
+                            var matchingReport = matchingTab.Reports.FirstOrDefault(r =>
+                                r.ReportDateTime.HasValue &&
+                                Math.Abs((r.ReportDateTime.Value - TempPreviousStudyReportDatetime.Value).TotalSeconds) < 1);
+                            
+                            if (matchingReport != null)
+                            {
+                                matchingTab.SelectedReport = matchingReport;
+                                Debug.WriteLine($"[FetchPreviousStudies] Selected report: {matchingReport.Display}");
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"[FetchPreviousStudies] No matching report found for datetime {TempPreviousStudyReportDatetime:yyyy-MM-dd HH:mm:ss}");
+                                Debug.WriteLine($"[FetchPreviousStudies] Using default report (most recent)");
+                            }
+                        }
+                        else
+                        {
+                            Debug.WriteLine("[FetchPreviousStudies] No report datetime specified - using default report");
+                        }
+                        
+                        stopwatch.Stop();
+                        SetStatus($"Previous studies loaded and selected: {matchingTab.Title} ({stopwatch.ElapsedMilliseconds} ms)");
+                        Debug.WriteLine($"[FetchPreviousStudies] ===== END: SUCCESS ===== ({stopwatch.ElapsedMilliseconds} ms)");
+                    }
+                    else
+                    {
+                        stopwatch.Stop();
+                        SetStatus($"Previous studies loaded but matching study not found: {TempPreviousStudyStudyname} ({stopwatch.ElapsedMilliseconds} ms)", true);
+                        Debug.WriteLine($"[FetchPreviousStudies] ===== END: STUDY NOT FOUND ===== ({stopwatch.ElapsedMilliseconds} ms)");
+                    }
+                }
+                else
+                {
+                    stopwatch.Stop();
+                    SetStatus($"Previous studies loaded: {PreviousStudies.Count} studies ({stopwatch.ElapsedMilliseconds} ms)");
+                    Debug.WriteLine($"[FetchPreviousStudies] ===== END: LOADED WITHOUT SELECTION ===== ({stopwatch.ElapsedMilliseconds} ms)");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[FetchPreviousStudies] ===== ERROR: {ex.Message} =====");
+                Debug.WriteLine($"[FetchPreviousStudies] StackTrace: {ex.StackTrace}");
+                SetStatus($"FetchPreviousStudies error: {ex.Message}", true);
             }
         }
     }

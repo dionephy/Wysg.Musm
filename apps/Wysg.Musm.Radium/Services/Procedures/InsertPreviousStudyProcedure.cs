@@ -136,6 +136,7 @@ namespace Wysg.Musm.Radium.Services.Procedures
                 {
                     header_and_findings = headerAndFindings,
                     final_conclusion = conclusion,
+                    report_radiologist = reporter,  // FIX: Use report_radiologist to match loader expectations
                     chief_complaint = string.Empty,
                     patient_history = string.Empty,
                     study_techniques = string.Empty,

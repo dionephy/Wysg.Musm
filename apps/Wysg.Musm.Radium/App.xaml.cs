@@ -342,8 +342,6 @@ namespace Wysg.Musm.Radium
             services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.IInsertPreviousStudyProcedure>(sp => new Wysg.Musm.Radium.Services.Procedures.InsertPreviousStudyProcedure(
                 sp.GetService<IRadStudyRepository>()
             ));
-            // NEW: Register FetchPreviousStudiesProcedure
-            services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.IFetchPreviousStudiesProcedure, Wysg.Musm.Radium.Services.Procedures.FetchPreviousStudiesProcedure>();
 
             // ViewModels (transient) -----------------------------------------------------------
             services.AddTransient<SplashLoginViewModel>();
@@ -364,7 +362,6 @@ namespace Wysg.Musm.Radium
                 sp.GetService<Wysg.Musm.Radium.Services.Procedures.IClearPreviousStudiesProcedure>(),
                 sp.GetService<Wysg.Musm.Radium.Services.Procedures.ISetCurrentStudyTechniquesProcedure>(),
                 sp.GetService<Wysg.Musm.Radium.Services.Procedures.IInsertPreviousStudyProcedure>(),
-                sp.GetService<Wysg.Musm.Radium.Services.Procedures.IFetchPreviousStudiesProcedure>(), // NEW: Inject FetchPreviousStudiesProcedure
                 sp.GetService<IAuthStorage>(),
                 sp.GetService<ISnomedMapService>(),
                 sp.GetService<IStudynameLoincRepository>()

@@ -69,20 +69,7 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         [ObservableProperty]
-        private ObservableCollection<string> availableModules = new(new[] {
-            "NewStudy(Obsolete)", "LockStudy", "UnlockStudy", "SetCurrentTogglesOff",
-            "ClearCurrentFields", "ClearPreviousFields", "ClearPreviousStudies",
-            "FetchPreviousStudies", // NEW: Fetch all previous studies from database
-            "SetCurrentStudyTechniques",
-            "AutofillCurrentHeader", "GetStudyRemark", "GetPatientRemark",
-            "AddPreviousStudy", "GetUntilReportDateTime", "GetReportedReport",
-            "OpenStudy", "MouseClick1", "MouseClick2", "TestInvoke",
-            "ShowTestMessage", "SetCurrentInMainScreen", "AbortIfWorklistClosed",
-            "AbortIfPatientNumberNotMatch", "AbortIfStudyDateTimeNotMatch",
-            "OpenWorklist", "ResultsListSetFocus", "SendReport", "Reportify",
-            "Delay", "SaveCurrentStudyToDB", "SavePreviousStudyToDB",
-            "InsertPreviousStudy", "InsertPreviousStudyReport"
-        });
+        private ObservableCollection<string> availableModules = new(new[] { "NewStudy(Obsolete)", "LockStudy", "UnlockStudy", "SetCurrentTogglesOff", "AutofillCurrentHeader", "ClearCurrentFields", "ClearPreviousFields", "ClearPreviousStudies", "SetCurrentStudyTechniques", "GetStudyRemark", "GetPatientRemark", "AddPreviousStudy", "FetchPreviousStudies", "GetUntilReportDateTime", "GetReportedReport", "OpenStudy", "MouseClick1", "MouseClick2", "TestInvoke", "ShowTestMessage", "SetCurrentInMainScreen", "AbortIfWorklistClosed", "AbortIfPatientNumberNotMatch", "AbortIfStudyDateTimeNotMatch", "OpenWorklist", "ResultsListSetFocus", "SendReport", "Reportify", "Delay", "SaveCurrentStudyToDB", "SavePreviousStudyToDB", "InsertPreviousStudy", "InsertPreviousStudyReport", "Abort", "End if" });
         [ObservableProperty]
         private ObservableCollection<string> newStudyModules = new();
         [ObservableProperty]
@@ -150,7 +137,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private bool _considerArrowBulletContinuation = false; public bool ConsiderArrowBulletContinuation { get => _considerArrowBulletContinuation; set { if (SetProperty(ref _considerArrowBulletContinuation, value)) UpdateReportifyJson(); } }
         // Removed: PreserveKnownTokens (deprecated)
 
-        private string _defaultArrow = "-->"; public string DefaultArrow { get => _defaultArrow; set { if (SetProperty(ref _defaultArrow, value)) UpdateReportifyJson(); } }
+        private string _defaultArrow = "-->;"; public string DefaultArrow { get => _defaultArrow; set { if (SetProperty(ref _defaultArrow, value)) UpdateReportifyJson(); } }
         private string _defaultConclusionNumbering = "1."; public string DefaultConclusionNumbering { get => _defaultConclusionNumbering; set { if (SetProperty(ref _defaultConclusionNumbering, value)) UpdateReportifyJson(); } }
         private string _defaultDetailingPrefix = "-"; public string DefaultDetailingPrefix { get => _defaultDetailingPrefix; set { if (SetProperty(ref _defaultDetailingPrefix, value)) UpdateReportifyJson(); } }
         private string _defaultDifferentialDiagnosis = "DDx:"; public string DefaultDifferentialDiagnosis { get => _defaultDifferentialDiagnosis; set { if (SetProperty(ref _defaultDifferentialDiagnosis, value)) UpdateReportifyJson(); } }
