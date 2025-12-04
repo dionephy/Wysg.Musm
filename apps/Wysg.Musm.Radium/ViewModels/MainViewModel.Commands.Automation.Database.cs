@@ -302,5 +302,138 @@ namespace Wysg.Musm.Radium.ViewModels
                 SetStatus($"FetchPreviousStudies error: {ex.Message}", true);
             }
         }
+        
+        /// <summary>
+        /// SetComparison automation module.
+        /// Sets the Comparison field using the temporary variables "Previous Study Studyname" and "Previous Study Datetime".
+        /// Extracts modality from the studyname (via LOINC mapping) and formats as "{Modality} {Date}".
+        /// Skips update if current study modality is in the ModalitiesNoHeaderUpdate list.
+        /// </summary>
+        private async Task RunSetComparisonAsync()
+        {
+            try
+            {
+                Debug.WriteLine("[SetComparison] ===== START =====");
+                var stopwatch = Stopwatch.StartNew();
+                
+                // Validate required variables
+                if (string.IsNullOrWhiteSpace(TempPreviousStudyStudyname))
+                {
+                    Debug.WriteLine("[SetComparison] FAILED - TempPreviousStudyStudyname is empty");
+                    SetStatus("SetComparison: Previous Study Studyname is required", true);
+                    return;
+                }
+                
+                if (!TempPreviousStudyDatetime.HasValue)
+                {
+                    Debug.WriteLine("[SetComparison] FAILED - TempPreviousStudyDatetime is null");
+                    SetStatus("SetComparison: Previous Study Datetime is required", true);
+                    return;
+                }
+                
+                Debug.WriteLine($"[SetComparison] Using studyname: '{TempPreviousStudyStudyname}'");
+                Debug.WriteLine($"[SetComparison] Using datetime: {TempPreviousStudyDatetime:yyyy-MM-dd HH:mm:ss}");
+                
+                // Extract modality from current study (for ModalitiesNoHeaderUpdate check)
+                string? currentModality = null;
+                if (!string.IsNullOrWhiteSpace(StudyName))
+                {
+                    currentModality = await ExtractModalityAsync(StudyName);
+                    Debug.WriteLine($"[SetComparison] Current study modality: '{currentModality}', StudyName: '{StudyName}'");
+                }
+                
+                // Check ModalitiesNoHeaderUpdate setting
+                bool shouldSkipUpdate = false;
+                if (_localSettings != null && !string.IsNullOrWhiteSpace(currentModality))
+                {
+                    var modalitiesNoHeaderUpdate = _localSettings.ModalitiesNoHeaderUpdate ?? string.Empty;
+                    Debug.WriteLine($"[SetComparison] ModalitiesNoHeaderUpdate setting: '{modalitiesNoHeaderUpdate}'");
+                    
+                    if (!string.IsNullOrWhiteSpace(modalitiesNoHeaderUpdate))
+                    {
+                        var excludedModalities = modalitiesNoHeaderUpdate
+                            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(m => m.Trim().ToUpperInvariant())
+                            .Where(m => !string.IsNullOrEmpty(m))
+                            .ToList();
+                        
+                        shouldSkipUpdate = excludedModalities.Contains(currentModality.ToUpperInvariant());
+                        Debug.WriteLine($"[SetComparison] Excluded modalities: [{string.Join(", ", excludedModalities)}]");
+                        Debug.WriteLine($"[SetComparison] Should skip update: {shouldSkipUpdate}");
+                    }
+                }
+                
+                if (shouldSkipUpdate)
+                {
+                    Debug.WriteLine($"[SetComparison] Skipping comparison update - modality '{currentModality}' is in ModalitiesNoHeaderUpdate list");
+                    SetStatus($"Comparison not updated (modality '{currentModality}' excluded by settings)");
+                    stopwatch.Stop();
+                    Debug.WriteLine($"[SetComparison] ===== END: SKIPPED ===== ({stopwatch.ElapsedMilliseconds} ms)");
+                    return;
+                }
+                
+                // Extract modality from previous study studyname
+                var previousModality = await ExtractModalityAsync(TempPreviousStudyStudyname);
+                Debug.WriteLine($"[SetComparison] Previous study modality: '{previousModality}'");
+                
+                // Build comparison string: "{Modality} {Date}"
+                var comparisonText = $"{previousModality} {TempPreviousStudyDatetime:yyyy-MM-dd}";
+                Debug.WriteLine($"[SetComparison] Built comparison text: '{comparisonText}'");
+                
+                // Update Comparison property
+                Comparison = comparisonText;
+                Debug.WriteLine($"[SetComparison] Updated Comparison property: '{Comparison}'");
+                
+                stopwatch.Stop();
+                SetStatus($"Comparison set: {comparisonText} ({stopwatch.ElapsedMilliseconds} ms)");
+                Debug.WriteLine($"[SetComparison] ===== END: SUCCESS ===== ({stopwatch.ElapsedMilliseconds} ms)");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SetComparison] ===== ERROR: {ex.Message} =====");
+                Debug.WriteLine($"[SetComparison] StackTrace: {ex.StackTrace}");
+                SetStatus($"SetComparison error: {ex.Message}", true);
+            }
+        }
+        
+        /// <summary>
+        /// ClearTempVariables automation module.
+        /// Clears all temporary variables used for data exchange between custom procedures and built-in modules.
+        /// This includes: Previous Study Studyname, Datetime, Report Datetime, Reporter, Header/Findings, and Conclusion.
+        /// </summary>
+        private async Task RunClearTempVariablesAsync()
+        {
+            try
+            {
+                Debug.WriteLine("[ClearTempVariables] ===== START =====");
+                
+                // Clear all temporary variables
+                TempPreviousStudyStudyname = null;
+                TempPreviousStudyDatetime = null;
+                TempPreviousStudyReportDatetime = null;
+                TempPreviousStudyReportReporter = null;
+                TempPreviousStudyReportHeaderAndFindings = null;
+                TempPreviousStudyReportConclusion = null;
+                
+                Debug.WriteLine("[ClearTempVariables] All temporary variables cleared:");
+                Debug.WriteLine("[ClearTempVariables] - TempPreviousStudyStudyname = null");
+                Debug.WriteLine("[ClearTempVariables] - TempPreviousStudyDatetime = null");
+                Debug.WriteLine("[ClearTempVariables] - TempPreviousStudyReportDatetime = null");
+                Debug.WriteLine("[ClearTempVariables] - TempPreviousStudyReportReporter = null");
+                Debug.WriteLine("[ClearTempVariables] - TempPreviousStudyReportHeaderAndFindings = null");
+                Debug.WriteLine("[ClearTempVariables] - TempPreviousStudyReportConclusion = null");
+                
+                SetStatus("Temporary variables cleared");
+                Debug.WriteLine("[ClearTempVariables] ===== END: SUCCESS =====");
+                
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ClearTempVariables] ===== ERROR: {ex.Message} =====");
+                Debug.WriteLine($"[ClearTempVariables] StackTrace: {ex.StackTrace}");
+                SetStatus($"ClearTempVariables error: {ex.Message}", true);
+            }
+        }
     }
 }

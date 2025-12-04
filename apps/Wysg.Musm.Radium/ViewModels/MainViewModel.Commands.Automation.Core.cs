@@ -139,6 +139,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { await AcquirePatientRemarkAsync(); }
                     else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { await RunAddPreviousStudyModuleAsync(); }
                     else if (string.Equals(m, "FetchPreviousStudies", StringComparison.OrdinalIgnoreCase)) { await RunFetchPreviousStudiesAsync(); }
+                    else if (string.Equals(m, "SetComparison", StringComparison.OrdinalIgnoreCase)) { await RunSetComparisonAsync(); }
                     else if (string.Equals(m, "AbortIfWorklistClosed", StringComparison.OrdinalIgnoreCase))
                     {
                         var isVisible = await _pacs.WorklistIsVisibleAsync();
@@ -300,6 +301,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         await _clearPreviousStudiesProc.ExecuteAsync(this);
                         SetStatus("[ClearPreviousStudies] Done.");
                     }
+                    else if (string.Equals(m, "ClearTempVariables", StringComparison.OrdinalIgnoreCase)) { await RunClearTempVariablesAsync(); }
                     else if (string.Equals(m, "SetCurrentStudyTechniques", StringComparison.OrdinalIgnoreCase) && _setCurrentStudyTechniquesProc != null)
                     {
                         await _setCurrentStudyTechniquesProc.ExecuteAsync(this);
