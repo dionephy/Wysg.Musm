@@ -41,6 +41,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <!-- Controls from original top bar (minus PACS) -->
@@ -80,115 +81,157 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
 
                     <!-- Crawl Editor -->
                     <GroupBox Grid.Row="1" Header="Crawl Editor" Style="{StaticResource AutomationWindowGroupBoxStyle}">
-            <DockPanel>
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,6">
-                    <TextBlock Text="Map Method:" VerticalAlignment="Center"/>
-                    <ComboBox x:Name="cmbMethod" Width="150" Margin="6,0,12,0" Style="{StaticResource AutomationWindowComboBoxStyle}">
-                        <ComboBoxItem Tag="Chain">Chain</ComboBoxItem>
-                        <ComboBoxItem Tag="AutomationIdOnly">AutomationIdOnly</ComboBoxItem>
-                    </ComboBox>
-                    <Button Content="Validate" Click="OnValidateChain" Style="{StaticResource AutomationWindowButtonStyle}"/>
-                    <Button Content="SetFocus" Margin="6,0,0,0" Click="OnSetFocus" Style="{StaticResource AutomationWindowButtonStyle}"/>
-                    <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke" Style="{StaticResource AutomationWindowButtonStyle}"/>
-                    <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText" Style="{StaticResource AutomationWindowButtonStyle}"/>
-                    <Button Content="Get Name" Margin="6,0,0,0" Click="OnGetName" Style="{StaticResource AutomationWindowButtonStyle}"/>
-                    <Button Content="Get HTML" Margin="6,0,0,0" Click="OnGetHtml" Style="{StaticResource AutomationWindowButtonStyle}"/>
-                    <Button Content="Row Data" Margin="6,0,0,0" Click="OnGetSelectedRow" Style="{StaticResource AutomationWindowButtonStyle}"/>
-                    <Separator Margin="12,0" Width="10"/>
-                    <Button Content="Move Up" Click="OnMoveUp" Style="{StaticResource AutomationWindowButtonStyle}"/>
-                    <Button Content="Move Down" Margin="6,0,0,0" Click="OnMoveDown" Style="{StaticResource AutomationWindowButtonStyle}"/>
-                    <Button Content="Insert Above" Margin="6,0,0,0" Click="OnInsertAbove" Style="{StaticResource AutomationWindowButtonStyle}"/>
-                    <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteNode" Style="{StaticResource AutomationWindowButtonStyle}"/>
-                </StackPanel>
+                        <DockPanel>
+                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,6">
+                                <TextBlock Text="Map Method:" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="cmbMethod" Width="150" Margin="6,0,12,0" Style="{StaticResource AutomationWindowComboBoxStyle}">
+                                    <ComboBoxItem Tag="Chain">Chain</ComboBoxItem>
+                                    <ComboBoxItem Tag="AutomationIdOnly">AutomationIdOnly</ComboBoxItem>
+                                </ComboBox>
+                                <Button Content="Validate" Click="OnValidateChain" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                <Button Content="SetFocus" Margin="6,0,0,0" Click="OnSetFocus" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                <Button Content="Invoke" Margin="6,0,0,0" Click="OnInvoke" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                <Button Content="Get Text" Margin="6,0,0,0" Click="OnGetText" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                <Button Content="Get Name" Margin="6,0,0,0" Click="OnGetName" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                <Button Content="Get HTML" Margin="6,0,0,0" Click="OnGetHtml" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                <Button Content="Row Data" Margin="6,0,0,0" Click="OnGetSelectedRow" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                <Separator Margin="12,0" Width="10"/>
+                                <Button Content="Move Up" Click="OnMoveUp" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                <Button Content="Move Down" Margin="6,0,0,0" Click="OnMoveDown" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                <Button Content="Insert Above" Margin="6,0,0,0" Click="OnInsertAbove" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                <Button Content="Delete" Margin="6,0,0,0" Click="OnDeleteNode" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                            </StackPanel>
 
-                <DataGrid x:Name="gridChain" AutoGenerateColumns="False" HeadersVisibility="Column" 
-                          CanUserAddRows="True" CanUserDeleteRows="True" IsReadOnly="False" 
-                          CellEditEnding="OnGridCellEditEnding" Style="{StaticResource AutomationWindowDataGridStyle}">
-                    <DataGrid.Resources>
-                            <Style TargetType="CheckBox" BasedOn="{StaticResource DarkCheckBox}">
-                                <EventSetter Event="Click" Handler="OnTemplateCheckBoxClick"/>
-                            </Style>
-                            <Style TargetType="ComboBox" BasedOn="{StaticResource AutomationWindowComboBoxStyle}">
-                                <EventSetter Event="SelectionChanged" Handler="OnTemplateComboSelectionChanged"/>
-                            </Style>
-                        </DataGrid.Resources>
-                        <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="Scope" Width="105">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <ComboBox SelectedIndex="{Binding LocateIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                  Width="100" Style="{StaticResource AutomationWindowComboBoxStyle}">
-                                            <ComboBoxItem Content="Exclude"/>
-                                            <ComboBoxItem Content="Children"/>
-                                            <ComboBoxItem Content="Descendants"/>
-                                        </ComboBox>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="Name" Width="220">
-                                <DataGridTemplateColumn.CellTemplate>
+                            <DataGrid x:Name="gridChain" AutoGenerateColumns="False" HeadersVisibility="Column" 
+                                      CanUserAddRows="True" CanUserDeleteRows="True" IsReadOnly="False" 
+                                      CellEditEnding="OnGridCellEditEnding" Style="{StaticResource AutomationWindowDataGridStyle}">
+                                <DataGrid.Resources>
+                                    <Style TargetType="CheckBox" BasedOn="{StaticResource DarkCheckBox}">
+                                        <EventSetter Event="Click" Handler="OnTemplateCheckBoxClick"/>
+                                    </Style>
+                                    <Style TargetType="ComboBox" BasedOn="{StaticResource AutomationWindowComboBoxStyle}">
+                                        <EventSetter Event="SelectionChanged" Handler="OnTemplateComboSelectionChanged"/>
+                                    </Style>
+                                </DataGrid.Resources>
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="Scope" Width="105">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <ComboBox SelectedIndex="{Binding LocateIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                          Width="100" Style="{StaticResource AutomationWindowComboBoxStyle}">
+                                                    <ComboBoxItem Content="Exclude"/>
+                                                    <ComboBoxItem Content="Children"/>
+                                                    <ComboBoxItem Content="Descendants"/>
+                                                </ComboBox>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="Name" Width="220">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <CheckBox IsChecked="{Binding UseName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                              VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
+                                                    <TextBox Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                             Width="160" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="ClassName" Width="260">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <CheckBox IsChecked="{Binding UseClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                              VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
+                                                    <TextBox Text="{Binding ClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                             Width="180" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="ControlTypeId" Width="180">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <CheckBox IsChecked="{Binding UseControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                              VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
+                                                    <TextBox Text="{Binding ControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                             Width="100" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="AutomationId" Width="240">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <CheckBox IsChecked="{Binding UseAutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                              VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
+                                                    <TextBox Text="{Binding AutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                             Width="160" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="Index" Width="70">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <CheckBox IsChecked="{Binding UseIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                              VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
+                                                    <TextBox Text="{Binding IndexAmongMatches, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                             Width="40" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </GroupBox>
+
+                    <!-- Session Cache Settings -->
+                    <GroupBox Grid.Row="2" Header="Session-Based Cache (cleared each automation run)" Style="{StaticResource AutomationWindowGroupBoxStyle}" Margin="0,8,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <!-- Add bookmark to session cache -->
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Top">
+                                <ComboBox x:Name="cmbSessionCacheBookmark" Width="200" 
+                                          Style="{StaticResource AutomationWindowComboBoxStyle}"
+                                          ItemsSource="{Binding BookmarkItems, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          DisplayMemberPath="Name"
+                                          ToolTip="Select a bookmark to add to session-based cache"/>
+                                <Button Content="Add" Margin="6,0,0,0" Click="OnAddSessionCacheBookmark" 
+                                        Style="{StaticResource AutomationWindowButtonStyle}"
+                                        ToolTip="Add selected bookmark to session-based cache list"/>
+                            </StackPanel>
+                            
+                            <!-- Session cache list -->
+                            <ListBox x:Name="lstSessionCacheBookmarks" Grid.Column="2" 
+                                     MinHeight="60" MaxHeight="100" Margin="8,0,0,0"
+                                     Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C"
+                                     SelectionMode="Single"
+                                     ToolTip="Bookmarks in this list will have their cache cleared at the start of each automation run. Double-click to remove.">
+                                <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                      VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
-                                            <TextBox Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                     Width="160" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
+                                            <TextBlock Text="{Binding}" VerticalAlignment="Center"/>
+                                            <Button Content="x" Margin="8,0,0,0" Padding="4,0" 
+                                                    Click="OnRemoveSessionCacheBookmark" Tag="{Binding}"
+                                                    Style="{StaticResource AutomationWindowButtonStyle}"
+                                                    ToolTip="Remove from session cache list"/>
                                         </StackPanel>
                                     </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="ClassName" Width="260">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                      VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
-                                            <TextBox Text="{Binding ClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                     Width="180" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="ControlTypeId" Width="180">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                      VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
-                                            <TextBox Text="{Binding ControlTypeId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                     Width="100" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="AutomationId" Width="240">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseAutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                      VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
-                                            <TextBox Text="{Binding AutomationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                     Width="160" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="Index" Width="70">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <CheckBox IsChecked="{Binding UseIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                      VerticalAlignment="Center" Style="{StaticResource DarkCheckBox}"/>
-                                            <TextBox Text="{Binding IndexAmongMatches, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                     Width="40" Margin="6,0,0,0" Style="{StaticResource DarkTextBox}"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </DockPanel>
-            </GroupBox>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </GroupBox>
                 </Grid>
             </TabItem>
 
@@ -479,18 +522,31 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                     </Grid.RowDefinitions>
                     
                     <!-- Header info bar (fixed at top) -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Stretch" Margin="0,0,0,8">
-                        <TextBlock Text="Drag modules between panes to configure execution order (duplicates allowed)." FontWeight="Bold" Foreground="#D0D0D0"/>
-                        <TextBlock Text="  |  " Margin="8,0" Foreground="#B0B0B0"/>
-                        <TextBlock Text="Following modalities don't send header (separated by comma):" 
-                                  VerticalAlignment="Center" 
-                                  Foreground="#D0D0D0" 
-                                  Margin="0,0,8,0"/>
-                        <TextBox x:Name="txtModalitiesNoHeaderUpdate" 
-                                 VerticalAlignment="Center" 
-                                 Width="150" 
-                                 Style="{StaticResource DarkTextBox}"
-                                 ToolTip="Enter comma-separated modality codes (e.g., XR,CR,DX) that should not update header fields"/>
+                    <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock Text="Drag modules between panes to configure execution order (duplicates allowed)." FontWeight="Bold" Foreground="#D0D0D0"/>
+                            <TextBlock Text="  |  " Margin="8,0" Foreground="#B0B0B0"/>
+                            <TextBlock Text="Modalities without header:" 
+                                      VerticalAlignment="Center" 
+                                      Foreground="#D0D0D0" 
+                                      Margin="0,0,8,0"/>
+                            <TextBox x:Name="txtModalitiesNoHeaderUpdate" 
+                                     VerticalAlignment="Center" 
+                                     Width="120" 
+                                     Style="{StaticResource DarkTextBox}"
+                                     ToolTip="Enter comma-separated modality codes (e.g., XR,CR,DX) that should not update header fields"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Session-based cache bookmarks (cleared each run):" 
+                                      VerticalAlignment="Center" 
+                                      Foreground="#D0D0D0" 
+                                      Margin="0,0,8,0"/>
+                            <TextBox x:Name="txtSessionBasedCacheBookmarks" 
+                                     VerticalAlignment="Center" 
+                                     Width="500" 
+                                     Style="{StaticResource DarkTextBox}"
+                                     ToolTip="Comma-separated bookmark names that need fresh data each automation run (e.g., ReportText,WorklistSelection). Other bookmarks are cached globally for speed."/>
+                        </StackPanel>
                     </StackPanel>
                     
                     <!-- Main scrollable content area -->

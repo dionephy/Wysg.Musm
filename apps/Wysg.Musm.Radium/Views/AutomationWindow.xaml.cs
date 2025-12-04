@@ -137,6 +137,7 @@ namespace Wysg.Musm.Radium.Views
             LoadBookmarks(); // (implemented in Bookmarks partial)
             InitializePacsMethods(); // NEW: Load dynamic PACS methods
             InitializeAutomationTab(); // NEW: Initialize Automation tab
+            LoadSessionCacheBookmarks(); // NEW: Load session cache bookmarks
 
             // Custom procedures grid wiring (handlers in Procedures partial)
             if (FindName("gridProcSteps") is System.Windows.Controls.DataGrid procGrid) procGrid.ItemsSource = new List<ProcOpRow>();
@@ -159,6 +160,119 @@ namespace Wysg.Musm.Radium.Views
                 }
             }
             catch { }
+        }
+
+        // ------------------------------------------------------------------
+        // Session Cache Management
+        // ------------------------------------------------------------------
+        
+        private ObservableCollection<string> _sessionCacheBookmarks = new();
+        
+        /// <summary>
+        /// Load session cache bookmarks from settings into the ListBox
+        /// </summary>
+        private void LoadSessionCacheBookmarks()
+        {
+            _sessionCacheBookmarks.Clear();
+            
+            try
+            {
+                if (Application.Current is App app)
+                {
+                    var localSettings = app.Services.GetService(typeof(IRadiumLocalSettings)) as IRadiumLocalSettings;
+                    var settingsValue = localSettings?.SessionBasedCacheBookmarks;
+                    
+                    if (!string.IsNullOrWhiteSpace(settingsValue))
+                    {
+                        var bookmarks = settingsValue
+                            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(s => s.Trim())
+                            .Where(s => !string.IsNullOrWhiteSpace(s))
+                            .Distinct(StringComparer.OrdinalIgnoreCase);
+                        
+                        foreach (var bookmark in bookmarks)
+                        {
+                            _sessionCacheBookmarks.Add(bookmark);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[LoadSessionCacheBookmarks] Error: {ex.Message}");
+            }
+            
+            if (FindName("lstSessionCacheBookmarks") is System.Windows.Controls.ListBox listBox)
+            {
+                listBox.ItemsSource = _sessionCacheBookmarks;
+            }
+        }
+        
+        /// <summary>
+        /// Save session cache bookmarks to settings
+        /// </summary>
+        private void SaveSessionCacheBookmarks()
+        {
+            try
+            {
+                if (Application.Current is App app)
+                {
+                    var localSettings = app.Services.GetService(typeof(IRadiumLocalSettings)) as IRadiumLocalSettings;
+                    if (localSettings != null)
+                    {
+                        var value = string.Join(",", _sessionCacheBookmarks);
+                        localSettings.SessionBasedCacheBookmarks = value;
+                        
+                        // Also update the text box in Automation tab if it exists
+                        if (FindName("txtSessionBasedCacheBookmarks") is System.Windows.Controls.TextBox txtBox)
+                        {
+                            txtBox.Text = value;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SaveSessionCacheBookmarks] Error: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Add selected bookmark to session cache list
+        /// </summary>
+        private void OnAddSessionCacheBookmark(object sender, RoutedEventArgs e)
+        {
+            if (FindName("cmbSessionCacheBookmark") is not System.Windows.Controls.ComboBox comboBox) return;
+            if (comboBox.SelectedItem is not BookmarkItem item) return;
+            
+            var bookmarkName = item.Name;
+            
+            // Check if already in list
+            if (_sessionCacheBookmarks.Contains(bookmarkName, StringComparer.OrdinalIgnoreCase))
+            {
+                txtStatus.Text = $"'{bookmarkName}' is already in session cache list";
+                return;
+            }
+            
+            _sessionCacheBookmarks.Add(bookmarkName);
+            SaveSessionCacheBookmarks();
+            
+            txtStatus.Text = $"Added '{bookmarkName}' to session cache list";
+        }
+        
+        /// <summary>
+        /// Remove bookmark from session cache list (via button click)
+        /// </summary>
+        private void OnRemoveSessionCacheBookmark(object sender, RoutedEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.Button button) return;
+            if (button.Tag is not string bookmarkName) return;
+            
+            if (_sessionCacheBookmarks.Remove(bookmarkName))
+            {
+                SaveSessionCacheBookmarks();
+                txtStatus.Text = $"Removed '{bookmarkName}' from session cache list";
+            }
         }
 
         // ------------------------------------------------------------------

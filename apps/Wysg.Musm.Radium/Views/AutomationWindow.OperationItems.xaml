@@ -4,6 +4,7 @@
     <!-- Operation ComboBox Items -->
     <x:Array x:Key="OperationItems" Type="ComboBoxItem">
         <ComboBoxItem Content="GetText"/>
+        <ComboBoxItem Content="GetTextOnce"/>
         <ComboBoxItem Content="GetTextWait"/>
         <ComboBoxItem Content="GetName"/>
         <ComboBoxItem Content="GetTextOCR"/>

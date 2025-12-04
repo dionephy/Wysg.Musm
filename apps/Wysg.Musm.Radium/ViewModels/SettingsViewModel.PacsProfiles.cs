@@ -231,15 +231,20 @@ namespace Wysg.Musm.Radium.ViewModels
                         // Verify it was saved by reading it back
                         var readBack = _local.ModalitiesNoHeaderUpdate;
                         Debug.WriteLine($"[SettingsVM] Read back value: '{readBack}'");
+                        
+                        // Save SessionBasedCacheBookmarks to local settings
+                        Debug.WriteLine($"[SettingsVM] Saving SessionBasedCacheBookmarks = '{SessionBasedCacheBookmarks}'");
+                        _local.SessionBasedCacheBookmarks = SessionBasedCacheBookmarks;
+                        Debug.WriteLine($"[SettingsVM] Successfully saved SessionBasedCacheBookmarks");
                     }
                     else
                     {
-                        Debug.WriteLine($"[SettingsVM] ERROR: _local is null, cannot save ModalitiesNoHeaderUpdate");
+                        Debug.WriteLine($"[SettingsVM] ERROR: _local is null, cannot save settings");
                     }
                 }
                 catch (Exception localEx)
                 {
-                    Debug.WriteLine($"[SettingsVM] EXCEPTION while saving ModalitiesNoHeaderUpdate: {localEx.Message}");
+                    Debug.WriteLine($"[SettingsVM] EXCEPTION while saving local settings: {localEx.Message}");
                     Debug.WriteLine($"[SettingsVM] Stack trace: {localEx.StackTrace}");
                 }
                 
@@ -402,6 +407,14 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             get => _modalitiesNoHeaderUpdate;
             set => SetProperty(ref _modalitiesNoHeaderUpdate, value);
+        }
+
+        // NEW: Comma-separated list of bookmark names that should use session-based caching
+        private string _sessionBasedCacheBookmarks = string.Empty;
+        public string SessionBasedCacheBookmarks
+        {
+            get => _sessionBasedCacheBookmarks;
+            set => SetProperty(ref _sessionBasedCacheBookmarks, value);
         }
     }
 }

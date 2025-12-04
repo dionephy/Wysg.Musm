@@ -68,5 +68,13 @@ namespace Wysg.Musm.Radium.Services
         // NEW: Always on Top setting
         /// <summary>Keep the main window always on top of other windows.</summary>
         bool AlwaysOnTop { get; set; }
+        
+        // NEW: Session-based caching configuration
+        /// <summary>
+        /// Comma-separated list of bookmark names that should only be cached per-session (cleared on each automation run).
+        /// Bookmarks NOT in this list are cached globally (persist across sessions for better performance).
+        /// Use this for bookmarks that point to dynamic/changing elements (e.g., report text fields, worklist selections).
+        /// </summary>
+        string? SessionBasedCacheBookmarks { get; set; }
     }
 }

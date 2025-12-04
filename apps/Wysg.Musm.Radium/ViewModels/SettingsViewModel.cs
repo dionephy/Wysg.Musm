@@ -259,6 +259,9 @@ namespace Wysg.Musm.Radium.ViewModels
             // Load ModalitiesNoHeaderUpdate from local settings (global setting, not PACS-specific)
             ModalitiesNoHeaderUpdate = _local.ModalitiesNoHeaderUpdate ?? string.Empty;
             
+            // Load SessionBasedCacheBookmarks from local settings (global setting)
+            SessionBasedCacheBookmarks = _local.SessionBasedCacheBookmarks ?? string.Empty;
+            
             // Load custom modules into available modules
             LoadCustomModulesIntoAvailable();
         }
@@ -376,6 +379,9 @@ namespace Wysg.Musm.Radium.ViewModels
             
             // Save ModalitiesNoHeaderUpdate to local settings (global setting)
             _local.ModalitiesNoHeaderUpdate = ModalitiesNoHeaderUpdate ?? string.Empty;
+            
+            // Save SessionBasedCacheBookmarks to local settings (global setting)
+            _local.SessionBasedCacheBookmarks = SessionBasedCacheBookmarks ?? string.Empty;
             
             MessageBox.Show("Saved.", "Settings", MessageBoxButton.OK, MessageBoxImage.Information);
         }

@@ -12,6 +12,8 @@ namespace Wysg.Musm.Radium.ViewModels
     {
         private async Task RunCustomModuleAsync(Wysg.Musm.Radium.Models.CustomModule module)
         {
+            var sw = Stopwatch.StartNew();
+            
             try
             {
                 Debug.WriteLine($"[CustomModule] Executing '{module.Name}' type={module.Type} proc={module.ProcedureName}");
@@ -19,11 +21,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 // Run the procedure and get result using ProcedureExecutor
                 var result = await Services.ProcedureExecutor.ExecuteAsync(module.ProcedureName);
                 
+                sw.Stop();
+                
                 switch (module.Type)
                 {
                     case Wysg.Musm.Radium.Models.CustomModuleType.Run:
                         // Just run the procedure, result ignored
-                        SetStatus($"[{module.Name}] Done.");
+                        SetStatus($"[{module.Name}] Done. ({sw.ElapsedMilliseconds} ms)");
                         break;
                         
                     case Wysg.Musm.Radium.Models.CustomModuleType.AbortIf:
@@ -32,10 +36,10 @@ namespace Wysg.Musm.Radium.ViewModels
                                           !string.Equals(result, "false", StringComparison.OrdinalIgnoreCase);
                         if (shouldAbort)
                         {
-                            SetStatus($"[{module.Name}] Aborted sequence.", true);
+                            SetStatus($"[{module.Name}] Aborted sequence. ({sw.ElapsedMilliseconds} ms)", true);
                             throw new OperationCanceledException($"Aborted by {module.Name}");
                         }
-                        SetStatus($"[{module.Name}] Condition not met, continuing.");
+                        SetStatus($"[{module.Name}] Condition not met, continuing. ({sw.ElapsedMilliseconds} ms)");
                         break;
                         
                     case Wysg.Musm.Radium.Models.CustomModuleType.Set:
@@ -48,9 +52,9 @@ namespace Wysg.Musm.Radium.ViewModels
                         
                         SetPropertyValue(module.PropertyName, result ?? string.Empty);
                         
-                        // Format: [ModuleName] PropertyName = value
+                        // Format: [ModuleName] PropertyName = value (N ms)
                         var formattedValue = FormatValueForStatus(result);
-                        SetStatus($"[{module.Name}] {module.PropertyName} = {formattedValue}");
+                        SetStatus($"[{module.Name}] {module.PropertyName} = {formattedValue} ({sw.ElapsedMilliseconds} ms)");
                         break;
                 }
             }
@@ -60,8 +64,9 @@ namespace Wysg.Musm.Radium.ViewModels
             }
             catch (Exception ex)
             {
+                sw.Stop();
                 Debug.WriteLine($"[CustomModule] Error executing '{module.Name}': {ex.Message}");
-                SetStatus($"[{module.Name}] Error: {ex.Message}", true);
+                SetStatus($"[{module.Name}] Error: {ex.Message} ({sw.ElapsedMilliseconds} ms)", true);
                 throw;
             }
         }

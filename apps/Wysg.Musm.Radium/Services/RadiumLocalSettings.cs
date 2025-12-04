@@ -82,6 +82,9 @@ namespace Wysg.Musm.Radium.Services
         // NEW: Always on Top setting
         public bool AlwaysOnTop { get => ReadBool("always_on_top"); set => WriteBool("always_on_top", value); }
 
+        // NEW: Session-based caching configuration
+        public string? SessionBasedCacheBookmarks { get => ReadSecret("session_based_cache_bookmarks"); set => WriteSecret("session_based_cache_bookmarks", value ?? string.Empty); }
+
         /// <summary>
         /// Decrypts settings file (if present) and returns the value for a key. Failures are swallowed to avoid
         /// disruptive UX (caller sees null and can prompt for settings).

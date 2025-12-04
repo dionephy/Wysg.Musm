@@ -18,26 +18,49 @@ namespace Wysg.Musm.Radium.Services
 
         private static (string preview, string? value) ExecuteGetText(AutomationElement? el)
         {
-            if (el == null) { return ("(no element)", null); }
+            var sw = Stopwatch.StartNew();
+            
+            if (el == null) 
+            { 
+                Debug.WriteLine($"[GetText] SKIP - no element (0ms)");
+                return ("(no element)", null); 
+            }
             
             try
             {
+                Debug.WriteLine($"[GetText] START - element Name='{el.Name}'");
+                
                 // Each property access wrapped individually to prevent exception propagation delays
+                var nameSw = Stopwatch.StartNew();
                 string name = string.Empty;
                 try { name = el.Name ?? string.Empty; } catch { }
+                nameSw.Stop();
+                Debug.WriteLine($"[GetText] Name access: {nameSw.ElapsedMilliseconds}ms, value='{(name.Length > 50 ? name[..50] + "..." : name)}'");
                 
+                var valSw = Stopwatch.StartNew();
                 string val = string.Empty;
                 try { val = el.Patterns.Value.PatternOrDefault?.Value ?? string.Empty; } catch { }
+                valSw.Stop();
+                Debug.WriteLine($"[GetText] Value.Pattern access: {valSw.ElapsedMilliseconds}ms, length={val.Length}");
                 
+                var legacySw = Stopwatch.StartNew();
                 string legacy = string.Empty;
                 try { legacy = el.Patterns.LegacyIAccessible.PatternOrDefault?.Name ?? string.Empty; } catch { }
+                legacySw.Stop();
+                Debug.WriteLine($"[GetText] LegacyIAccessible access: {legacySw.ElapsedMilliseconds}ms, length={legacy.Length}");
                 
                 var raw = !string.IsNullOrEmpty(val) ? val : (!string.IsNullOrEmpty(name) ? name : legacy);
                 var valueToStore = NormalizeKoreanMojibake(raw);
+                
+                sw.Stop();
+                Debug.WriteLine($"[GetText] END - total={sw.ElapsedMilliseconds}ms, result length={valueToStore?.Length ?? 0}, source={(val.Length > 0 ? "Value" : (name.Length > 0 ? "Name" : "Legacy"))}");
+                
                 return (valueToStore ?? "(null)", valueToStore);
             }
-            catch 
+            catch (Exception ex)
             { 
+                sw.Stop();
+                Debug.WriteLine($"[GetText] ERROR after {sw.ElapsedMilliseconds}ms: {ex.Message}");
                 return ("(error)", null); 
             }
         }
@@ -611,6 +634,17 @@ namespace Wysg.Musm.Radium.Services
             {
                 return ($"(error: {ex.Message})", null);
             }
+        }
+
+        /// <summary>
+        /// GetTextOnce: Same as GetText but designed to be used with single-attempt element resolution.
+        /// Use this when you expect the element might not exist and want to fail fast without retries.
+        /// The actual single-attempt behavior is controlled by using ResolveElementOnce in ProcedureExecutor.
+        /// </summary>
+        private static (string preview, string? value) ExecuteGetTextOnce(AutomationElement? el)
+        {
+            // Implementation is identical to GetText - the difference is in element resolution
+            return ExecuteGetText(el);
         }
 
         #endregion

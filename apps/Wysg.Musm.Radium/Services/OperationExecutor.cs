@@ -120,6 +120,10 @@ namespace Wysg.Musm.Radium.Services
                 // Element Operations
                 case "GetText":
                     return ExecuteGetText(resolveArg1Element());
+                case "GetTextOnce":
+                    // Note: Uses same implementation as GetText, but ProcedureExecutor 
+                    // will use ResolveElementOnce (single attempt) instead of ResolveElement (3 retries)
+                    return ExecuteGetTextOnce(resolveArg1Element());
                 case "GetTextWait":
                     // Special handling: pass resolution function to allow retry
                     return ExecuteGetTextWaitWithRetry(resolveArg1Element);

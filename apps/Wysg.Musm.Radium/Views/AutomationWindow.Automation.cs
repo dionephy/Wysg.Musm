@@ -47,6 +47,17 @@ namespace Wysg.Musm.Radium.Views
                     });
                 }
                 
+                // Bind session-based cache bookmarks textbox
+                if (FindName("txtSessionBasedCacheBookmarks") is TextBox txtSessionCache && _automationViewModel != null)
+                {
+                    txtSessionCache.SetBinding(TextBox.TextProperty, new System.Windows.Data.Binding("SessionBasedCacheBookmarks")
+                    {
+                        Source = _automationViewModel,
+                        Mode = System.Windows.Data.BindingMode.TwoWay,
+                        UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
+                    });
+                }
+                
                 // Initialize ListBox bindings
                 if (_automationViewModel != null)
                 {

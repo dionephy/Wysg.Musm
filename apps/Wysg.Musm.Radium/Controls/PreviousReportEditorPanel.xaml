@@ -59,6 +59,8 @@
                       HorizontalContentAlignment="Stretch"
                       ItemsSource="{Binding SelectedPreviousStudy.Reports}"
                       SelectedItem="{Binding SelectedPreviousStudy.SelectedReport, Mode=TwoWay}" 
+                      DisplayMemberPath="Display"
+                      TextSearch.TextPath="Display"
                       MinWidth="200">       
                 </ComboBox>
 

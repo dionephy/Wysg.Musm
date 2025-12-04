@@ -57,8 +57,12 @@ namespace Wysg.Musm.Radium.ViewModels
                         if (customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.If || 
                             customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot)
                         {
+                            var ifSw = Stopwatch.StartNew();
+                            
                             // Execute the procedure to get the condition result
                             var result = await Services.ProcedureExecutor.ExecuteAsync(customModule.ProcedureName);
+                            
+                            ifSw.Stop();
                             
                             // Evaluate condition (true if result is non-empty and not "false")
                             bool conditionValue = !string.IsNullOrWhiteSpace(result) && 
@@ -76,7 +80,7 @@ namespace Wysg.Musm.Radium.ViewModels
                             skipExecution = !conditionMet || ifStack.Any(entry => !entry.conditionMet);
                             
                             Debug.WriteLine($"[Automation] {customModule.Name}: condition={conditionValue}, negated={customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot}, conditionMet={conditionMet}, skipExecution={skipExecution}");
-                            SetStatus($"[{customModule.Name}] {(conditionMet ? "Condition met." : "Condition not met.")}");
+                            SetStatus($"[{customModule.Name}] {(conditionMet ? "Condition met." : "Condition not met.")} ({ifSw.ElapsedMilliseconds} ms)");
                             continue;
                         }
                         
