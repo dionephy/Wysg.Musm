@@ -31,6 +31,7 @@
         <ComboBoxItem Content="SimulatePaste"/>
         <ComboBoxItem Content="SimulateSelectAll"/>
         <ComboBoxItem Content="SimulateDelete"/>
+        <ComboBoxItem Content="Echo"/>
         <ComboBoxItem Content="IsMatch"/>
         <ComboBoxItem Content="IsAlmostMatch"/>
         <ComboBoxItem Content="And"/>

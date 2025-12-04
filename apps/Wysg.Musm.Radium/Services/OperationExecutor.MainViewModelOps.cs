@@ -78,42 +78,19 @@ namespace Wysg.Musm.Radium.Services
         {
             try
             {
-                Debug.WriteLine("[GetCurrentHeader] Starting operation - getting actual editor text");
+                Debug.WriteLine("[GetCurrentHeader] Starting operation");
                 string result = string.Empty;
                 System.Windows.Application.Current?.Dispatcher.Invoke(() =>
                 {
                     var mainWindow = System.Windows.Application.Current?.MainWindow;
-                    if (mainWindow != null)
+                    if (mainWindow?.DataContext is ViewModels.MainViewModel mainVM)
                     {
-                        // Get CenterEditingArea from MainWindow
-                        var gridCenter = mainWindow.FindName("gridCenter") as Controls.CenterEditingArea;
-                        if (gridCenter != null)
-                        {
-                            // Get EditorHeader from CenterEditingArea
-                            var editorHeader = gridCenter.EditorHeader;
-                            if (editorHeader != null)
-                            {
-                                // Get the underlying MusmEditor (TextEditor)
-                                var musmEditor = editorHeader.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
-                                if (musmEditor != null)
-                                {
-                                    result = musmEditor.Text ?? string.Empty;
-                                    Debug.WriteLine($"[GetCurrentHeader] SUCCESS: Got text from editor, length={result.Length}");
-                                }
-                                else
-                                {
-                                    Debug.WriteLine($"[GetCurrentHeader] FAIL: MusmEditor not found in EditorHeader");
-                                }
-                            }
-                            else
-                            {
-                                Debug.WriteLine($"[GetCurrentHeader] FAIL: EditorHeader not found in CenterEditingArea");
-                            }
-                        }
-                        else
-                        {
-                            Debug.WriteLine($"[GetCurrentHeader] FAIL: CenterEditingArea (gridCenter) not found");
-                        }
+                        result = mainVM.GetPropertyValue(Models.CustomModuleProperties.CurrentHeader) ?? string.Empty;
+                        Debug.WriteLine($"[GetCurrentHeader] SUCCESS: Got text, length={result.Length}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[GetCurrentHeader] FAIL: MainViewModel not found");
                     }
                 });
                 return (string.IsNullOrWhiteSpace(result) ? "(empty)" : result, result);
@@ -129,42 +106,19 @@ namespace Wysg.Musm.Radium.Services
         {
             try
             {
-                Debug.WriteLine("[GetCurrentFindings] Starting operation - getting actual editor text");
+                Debug.WriteLine("[GetCurrentFindings] Starting operation");
                 string result = string.Empty;
                 System.Windows.Application.Current?.Dispatcher.Invoke(() =>
                 {
                     var mainWindow = System.Windows.Application.Current?.MainWindow;
-                    if (mainWindow != null)
+                    if (mainWindow?.DataContext is ViewModels.MainViewModel mainVM)
                     {
-                        // Get CenterEditingArea from MainWindow
-                        var gridCenter = mainWindow.FindName("gridCenter") as Controls.CenterEditingArea;
-                        if (gridCenter != null)
-                        {
-                            // Get EditorFindings from CenterEditingArea
-                            var editorFindings = gridCenter.EditorFindings;
-                            if (editorFindings != null)
-                            {
-                                // Get the underlying MusmEditor (TextEditor)
-                                var musmEditor = editorFindings.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
-                                if (musmEditor != null)
-                                {
-                                    result = musmEditor.Text ?? string.Empty;
-                                    Debug.WriteLine($"[GetCurrentFindings] SUCCESS: Got text from editor, length={result.Length}");
-                                }
-                                else
-                                {
-                                    Debug.WriteLine($"[GetCurrentFindings] FAIL: MusmEditor not found in EditorFindings");
-                                }
-                            }
-                            else
-                            {
-                                Debug.WriteLine($"[GetCurrentFindings] FAIL: EditorFindings not found in CenterEditingArea");
-                            }
-                        }
-                        else
-                        {
-                            Debug.WriteLine($"[GetCurrentFindings] FAIL: CenterEditingArea (gridCenter) not found");
-                        }
+                        result = mainVM.GetPropertyValue(Models.CustomModuleProperties.CurrentFindings) ?? string.Empty;
+                        Debug.WriteLine($"[GetCurrentFindings] SUCCESS: Got text, length={result.Length}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[GetCurrentFindings] FAIL: MainViewModel not found");
                     }
                 });
                 return (string.IsNullOrWhiteSpace(result) ? "(empty)" : result, result);
@@ -180,42 +134,19 @@ namespace Wysg.Musm.Radium.Services
         {
             try
             {
-                Debug.WriteLine("[GetCurrentConclusion] Starting operation - getting actual editor text");
+                Debug.WriteLine("[GetCurrentConclusion] Starting operation");
                 string result = string.Empty;
                 System.Windows.Application.Current?.Dispatcher.Invoke(() =>
                 {
                     var mainWindow = System.Windows.Application.Current?.MainWindow;
-                    if (mainWindow != null)
+                    if (mainWindow?.DataContext is ViewModels.MainViewModel mainVM)
                     {
-                        // Get CenterEditingArea from MainWindow
-                        var gridCenter = mainWindow.FindName("gridCenter") as Controls.CenterEditingArea;
-                        if (gridCenter != null)
-                        {
-                            // Get EditorConclusion from CenterEditingArea
-                            var editorConclusion = gridCenter.EditorConclusion;
-                            if (editorConclusion != null)
-                            {
-                                // Get the underlying MusmEditor (TextEditor)
-                                var musmEditor = editorConclusion.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
-                                if (musmEditor != null)
-                                {
-                                    result = musmEditor.Text ?? string.Empty;
-                                    Debug.WriteLine($"[GetCurrentConclusion] SUCCESS: Got text from editor, length={result.Length}");
-                                }
-                                else
-                                {
-                                    Debug.WriteLine($"[GetCurrentConclusion] FAIL: MusmEditor not found in EditorConclusion");
-                                }
-                            }
-                            else
-                            {
-                                Debug.WriteLine($"[GetCurrentConclusion] FAIL: EditorConclusion not found in CenterEditingArea");
-                            }
-                        }
-                        else
-                        {
-                            Debug.WriteLine($"[GetCurrentConclusion] FAIL: CenterEditingArea (gridCenter) not found");
-                        }
+                        result = mainVM.GetPropertyValue(Models.CustomModuleProperties.CurrentConclusion) ?? string.Empty;
+                        Debug.WriteLine($"[GetCurrentConclusion] SUCCESS: Got text, length={result.Length}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[GetCurrentConclusion] FAIL: MainViewModel not found");
                     }
                 });
                 return (string.IsNullOrWhiteSpace(result) ? "(empty)" : result, result);

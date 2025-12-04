@@ -3,21 +3,25 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:converters="clr-namespace:Wysg.Musm.Radium.Converters"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="900">
     <UserControl.Resources>
+        <!-- Converter for obsolete module colors -->
+        <converters:ObsoleteModuleColorConverter x:Key="ObsoleteModuleColorConverter"/>
+        
         <!-- DataTemplates for automation modules -->
         <DataTemplate x:Key="OrderedModuleTemplate">
             <Border BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="2" Padding="4" Margin="0,2,0,2" Background="{DynamicResource BrushSurfaceAlt}">
                 <DockPanel>
                     <Button Content="X" DockPanel.Dock="Right" Width="22" Height="22" Margin="4,0,0,0" Padding="0" CommandParameter="{Binding}" Tag="removeBtn" ToolTip="Remove module" Click="OnRemoveModuleClick"/>
-                    <TextBlock Text="{Binding}"/>
+                    <TextBlock Text="{Binding}" Foreground="{Binding Converter={StaticResource ObsoleteModuleColorConverter}}"/>
                 </DockPanel>
             </Border>
         </DataTemplate>
         <DataTemplate x:Key="LibraryModuleTemplate">
             <Border BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="2" Padding="4" Margin="0,2,0,2" Background="{DynamicResource BrushSurface}">
-                <TextBlock Text="{Binding}"/>
+                <TextBlock Text="{Binding}" Foreground="{Binding Converter={StaticResource ObsoleteModuleColorConverter}}"/>
             </Border>
         </DataTemplate>
     </UserControl.Resources>

@@ -69,7 +69,7 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         [ObservableProperty]
-        private ObservableCollection<string> availableModules = new(new[] { "NewStudy(Obsolete)", "LockStudy", "UnlockStudy", "SetCurrentTogglesOff", "AutofillCurrentHeader", "ClearCurrentFields", "ClearPreviousFields", "ClearPreviousStudies", "ClearTempVariables", "SetCurrentStudyTechniques", "GetStudyRemark", "GetPatientRemark", "AddPreviousStudy", "FetchPreviousStudies", "SetComparison", "GetUntilReportDateTime", "GetReportedReport", "OpenStudy", "MouseClick1", "MouseClick2", "TestInvoke", "ShowTestMessage", "SetCurrentInMainScreen", "AbortIfWorklistClosed", "AbortIfPatientNumberNotMatch", "AbortIfStudyDateTimeNotMatch", "OpenWorklist", "ResultsListSetFocus", "SendReport", "Reportify", "Delay", "SaveCurrentStudyToDB", "SavePreviousStudyToDB", "InsertPreviousStudy", "InsertPreviousStudyReport", "Abort", "End if" });
+        private ObservableCollection<string> availableModules = new(new[] { "NewStudy(obs)", "SetStudyLocked", "SetStudyOpened", "UnlockStudy", "SetCurrentTogglesOff", "AutofillCurrentHeader", "ClearCurrentFields", "ClearPreviousFields", "ClearPreviousStudies", "ClearTempVariables", "SetCurrentStudyTechniques", "GetStudyRemark(obs)", "GetPatientRemark(obs)", "AddPreviousStudy(obs)", "FetchPreviousStudies", "SetComparison", "GetUntilReportDateTime", "GetReportedReport", "OpenStudy(obs)", "MouseClick1", "MouseClick2", "TestInvoke", "ShowTestMessage", "SetCurrentInMainScreen(obs)", "AbortIfWorklistClosed(obs)", "AbortIfPatientNumberNotMatch", "AbortIfStudyDateTimeNotMatch", "OpenWorklist", "ResultsListSetFocus", "SendReport", "Reportify", "Delay", "SaveCurrentStudyToDB", "SavePreviousStudyToDB", "InsertPreviousStudy", "InsertPreviousStudyReport", "Abort", "End if" });
         [ObservableProperty]
         private ObservableCollection<string> newStudyModules = new();
         [ObservableProperty]
@@ -576,7 +576,7 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
-        private static Dictionary<string,(string before,string after)> GetSamples() => new()
+        private static Dictionary<string,(string before,String after)> GetSamples() => new()
         {
             ["remove_excessive_blanks"] = ("Liver  size  is  normal", "Liver size is normal"),
             ["remove_excessive_blank_lines"] = ("Line1\n\n\nLine2", "Line1\n\nLine2"),

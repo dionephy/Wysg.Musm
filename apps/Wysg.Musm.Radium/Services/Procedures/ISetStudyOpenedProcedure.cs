@@ -3,7 +3,7 @@ using Wysg.Musm.Radium.ViewModels;
 
 namespace Wysg.Musm.Radium.Services.Procedures
 {
-    public interface ISetStudyLockedProcedure
+    public interface ISetStudyOpenedProcedure
     {
         Task ExecuteAsync(MainViewModel vm);
     }

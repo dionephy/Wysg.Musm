@@ -12,6 +12,22 @@ namespace Wysg.Musm.Radium.Services
     {
         #region String Operations
 
+        /// <summary>
+        /// Echo operation: Pass-through that returns the input value unchanged.
+        /// Works with both String and Var types, useful for capturing built-in properties.
+        /// </summary>
+        private static (string preview, string? value) ExecuteEcho(string? value)
+        {
+            value ??= string.Empty;
+            
+            // For preview, show truncated version if too long
+            var previewText = value.Length > 50 ? value.Substring(0, 47) + "..." : value;
+            if (string.IsNullOrEmpty(value))
+                previewText = "(empty)";
+            
+            return (previewText, value);
+        }
+
         private static (string preview, string? value) ExecuteSplit(string? input, string? sepRaw, string? indexStr)
         {
             sepRaw ??= string.Empty;

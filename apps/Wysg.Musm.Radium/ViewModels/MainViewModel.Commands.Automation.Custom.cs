@@ -6,7 +6,7 @@ namespace Wysg.Musm.Radium.ViewModels
 {
     /// <summary>
     /// Partial: Custom automation module execution.
-    /// Contains methods for executing custom modules and setting properties.
+    /// Contains methods for executing custom modules and setting/getting properties.
     /// </summary>
     public partial class MainViewModel
     {
@@ -123,9 +123,98 @@ namespace Wysg.Musm.Radium.ViewModels
                     TempPreviousStudyReportConclusion = value;
                     break;
                     
+                // Toggle properties - parse boolean from string
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.StudyLocked:
+                    PatientLocked = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+                    break;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.StudyOpened:
+                    StudyOpened = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+                    break;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentReportified:
+                    Reportified = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+                    break;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentProofread:
+                    ProofreadMode = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+                    break;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousProofread:
+                    PreviousProofreadMode = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+                    break;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousSplitted:
+                    PreviousReportSplitted = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+                    break;
+                    
                 default:
                     Debug.WriteLine($"[CustomModule] Unknown property: {propertyName}");
                     break;
+            }
+        }
+        
+        /// <summary>
+        /// Get the value of a built-in property by name.
+        /// Returns null if property is not recognized.
+        /// Boolean properties return "true" or "false" as strings.
+        /// </summary>
+        internal string? GetPropertyValue(string propertyName)
+        {
+            switch (propertyName)
+            {
+                // Patient/study properties
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentPatientName:
+                    return PatientName;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentPatientNumber:
+                    return PatientNumber;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentPatientAge:
+                    return PatientAge;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentPatientSex:
+                    return PatientSex;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentStudyStudyname:
+                    return StudyName;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentStudyDatetime:
+                    return StudyDateTime;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentStudyRemark:
+                    return StudyRemark;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentPatientRemark:
+                    return PatientRemark;
+                    
+                // Previous study properties
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousStudyStudyname:
+                    return TempPreviousStudyStudyname;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousStudyDatetime:
+                    return TempPreviousStudyDatetime?.ToString("yyyy-MM-dd HH:mm:ss");
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousStudyReportDatetime:
+                    return TempPreviousStudyReportDatetime?.ToString("yyyy-MM-dd HH:mm:ss");
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousStudyReportReporter:
+                    return TempPreviousStudyReportReporter;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousStudyReportHeaderAndFindings:
+                    return TempPreviousStudyReportHeaderAndFindings;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousStudyReportConclusion:
+                    return TempPreviousStudyReportConclusion;
+                    
+                // Toggle properties - return "true" or "false"
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.StudyLocked:
+                    return PatientLocked ? "true" : "false";
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.StudyOpened:
+                    return StudyOpened ? "true" : "false";
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentReportified:
+                    return Reportified ? "true" : "false";
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentProofread:
+                    return ProofreadMode ? "true" : "false";
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousProofread:
+                    return PreviousProofreadMode ? "true" : "false";
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousSplitted:
+                    return PreviousReportSplitted ? "true" : "false";
+                    
+                // Read-only editor text properties
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentHeader:
+                    return HeaderText;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentFindings:
+                    return FindingsText;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentConclusion:
+                    return ConclusionText;
+                    
+                default:
+                    Debug.WriteLine($"[CustomModule] Unknown property for get: {propertyName}");
+                    return null;
             }
         }
     }

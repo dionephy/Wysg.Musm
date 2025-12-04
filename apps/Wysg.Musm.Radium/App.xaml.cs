@@ -332,7 +332,8 @@ namespace Wysg.Musm.Radium
                 sp.GetService<Wysg.Musm.Radium.Services.Procedures.IClearPreviousStudiesProcedure>(),
                 sp.GetService<Wysg.Musm.Radium.Services.Procedures.ISetCurrentStudyTechniquesProcedure>()
             ));
-            services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.ILockStudyProcedure, Wysg.Musm.Radium.Services.Procedures.LockStudyProcedure>();
+            services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.ISetStudyLockedProcedure, Wysg.Musm.Radium.Services.Procedures.SetStudyLockedProcedure>();
+            services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.ISetStudyOpenedProcedure, Wysg.Musm.Radium.Services.Procedures.SetStudyOpenedProcedure>();
             services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.IClearCurrentFieldsProcedure, Wysg.Musm.Radium.Services.Procedures.ClearCurrentFieldsProcedure>();
             services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.IClearPreviousFieldsProcedure, Wysg.Musm.Radium.Services.Procedures.ClearPreviousFieldsProcedure>();
             services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.IClearPreviousStudiesProcedure, Wysg.Musm.Radium.Services.Procedures.ClearPreviousStudiesProcedure>();
@@ -356,7 +357,8 @@ namespace Wysg.Musm.Radium
                 sp.GetService<IRadStudyRepository>(),
                 sp.GetService<Wysg.Musm.Radium.Services.Procedures.INewStudyProcedure>(),
                 sp.GetService<IRadiumLocalSettings>(),
-                sp.GetService<Wysg.Musm.Radium.Services.Procedures.ILockStudyProcedure>(),
+                sp.GetService<Wysg.Musm.Radium.Services.Procedures.ISetStudyLockedProcedure>(),
+                sp.GetService<Wysg.Musm.Radium.Services.Procedures.ISetStudyOpenedProcedure>(),
                 sp.GetService<Wysg.Musm.Radium.Services.Procedures.IClearCurrentFieldsProcedure>(),
                 sp.GetService<Wysg.Musm.Radium.Services.Procedures.IClearPreviousFieldsProcedure>(),
                 sp.GetService<Wysg.Musm.Radium.Services.Procedures.IClearPreviousStudiesProcedure>(),

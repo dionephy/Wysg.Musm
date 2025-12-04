@@ -136,6 +136,13 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
                             row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
+                        case "Echo":
+                            // Echo: Pass-through operation, accepts String or Var, returns value unchanged
+                            // Useful for capturing built-in properties into procedure variables
+                            row.Arg1Enabled = true; // Allow String or Var
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
+                            row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
+                            break;
                         case "IsBlank":
                             // IsBlank: Arg1=string to check (String or Var), returns "true" if blank/whitespace, "false" otherwise
                             row.Arg1Enabled = true; // Allow String or Var
@@ -469,8 +476,34 @@ namespace Wysg.Musm.Radium.Views
         private void UpdateProcedureVarsFrom(System.Collections.Generic.List<ProcOpRow> rows)
         {
             ProcedureVars.Clear();
+            
+            // Add potential varN for each row (whether executed or not)
+            for (int i = 0; i < rows.Count; i++)
+            {
+                var varName = $"var{i + 1}";
+                if (!ProcedureVars.Contains(varName))
+                {
+                    ProcedureVars.Add(varName);
+                }
+            }
+            
+            // Also add any explicitly set output vars
             foreach (var r in rows)
-                if (!string.IsNullOrWhiteSpace(r.OutputVar) && !ProcedureVars.Contains(r.OutputVar)) ProcedureVars.Add(r.OutputVar);
+            {
+                if (!string.IsNullOrWhiteSpace(r.OutputVar) && !ProcedureVars.Contains(r.OutputVar))
+                {
+                    ProcedureVars.Add(r.OutputVar);
+                }
+            }
+            
+            // Add built-in properties from CustomModuleProperties
+            foreach (var prop in Wysg.Musm.Radium.Models.CustomModuleProperties.AllReadableProperties)
+            {
+                if (!ProcedureVars.Contains(prop))
+                {
+                    ProcedureVars.Add(prop);
+                }
+            }
         }
 
         private FlaUI.Core.AutomationElements.AutomationElement? ResolveElement(ProcArg arg, Dictionary<string, string?> vars)
@@ -538,13 +571,54 @@ namespace Wysg.Musm.Radium.Views
         private static string? ResolveString(ProcArg arg, Dictionary<string, string?> vars)
         {
             var type = ParseArgKind(arg.Type);
+            
+            if (type == ArgKind.Var)
+            {
+                var varName = arg.Value ?? string.Empty;
+                
+                // Check if this is a built-in property name first
+                if (Wysg.Musm.Radium.Models.CustomModuleProperties.IsBuiltInProperty(varName))
+                {
+                    Debug.WriteLine($"[AutomationWindow][ResolveString] Resolving built-in property: '{varName}'");
+                    return GetBuiltInPropertyValue(varName);
+                }
+                
+                // For ArgKind.Var, look up value in vars dictionary
+                return (arg.Value != null && vars.TryGetValue(arg.Value, out var v)) ? v : null;
+            }
+            
             return type switch
             {
-                ArgKind.Var => (arg.Value != null && vars.TryGetValue(arg.Value, out var v)) ? v : null,
                 ArgKind.String => arg.Value,
                 ArgKind.Number => arg.Value,
                 _ => null
             };
+        }
+        
+        /// <summary>
+        /// Get a built-in property value from MainViewModel.
+        /// </summary>
+        private static string? GetBuiltInPropertyValue(string propertyName)
+        {
+            try
+            {
+                var mainWindow = System.Windows.Application.Current?.MainWindow;
+                if (mainWindow?.DataContext is Wysg.Musm.Radium.ViewModels.MainViewModel mainVM)
+                {
+                    var result = mainVM.GetPropertyValue(propertyName);
+                    Debug.WriteLine($"[AutomationWindow][GetBuiltInPropertyValue] '{propertyName}' = '{result}'");
+                    return result;
+                }
+                else
+                {
+                    Debug.WriteLine($"[AutomationWindow][GetBuiltInPropertyValue] MainViewModel not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AutomationWindow][GetBuiltInPropertyValue] Error: {ex.Message}");
+            }
+            return null;
         }
 
         private static ArgKind ParseArgKind(string? s)

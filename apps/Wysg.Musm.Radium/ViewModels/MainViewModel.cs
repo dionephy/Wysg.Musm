@@ -44,7 +44,8 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly IRadStudyRepository? _studyRepo;
         private readonly INewStudyProcedure? _newStudyProc;
         private readonly IRadiumLocalSettings? _localSettings;
-        private readonly ILockStudyProcedure? _lockStudyProc;
+        private readonly ISetStudyLockedProcedure? _setStudyLockedProc;
+        private readonly ISetStudyOpenedProcedure? _setStudyOpenedProc;
         private readonly IClearCurrentFieldsProcedure? _clearCurrentFieldsProc;
         private readonly IClearPreviousFieldsProcedure? _clearPreviousFieldsProc;
         private readonly IClearPreviousStudiesProcedure? _clearPreviousStudiesProc;
@@ -190,7 +191,8 @@ namespace Wysg.Musm.Radium.ViewModels
             IRadStudyRepository? studyRepo = null,
             INewStudyProcedure? newStudyProc = null,
             IRadiumLocalSettings? localSettings = null,
-            ILockStudyProcedure? lockStudyProc = null,
+            ISetStudyLockedProcedure? setStudyLockedProc = null,
+            ISetStudyOpenedProcedure? setStudyOpenedProc = null,
             IClearCurrentFieldsProcedure? clearCurrentFieldsProc = null,
             IClearPreviousFieldsProcedure? clearPreviousFieldsProc = null,
             IClearPreviousStudiesProcedure? clearPreviousStudiesProc = null,
@@ -205,7 +207,8 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 Debug.WriteLine("[MainViewModel] Setting dependencies...");
                 _phrases = phrases; _tenant = tenant; _cache = cache; _hotkeys = hotkeys; _snippets = snippets;
-                _studyRepo = studyRepo; _newStudyProc = newStudyProc; _localSettings = localSettings; _lockStudyProc = lockStudyProc;
+                _studyRepo = studyRepo; _newStudyProc = newStudyProc; _localSettings = localSettings; _setStudyLockedProc = setStudyLockedProc;
+                _setStudyOpenedProc = setStudyOpenedProc;
                 _clearCurrentFieldsProc = clearCurrentFieldsProc;
                 _clearPreviousFieldsProc = clearPreviousFieldsProc;
                 _clearPreviousStudiesProc = clearPreviousStudiesProc;

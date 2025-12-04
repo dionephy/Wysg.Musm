@@ -90,6 +90,8 @@ namespace Wysg.Musm.Radium.Services
             switch (operation)
             {
                 // String Operations
+                case "Echo":
+                    return ExecuteEcho(resolveArg1String());
                 case "Split":
                     return ExecuteSplit(resolveArg1String(), resolveArg2String(), resolveArg3String());
                 case "IsMatch":

@@ -111,9 +111,12 @@ namespace Wysg.Musm.Radium.Models
     
     /// <summary>
     /// Property options for Set type custom modules.
+    /// These properties can be SET by custom modules (via Set type)
+    /// and READ in procedure operations (via Var type).
     /// </summary>
     public static class CustomModuleProperties
     {
+        // Current patient/study properties (read/write)
         public const string CurrentPatientName = "Current Patient Name";
         public const string CurrentPatientNumber = "Current Patient Number";
         public const string CurrentPatientAge = "Current Patient Age";
@@ -122,6 +125,8 @@ namespace Wysg.Musm.Radium.Models
         public const string CurrentStudyDatetime = "Current Study Datetime";
         public const string CurrentStudyRemark = "Current Study Remark";
         public const string CurrentPatientRemark = "Current Patient Remark";
+        
+        // Previous study properties (read/write)
         public const string PreviousStudyStudyname = "Previous Study Studyname";
         public const string PreviousStudyDatetime = "Previous Study Datetime";
         public const string PreviousStudyReportDatetime = "Previous Study Report Datetime";
@@ -129,8 +134,25 @@ namespace Wysg.Musm.Radium.Models
         public const string PreviousStudyReportHeaderAndFindings = "Previous Study Report Header and Findings";
         public const string PreviousStudyReportConclusion = "Previous Study Report Conclusion";
         
+        // Toggle properties (read/write) - boolean values returned as "true"/"false"
+        public const string StudyLocked = "Study Locked";
+        public const string StudyOpened = "Study Opened";
+        public const string CurrentReportified = "Current Reportified";
+        public const string CurrentProofread = "Current Proofread";
+        public const string PreviousProofread = "Previous Proofread";
+        public const string PreviousSplitted = "Previous Splitted";
+        
+        // Current editor text properties (read-only)
+        public const string CurrentHeader = "Current Header";
+        public const string CurrentFindings = "Current Findings";
+        public const string CurrentConclusion = "Current Conclusion";
+        
+        /// <summary>
+        /// All properties available for SET operations (in custom module Property dropdown).
+        /// </summary>
         public static readonly string[] AllProperties = new[]
         {
+            // Patient/study
             CurrentPatientName,
             CurrentPatientNumber,
             CurrentPatientAge,
@@ -139,12 +161,63 @@ namespace Wysg.Musm.Radium.Models
             CurrentStudyDatetime,
             CurrentStudyRemark,
             CurrentPatientRemark,
+            // Previous study
             PreviousStudyStudyname,
             PreviousStudyDatetime,
             PreviousStudyReportDatetime,
             PreviousStudyReportReporter,
             PreviousStudyReportHeaderAndFindings,
-            PreviousStudyReportConclusion
+            PreviousStudyReportConclusion,
+            // Toggles (writable)
+            StudyLocked,
+            StudyOpened,
+            CurrentReportified,
+            CurrentProofread,
+            PreviousProofread,
+            PreviousSplitted
         };
+        
+        /// <summary>
+        /// All properties available for READ operations (in procedure Var dropdown).
+        /// Includes read-only properties like editor text.
+        /// </summary>
+        public static readonly string[] AllReadableProperties = new[]
+        {
+            // Patient/study
+            CurrentPatientName,
+            CurrentPatientNumber,
+            CurrentPatientAge,
+            CurrentPatientSex,
+            CurrentStudyStudyname,
+            CurrentStudyDatetime,
+            CurrentStudyRemark,
+            CurrentPatientRemark,
+            // Previous study
+            PreviousStudyStudyname,
+            PreviousStudyDatetime,
+            PreviousStudyReportDatetime,
+            PreviousStudyReportReporter,
+            PreviousStudyReportHeaderAndFindings,
+            PreviousStudyReportConclusion,
+            // Toggles
+            StudyLocked,
+            StudyOpened,
+            CurrentReportified,
+            CurrentProofread,
+            PreviousProofread,
+            PreviousSplitted,
+            // Read-only editor text
+            CurrentHeader,
+            CurrentFindings,
+            CurrentConclusion
+        };
+        
+        /// <summary>
+        /// Check if a property name is a built-in property (for Var resolution).
+        /// </summary>
+        public static bool IsBuiltInProperty(string name)
+        {
+            return Array.Exists(AllReadableProperties, p => string.Equals(p, name, StringComparison.OrdinalIgnoreCase));
+        }
     }
 }

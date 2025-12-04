@@ -382,13 +382,53 @@ namespace Wysg.Musm.Radium.Services
             
             if (type == ArgKind.Var)
             {
+                var varName = arg.Value ?? string.Empty;
+                
+                // Check if this is a built-in property name first
+                if (Models.CustomModuleProperties.IsBuiltInProperty(varName))
+                {
+                    Debug.WriteLine($"[ProcedureExecutor][ResolveString] Resolving built-in property: '{varName}'");
+                    return GetBuiltInPropertyValue(varName) ?? string.Empty;
+                }
+                
                 // For ArgKind.Var, look up value in vars dictionary
-                vars.TryGetValue(arg.Value ?? string.Empty, out var value);
+                vars.TryGetValue(varName, out var value);
                 return value ?? string.Empty;
             }
             
             // For String and Number types, return the value directly
             return arg.Value ?? string.Empty;
+        }
+        
+        /// <summary>
+        /// Get a built-in property value from MainViewModel.
+        /// Must be called from a context that can access the UI thread.
+        /// </summary>
+        private static string? GetBuiltInPropertyValue(string propertyName)
+        {
+            try
+            {
+                string? result = null;
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    var mainWindow = System.Windows.Application.Current?.MainWindow;
+                    if (mainWindow?.DataContext is ViewModels.MainViewModel mainVM)
+                    {
+                        result = mainVM.GetPropertyValue(propertyName);
+                        Debug.WriteLine($"[ProcedureExecutor][GetBuiltInPropertyValue] '{propertyName}' = '{result}'");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[ProcedureExecutor][GetBuiltInPropertyValue] MainViewModel not found");
+                    }
+                });
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProcedureExecutor][GetBuiltInPropertyValue] Error: {ex.Message}");
+                return null;
+            }
         }
 
         private static ArgKind ParseArgKind(string s)

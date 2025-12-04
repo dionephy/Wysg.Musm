@@ -13,12 +13,15 @@ namespace Wysg.Musm.Radium.Converters
     /// <summary>
     /// Converter that creates a syntax-colored TextBlock for custom module display.
     /// Handles multi-line display for "Set X to Y" patterns and applies color coding.
-    /// Built-in modules (without special keywords at the start) are displayed entirely in orange.
+    /// Built-in modules (without special keywords at the start) are displayed in:
+    /// - Orange for normal modules
+    /// - Grey for obsolete modules (containing "(obs)")
     /// </summary>
     public class CustomModuleSyntaxConverter : IValueConverter
     {
         // Color scheme
         private static readonly Brush KeywordBrush = new SolidColorBrush(Color.FromRgb(255, 160, 0)); // Orange
+        private static readonly Brush ObsoleteBrush = new SolidColorBrush(Color.FromRgb(128, 128, 128)); // Grey for obsolete modules
         private static readonly Brush PropertyBrush = new SolidColorBrush(Color.FromRgb(106, 190, 48)); // Green
         private static readonly Brush BookmarkBrush = new SolidColorBrush(Color.FromRgb(78, 201, 176)); // Cyan
         private static readonly Brush DefaultBrush = new SolidColorBrush(Color.FromRgb(208, 208, 208)); // Light gray
@@ -44,8 +47,11 @@ namespace Wysg.Musm.Radium.Converters
             
             if (!isCustomModule)
             {
-                // Built-in module - display entirely in orange
-                textBlock.Inlines.Add(new Run(moduleName) { Foreground = KeywordBrush });
+                // Built-in module - check if obsolete (contains "(obs)")
+                bool isObsolete = moduleName.IndexOf("(obs)", StringComparison.OrdinalIgnoreCase) >= 0;
+                var brush = isObsolete ? ObsoleteBrush : KeywordBrush;
+                
+                textBlock.Inlines.Add(new Run(moduleName) { Foreground = brush });
                 return textBlock;
             }
             

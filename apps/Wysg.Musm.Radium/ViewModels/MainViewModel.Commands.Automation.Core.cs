@@ -113,11 +113,14 @@ namespace Wysg.Musm.Radium.ViewModels
 
                     // Standard modules...
                     if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase) || 
+                        string.Equals(m, "NewStudy(obs)", StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(m, "NewStudy(Obsolete)", StringComparison.OrdinalIgnoreCase)) 
                     { 
                         await RunNewStudyProcedureAsync(); 
                     }
-                    else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _lockStudyProc != null) { await _lockStudyProc.ExecuteAsync(this); }
+                    else if (string.Equals(m, "SetStudyLocked", StringComparison.OrdinalIgnoreCase) && _setStudyLockedProc != null) { await _setStudyLockedProc.ExecuteAsync(this); }
+                    else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _setStudyLockedProc != null) { await _setStudyLockedProc.ExecuteAsync(this); } // Legacy alias
+                    else if (string.Equals(m, "SetStudyOpened", StringComparison.OrdinalIgnoreCase) && _setStudyOpenedProc != null) { await _setStudyOpenedProc.ExecuteAsync(this); }
                     else if (string.Equals(m, "UnlockStudy", StringComparison.OrdinalIgnoreCase)) 
                     { 
                         PatientLocked = false; 
@@ -139,12 +142,16 @@ namespace Wysg.Musm.Radium.ViewModels
                     {
                         await AutofillCurrentHeaderAsync();
                     }
-                    else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase)) { await AcquireStudyRemarkAsync(); }
-                    else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase)) { await AcquirePatientRemarkAsync(); }
-                    else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase)) { await RunAddPreviousStudyModuleAsync(); }
+                    else if (string.Equals(m, "GetStudyRemark", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(m, "GetStudyRemark(obs)", StringComparison.OrdinalIgnoreCase)) { await AcquireStudyRemarkAsync(); }
+                    else if (string.Equals(m, "GetPatientRemark", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(m, "GetPatientRemark(obs)", StringComparison.OrdinalIgnoreCase)) { await AcquirePatientRemarkAsync(); }
+                    else if (string.Equals(m, "AddPreviousStudy", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(m, "AddPreviousStudy(obs)", StringComparison.OrdinalIgnoreCase)) { await RunAddPreviousStudyModuleAsync(); }
                     else if (string.Equals(m, "FetchPreviousStudies", StringComparison.OrdinalIgnoreCase)) { await RunFetchPreviousStudiesAsync(); }
                     else if (string.Equals(m, "SetComparison", StringComparison.OrdinalIgnoreCase)) { await RunSetComparisonAsync(); }
-                    else if (string.Equals(m, "AbortIfWorklistClosed", StringComparison.OrdinalIgnoreCase))
+                    else if (string.Equals(m, "AbortIfWorklistClosed", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(m, "AbortIfWorklistClosed(obs)", StringComparison.OrdinalIgnoreCase))
                     {
                         var isVisible = await _pacs.WorklistIsVisibleAsync();
                         if (string.Equals(isVisible, "false", StringComparison.OrdinalIgnoreCase))
@@ -248,12 +255,14 @@ namespace Wysg.Musm.Radium.ViewModels
                     {
                         await RunGetReportedReportAsync();
                     }
-                    else if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase)) { await RunOpenStudyAsync(); }
+                    else if (string.Equals(m, "OpenStudy", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(m, "OpenStudy(obs)", StringComparison.OrdinalIgnoreCase)) { await RunOpenStudyAsync(); }
                     else if (string.Equals(m, "MouseClick1", StringComparison.OrdinalIgnoreCase)) { await _pacs.CustomMouseClick1Async(); }
                     else if (string.Equals(m, "MouseClick2", StringComparison.OrdinalIgnoreCase)) { await _pacs.CustomMouseClick2Async(); }
                     else if (string.Equals(m, "TestInvoke", StringComparison.OrdinalIgnoreCase)) { await _pacs.InvokeTestAsync(); }
                     else if (string.Equals(m, "ShowTestMessage", StringComparison.OrdinalIgnoreCase)) { System.Windows.MessageBox.Show("Test", "Test", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information); }
-                    else if (string.Equals(m, "SetCurrentInMainScreen", StringComparison.OrdinalIgnoreCase)) { await RunSetCurrentInMainScreenAsync(); }
+                    else if (string.Equals(m, "SetCurrentInMainScreen", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(m, "SetCurrentInMainScreen(obs)", StringComparison.OrdinalIgnoreCase)) { await RunSetCurrentInMainScreenAsync(); }
                     else if (string.Equals(m, "OpenWorklist", StringComparison.OrdinalIgnoreCase)) { await RunOpenWorklistAsync(); }
                     else if (string.Equals(m, "ResultsListSetFocus", StringComparison.OrdinalIgnoreCase)) { await RunResultsListSetFocusAsync(); }
                     else if (string.Equals(m, "SendReport", StringComparison.OrdinalIgnoreCase)) 
