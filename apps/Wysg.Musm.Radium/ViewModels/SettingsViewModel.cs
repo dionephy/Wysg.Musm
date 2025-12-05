@@ -69,17 +69,13 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         [ObservableProperty]
-        private ObservableCollection<string> availableModules = new(new[] { "NewStudy(obs)", "SetStudyLocked", "SetStudyOpened", "UnlockStudy", "SetCurrentTogglesOff", "AutofillCurrentHeader", "ClearCurrentFields", "ClearPreviousFields", "ClearPreviousStudies", "ClearTempVariables", "SetCurrentStudyTechniques", "GetStudyRemark(obs)", "GetPatientRemark(obs)", "AddPreviousStudy(obs)", "FetchPreviousStudies", "SetComparison", "GetUntilReportDateTime", "GetReportedReport", "OpenStudy(obs)", "MouseClick1", "MouseClick2", "TestInvoke", "ShowTestMessage", "SetCurrentInMainScreen(obs)", "AbortIfWorklistClosed(obs)", "AbortIfPatientNumberNotMatch", "AbortIfStudyDateTimeNotMatch", "OpenWorklist", "ResultsListSetFocus", "SendReport", "Reportify", "Delay", "SaveCurrentStudyToDB", "SavePreviousStudyToDB", "InsertPreviousStudy", "InsertPreviousStudyReport", "Abort", "End if" });
+        private ObservableCollection<string> availableModules = new(new[] { "NewStudy(obs)", "SetStudyLocked(obs)", "SetStudyOpened(obs)", "UnlockStudy(obs)", "SetCurrentTogglesOff(obs)", "AutofillCurrentHeader", "ClearCurrentFields", "ClearPreviousFields", "ClearPreviousStudies", "ClearTempVariables", "SetCurrentStudyTechniques", "GetStudyRemark(obs)", "GetPatientRemark(obs)", "AddPreviousStudy(obs)", "FetchPreviousStudies", "SetComparison", "GetUntilReportDateTime", "GetReportedReport", "OpenStudy(obs)", "MouseClick1", "MouseClick2", "TestInvoke", "ShowTestMessage", "SetCurrentInMainScreen(obs)", "AbortIfWorklistClosed(obs)", "AbortIfPatientNumberNotMatch", "AbortIfStudyDateTimeNotMatch", "OpenWorklist", "ResultsListSetFocus", "SendReport", "Reportify", "Delay", "SaveCurrentStudyToDB", "SavePreviousStudyToDB", "InsertPreviousStudy", "InsertPreviousStudyReport", "Abort", "End if" });
         [ObservableProperty]
         private ObservableCollection<string> newStudyModules = new();
         [ObservableProperty]
         private ObservableCollection<string> addStudyModules = new();
         [ObservableProperty]
         private ObservableCollection<string> shortcutOpenNewModules = new();
-        [ObservableProperty]
-        private ObservableCollection<string> shortcutOpenAddModules = new();
-        [ObservableProperty]
-        private ObservableCollection<string> shortcutOpenAfterOpenModules = new();
         [ObservableProperty]
         private ObservableCollection<string> sendReportModules = new();
         [ObservableProperty]
@@ -356,7 +352,7 @@ namespace Wysg.Musm.Radium.ViewModels
         public void LoadAutomation()
         {
             newStudyModules.Clear(); addStudyModules.Clear();
-            shortcutOpenNewModules.Clear(); shortcutOpenAddModules.Clear(); shortcutOpenAfterOpenModules.Clear(); sendReportModules.Clear();
+            shortcutOpenNewModules.Clear(); sendReportModules.Clear();
             var ns = _local.AutomationNewStudySequence;
             if (!string.IsNullOrWhiteSpace(ns)) foreach (var m in ns.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) newStudyModules.Add(m.Trim());
             var ad = _local.AutomationAddStudySequence;
@@ -364,9 +360,7 @@ namespace Wysg.Musm.Radium.ViewModels
             var s1 = _local.AutomationShortcutOpenNew;
             if (!string.IsNullOrWhiteSpace(s1)) foreach (var m in s1.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) shortcutOpenNewModules.Add(m.Trim());
             var s2 = _local.AutomationShortcutOpenAdd;
-            if (!string.IsNullOrWhiteSpace(s2)) foreach (var m in s2.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) shortcutOpenAddModules.Add(m.Trim());
-            var s3 = _local.AutomationShortcutOpenAfterOpen;
-            if (!string.IsNullOrWhiteSpace(s3)) foreach (var m in s3.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) shortcutOpenAfterOpenModules.Add(m.Trim());
+            if (!string.IsNullOrWhiteSpace(s2)) foreach (var m in s2.Split(',', ';')) if (!string.IsNullOrWhiteSpace(m)) addStudyModules.Add(m.Trim());
             // Note: SendReport sequence loaded from PACS-scoped automation.json, not local settings
         }
 

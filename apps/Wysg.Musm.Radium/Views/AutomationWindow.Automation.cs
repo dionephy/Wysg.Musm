@@ -87,16 +87,6 @@ namespace Wysg.Musm.Radium.Views
                         s1.ItemsSource = _automationViewModel.ShortcutOpenNewModules;
                         s1.PreviewMouseLeftButtonDown += OnAutomationListMouseDown;
                     }
-                    if (FindName("lstShortcutOpenAdd") is ListBox s2)
-                    {
-                        s2.ItemsSource = _automationViewModel.ShortcutOpenAddModules;
-                        s2.PreviewMouseLeftButtonDown += OnAutomationListMouseDown;
-                    }
-                    if (FindName("lstShortcutOpenAfterOpen") is ListBox s3)
-                    {
-                        s3.ItemsSource = _automationViewModel.ShortcutOpenAfterOpenModules;
-                        s3.PreviewMouseLeftButtonDown += OnAutomationListMouseDown;
-                    }
                     if (FindName("lstSendReport") is ListBox sr)
                     {
                         sr.ItemsSource = _automationViewModel.SendReportModules;
@@ -733,8 +723,6 @@ namespace Wysg.Musm.Radium.Views
                 "lstNewStudy" => _automationViewModel.NewStudyModules,
                 "lstAddStudy" => _automationViewModel.AddStudyModules,
                 "lstShortcutOpenNew" => _automationViewModel.ShortcutOpenNewModules,
-                "lstShortcutOpenAdd" => _automationViewModel.ShortcutOpenAddModules,
-                "lstShortcutOpenAfterOpen" => _automationViewModel.ShortcutOpenAfterOpenModules,
                 "lstSendReport" => _automationViewModel.SendReportModules,
                 "lstSendReportPreview" => _automationViewModel.SendReportPreviewModules,
                 "lstShortcutSendReportPreview" => _automationViewModel.ShortcutSendReportPreviewModules,
@@ -779,9 +767,7 @@ namespace Wysg.Musm.Radium.Views
             // Check all automation panes
             ValidatePane("New Study", _automationViewModel.NewStudyModules, errors);
             ValidatePane("Add Study", _automationViewModel.AddStudyModules, errors);
-            ValidatePane("Shortcut: Open (new)", _automationViewModel.ShortcutOpenNewModules, errors);
-            ValidatePane("Shortcut: Open (add)", _automationViewModel.ShortcutOpenAddModules, errors);
-            ValidatePane("Shortcut: Open (after open)", _automationViewModel.ShortcutOpenAfterOpenModules, errors);
+            ValidatePane("Shortcut: Open study", _automationViewModel.ShortcutOpenNewModules, errors);
             ValidatePane("Send Report", _automationViewModel.SendReportModules, errors);
             ValidatePane("Send Report Preview", _automationViewModel.SendReportPreviewModules, errors);
             ValidatePane("Shortcut: Send Report Preview", _automationViewModel.ShortcutSendReportPreviewModules, errors);

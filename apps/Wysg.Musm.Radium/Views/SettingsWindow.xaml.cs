@@ -218,15 +218,13 @@ namespace Wysg.Musm.Radium.Views
             if (FindName("lstNewStudy") is ListBox ns) ns.ItemsSource = vm.NewStudyModules;
             if (FindName("lstAddStudy") is ListBox add) add.ItemsSource = vm.AddStudyModules;
             if (FindName("lstShortcutOpenNew") is ListBox s1) s1.ItemsSource = vm.ShortcutOpenNewModules;
-            if (FindName("lstShortcutOpenAdd") is ListBox s2) s2.ItemsSource = vm.ShortcutOpenAddModules;
-            if (FindName("lstShortcutOpenAfterOpen") is ListBox s3) s3.ItemsSource = vm.ShortcutOpenAfterOpenModules;
             
             // LoadAutomation is now handled by LoadAutomationForPacs in the ViewModel
         }
 
         // Public method for child tabs to initialize their ListBoxes
         public void InitializeAutomationListBoxes(ListBox newStudy, ListBox addStudy, ListBox library, 
-            ListBox shortcutOpenNew, ListBox shortcutOpenAdd, ListBox shortcutOpenAfterOpen, ListBox sendReport,
+            ListBox shortcutOpenNew, ListBox sendReport,
             ListBox sendReportPreview, ListBox shortcutSendReportPreview, ListBox shortcutSendReportReportified, ListBox test)
         {
             if (DataContext is not SettingsViewModel vm) return;
@@ -234,8 +232,6 @@ namespace Wysg.Musm.Radium.Views
             newStudy.ItemsSource = vm.NewStudyModules;
             addStudy.ItemsSource = vm.AddStudyModules;
             shortcutOpenNew.ItemsSource = vm.ShortcutOpenNewModules;
-            shortcutOpenAdd.ItemsSource = vm.ShortcutOpenAddModules;
-            shortcutOpenAfterOpen.ItemsSource = vm.ShortcutOpenAfterOpenModules;
             sendReport.ItemsSource = vm.SendReportModules;
             sendReportPreview.ItemsSource = vm.SendReportPreviewModules;
             shortcutSendReportPreview.ItemsSource = vm.ShortcutSendReportPreviewModules;
@@ -358,8 +354,6 @@ namespace Wysg.Musm.Radium.Views
                     "lstNewStudy" => vm.NewStudyModules,
                     "lstAddStudy" => vm.AddStudyModules,
                     "lstShortcutOpenNew" => vm.ShortcutOpenNewModules,
-                    "lstShortcutOpenAdd" => vm.ShortcutOpenAddModules,
-                    "lstShortcutOpenAfterOpen" => vm.ShortcutOpenAfterOpenModules,
                     "lstSendReport" => vm.SendReportModules,
                     "lstSendReportPreview" => vm.SendReportPreviewModules,
                     "lstShortcutSendReportPreview" => vm.ShortcutSendReportPreviewModules,

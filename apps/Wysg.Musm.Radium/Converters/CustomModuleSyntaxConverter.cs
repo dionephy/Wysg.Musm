@@ -37,7 +37,7 @@ namespace Wysg.Musm.Radium.Converters
             var textBlock = new TextBlock
             {
                 TextWrapping = TextWrapping.Wrap,
-                MaxWidth = 180
+                MaxWidth = 230
             };
             
             // Check if this is a custom module (starts with special keywords) or built-in module

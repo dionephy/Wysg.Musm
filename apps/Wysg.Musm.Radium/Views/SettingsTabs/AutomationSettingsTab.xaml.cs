@@ -20,7 +20,7 @@ namespace Wysg.Musm.Radium.Views.SettingsTabs
             {
                 // Pass ListBox references to parent for initialization
                 settingsWindow.InitializeAutomationListBoxes(lstNewStudy, lstAddStudy, lstLibrary, 
-                    lstShortcutOpenNew, lstShortcutOpenAdd, lstShortcutOpenAfterOpen, lstSendReport,
+                    lstShortcutOpenNew, lstSendReport,
                     lstSendReportPreview, lstShortcutSendReportPreview, lstShortcutSendReportReportified, lstTest);
                 
                 // Set current PACS key

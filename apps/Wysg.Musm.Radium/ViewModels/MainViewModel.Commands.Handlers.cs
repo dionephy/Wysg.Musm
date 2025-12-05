@@ -67,26 +67,11 @@ namespace Wysg.Musm.Radium.ViewModels
             _ = RunModulesSequentially(modules, "New Study");
         }
 
-        // Executes configured modules for OpenStudy shortcut depending on lock/opened state
+        // Executes configured modules for OpenStudy shortcut (simplified - always uses ShortcutOpenNew)
         public void RunOpenStudyShortcut()
         {
-            string seqRaw;
-            string sequenceName;
-            if (!PatientLocked) 
-            {
-                seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenNew);
-                sequenceName = "Shortcut: Open study (new)";
-            }
-            else if (!StudyOpened) 
-            {
-                seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenAdd);
-                sequenceName = "Shortcut: Open study (add)";
-            }
-            else 
-            {
-                seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenAfterOpen);
-                sequenceName = "Shortcut: Open study (after open)";
-            }
+            var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutOpenNew);
+            var sequenceName = "Shortcut: Open study";
 
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) return;
