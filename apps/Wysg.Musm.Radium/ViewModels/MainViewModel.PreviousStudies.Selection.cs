@@ -17,69 +17,41 @@ namespace Wysg.Musm.Radium.ViewModels
             { 
                 var old = _selectedPreviousStudy;
                 
-                // DISABLED 2025-02-08: Auto-save on tab switch removed per user request
-                // Users now need to manually save changes using the "Save to DB" button
-                // Previous behavior: Captured old tab's JSON and applied it before switching away
-                /*
-                // CRITICAL FIX: Capture OLD tab's JSON BEFORE the binding system updates _previousReportJson
-                // This prevents the bug where Tab A gets saved with Tab B's JSON content
-                string? oldTabJson = null;
-                if (old != null && old != value)
-                {
-                    // Snapshot the current JSON text before WPF binding changes it
-                    oldTabJson = _previousReportJson;
-                    Debug.WriteLine($"[Prev] Captured JSON for outgoing tab: {old.Title}, len={oldTabJson?.Length}");
-                }
-                */
-                
                 // Now update the selected tab property (this may trigger WPF binding updates)
                 if (SetProperty(ref _selectedPreviousStudy, value)) 
                 { 
                     Debug.WriteLine($"[Prev] SelectedPreviousStudy set -> {(value==null?"<null>":value.Title)}"); 
                     foreach (var t in PreviousStudies) t.IsSelected = (value != null && t.Id == value.Id); 
-                    HookPreviousStudy(old, value); 
-                    EnsureSplitDefaultsIfNeeded(); 
                     
-                    // DISABLED 2025-02-08: Auto-save on tab switch removed per user request
-                    /*
-                    // CRITICAL FIX: Apply the captured JSON to the OLD tab AFTER binding completes
-                    // This ensures Tab A's changes are saved to Tab A, not to Tab B
-                    if (old != null && !string.IsNullOrWhiteSpace(oldTabJson) && oldTabJson != "{}")
-                    {
-                        try
-                        {
-                            Debug.WriteLine($"[Prev] Applying captured JSON to old tab: {old.Title}");
-                            ApplyJsonToTabDirectly(old, oldTabJson);
-                            Debug.WriteLine($"[Prev] Successfully saved JSON for old tab: {old.Title}");
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"[Prev] Error saving JSON for outgoing tab: {ex.Message}");
-                        }
-                    }
-                    */
-                    
-                    // CRITICAL FIX (2025-02-09): Load proofread fields from selected report BEFORE calling UpdatePreviousReportJson()
-                    // This prevents the "Previous findings suddenly become blank" issue when EditComparisonWindow closes and reloads studies
-                    // Root cause: UpdatePreviousReportJson() was being called before the selected report's RawJson was loaded into the tab,
-                    // causing split outputs (FindingsOut, ConclusionOut) to be computed with empty/stale proofread fields
+                    // CRITICAL FIX (2025-12-05): Load split ranges BEFORE HookPreviousStudy calls UpdatePreviousReportJson()
+                    // Previously, HookPreviousStudy would call UpdatePreviousReportJson() before split ranges were loaded,
+                    // causing HeaderTemp to be computed with wrong/stale split ranges from the previous tab.
+                    // 
+                    // The correct order is:
+                    // 1. Load RawJson and split ranges from the new tab's SelectedReport
+                    // 2. THEN call HookPreviousStudy (which calls UpdatePreviousReportJson)
+                    // 3. THEN call UpdatePreviousReportJson again to ensure all properties are updated
                     if (value != null && value.SelectedReport != null)
                     {
-                        Debug.WriteLine($"[Prev] Loading proofread fields from selected report before UpdatePreviousReportJson");
+                        Debug.WriteLine($"[Prev] Loading proofread fields and split ranges from selected report BEFORE HookPreviousStudy");
                         // Ensure RawJson is set from the selected report
                         if (!string.IsNullOrWhiteSpace(value.SelectedReport.ReportJson))
                         {
                             value.RawJson = value.SelectedReport.ReportJson;
                             Debug.WriteLine($"[Prev] Set RawJson from SelectedReport, length={value.RawJson.Length}");
                         }
-                        // Now explicitly load proofread fields from RawJson
-                        // This is normally done in PreviousStudyTab.ApplyReportSelection, but we need to ensure it happens
-                        // before UpdatePreviousReportJson is called
-                        value.SelectedReport = value.SelectedReport; // Trigger ApplyReportSelection
+                        // Now explicitly load proofread fields and split ranges from RawJson
+                        // This MUST happen BEFORE UpdatePreviousReportJson is called!
+                        value.ApplyReportSelection(value.SelectedReport);
                     }
                     
-                    // CRITICAL FIX: Call UpdatePreviousReportJson() BEFORE notifying editor properties
-                    // This ensures ConclusionOut and FindingsOut are computed before bindings try to read them
+                    // Now hook up the property change handler and compute JSON
+                    // At this point, split ranges are already loaded from the correct RawJson
+                    HookPreviousStudy(old, value); 
+                    EnsureSplitDefaultsIfNeeded(); 
+                    
+                    // CRITICAL FIX: Call UpdatePreviousReportJson() AFTER split ranges are loaded
+                    // This ensures HeaderTemp, FindingsOut, ConclusionOut are computed with correct split ranges
                     UpdatePreviousReportJson();
                     
                     // Notify all wrapper properties that depend on SelectedPreviousStudy

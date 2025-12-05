@@ -26,11 +26,11 @@ namespace Wysg.Musm.Radium.Services.Procedures
     /// 2. Ensures patient record exists (or creates it)
     /// 3. Ensures studyname record exists (or creates it)
     /// 4. Ensures study record exists in med.rad_study (or creates it)
-    /// 5. Inserts report to med.rad_report (or updates if exists based on report_datetime)
+    /// 5. Inserts report to med.rad_report ONLY if it doesn't already exist (skips if exists)
     /// 
     /// ON CONFLICT behavior:
     /// - Study: If exists (same patient_id, studyname_id, study_datetime), does UPDATE (no-op), returns existing study_id
-    /// - Report: If exists (same study_id, report_datetime), does UPDATE with new report JSON
+    /// - Report: If exists (same study_id, report_datetime), SKIPS (does not update or insert)
     /// </summary>
     public sealed class InsertPreviousStudyProcedure : IInsertPreviousStudyProcedure
     {
@@ -145,23 +145,33 @@ namespace Wysg.Musm.Radium.Services.Procedures
                 
                 Debug.WriteLine($"[InsertPreviousStudyReport] Report JSON length: {reportJson.Length}");
 
-                // Step 3: Insert report to database
-                Debug.WriteLine("[InsertPreviousStudyReport] Step 3: Inserting report to database...");
-                var reportId = await _studyRepo.UpsertPartialReportAsync(
+                // Step 3: Insert report to database ONLY if it doesn't already exist
+                Debug.WriteLine("[InsertPreviousStudyReport] Step 3: Inserting report to database (if not exists)...");
+                var (reportId, wasInserted) = await _studyRepo.InsertReportIfNotExistsAsync(
                     studyId: studyId.Value,
                     reportDateTime: reportDateTime.Value,
                     reportJson: reportJson,
                     isMine: false  // Previous studies are not "mine"
                 );
 
-                if (reportId.HasValue && reportId.Value > 0)
+                if (wasInserted && reportId.HasValue && reportId.Value > 0)
                 {
-                    Debug.WriteLine($"[InsertPreviousStudyReport] SUCCESS: Report ID = {reportId.Value}");
+                    Debug.WriteLine($"[InsertPreviousStudyReport] SUCCESS: Report inserted (study_id={studyId.Value}, report_id={reportId.Value})");
                     vm.SetStatusInternal($"InsertPreviousStudyReport: Report inserted (study_id={studyId.Value}, report_id={reportId.Value})");
+                }
+                else if (!wasInserted && reportId.HasValue)
+                {
+                    Debug.WriteLine($"[InsertPreviousStudyReport] SKIPPED: Report already exists (study_id={studyId.Value}, report_id={reportId.Value})");
+                    vm.SetStatusInternal($"InsertPreviousStudyReport: Report already exists, skipped (report_id={reportId.Value})");
+                }
+                else if (!wasInserted)
+                {
+                    Debug.WriteLine($"[InsertPreviousStudyReport] SKIPPED: Report already exists (study_id={studyId.Value})");
+                    vm.SetStatusInternal($"InsertPreviousStudyReport: Report already exists, skipped");
                 }
                 else
                 {
-                    Debug.WriteLine("[InsertPreviousStudyReport] FAILED: UpsertPartialReportAsync returned null or 0");
+                    Debug.WriteLine("[InsertPreviousStudyReport] FAILED: InsertReportIfNotExistsAsync returned unexpected result");
                     vm.SetStatusInternal("InsertPreviousStudyReport: Failed to insert report (database error)", true);
                 }
             }

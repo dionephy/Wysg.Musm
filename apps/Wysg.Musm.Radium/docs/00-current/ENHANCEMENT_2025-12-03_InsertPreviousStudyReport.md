@@ -1,6 +1,6 @@
 # Enhancement: InsertPreviousStudyReport Built-in Module (2025-12-03)
 
-**Date**: 2025-12-03  
+**Date**: 2025-12-03 (Updated: 2025-12-05)  
 **Type**: Enhancement  
 **Status**: ? Complete  
 **Priority**: Normal
@@ -12,6 +12,30 @@
 Created/updated the "InsertPreviousStudyReport" built-in module that inserts previous study reports to the PostgreSQL database (med.rad_report table) using variables set from Custom Procedures. This module enables users to programmatically insert historical study reports without relying on the AddPreviousStudy module's UI interaction.
 
 **Module Names**: Both `InsertPreviousStudy` and `InsertPreviousStudyReport` work (aliases for the same implementation).
+
+## Update 2025-12-05: Skip Existing Records
+
+### Problem
+The original implementation used `UpsertPartialReportAsync` which performs `ON CONFLICT ... DO UPDATE`. This meant if a report with the same `report_datetime` already existed for a study, it would be **updated** with new data.
+
+### Solution
+Changed the behavior to **skip** (not insert, not update) if a report with the same `study_id` and `report_datetime` already exists in the database.
+
+### Changes Made
+1. **Added `InsertReportIfNotExistsAsync` method** to `IRadStudyRepository` interface and `RadStudyRepository` class
+   - Uses `ON CONFLICT (study_id, report_datetime) DO NOTHING`
+   - Returns a tuple `(long? ReportId, bool WasInserted)` to indicate if insert happened
+   - First checks if record exists, then attempts insert
+   
+2. **Updated `InsertPreviousStudyProcedure`** to use the new method
+   - Now calls `InsertReportIfNotExistsAsync` instead of `UpsertPartialReportAsync`
+   - Provides clear status messages:
+     - "Report inserted" when new record created
+     - "Report already exists, skipped" when record existed
+
+### New ON CONFLICT Behavior
+- **Study**: If exists (same patient_id, studyname_id, study_datetime) ¡æ UPDATE (no-op), returns existing study_id
+- **Report**: If exists (same study_id, report_datetime) ¡æ **DO NOTHING** (skip, no update, no insert)
 
 ## User Request
 
@@ -155,7 +179,7 @@ The module requires these variables to be set by Custom Procedures before execut
 - **Patient**: If exists (same tenant_id + patient_number), updates name/sex/birthdate
 - **Studyname**: If exists (same tenant_id + studyname), no-op
 - **Study**: If exists (same patient_id + studyname_id + study_datetime), no-op
-- **Report**: If exists (same study_id + report_datetime), updates report JSON and is_mine flag
+- **Report**: If exists (same study_id + report_datetime), skips insert/update
 
 ### Report JSON Format:
 ```json

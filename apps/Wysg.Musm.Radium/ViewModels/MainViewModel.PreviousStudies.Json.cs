@@ -122,10 +122,19 @@ namespace Wysg.Musm.Radium.ViewModels
                     string splitFindings = (Sub(hf, hfTo, hfCFrom - hfTo).Trim() + Environment.NewLine + Sub(fc, fcTo, fcFFrom - fcTo).Trim()).Trim();
                     string splitConclusion = (Sub(hf, hfCTo, hf.Length - hfCTo).Trim() + Environment.NewLine + Sub(fc, fcFTo, fc.Length - fcFTo).Trim()).Trim();
                     
-                    // Update tab split outputs
-                    if (tab.HeaderTemp != splitHeader) tab.HeaderTemp = splitHeader;
-                    if (tab.FindingsOut != splitFindings) tab.FindingsOut = splitFindings;
-                    if (tab.ConclusionOut != splitConclusion) tab.ConclusionOut = splitConclusion;
+                    // CRITICAL FIX (2025-12-05): Always update split outputs, even if they appear equal
+                    // This forces WPF bindings to refresh and prevents stale data in EditorControl
+                    // The EditorControl may cache DocumentText internally and not respond to same-value updates
+                    Debug.WriteLine($"[PrevJson] Computing split outputs for tab: {tab.Title}");
+                    Debug.WriteLine($"[PrevJson]   hf.Length={hf.Length}, fc.Length={fc.Length}");
+                    Debug.WriteLine($"[PrevJson]   hfFrom={hfFrom}, hfTo={hfTo}, hfCFrom={hfCFrom}, hfCTo={hfCTo}");
+                    Debug.WriteLine($"[PrevJson]   fcFrom={fcFrom}, fcTo={fcTo}, fcFFrom={fcFFrom}, fcFTo={fcFTo}");
+                    Debug.WriteLine($"[PrevJson]   splitHeader.Length={splitHeader.Length}");
+                    
+                    // Force update by always setting (not comparing)
+                    tab.HeaderTemp = splitHeader;
+                    tab.FindingsOut = splitFindings;
+                    tab.ConclusionOut = splitConclusion;
                     
                     // Write the computed split output fields (these replace any existing values from DB)
                     writer.WriteString("header_temp", tab.HeaderTemp ?? string.Empty);
@@ -418,7 +427,9 @@ namespace Wysg.Musm.Radium.ViewModels
             if (newTab != null)
             {
                 newTab.PropertyChanged += OnSelectedPrevStudyPropertyChanged;
-                UpdatePreviousReportJson();
+                // REMOVED: UpdatePreviousReportJson() call
+                // The caller (SelectedPreviousStudy setter) now handles this AFTER loading split ranges
+                // This fixes the bug where HeaderTemp was computed with wrong split ranges
             }
         }
         

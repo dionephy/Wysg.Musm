@@ -190,10 +190,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 var tab = SelectedPreviousStudy;
                 if (tab == null)
                 {
+                    Debug.WriteLine($"[PreviousHeaderEditorText] GET: tab is null, returning cache: '{_prevHeaderTempCache?.Substring(0, Math.Min(50, _prevHeaderTempCache?.Length ?? 0))}'");
                     return _prevHeaderTempCache ?? string.Empty;
                 }
                 
-                return tab.HeaderTemp ?? string.Empty;
+                var result = tab.HeaderTemp ?? string.Empty;
+                Debug.WriteLine($"[PreviousHeaderEditorText] GET: tab={tab.Title}, HeaderTemp.Length={result.Length}, first50='{result.Substring(0, Math.Min(50, result.Length))}'");
+                return result;
             }
             set
             {

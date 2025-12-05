@@ -11,6 +11,11 @@ namespace Wysg.Musm.Radium.Services
         Task EnsurePatientStudyAsync(string patientNumber, string? patientName, string? sex, string? birthDateRaw, string? studyName, DateTime? studyDateTime);
         Task<long?> EnsureStudyAsync(string patientNumber, string? patientName, string? sex, string? birthDateRaw, string? studyName, DateTime? studyDateTime);
         Task<long?> UpsertPartialReportAsync(long studyId, DateTime? reportDateTime, string reportJson, bool isMine);
+        /// <summary>
+        /// Inserts a report only if it doesn't already exist (based on study_id + report_datetime).
+        /// Returns the report id if inserted, null if skipped or error.
+        /// </summary>
+        Task<(long? ReportId, bool WasInserted)> InsertReportIfNotExistsAsync(long studyId, DateTime? reportDateTime, string reportJson, bool isMine);
         Task<List<PatientReportRow>> GetReportsForPatientAsync(string patientNumber);
         Task<long?> GetStudyIdAsync(string patientNumber, string studyName, DateTime studyDateTime);
     }
@@ -103,6 +108,48 @@ RETURNING id;", cn);
                 return o is long l ? l : null;
             }
             catch (Exception ex) { Debug.WriteLine("[RadStudyRepo] UpsertPartialReport error: " + ex.Message); return null; }
+        }
+
+        public async Task<(long? ReportId, bool WasInserted)> InsertReportIfNotExistsAsync(long studyId, DateTime? reportDateTime, string reportJson, bool isMine)
+        {
+            await using var cn = Open();
+            await PgConnectionHelper.OpenWithLocalSslFallbackAsync(cn);
+            try
+            {
+                // First check if report already exists
+                await using (var checkCmd = new NpgsqlCommand(@"SELECT id FROM med.rad_report WHERE study_id = @sid AND report_datetime = @dt LIMIT 1;", cn))
+                {
+                    checkCmd.Parameters.AddWithValue("@sid", studyId);
+                    checkCmd.Parameters.AddWithValue("@dt", reportDateTime.HasValue ? reportDateTime.Value : (object)DBNull.Value);
+                    var existingId = await checkCmd.ExecuteScalarAsync();
+                    if (existingId is long existingReportId)
+                    {
+                        // Record already exists, return existing id but indicate it was NOT inserted
+                        Debug.WriteLine($"[RadStudyRepo] InsertReportIfNotExists: Report already exists (id={existingReportId}), skipping insert");
+                        return (existingReportId, false);
+                    }
+                }
+
+                // Insert new report
+                await using var cmd = new NpgsqlCommand(@"INSERT INTO med.rad_report(study_id, is_mine, report_datetime, report)
+VALUES (@sid, @isMine, @dt, @json)
+ON CONFLICT (study_id, report_datetime) DO NOTHING
+RETURNING id;", cn);
+                cmd.Parameters.AddWithValue("@sid", studyId);
+                cmd.Parameters.AddWithValue("@isMine", isMine);
+                cmd.Parameters.AddWithValue("@dt", reportDateTime.HasValue ? reportDateTime.Value : (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@json", NpgsqlTypes.NpgsqlDbType.Jsonb, reportJson);
+                var o = await cmd.ExecuteScalarAsync();
+                if (o is long l)
+                {
+                    Debug.WriteLine($"[RadStudyRepo] InsertReportIfNotExists: New report inserted (id={l})");
+                    return (l, true);
+                }
+                // ON CONFLICT DO NOTHING executed (race condition), report existed
+                Debug.WriteLine("[RadStudyRepo] InsertReportIfNotExists: Report existed (race condition), skipping");
+                return (null, false);
+            }
+            catch (Exception ex) { Debug.WriteLine("[RadStudyRepo] InsertReportIfNotExists error: " + ex.Message); return (null, false); }
         }
 
         public async Task<List<PatientReportRow>> GetReportsForPatientAsync(string patientNumber)

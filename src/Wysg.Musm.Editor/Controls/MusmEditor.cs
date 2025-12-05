@@ -119,7 +119,11 @@ public class MusmEditor : TextEditor
     {
         var editor = (MusmEditor)d;
         var newText = e.NewValue as string ?? string.Empty;
-        if (editor.Text == newText) return;
+        
+        // CRITICAL FIX (2025-12-05): Always update even if text appears equal
+        // This handles cases where the editor's internal state is out of sync with the binding
+        // For example, when switching between tabs with different content, AvalonEdit might
+        // cache the old visual state even though the binding value has changed
         
         // Store current caret offset before text change
         int oldCaretOffset = editor.CaretOffset;
@@ -135,8 +139,11 @@ public class MusmEditor : TextEditor
                 {
                     editor._suppressTextSync = true;
                     
-                    // Double-check the text hasn't changed in the meantime
-                    if (editor.Text != newText)
+                    // CRITICAL FIX: Always set text, even if it appears equal
+                    // The visual might be out of sync with the actual document
+                    bool forceUpdate = (editor.Text ?? string.Empty) == newText && editor.Text != newText;
+                    
+                    if (editor.Text != newText || forceUpdate)
                     {
                         editor.Text = newText;
                         
@@ -152,12 +159,15 @@ public class MusmEditor : TextEditor
                             editor.SetCurrentValue(CaretOffsetAdjustmentProperty, 0);
                         }
                     }
+                    
+                    // Force visual refresh (fixes stale display when binding changes)
+                    editor.TextArea?.TextView?.InvalidateVisual();
                 }
                 finally
                 {
                     editor._suppressTextSync = false;
                 }
-            }), DispatcherPriority.Background);
+            }), DispatcherPriority.Send);  // Changed from Background to Send for immediate update
         } 
         finally 
         { 
