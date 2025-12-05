@@ -35,6 +35,7 @@
                 <!-- Upper row: controls -->
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,0" VerticalAlignment="Center">
                     <Button Content="New" Command="{Binding NewStudyCommand}" FontSize="12" Margin="2,2,0,2"/>
+                    <Button Content="Add" Command="{Binding AddStudyCommand}" FontSize="12" Margin="2,2,0,2"/>
                     <Button Content="Send Preview" Command="{Binding SendReportPreviewCommand}" Margin="2,2,0,2"/>
                     <Button Content="Send" Command="{Binding SendReportCommand}" Margin="2,2,0,2"/>
                     <Button Content="Technique" Command="{Binding EditStudyTechniqueCommand}" Margin="2,2,0,2"/>
