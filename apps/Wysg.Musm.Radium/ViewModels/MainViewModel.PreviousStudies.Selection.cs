@@ -97,6 +97,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     
                     // NEW: Notify computed editor properties for proofread support
                     // These MUST be notified AFTER UpdatePreviousReportJson() completes
+                    OnPropertyChanged(nameof(PreviousHeaderEditorText));  // FIX: Add notification for header editor
                     OnPropertyChanged(nameof(PreviousFindingsEditorText));
                     OnPropertyChanged(nameof(PreviousConclusionEditorText));
                     
@@ -122,6 +123,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     OnPropertyChanged(nameof(PreviousConclusionSplitView));
                     
                     // NEW: Notify editor properties when split mode changes (affects fallback)
+                    OnPropertyChanged(nameof(PreviousHeaderEditorText));  // FIX: Add notification for header editor
                     OnPropertyChanged(nameof(PreviousFindingsEditorText));
                     OnPropertyChanged(nameof(PreviousConclusionEditorText));
                 }

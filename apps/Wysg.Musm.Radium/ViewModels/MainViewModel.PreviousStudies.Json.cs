@@ -462,6 +462,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 OnPropertyChanged(nameof(PreviousConclusionSplitView));
                 
                 // NEW: Notify editor properties when underlying data changes (especially proofread fields)
+                OnPropertyChanged(nameof(PreviousHeaderEditorText));  // FIX: Add notification for header editor
                 OnPropertyChanged(nameof(PreviousFindingsEditorText));
                 OnPropertyChanged(nameof(PreviousConclusionEditorText));
                 

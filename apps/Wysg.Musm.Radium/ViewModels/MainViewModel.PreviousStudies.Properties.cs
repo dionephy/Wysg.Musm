@@ -171,6 +171,53 @@ namespace Wysg.Musm.Radium.ViewModels
         // NEW: Computed properties for previous report Findings and Conclusion editors with proofread support
         // These follow the fallback chain: proofread (with placeholders applied) ¡æ splitted (if on) ¡æ original
         // CRITICAL FIX: Apply ApplyProofreadPlaceholders() to proofread text for {arrow}, {DDx}, {bullet} conversion
+        
+        /// <summary>
+        /// Computed property for Previous Header editor binding.
+        /// Returns HeaderTemp when PreviousReportSplitted is true, empty string otherwise.
+        /// This replaces the Style.Triggers binding approach which had tab-switch issues.
+        /// </summary>
+        public string PreviousHeaderEditorText
+        {
+            get
+            {
+                // Only show header when split mode is enabled
+                if (!PreviousReportSplitted)
+                {
+                    return string.Empty;
+                }
+                
+                var tab = SelectedPreviousStudy;
+                if (tab == null)
+                {
+                    return _prevHeaderTempCache ?? string.Empty;
+                }
+                
+                return tab.HeaderTemp ?? string.Empty;
+            }
+            set
+            {
+                // Two-way binding support for editing header text
+                if (!PreviousReportSplitted)
+                {
+                    return; // Don't accept changes when not in split mode
+                }
+                
+                if (SelectedPreviousStudy == null)
+                {
+                    if (value == _prevHeaderTempCache) return;
+                    _prevHeaderTempCache = value;
+                    OnPropertyChanged();
+                }
+                else if (SelectedPreviousStudy.HeaderTemp != value)
+                {
+                    SelectedPreviousStudy.HeaderTemp = value;
+                }
+                UpdatePreviousReportJson();
+                OnPropertyChanged(nameof(PreviousReportJson));
+            }
+        }
+
         public string PreviousFindingsEditorText
         {
             get

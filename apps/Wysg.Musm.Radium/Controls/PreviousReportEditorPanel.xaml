@@ -72,22 +72,22 @@
         <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
         
         <!-- Previous Header Editor (conditional display based on Splitted mode) -->
+        <!-- FIX: Changed from Style.Triggers binding to direct binding using PreviousHeaderEditorText -->
+        <!-- The Style.Triggers approach had issues where tab switches didn't properly update the binding -->
         <editor:EditorControl x:Name="EditorPreviousHeader" 
                               Grid.Row="2" 
                               MinHeight="70" 
+                              DocumentText="{Binding PreviousHeaderEditorText, Mode=TwoWay}"
                               PhraseSnapshot="{Binding CurrentPhraseSnapshot}" 
                               PhraseSemanticTags="{Binding PhraseSemanticTags}">
             <editor:EditorControl.Style>
                 <Style TargetType="editor:EditorControl">
-                    <Setter Property="IsReadOnly" Value="True"/>
-                    <Setter Property="DocumentText" Value=""/>
+                    <!-- Default: Editable when split mode is on (controlled by the property) -->
+                    <Setter Property="IsReadOnly" Value="False"/>
                     <Style.Triggers>
-                        <DataTrigger Binding="{Binding PreviousReportSplitted}" Value="True">
-                            <Setter Property="DocumentText" Value="{Binding PreviousHeaderTemp, Mode=TwoWay}"/>
-                            <Setter Property="IsReadOnly" Value="False"/>
-                        </DataTrigger>
+                        <!-- When split mode is off, make read-only since text will be empty -->
                         <DataTrigger Binding="{Binding PreviousReportSplitted}" Value="False">
-                            <Setter Property="DocumentText" Value=""/>
+                            <Setter Property="IsReadOnly" Value="True"/>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>

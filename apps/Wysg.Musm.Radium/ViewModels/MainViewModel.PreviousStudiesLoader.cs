@@ -19,6 +19,24 @@ namespace Wysg.Musm.Radium.ViewModels
             try
             {
                 var rows = await _studyRepo.GetReportsForPatientAsync(patientId);
+                
+                // CRITICAL FIX: Clear selection and cache BEFORE clearing collection
+                // This prevents stale cache data from being shown in the UI
+                _selectedPreviousStudy = null;
+                _prevHeaderTempCache = string.Empty;
+                _prevHeaderAndFindingsCache = string.Empty;
+                _prevFinalConclusionCache = string.Empty;
+                _prevFindingsOutCache = string.Empty;
+                _prevConclusionOutCache = string.Empty;
+                _prevStudyRemarkCache = string.Empty;
+                _prevPatientRemarkCache = string.Empty;
+                _prevChiefComplaintCache = string.Empty;
+                _prevPatientHistoryCache = string.Empty;
+                _prevStudyTechniquesCache = string.Empty;
+                _prevComparisonCache = string.Empty;
+                _prevFindingsProofreadCache = string.Empty;
+                _prevConclusionProofreadCache = string.Empty;
+                
                 PreviousStudies.Clear();
                 var groups = rows.GroupBy(r => new { r.StudyId, r.StudyDateTime, r.Studyname });
                 foreach (var g in groups.OrderByDescending(g => g.Key.StudyDateTime))

@@ -162,6 +162,7 @@ namespace Wysg.Musm.Radium.ViewModels
             OnPropertyChanged(nameof(PreviousSplitConclusion));
             
             // Notify editor properties that depend on split mode
+            OnPropertyChanged(nameof(PreviousHeaderEditorText));  // FIX: Add notification for header editor
             OnPropertyChanged(nameof(PreviousFindingsEditorText));
             OnPropertyChanged(nameof(PreviousConclusionEditorText));
             
