@@ -351,21 +351,55 @@ namespace Wysg.Musm.Radium.Views
             if (!e.Data.GetDataPresent("musm-proc"))
             {
                 ClearAutomationDropIndicator();
+                e.Effects = DragDropEffects.None;
+                e.Handled = true;
                 return;
             }
 
             if (sender is not ListBox target)
             {
                 ClearAutomationDropIndicator();
+                e.Effects = DragDropEffects.None;
+                e.Handled = true;
                 return;
             }
 
-            // Update ghost position
+            // Determine drag context
+            bool fromLibrary = _automationDragSource?.Name == "lstLibrary" || _automationDragSource?.Name == "lstCustomModules";
+            bool toDelete = target.Name == "lstDelete";
+            bool toLibrary = target.Name == "lstLibrary" || target.Name == "lstCustomModules";
+            bool sameList = _automationDragSource == target;
+            bool ctrlPressed = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+            
+            // Determine if this is a copy operation (for cursor and ghost indicator)
+            bool isCopyOperation = fromLibrary || (ctrlPressed && !sameList && !toDelete && !toLibrary);
+            
+            // Set the drag effect (controls the mouse cursor)
+            if (toLibrary)
+            {
+                e.Effects = DragDropEffects.None; // Library doesn't accept drops
+            }
+            else if (toDelete)
+            {
+                e.Effects = DragDropEffects.Move; // Delete is always a "move" (removal)
+            }
+            else if (isCopyOperation)
+            {
+                e.Effects = DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.Move;
+            }
+
+            // Update ghost position and copy indicator
             if (_automationDragGhost != null && Content is Grid root)
             {
                 var pos = e.GetPosition(root);
                 Canvas.SetLeft(_automationDragGhost, pos.X + 8);
                 Canvas.SetTop(_automationDragGhost, pos.Y + 8);
+                
+                UpdateAutomationGhostCopyIndicator(isCopyOperation);
             }
 
             // Show drop indicator only for ordered lists (not library panes or Delete pane)
@@ -411,7 +445,11 @@ namespace Wysg.Musm.Radium.Views
             bool toLibrary = target.Name == "lstLibrary" || target.Name == "lstCustomModules";
             bool sameList = _automationDragSource == target;
             
-            System.Diagnostics.Debug.WriteLine($"[AutoDrop] item='{item}' fromLib={fromLibrary} toDelete={toDelete} toLib={toLibrary} sameList={sameList} target={target.Name}");
+            // Check if Ctrl key is pressed for copy operation
+            bool ctrlPressed = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+            bool isCopyOperation = ctrlPressed && !fromLibrary && !sameList && !toDelete;
+            
+            System.Diagnostics.Debug.WriteLine($"[AutoDrop] item='{item}' fromLib={fromLibrary} toDelete={toDelete} toLib={toLibrary} sameList={sameList} target={target.Name} ctrlPressed={ctrlPressed} isCopy={isCopyOperation}");
 
             // DEDICATED DELETE PANE: Remove from source and don't add to Delete pane
             if (toDelete)
@@ -468,14 +506,14 @@ namespace Wysg.Musm.Radium.Views
                 }
                 targetList.Insert(insertIndex, item);
             }
-            else if (fromLibrary)
+            else if (fromLibrary || isCopyOperation)
             {
-                // Copy from library (allow duplicates)
+                // Copy from library OR Ctrl+drag copy from another pane (allow duplicates)
                 targetList.Insert(insertIndex, item);
             }
             else
             {
-                // Move from other ordered list
+                // Move from other ordered list (default behavior without Ctrl)
                 var srcList = GetAutomationListForListBox(_automationDragSource!);
                 if (srcList != null && _automationDragSourceIndex >= 0 && _automationDragSourceIndex < srcList.Count)
                 {
@@ -506,15 +544,45 @@ namespace Wysg.Musm.Radium.Views
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(3),
                 Padding = new Thickness(6, 2, 6, 2),
-                Child = new TextBlock
+                Child = new StackPanel
                 {
-                    Text = text,
-                    Foreground = Brushes.White
+                    Orientation = Orientation.Horizontal,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Name = "CopyIndicator",
+                            Text = "+ ",
+                            Foreground = Brushes.LightGreen,
+                            FontWeight = FontWeights.Bold,
+                            Visibility = Visibility.Collapsed
+                        },
+                        new TextBlock
+                        {
+                            Text = text,
+                            Foreground = Brushes.White
+                        }
+                    }
                 },
                 IsHitTestVisible = false
             };
             
             AddChildToAutomationOverlay(_automationDragGhost, pos);
+        }
+        
+        private void UpdateAutomationGhostCopyIndicator(bool showCopy)
+        {
+            if (_automationDragGhost?.Child is StackPanel panel)
+            {
+                foreach (var child in panel.Children)
+                {
+                    if (child is TextBlock tb && tb.Name == "CopyIndicator")
+                    {
+                        tb.Visibility = showCopy ? Visibility.Visible : Visibility.Collapsed;
+                        break;
+                    }
+                }
+            }
         }
 
         private void AddChildToAutomationOverlay(FrameworkElement fe, Point pos)

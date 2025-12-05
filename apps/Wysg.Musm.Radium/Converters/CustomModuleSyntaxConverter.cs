@@ -23,10 +23,11 @@ namespace Wysg.Musm.Radium.Converters
         private static readonly Brush KeywordBrush = new SolidColorBrush(Color.FromRgb(255, 160, 0)); // Orange
         private static readonly Brush ObsoleteBrush = new SolidColorBrush(Color.FromRgb(128, 128, 128)); // Grey for obsolete modules
         private static readonly Brush PropertyBrush = new SolidColorBrush(Color.FromRgb(106, 190, 48)); // Green
-        private static readonly Brush BookmarkBrush = new SolidColorBrush(Color.FromRgb(78, 201, 176)); // Cyan
+        private static readonly Brush BookmarkBrush = new SolidColorBrush(Color.FromRgb(78, 201, 176)); // Mint/Cyan
         private static readonly Brush DefaultBrush = new SolidColorBrush(Color.FromRgb(208, 208, 208)); // Light gray
         
-        private static readonly string[] Keywords = { "Abort if", "Set", "to", "Run" };
+        // Keywords for syntax coloring (ordered by length descending for proper matching)
+        private static readonly string[] Keywords = { "Abort if", "If not", "Set", "Run", "If", "to" };
         
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
@@ -40,10 +41,12 @@ namespace Wysg.Musm.Radium.Converters
             };
             
             // Check if this is a custom module (starts with special keywords) or built-in module
-            // Custom modules start with: "Set ", "Run ", or "Abort if "
+            // Custom modules start with: "Set ", "Run ", "Abort if ", "If ", "If not "
             bool isCustomModule = moduleName.StartsWith("Set ", StringComparison.OrdinalIgnoreCase) ||
                                   moduleName.StartsWith("Run ", StringComparison.OrdinalIgnoreCase) ||
-                                  moduleName.StartsWith("Abort if ", StringComparison.OrdinalIgnoreCase);
+                                  moduleName.StartsWith("Abort if ", StringComparison.OrdinalIgnoreCase) ||
+                                  moduleName.StartsWith("If not ", StringComparison.OrdinalIgnoreCase) ||
+                                  moduleName.StartsWith("If ", StringComparison.OrdinalIgnoreCase);
             
             if (!isCustomModule)
             {
@@ -89,7 +92,7 @@ namespace Wysg.Musm.Radium.Converters
                     continue;
                 }
                 
-                // Check for keywords (longest first to avoid partial matches)
+                // Check for keywords (longest first to avoid partial matches like "If" matching before "If not")
                 foreach (var keyword in Keywords.OrderByDescending(k => k.Length))
                 {
                     if (currentIndex + keyword.Length <= text.Length &&
