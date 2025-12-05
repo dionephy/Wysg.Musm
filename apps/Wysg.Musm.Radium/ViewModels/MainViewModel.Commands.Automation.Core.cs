@@ -319,6 +319,10 @@ namespace Wysg.Musm.Radium.ViewModels
                     {
                         await _setCurrentStudyTechniquesProc.ExecuteAsync(this);
                     }
+                    else if (string.Equals(m, "FocusEditorFindings", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await RunFocusEditorFindingsAsync();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -413,6 +417,92 @@ namespace Wysg.Musm.Radium.ViewModels
             
             Debug.WriteLine("[Automation][AutofillCurrentHeader] COMPLETED");
             SetStatus("[AutofillCurrentHeader] Done.");
+        }
+        
+        /// <summary>
+        /// Built-in module: FocusEditorFindings
+        /// Brings the MainWindow to the front, activates it, and focuses the Findings editor.
+        /// 
+        /// This module is useful in automation sequences where you want to ensure
+        /// the user's attention is on the Findings editor after performing other operations.
+        /// </summary>
+        private async Task RunFocusEditorFindingsAsync()
+        {
+            Debug.WriteLine("[Automation][FocusEditorFindings] START");
+            
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                try
+                {
+                    var mainWindow = System.Windows.Application.Current.MainWindow;
+                    if (mainWindow == null)
+                    {
+                        Debug.WriteLine("[Automation][FocusEditorFindings] MainWindow is null");
+                        SetStatus("[FocusEditorFindings] MainWindow not found.", isError: true);
+                        return;
+                    }
+                    
+                    // Bring window to front
+                    if (mainWindow.WindowState == System.Windows.WindowState.Minimized)
+                    {
+                        mainWindow.WindowState = System.Windows.WindowState.Normal;
+                    }
+                    
+                    // Activate the window (brings it to foreground)
+                    mainWindow.Activate();
+                    mainWindow.Focus();
+                    
+                    Debug.WriteLine("[Automation][FocusEditorFindings] MainWindow activated");
+                    
+                    // Focus the EditorFindings control
+                    // The MainWindow has gridCenter.EditorFindings which contains the MusmEditor
+                    if (mainWindow is Views.MainWindow mw)
+                    {
+                        // Find the EditorFindings control
+                        var gridCenter = mw.FindName("gridCenter") as Controls.CenterEditingArea;
+                        if (gridCenter != null)
+                        {
+                            var editorFindings = gridCenter.EditorFindings;
+                            if (editorFindings != null)
+                            {
+                                // Find the underlying MusmEditor (AvalonEdit TextEditor)
+                                var musmEditor = editorFindings.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
+                                if (musmEditor != null)
+                                {
+                                    musmEditor.Focus();
+                                    musmEditor.TextArea?.Caret.BringCaretToView();
+                                    Debug.WriteLine("[Automation][FocusEditorFindings] Focused MusmEditor");
+                                }
+                                else
+                                {
+                                    editorFindings.Focus();
+                                    Debug.WriteLine("[Automation][FocusEditorFindings] Focused EditorControl (MusmEditor not found)");
+                                }
+                            }
+                            else
+                            {
+                                Debug.WriteLine("[Automation][FocusEditorFindings] EditorFindings not found in gridCenter");
+                            }
+                        }
+                        else
+                        {
+                            Debug.WriteLine("[Automation][FocusEditorFindings] gridCenter not found in MainWindow");
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[Automation][FocusEditorFindings] MainWindow is not of type Views.MainWindow");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Automation][FocusEditorFindings] Error: {ex.Message}");
+                    SetStatus($"[FocusEditorFindings] Error: {ex.Message}", isError: true);
+                }
+            });
+            
+            SetStatus("[FocusEditorFindings] Done.");
+            Debug.WriteLine("[Automation][FocusEditorFindings] COMPLETED");
         }
     }
 }

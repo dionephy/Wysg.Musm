@@ -36,7 +36,7 @@ namespace Wysg.Musm.Radium.Services
         private int _isProcessingQueue = 0; // 0 = idle, 1 = processing
 
         // Diagnostic logging flag - set to true only when debugging performance issues
-        private const bool ENABLE_DIAGNOSTIC_LOGGING = true;
+        private const bool ENABLE_DIAGNOSTIC_LOGGING = false;
 
         // Windows hook constants
         private const int WH_KEYBOARD_LL = 13;

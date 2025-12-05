@@ -18,10 +18,14 @@ namespace Wysg.Musm.Radium.Services.Adapters
         private readonly System.Threading.SemaphoreSlim _cacheLock = new(1, 1);
         private volatile bool _loaded;
 
+        // Diagnostic logging flag - set to true only when debugging caching issues
+        private const bool ENABLE_DIAGNOSTIC_LOGGING = false;
+
         public ApiSnippetServiceAdapter(RadiumApiClient apiClient)
         {
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
-            Debug.WriteLine("[ApiSnippetServiceAdapter] Initialized with caching");
+            if (ENABLE_DIAGNOSTIC_LOGGING)
+                Debug.WriteLine("[ApiSnippetServiceAdapter] Initialized with caching");
         }
 
         public async Task PreloadAsync(long accountId)
@@ -30,7 +34,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
             await _cacheLock.WaitAsync();
             try
             {
-                Debug.WriteLine($"[ApiSnippetServiceAdapter][Preload] Loading snippets for account {accountId}");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[ApiSnippetServiceAdapter][Preload] Loading snippets for account {accountId}");
                 var dtos = await _apiClient.GetSnippetsAsync(accountId);
                 var infos = dtos.Select(dto => new SnippetInfo(
                     SnippetId: dto.SnippetId,
@@ -46,7 +51,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
                 
                 _cachedSnippets[accountId] = infos;
                 _loaded = true;
-                Debug.WriteLine($"[ApiSnippetServiceAdapter][Preload] Cached {infos.Count} snippets for account {accountId}");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[ApiSnippetServiceAdapter][Preload] Cached {infos.Count} snippets for account {accountId}");
             }
             finally
             {
@@ -61,14 +67,16 @@ namespace Wysg.Musm.Radium.Services.Adapters
             {
                 if (!_cachedSnippets.TryGetValue(accountId, out var cached) || cached.Count == 0)
                 {
-                    Debug.WriteLine($"[ApiSnippetServiceAdapter][GetAllMeta] Cache miss, loading from API");
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[ApiSnippetServiceAdapter][GetAllMeta] Cache miss, loading from API");
                     _cacheLock.Release(); // Release before async call
                     await PreloadAsync(accountId);
                     await _cacheLock.WaitAsync();
                     cached = _cachedSnippets.GetValueOrDefault(accountId) ?? new List<SnippetInfo>();
                 }
                 
-                Debug.WriteLine($"[ApiSnippetServiceAdapter][GetAllMeta] Returning {cached.Count} from cache");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[ApiSnippetServiceAdapter][GetAllMeta] Returning {cached.Count} from cache");
                 return cached;
             }
             finally
@@ -84,7 +92,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
             {
                 if (!_cachedSnippets.TryGetValue(accountId, out var cached) || cached.Count == 0)
                 {
-                    Debug.WriteLine($"[ApiSnippetServiceAdapter][GetActive] Cache miss, loading from API");
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[ApiSnippetServiceAdapter][GetActive] Cache miss, loading from API");
                     _cacheLock.Release(); // Release before async call
                     await PreloadAsync(accountId);
                     await _cacheLock.WaitAsync();
@@ -99,7 +108,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
                         StringComparer.OrdinalIgnoreCase
                     );
                 
-                Debug.WriteLine($"[ApiSnippetServiceAdapter][GetActive] Returning {result.Count} active snippets from cache");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[ApiSnippetServiceAdapter][GetActive] Returning {result.Count} active snippets from cache");
                 return result;
             }
             finally
@@ -145,7 +155,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
                     else
                         cached.Add(info);
                     
-                    Debug.WriteLine($"[ApiSnippetServiceAdapter][Upsert] Updated cache for snippet {info.SnippetId}");
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[ApiSnippetServiceAdapter][Upsert] Updated cache for snippet {info.SnippetId}");
                 }
             }
             finally
@@ -183,7 +194,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
                     if (existing >= 0)
                         cached[existing] = info;
                     
-                    Debug.WriteLine($"[ApiSnippetServiceAdapter][Toggle] Updated cache for snippet {info.SnippetId}");
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[ApiSnippetServiceAdapter][Toggle] Updated cache for snippet {info.SnippetId}");
                 }
             }
             finally
@@ -207,7 +219,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
                     if (_cachedSnippets.TryGetValue(accountId, out var cached))
                     {
                         cached.RemoveAll(s => s.SnippetId == snippetId);
-                        Debug.WriteLine($"[ApiSnippetServiceAdapter][Delete] Removed snippet {snippetId} from cache");
+                        if (ENABLE_DIAGNOSTIC_LOGGING)
+                            Debug.WriteLine($"[ApiSnippetServiceAdapter][Delete] Removed snippet {snippetId} from cache");
                     }
                 }
                 finally
@@ -221,7 +234,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
 
         public async Task RefreshSnippetsAsync(long accountId)
         {
-            Debug.WriteLine($"[ApiSnippetServiceAdapter][Refresh] Reloading from API for account {accountId}");
+            if (ENABLE_DIAGNOSTIC_LOGGING)
+                Debug.WriteLine($"[ApiSnippetServiceAdapter][Refresh] Reloading from API for account {accountId}");
             _loaded = false;
             await PreloadAsync(accountId);
         }

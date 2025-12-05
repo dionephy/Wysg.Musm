@@ -18,10 +18,14 @@ namespace Wysg.Musm.Radium.Services.Adapters
         private readonly System.Threading.SemaphoreSlim _cacheLock = new(1, 1);
         private volatile bool _loaded;
 
+        // Diagnostic logging flag - set to true only when debugging caching issues
+        private const bool ENABLE_DIAGNOSTIC_LOGGING = false;
+
         public ApiHotkeyServiceAdapter(RadiumApiClient apiClient)
         {
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
-            Debug.WriteLine("[ApiHotkeyServiceAdapter] Initialized with caching");
+            if (ENABLE_DIAGNOSTIC_LOGGING)
+                Debug.WriteLine("[ApiHotkeyServiceAdapter] Initialized with caching");
         }
 
         public async Task PreloadAsync(long accountId)
@@ -30,7 +34,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
             await _cacheLock.WaitAsync();
             try
             {
-                Debug.WriteLine($"[ApiHotkeyServiceAdapter][Preload] Loading hotkeys for account {accountId}");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[ApiHotkeyServiceAdapter][Preload] Loading hotkeys for account {accountId}");
                 var dtos = await _apiClient.GetHotkeysAsync(accountId);
                 var infos = dtos.Select(dto => new HotkeyInfo(
                     HotkeyId: dto.HotkeyId,
@@ -45,7 +50,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
                 
                 _cachedHotkeys[accountId] = infos;
                 _loaded = true;
-                Debug.WriteLine($"[ApiHotkeyServiceAdapter][Preload] Cached {infos.Count} hotkeys for account {accountId}");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[ApiHotkeyServiceAdapter][Preload] Cached {infos.Count} hotkeys for account {accountId}");
             }
             finally
             {
@@ -60,14 +66,16 @@ namespace Wysg.Musm.Radium.Services.Adapters
             {
                 if (!_cachedHotkeys.TryGetValue(accountId, out var cached) || cached.Count == 0)
                 {
-                    Debug.WriteLine($"[ApiHotkeyServiceAdapter][GetAllMeta] Cache miss, loading from API");
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[ApiHotkeyServiceAdapter][GetAllMeta] Cache miss, loading from API");
                     _cacheLock.Release();
                     await PreloadAsync(accountId);
                     await _cacheLock.WaitAsync();
                     cached = _cachedHotkeys.GetValueOrDefault(accountId) ?? new List<HotkeyInfo>();
                 }
                 
-                Debug.WriteLine($"[ApiHotkeyServiceAdapter][GetAllMeta] Returning {cached.Count} from cache");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[ApiHotkeyServiceAdapter][GetAllMeta] Returning {cached.Count} from cache");
                 return cached;
             }
             finally
@@ -83,7 +91,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
             {
                 if (!_cachedHotkeys.TryGetValue(accountId, out var cached) || cached.Count == 0)
                 {
-                    Debug.WriteLine($"[ApiHotkeyServiceAdapter][GetActive] Cache miss, loading from API");
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[ApiHotkeyServiceAdapter][GetActive] Cache miss, loading from API");
                     _cacheLock.Release();
                     await PreloadAsync(accountId);
                     await _cacheLock.WaitAsync();
@@ -94,7 +103,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
                     .Where(h => h.IsActive)
                     .ToDictionary(h => h.TriggerText, h => h.ExpansionText, StringComparer.OrdinalIgnoreCase);
                 
-                Debug.WriteLine($"[ApiHotkeyServiceAdapter][GetActive] Returning {result.Count} active hotkeys from cache");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[ApiHotkeyServiceAdapter][GetActive] Returning {result.Count} active hotkeys from cache");
                 return result;
             }
             finally
@@ -138,7 +148,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
                     else
                         cached.Add(info);
                     
-                    Debug.WriteLine($"[ApiHotkeyServiceAdapter][Upsert] Updated cache for hotkey {info.HotkeyId}");
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[ApiHotkeyServiceAdapter][Upsert] Updated cache for hotkey {info.HotkeyId}");
                 }
             }
             finally
@@ -175,7 +186,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
                     if (existing >= 0)
                         cached[existing] = info;
                     
-                    Debug.WriteLine($"[ApiHotkeyServiceAdapter][Toggle] Updated cache for hotkey {info.HotkeyId}");
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[ApiHotkeyServiceAdapter][Toggle] Updated cache for hotkey {info.HotkeyId}");
                 }
             }
             finally
@@ -199,7 +211,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
                     if (_cachedHotkeys.TryGetValue(accountId, out var cached))
                     {
                         cached.RemoveAll(h => h.HotkeyId == hotkeyId);
-                        Debug.WriteLine($"[ApiHotkeyServiceAdapter][Delete] Removed hotkey {hotkeyId} from cache");
+                        if (ENABLE_DIAGNOSTIC_LOGGING)
+                            Debug.WriteLine($"[ApiHotkeyServiceAdapter][Delete] Removed hotkey {hotkeyId} from cache");
                     }
                 }
                 finally
@@ -213,7 +226,8 @@ namespace Wysg.Musm.Radium.Services.Adapters
 
         public async Task RefreshHotkeysAsync(long accountId)
         {
-            Debug.WriteLine($"[ApiHotkeyServiceAdapter][Refresh] Reloading from API for account {accountId}");
+            if (ENABLE_DIAGNOSTIC_LOGGING)
+                Debug.WriteLine($"[ApiHotkeyServiceAdapter][Refresh] Reloading from API for account {accountId}");
             _loaded = false;
             await PreloadAsync(accountId);
         }

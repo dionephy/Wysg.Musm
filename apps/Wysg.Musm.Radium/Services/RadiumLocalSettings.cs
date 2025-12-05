@@ -29,6 +29,9 @@ namespace Wysg.Musm.Radium.Services
             "Wysg.Musm", "Radium");
         private static readonly string MainPath = Path.Combine(Dir, "settings.dat");
 
+        // Diagnostic logging flag - set to true only when debugging settings issues
+        private const bool ENABLE_DIAGNOSTIC_LOGGING = false;
+
         // Central: now strictly local (env var MUSM_CENTRAL_DB override removed per request)
         public string? CentralConnectionString
         {
@@ -95,16 +98,19 @@ namespace Wysg.Musm.Radium.Services
             {
                 if (!File.Exists(MainPath))
                 {
-                    Debug.WriteLine($"[RadiumLocalSettings] Settings file does not exist: {MainPath}");
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[RadiumLocalSettings] Settings file does not exist: {MainPath}");
                     return null;
                 }
                 
                 var enc = File.ReadAllBytes(MainPath);
-                Debug.WriteLine($"[RadiumLocalSettings] Read {enc.Length} encrypted bytes from {MainPath}");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[RadiumLocalSettings] Read {enc.Length} encrypted bytes from {MainPath}");
                 
                 var plain = ProtectedData.Unprotect(enc, null, DataProtectionScope.CurrentUser);
                 var text = Encoding.UTF8.GetString(plain);
-                Debug.WriteLine($"[RadiumLocalSettings] Decrypted {text.Length} chars");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[RadiumLocalSettings] Decrypted {text.Length} chars");
                 
                 foreach (var line in text.Split('\n'))
                 {
@@ -114,11 +120,13 @@ namespace Wysg.Musm.Radium.Services
                     var v = line[(idx + 1)..];
                     if (k == key)
                     {
-                        Debug.WriteLine($"[RadiumLocalSettings] Found key '{key}' with value length {v.Length}");
+                        if (ENABLE_DIAGNOSTIC_LOGGING)
+                            Debug.WriteLine($"[RadiumLocalSettings] Found key '{key}' with value length {v.Length}");
                         return v;
                     }
                 }
-                Debug.WriteLine($"[RadiumLocalSettings] Key '{key}' not found in settings");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[RadiumLocalSettings] Key '{key}' not found in settings");
                 return null;
             }
             catch (CryptographicException ex)
@@ -158,20 +166,23 @@ namespace Wysg.Musm.Radium.Services
 
         /// <summary>
         /// Writes or updates a key. Implementation loads existing data first to preserve other keys, then rewrites
-        /// the entire plaintext buffer and encrypts. Errors are swallowed (best effort) ? caller actions do not throw.
+        /// the entire plaintext buffer and encrypts. Errors are swallowed (best effort) ¡æ caller actions do not throw.
         /// </summary>
         private static void WriteSecret(string key, string value)
         {
             try
             {
-                Debug.WriteLine($"[RadiumLocalSettings] WriteSecret key='{key}' valueLength={value.Length}");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[RadiumLocalSettings] WriteSecret key='{key}' valueLength={value.Length}");
                 Directory.CreateDirectory(Dir);
-                Debug.WriteLine($"[RadiumLocalSettings] Ensured directory exists: {Dir}");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[RadiumLocalSettings] Ensured directory exists: {Dir}");
                 
                 var dict = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 if (File.Exists(MainPath))
                 {
-                    Debug.WriteLine($"[RadiumLocalSettings] Loading existing settings from {MainPath}");
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[RadiumLocalSettings] Loading existing settings from {MainPath}");
                     try
                     {
                         var enc = File.ReadAllBytes(MainPath);
@@ -183,7 +194,8 @@ namespace Wysg.Musm.Radium.Services
                             if (idx <= 0) continue;
                             dict[line[..idx]] = line[(idx + 1)..];
                         }
-                        Debug.WriteLine($"[RadiumLocalSettings] Loaded {dict.Count} existing keys");
+                        if (ENABLE_DIAGNOSTIC_LOGGING)
+                            Debug.WriteLine($"[RadiumLocalSettings] Loaded {dict.Count} existing keys");
                     }
                     catch (CryptographicException ex)
                     {
@@ -194,7 +206,8 @@ namespace Wysg.Musm.Radium.Services
                 }
                 else
                 {
-                    Debug.WriteLine($"[RadiumLocalSettings] No existing settings file, creating new");
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[RadiumLocalSettings] No existing settings file, creating new");
                 }
                 
                 dict[key] = value;
@@ -206,7 +219,8 @@ namespace Wysg.Musm.Radium.Services
                 var bytes = Encoding.UTF8.GetBytes(sb.ToString());
                 var encOut = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
                 File.WriteAllBytes(MainPath, encOut);
-                Debug.WriteLine($"[RadiumLocalSettings] Successfully wrote {encOut.Length} encrypted bytes to {MainPath}");
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[RadiumLocalSettings] Successfully wrote {encOut.Length} encrypted bytes to {MainPath}");
             }
             catch (Exception ex)
             {
