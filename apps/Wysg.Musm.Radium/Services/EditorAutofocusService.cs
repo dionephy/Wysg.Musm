@@ -169,39 +169,52 @@ namespace Wysg.Musm.Radium.Services
                         // Get character before any async operations
                         char keyChar = GetCharFromKey(key);
                         
-                        // Simple synchronous approach: focus then send immediately
-                        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
-                        {
-                            try
+                        // STRATEGY: Consume original key, focus editor, then send the key
+                        // This ensures exactly one character is inserted (the sent key)
+                        // We use BeginInvoke to avoid blocking the hook callback
+                        System.Windows.Application.Current?.Dispatcher.BeginInvoke(
+                            System.Windows.Threading.DispatcherPriority.Send,
+                            new Action(() =>
                             {
-                                // Focus editor
-                                _focusEditorCallback();
-                                
-                                // Send key immediately (synchronously)
-                                if (keyChar != '\0')
+                                try
                                 {
-                                    string keyString = keyChar switch
-                                    {
-                                        '+' => "{+}",
-                                        '^' => "{^}",
-                                        '%' => "{%}",
-                                        '~' => "{~}",
-                                        '(' => "{(}",
-                                        ')' => "{)}",
-                                        '{' => "{{}",
-                                        '}' => "{}}",
-                                        '[' => "{[}",
-                                        ']' => "{]}",
-                                        _ => keyChar.ToString()
-                                    };
+                                    // Focus editor first
+                                    _focusEditorCallback();
                                     
-                                    System.Windows.Forms.SendKeys.SendWait(keyString);
+                                    // Small delay to ensure focus transfer completes
+                                    // This is critical for consistent single-character insertion
+                                    System.Threading.Thread.Sleep(10);
+                                    
+                                    // Send the key (only once, since we consumed the original)
+                                    if (keyChar != '\0')
+                                    {
+                                        string keyString = keyChar switch
+                                        {
+                                            '+' => "{+}",
+                                            '^' => "{^}",
+                                            '%' => "{%}",
+                                            '~' => "{~}",
+                                            '(' => "{(}",
+                                            ')' => "{)}",
+                                            '{' => "{{}",
+                                            '}' => "{}}",
+                                            '[' => "{[}",
+                                            ']' => "{]}",
+                                            _ => keyChar.ToString()
+                                        };
+                                        
+                                        System.Windows.Forms.SendKeys.SendWait(keyString);
+                                    }
                                 }
-                            }
-                            catch { /* Silently fail */ }
-                        }, System.Windows.Threading.DispatcherPriority.Send);
+                                catch (Exception ex)
+                                {
+                                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                                        Debug.WriteLine($"[EditorAutofocus] Error in dispatcher callback: {ex.Message}");
+                                }
+                            }));
                         
-                        // CRITICAL: Return 1 to CONSUME the key
+                        // CONSUME the original key to prevent it from reaching any window
+                        // This ensures only our sent key arrives at the editor (single character)
                         return (IntPtr)1;
                     }
                     else
@@ -217,7 +230,7 @@ namespace Wysg.Musm.Radium.Services
                     Debug.WriteLine($"[EditorAutofocus] Exception in HookCallback: {ex.Message}");
             }
 
-            // Pass through only if autofocus NOT triggered
+            // Pass through to next hook for non-autofocus keys
             return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
         }
 
