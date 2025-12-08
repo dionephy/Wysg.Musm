@@ -260,6 +260,9 @@ namespace Wysg.Musm.Radium.ViewModels
             
             // Load custom modules into available modules
             LoadCustomModulesIntoAvailable();
+
+            // Load header format template from local settings
+            HeaderFormatTemplate = _local.HeaderFormatTemplate ?? "Clinical information: {Chief Complaint}\n- {Patient History Lines}\nTechniques: {Techniques}\nComparison: {Comparison}";
         }
         
         /// <summary>
@@ -376,6 +379,20 @@ namespace Wysg.Musm.Radium.ViewModels
             
             // Save SessionBasedCacheBookmarks to local settings (global setting)
             _local.SessionBasedCacheBookmarks = SessionBasedCacheBookmarks ?? string.Empty;
+            
+            // NEW: persist header format template
+            _local.HeaderFormatTemplate = HeaderFormatTemplate ?? string.Empty;
+            
+            // NEW: notify MainViewModel to refresh header if there is existing content
+            try
+            {
+                if (System.Windows.Application.Current is App app)
+                {
+                    var svcVm = app.Services.GetService(typeof(MainViewModel)) as MainViewModel;
+                    svcVm?.OnHeaderFormatTemplateChanged();
+                }
+            }
+            catch { }
             
             MessageBox.Show("Saved.", "Settings", MessageBoxButton.OK, MessageBoxImage.Information);
         }

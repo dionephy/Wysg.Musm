@@ -88,6 +88,26 @@ namespace Wysg.Musm.Radium.Services
         // NEW: Session-based caching configuration
         public string? SessionBasedCacheBookmarks { get => ReadSecret("session_based_cache_bookmarks"); set => WriteSecret("session_based_cache_bookmarks", value ?? string.Empty); }
 
+        // NEW: Header format template persistence
+        public string? HeaderFormatTemplate { get => ReadSecret("header_format_template"); set => WriteSecret("header_format_template", value ?? string.Empty); }
+
+        // Helper: encode value so our simple line-based storage can persist newlines safely
+        private static string EncodeValue(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            // Normalize CRLF to LF then escape LF as \n
+            var t = value.Replace("\r\n", "\n").Replace("\r", "\n");
+            t = t.Replace("\n", "\\n");
+            return t;
+        }
+        private static string DecodeValue(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            // Unescape \n back to LF
+            var t = value.Replace("\\n", "\n");
+            return t;
+        }
+
         /// <summary>
         /// Decrypts settings file (if present) and returns the value for a key. Failures are swallowed to avoid
         /// disruptive UX (caller sees null and can prompt for settings).
@@ -122,7 +142,7 @@ namespace Wysg.Musm.Radium.Services
                     {
                         if (ENABLE_DIAGNOSTIC_LOGGING)
                             Debug.WriteLine($"[RadiumLocalSettings] Found key '{key}' with value length {v.Length}");
-                        return v;
+                        return DecodeValue(v);
                     }
                 }
                 if (ENABLE_DIAGNOSTIC_LOGGING)
@@ -210,7 +230,7 @@ namespace Wysg.Musm.Radium.Services
                         Debug.WriteLine($"[RadiumLocalSettings] No existing settings file, creating new");
                 }
                 
-                dict[key] = value;
+                dict[key] = EncodeValue(value);
                 var sb = new StringBuilder();
                 foreach (var kv in dict)
                 {

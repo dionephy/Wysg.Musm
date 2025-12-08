@@ -8,12 +8,21 @@
     <Grid Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="240"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <TextBlock Text="Reportify Formatting (Preview Skeleton)" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="{DynamicResource BrushSurface}">
+        <!-- New: Header format configuration -->
+        <StackPanel Orientation="Vertical" Margin="0,0,0,8">
+            <TextBlock Text="Header Format Template" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+            <TextBox Text="{Binding HeaderFormatTemplate, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Height="90" Background="{DynamicResource BrushSurfaceAlt}" Foreground="{DynamicResource BrushTextPrimary}" FontFamily="Consolas"/>
+            <!-- Make placeholder hint selectable -->
+            <TextBox Margin="0,4,0,0" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource BrushTextSecondary}" Text="Placeholders: {Chief Complaint}, {Patient History Lines}, {Techniques}, {Comparison}"/>
+        </StackPanel>
+        <!-- Rename header text to match tab rename -->
+        <TextBlock Grid.Row="1" Text="Report Format (Preview Skeleton)" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Background="{DynamicResource BrushSurface}">
             <StackPanel Orientation="Vertical" Margin="0,8,0,0">
                 <!-- Core Normalization -->
                 <Expander Header="Core Normalization" IsExpanded="True">
@@ -136,7 +145,7 @@
         </ScrollViewer>
 
         <!-- Preview area -->
-        <Grid Grid.Row="2" Margin="0,8,0,0">
+        <Grid Grid.Row="3" Margin="0,8,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -154,9 +163,12 @@
             <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding ReportifySettingsJson, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Background="#202429" Foreground="#F0F0F0" FontFamily="Consolas"/>
         </Grid>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="Save Settings" Width="120" Command="{Binding SaveReportifySettingsCommand}" IsEnabled="{Binding IsAccountValid}"/>
-            <Button Content="Close" Width="100" IsCancel="True" Margin="8,0,0,0"/>
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <!-- NEW: Save Format (persists local settings and applies header immediately) -->
+            <Button Content="Save Format" Width="120" Command="{Binding SaveCommand}"/>
+            <!-- Existing: Save Reportify Settings (persists cloud account settings) -->
+            <Button Content="Save Reportify Settings" Width="170" Command="{Binding SaveReportifySettingsCommand}" IsEnabled="{Binding IsAccountValid}"/>
+            <Button Content="Close" Width="100" IsCancel="True"/>
         </StackPanel>
     </Grid>
 </UserControl>

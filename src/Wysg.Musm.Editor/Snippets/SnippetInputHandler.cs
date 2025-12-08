@@ -12,12 +12,43 @@ using Wysg.Musm.Editor.Internal; // ← mutation shield
 
 namespace Wysg.Musm.Editor.Snippets;
 
+/// <summary>
+/// Handles snippet expansion with placeholder navigation and completion.
+/// 
+/// ARCHITECTURE NOTES:
+/// ---------------------------------------------------------------------------
+/// - InsertOffset is stored as a simple readonly int, not a TextAnchor.
+/// - During snippet mode, all document changes should occur within the snippet region.
+/// - The OnDocumentChanged handler adjusts placeholder Start/Length based on edits.
+/// 
+/// BUG FIX HISTORY (2025-01-XX):
+/// ---------------------------------------------------------------------------
+/// Issue: Editor became sluggish, caret jumped to position 0, and 
+/// ArgumentOutOfRangeException occurred during placeholder replacement.
+/// 
+/// Attempted fixes that FAILED:
+/// 1. Using TextAnchor for InsertOffset - Accessing anchor.Offset during
+///    OnDocumentChanged caused timing issues and re-entrant behavior.
+/// 2. Adding logic to shift _insertOffset when changes occur before it -
+///    This was unnecessary complexity; during snippet mode, changes only
+///    occur within the snippet region (caret is constrained to placeholders).
+/// 
+/// Root cause was actually in MusmEditor.OnDocumentTextChanged, which was
+/// changed to use async Dispatcher.BeginInvoke. This interfered with
+/// EditorMutationShield and caused selection/caret state corruption.
+/// 
+/// The original simple approach (commit 655fbfa and earlier) was correct:
+/// - InsertOffset as readonly int (never changes during snippet session)
+/// - Simple OnDocumentChanged that adjusts placeholders based on delta
+/// - Synchronous document text changes in MusmEditor
+/// ---------------------------------------------------------------------------
+/// </summary>
 public static class SnippetInputHandler
 {
     private sealed class Session : IDisposable
     {
         public readonly TextArea Area;
-        public readonly int InsertOffset;
+        public readonly int InsertOffset; // Simple constant - original approach
         public readonly List<ExpandedPlaceholder> Map;     // appearance order
         public ExpandedPlaceholder? Current;
         private readonly PlaceholderOverlayRenderer _overlay;
@@ -110,6 +141,7 @@ public static class SnippetInputHandler
 
             if (delta == 0) return;
 
+            // Original simple logic: adjust all placeholders based on change position
             foreach (var ph in Map)
             {
                 int startAbs = InsertOffset + ph.Start;
@@ -386,11 +418,21 @@ public static class SnippetInputHandler
         {
             // Build replacements for ALL placeholders that are not completed (Length>0)
             var toReplace = new List<(int absStart, int length, string replacement)>();
+            int docLength = area.Document.TextLength;
+            
             foreach (var ph in session.Map)
             {
                 if (ph.Length <= 0) continue; // already completed
                 int absStart = session.InsertOffset + ph.Start;
                 int length = ph.Length;
+
+                // Validate bounds - skip if out of range
+                if (absStart < 0 || absStart >= docLength)
+                    continue;
+                if (absStart + length > docLength)
+                    length = docLength - absStart; // clamp to document end
+                if (length <= 0)
+                    continue;
 
                 string? replacement = null;
 
@@ -437,7 +479,11 @@ public static class SnippetInputHandler
                 {
                     foreach (var item in toReplace.OrderByDescending(t => t.absStart))
                     {
-                        area.Document.Replace(item.absStart, item.length, item.replacement);
+                        // Final safety check before replace
+                        if (item.absStart >= 0 && item.absStart + item.length <= area.Document.TextLength)
+                        {
+                            area.Document.Replace(item.absStart, item.length, item.replacement);
+                        }
                     }
                 }
             }

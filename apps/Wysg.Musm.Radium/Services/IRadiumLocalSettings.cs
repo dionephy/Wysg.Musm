@@ -76,5 +76,12 @@ namespace Wysg.Musm.Radium.Services
         /// Use this for bookmarks that point to dynamic/changing elements (e.g., report text fields, worklist selections).
         /// </summary>
         string? SessionBasedCacheBookmarks { get; set; }
+        
+        // NEW: Header format template (Report Format tab)
+        /// <summary>
+        /// User-configurable header format template with placeholders:
+        /// {Chief Complaint}, {Patient History Lines}, {Techniques}, {Comparison}
+        /// </summary>
+        string? HeaderFormatTemplate { get; set; }
     }
 }

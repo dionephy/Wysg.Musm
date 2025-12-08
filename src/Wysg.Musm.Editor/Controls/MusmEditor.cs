@@ -115,63 +115,42 @@ public class MusmEditor : TextEditor
 
     public string DocumentText { get => (string)GetValue(DocumentTextProperty); set => SetValue(DocumentTextProperty, value); }
 
+    /// <summary>
+    /// Handles DocumentText dependency property changes.
+    /// 
+    /// BUG FIX (2025-01-XX, commits after 655fbfa):
+    /// ---------------------------------------------------------------------------
+    /// A previous version introduced async Dispatcher.BeginInvoke with DispatcherPriority.Send
+    /// and additional CaretOffsetAdjustment logic. This caused several issues:
+    /// 
+    /// 1. Snippet mode became sluggish and unresponsive
+    /// 2. Caret would jump to position 0 when snippets/hotkeys were inserted
+    /// 3. Editor consumed all key inputs incorrectly
+    /// 4. ArgumentOutOfRangeException during placeholder replacement
+    /// 
+    /// Root cause: The async dispatch (even with high priority) introduced timing issues
+    /// that interfered with SnippetInputHandler's caret and selection management.
+    /// The EditorMutationShield couldn't properly guard operations across async boundaries.
+    /// 
+    /// Fix: Reverted to the original simple synchronous approach from commit 655fbfa.
+    /// Text changes are applied immediately and synchronously, which is the correct
+    /// approach for this kind of text synchronization during snippet mode.
+    /// ---------------------------------------------------------------------------
+    /// </summary>
     private static void OnDocumentTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var editor = (MusmEditor)d;
         var newText = e.NewValue as string ?? string.Empty;
-        
-        // CRITICAL FIX (2025-12-05): Always update even if text appears equal
-        // This handles cases where the editor's internal state is out of sync with the binding
-        // For example, when switching between tabs with different content, AvalonEdit might
-        // cache the old visual state even though the binding value has changed
-        
-        // Store current caret offset before text change
-        int oldCaretOffset = editor.CaretOffset;
-        
+        if (editor.Text == newText) return;
+
         editor._suppressTextSync = true;
-        try 
-        { 
-            // Defer the text change to ensure no undo group is open
-            // This avoids the "No undo group should be open at this point" error
-            editor.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                try
-                {
-                    editor._suppressTextSync = true;
-                    
-                    // CRITICAL FIX: Always set text, even if it appears equal
-                    // The visual might be out of sync with the actual document
-                    bool forceUpdate = (editor.Text ?? string.Empty) == newText && editor.Text != newText;
-                    
-                    if (editor.Text != newText || forceUpdate)
-                    {
-                        editor.Text = newText;
-                        
-                        // Check if we need to adjust caret based on CaretOffsetAdjustment
-                        int adjustment = editor.CaretOffsetAdjustment;
-                        if (adjustment > 0)
-                        {
-                            // Adjust caret position: new_caret = old_caret + adjustment
-                            int newCaretOffset = Math.Min(oldCaretOffset + adjustment, editor.Document.TextLength);
-                            editor.CaretOffset = newCaretOffset;
-                            
-                            // Reset adjustment to zero after applying
-                            editor.SetCurrentValue(CaretOffsetAdjustmentProperty, 0);
-                        }
-                    }
-                    
-                    // Force visual refresh (fixes stale display when binding changes)
-                    editor.TextArea?.TextView?.InvalidateVisual();
-                }
-                finally
-                {
-                    editor._suppressTextSync = false;
-                }
-            }), DispatcherPriority.Send);  // Changed from Background to Send for immediate update
-        } 
-        finally 
-        { 
-            editor._suppressTextSync = false; 
+        try
+        {
+            editor.Text = newText;
+        }
+        finally
+        {
+            editor._suppressTextSync = false;
         }
     }
 

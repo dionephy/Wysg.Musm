@@ -2,15 +2,10 @@ using System;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Wysg.Musm.Radium.ViewModels
 {
-    /// <summary>
-    /// Partial: Current editor text, reportify toggling and JSON synchronization.
-    /// - Maintains raw vs transformed (reportified) text blocks
-    /// - Auto-unreportify when user edits transformed content
-    /// - Synchronizes a JSON view (CurrentReportJson) with findings + conclusion fields
-    /// </summary>
     public partial class MainViewModel
     {
         // Raw (unmodified) copies captured when entering reportified mode
@@ -444,16 +439,23 @@ namespace Wysg.Musm.Radium.ViewModels
             { 
                 if (value != _findingsText) 
                 { 
-                    // NEW: If reportified and not suppressing, cancel change and dereportify
-                    if (_reportified && !_suppressAutoToggle)
+                    // CRITICAL FIX: Always allow clearing (empty string) regardless of reportified state
+                    // This ensures ClearCurrentFields can clear the editor even when reportified is ON
+                    bool isClearing = string.IsNullOrEmpty(value);
+                    
+                    // NEW: If reportified and not suppressing and NOT clearing, cancel change and dereportify
+                    if (_reportified && !_suppressAutoToggle && !isClearing)
                     {
                         AutoUnreportifyOnEdit();
                         return; // Cancel the text change
                     }
                     
-                    // CRITICAL FIX: Always update _rawFindings when not reportified
-                    // This ensures RawFindingsTextEditable always returns current value
-                    if (!_reportified) _rawFindings = value;
+                    // CRITICAL FIX: Always update _rawFindings when not reportified OR when clearing
+                    // When clearing, update both raw and display values
+                    if (!_reportified || isClearing)
+                    {
+                        _rawFindings = value;
+                    }
                     
                     if (SetProperty(ref _findingsText, value)) 
                     {
@@ -475,16 +477,23 @@ namespace Wysg.Musm.Radium.ViewModels
             { 
                 if (value != _conclusionText) 
                 { 
-                    // NEW: If reportified and not suppressing, cancel change and dereportify
-                    if (_reportified && !_suppressAutoToggle)
+                    // CRITICAL FIX: Always allow clearing (empty string) regardless of reportified state
+                    // This ensures ClearCurrentFields can clear the editor even when reportified is ON
+                    bool isClearing = string.IsNullOrEmpty(value);
+                    
+                    // NEW: If reportified and not suppressing and NOT clearing, cancel change and dereportify
+                    if (_reportified && !_suppressAutoToggle && !isClearing)
                     {
                         AutoUnreportifyOnEdit();
                         return; // Cancel the text change
                     }
                     
-                    // CRITICAL FIX: Always update _rawConclusion when not reportified
-                    // This ensures RawConclusionTextEditable always returns current value
-                    if (!_reportified) _rawConclusion = value;
+                    // CRITICAL FIX: Always update _rawConclusion when not reportified OR when clearing
+                    // When clearing, update both raw and display values
+                    if (!_reportified || isClearing)
+                    {
+                        _rawConclusion = value;
+                    }
                     
                     if (SetProperty(ref _conclusionText, value))
                     {
@@ -862,61 +871,76 @@ namespace Wysg.Musm.Radium.ViewModels
         // Real-time header formatting based on component fields
         private void UpdateFormattedHeader()
         {
-            var lines = new System.Collections.Generic.List<string>();
-            
-            bool hasClinicalInfo = !string.IsNullOrWhiteSpace(_chiefComplaint) || !string.IsNullOrWhiteSpace(_patientHistory);
-            bool hasTechniques = !string.IsNullOrWhiteSpace(_studyTechniques);
-            bool hasAnyHeaderContent = hasClinicalInfo || hasTechniques;
-            
-            // Clinical information logic
-            if (hasClinicalInfo)
+            try
             {
-                if (string.IsNullOrWhiteSpace(_chiefComplaint) && !string.IsNullOrWhiteSpace(_patientHistory))
+                // If XR modality excluded, keep old behavior
+                if (ShouldSkipHeaderUpdateForXR())
                 {
-                    // Chief complaint is empty but history exists -> show "Clinical information: NA"
-                    lines.Add("Clinical information: N/A");
-                }
-                else if (!string.IsNullOrWhiteSpace(_chiefComplaint))
-                {
-                    // Chief complaint exists -> show it as first line
-                    lines.Add($"Clinical information: {_chiefComplaint}");
-                }
-                
-                // Add patient history lines (each line prefixed with "- ")
-                if (!string.IsNullOrWhiteSpace(_patientHistory))
-                {
-                    var historyLines = _patientHistory.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                    foreach (var line in historyLines)
+                    var lines = new System.Collections.Generic.List<string>();
+                    bool hasClinicalInfo = !string.IsNullOrWhiteSpace(_chiefComplaint) || !string.IsNullOrWhiteSpace(_patientHistory);
+                    bool hasTechniques = !string.IsNullOrWhiteSpace(_studyTechniques);
+                    bool hasAnyHeaderContent = hasClinicalInfo || hasTechniques;
+                    if (hasClinicalInfo)
                     {
-                        var trimmed = line.Trim();
-                        if (!string.IsNullOrWhiteSpace(trimmed))
+                        if (string.IsNullOrWhiteSpace(_chiefComplaint) && !string.IsNullOrWhiteSpace(_patientHistory))
+                            lines.Add("Clinical information: N/A");
+                        else if (!string.IsNullOrWhiteSpace(_chiefComplaint))
+                            lines.Add($"Clinical information: {_chiefComplaint}");
+                        if (!string.IsNullOrWhiteSpace(_patientHistory))
                         {
-                            lines.Add($"- {trimmed}");
+                            var historyLines = _patientHistory.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                            foreach (var line in historyLines)
+                            {
+                                var trimmed = line.Trim();
+                                if (!string.IsNullOrWhiteSpace(trimmed)) lines.Add($"- {trimmed}");
+                            }
+                        }
+                    }
+                    if (hasTechniques) lines.Add($"Techniques: {_studyTechniques}");
+                    if (!string.IsNullOrWhiteSpace(_comparison)) lines.Add($"Comparison: {_comparison}");
+                    else if (hasAnyHeaderContent) lines.Add("Comparison: N/A");
+                    var formattedLegacy = string.Join("\n", lines).Trim();
+                    HeaderText = formattedLegacy;
+                    return;
+                }
+
+                // Use user-configured header template if available
+                var template = _localSettings?.HeaderFormatTemplate;
+                if (string.IsNullOrWhiteSpace(template))
+                {
+                    template = "Clinical information: {Chief Complaint}\n- {Patient History Lines}\nTechniques: {Techniques}\nComparison: {Comparison}";
+                }
+                var formatted = BuildHeaderFromTemplate(template);
+                HeaderText = formatted;
+            }
+            catch
+            {
+                // Fall back silently to legacy behavior if template application fails
+                var lines = new System.Collections.Generic.List<string>();
+                bool hasClinicalInfo = !string.IsNullOrWhiteSpace(_chiefComplaint) || !string.IsNullOrWhiteSpace(_patientHistory);
+                bool hasTechniques = !string.IsNullOrWhiteSpace(_studyTechniques);
+                bool hasAnyHeaderContent = hasClinicalInfo || hasTechniques;
+                if (hasClinicalInfo)
+                {
+                    if (string.IsNullOrWhiteSpace(_chiefComplaint) && !string.IsNullOrWhiteSpace(_patientHistory))
+                        lines.Add("Clinical information: N/A");
+                    else if (!string.IsNullOrWhiteSpace(_chiefComplaint))
+                        lines.Add($"Clinical information: {_chiefComplaint}");
+                    if (!string.IsNullOrWhiteSpace(_patientHistory))
+                    {
+                        var historyLines = _patientHistory.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var line in historyLines)
+                        {
+                            var trimmed = line.Trim();
+                            if (!string.IsNullOrWhiteSpace(trimmed)) lines.Add($"- {trimmed}");
                         }
                     }
                 }
+                if (hasTechniques) lines.Add($"Techniques: {_studyTechniques}");
+                if (!string.IsNullOrWhiteSpace(_comparison)) lines.Add($"Comparison: {_comparison}");
+                else if (hasAnyHeaderContent) lines.Add("Comparison: N/A");
+                HeaderText = string.Join("\n", lines).Trim();
             }
-            
-            // Techniques logic
-            if (hasTechniques)
-            {
-                lines.Add($"Techniques: {_studyTechniques}");
-            }
-            
-            // Comparison logic
-            if (!string.IsNullOrWhiteSpace(_comparison))
-            {
-                lines.Add($"Comparison: {_comparison}");
-            }
-            else if (hasAnyHeaderContent)
-            {
-                lines.Add("Comparison: N/A");
-            }
-            // else: if comparison is empty AND no other header content, don't show comparison line at all
-            
-            // Join and trim the result
-            var formatted = string.Join("\n", lines).Trim();
-            HeaderText = formatted;
         }
         
         /// <summary>
@@ -977,6 +1001,110 @@ namespace Wysg.Musm.Radium.ViewModels
             
             var parts = studyName.Trim().Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
             return parts.Length > 0 ? parts[0].Trim() : string.Empty;
+        }
+        
+        /// <summary>
+        /// Called when Header format template is changed and settings window is saved.
+        /// If header has content, rebuild it using the new template and current component fields.
+        /// </summary>
+        public void OnHeaderFormatTemplateChanged()
+        {
+            try
+            {
+                // Read template from local settings; use default if empty
+                var template = _localSettings?.HeaderFormatTemplate ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(template))
+                {
+                    template = "Clinical information: {Chief Complaint}\n- {Patient History Lines}\nTechniques: {Techniques}\nComparison: {Comparison}";
+                }
+
+                // Build header with placeholders
+                string formatted = BuildHeaderFromTemplate(template);
+
+                // If existing header has content, refresh it to match changed format
+                if (!string.IsNullOrWhiteSpace(_headerText))
+                {
+                    _suppressAutoToggle = true;
+                    try
+                    {
+                        HeaderText = formatted;
+                    }
+                    finally { _suppressAutoToggle = false; }
+                }
+                else
+                {
+                    // Even if empty, ensure computed HeaderDisplay reflects new template indirectly
+                    HeaderText = formatted;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[HeaderFormat] Error applying template: {ex.Message}");
+            }
+        }
+
+        private string BuildHeaderFromTemplate(string template)
+        {
+            var chief = _chiefComplaint ?? string.Empty;
+            var history = (_patientHistory ?? string.Empty).Replace("\r\n", "\n").Replace("\r", "\n");
+            string historyLines = string.IsNullOrWhiteSpace(history)
+                ? string.Empty
+                : string.Join("\n", history.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()));
+            var techniques = _studyTechniques ?? string.Empty;
+            var comparison = _comparison ?? string.Empty;
+            var chiefDisplay = chief;
+
+            var lines = template.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+            var outputLines = new System.Collections.Generic.List<string>(lines.Length);
+            
+            foreach (var rawLine in lines)
+            {
+                // If line is completely empty (no text at all), preserve it
+                if (string.IsNullOrWhiteSpace(rawLine) && rawLine.Length == 0)
+                {
+                    outputLines.Add(string.Empty);
+                    continue;
+                }
+                
+                var line = rawLine;
+                var matches = Regex.Matches(line, @"\{([^}]+)\}");
+                var distinct = matches.Cast<Match>().Select(m => m.Groups[1].Value).Distinct().ToList();
+                
+                string GetValue(string name) => name switch
+                {
+                    "Chief Complaint" => chiefDisplay,
+                    "Patient History Lines" => historyLines,
+                    "Techniques" => techniques,
+                    "Comparison" => comparison,
+                    _ => string.Empty
+                };
+                
+                // If the line contains exactly one distinct placeholder and its mapped value is empty or whitespace, skip the line
+                if (distinct.Count == 1)
+                {
+                    var onlyVal = GetValue(distinct[0]);
+                    if (string.IsNullOrWhiteSpace(onlyVal)) continue;
+                }
+                
+                // Perform replacements
+                foreach (var name in distinct)
+                {
+                    var val = GetValue(name);
+                    line = line.Replace("{" + name + "}", val ?? string.Empty);
+                }
+                
+                // After replacement, if line becomes empty due to only having placeholders, skip it
+                // But if it had other text, keep it even if trimmed result is empty
+                var trimmed = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed) && distinct.Count > 0)
+                {
+                    continue;
+                }
+                
+                outputLines.Add(trimmed);
+            }
+            
+            return string.Join("\n", outputLines).Trim();
         }
     }
 }
