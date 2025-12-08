@@ -93,15 +93,31 @@ namespace Wysg.Musm.Radium.Converters
                 }
                 
                 // Check for keywords (longest first to avoid partial matches like "If" matching before "If not")
-                foreach (var keyword in Keywords.OrderByDescending(k => k.Length))
+                // IMPORTANT: Only match keywords at word boundaries (start of string or after whitespace)
+                bool isWordBoundary = currentIndex == 0 || char.IsWhiteSpace(text[currentIndex - 1]);
+                
+                if (isWordBoundary)
                 {
-                    if (currentIndex + keyword.Length <= text.Length &&
-                        text.Substring(currentIndex, keyword.Length).Equals(keyword, StringComparison.OrdinalIgnoreCase))
+                    foreach (var keyword in Keywords.OrderByDescending(k => k.Length))
                     {
-                        textBlock.Inlines.Add(new Run(keyword) { Foreground = KeywordBrush });
-                        currentIndex += keyword.Length;
-                        foundMatch = true;
-                        break;
+                        if (currentIndex + keyword.Length <= text.Length &&
+                            text.Substring(currentIndex, keyword.Length).Equals(keyword, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Additional check: ensure keyword ends at word boundary
+                            // (end of string, whitespace, or for "to" keyword, any non-letter character)
+                            int endIndex = currentIndex + keyword.Length;
+                            bool isEndBoundary = endIndex >= text.Length || 
+                                                 char.IsWhiteSpace(text[endIndex]) ||
+                                                 !char.IsLetter(text[endIndex]);
+                            
+                            if (isEndBoundary)
+                            {
+                                textBlock.Inlines.Add(new Run(keyword) { Foreground = KeywordBrush });
+                                currentIndex += keyword.Length;
+                                foundMatch = true;
+                                break;
+                            }
+                        }
                     }
                 }
                 
@@ -127,7 +143,12 @@ namespace Wysg.Musm.Radium.Converters
                 {
                     var idx = text.IndexOf(keyword, currentIndex + 1, StringComparison.OrdinalIgnoreCase);
                     if (idx >= 0 && idx < nextBoundary)
-                        nextBoundary = idx;
+                    {
+                        // Only consider this a boundary if it's at a word boundary
+                        bool isAtWordBoundary = idx == 0 || char.IsWhiteSpace(text[idx - 1]);
+                        if (isAtWordBoundary)
+                            nextBoundary = idx;
+                    }
                 }
                 
                 foreach (var prop in CustomModuleProperties.AllProperties)
