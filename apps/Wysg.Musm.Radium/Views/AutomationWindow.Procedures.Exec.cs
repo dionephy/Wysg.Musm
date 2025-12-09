@@ -36,6 +36,18 @@ namespace Wysg.Musm.Radium.Views
                     switch (row.Op)
                     {
                         case "GetText":
+                        {
+                            // GetText can target either a bookmark (Element) or a cached element reference (Var); only default to Element when unset
+                            row.Arg1Enabled = true;
+                            var getTextArgKind = ParseArgKind(row.Arg1.Type);
+                            if (getTextArgKind == ArgKind.String || getTextArgKind == ArgKind.Number)
+                            {
+                                row.Arg1.Type = nameof(ArgKind.Element);
+                            }
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
+                            row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
+                            break;
+                        }
                         case "GetTextOCR":
                         case "GetName":
                         case "Invoke":

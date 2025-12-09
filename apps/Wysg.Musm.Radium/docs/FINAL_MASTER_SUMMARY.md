@@ -678,6 +678,13 @@ The documentation is now:
 
 ## Recent Updates
 
+### 2025-12-09: GetText Arg1 Preservation
+- Fixed Automation Window regression that forced `GetText` Arg1 back to `Element` when running procedures, which broke cached element chaining.
+- Logic now defaults Arg1 to `Element` only when it is still at the initial placeholder, preserving user-selected `Var` references.
+- **Files Modified**: `Views/AutomationWindow.Procedures.Exec.cs`
+- **Documentation**: `docs/00-current/FIX_2025-12-09_GetTextArgTypeReset.md`
+- **Status**: ? Complete, Build Pending Verification
+
 ### 2025-11-25: Automation Window Tab Structure
 - Reorganized "Automation" window with tab-based layout
 - Tab 1 "UI Bookmark": Process management, bookmark operations, crawl editor
