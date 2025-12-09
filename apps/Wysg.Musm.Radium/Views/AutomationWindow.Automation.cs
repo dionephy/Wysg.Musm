@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
@@ -21,6 +22,7 @@ namespace Wysg.Musm.Radium.Views
         private bool _isAutomationDragging;
         private ObservableCollection<string> _customModules = new();
         private ObservableCollection<string> _builtinModules = new(); // Filtered built-in modules (excluding custom)
+        private const string ElseIfMessageModuleName = "Else If Message is No";
         
         // Drag-drop visual feedback fields
         private Border? _automationDragGhost;
@@ -102,11 +104,6 @@ namespace Wysg.Musm.Radium.Views
                         ssrp.ItemsSource = _automationViewModel.ShortcutSendReportPreviewModules;
                         ssrp.PreviewMouseLeftButtonDown += OnAutomationListMouseDown;
                     }
-                    if (FindName("lstShortcutSendReportReportified") is ListBox ssrr)
-                    {
-                        ssrr.ItemsSource = _automationViewModel.ShortcutSendReportReportifiedModules;
-                        ssrr.PreviewMouseLeftButtonDown += OnAutomationListMouseDown;
-                    }
                     if (FindName("lstTest") is ListBox test)
                     {
                         test.ItemsSource = _automationViewModel.TestModules;
@@ -129,9 +126,15 @@ namespace Wysg.Musm.Radium.Views
             {
                 var store = CustomModuleStore.Load();
                 _customModules.Clear();
-                foreach (var module in store.Modules.OrderBy(m => m.Name))
+                
+                var labelDisplays = store.Labels
+                    .Select(CustomModuleStore.ToLabelDisplay)
+                    .Where(label => !string.IsNullOrWhiteSpace(label));
+                var moduleNames = store.Modules.Select(m => m.Name);
+                
+                foreach (var item in labelDisplays.Concat(moduleNames).OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
                 {
-                    _customModules.Add(module.Name);
+                    _customModules.Add(item);
                 }
             }
             catch (Exception ex)
@@ -168,12 +171,27 @@ namespace Wysg.Musm.Radium.Views
                     Owner = this
                 };
                 
-                if (dialog.ShowDialog() == true && dialog.Result != null)
+                if (dialog.ShowDialog() == true)
                 {
                     var store = CustomModuleStore.Load();
-                    
                     try
                     {
+                        if (!string.IsNullOrWhiteSpace(dialog.CreatedLabelName))
+                        {
+                            store.AddLabel(dialog.CreatedLabelName);
+                            CustomModuleStore.Save(store);
+                            LoadCustomModules();
+                            RefreshBuiltinModules();
+                            MessageBox.Show($"Label '{CustomModuleStore.ToLabelDisplay(dialog.CreatedLabelName)}' created successfully.", 
+                                "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                            return;
+                        }
+                        
+                        if (dialog.Result == null)
+                        {
+                            return;
+                        }
+                        
                         store.AddModule(dialog.Result);
                         CustomModuleStore.Save(store);
                         
@@ -216,17 +234,28 @@ namespace Wysg.Musm.Radium.Views
                 if (list.SelectedItem is not string moduleName) return;
                 
                 var result = MessageBox.Show(
-                    $"Are you sure you want to delete custom module '{moduleName}'?\n\n" +
-                    $"This will remove it from the available modules list.\n" +
-                    $"Note: It will NOT be removed from existing automation sequences automatically.",
-                    "Delete Custom Module",
+                    $"Are you sure you want to delete '{moduleName}'?\n\n" +
+                    "This will remove it from the available modules list.\n" +
+                    "Note: It will NOT be removed from existing automation sequences automatically.",
+                    "Delete Custom Item",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
                 
                 if (result != MessageBoxResult.Yes) return;
                 
                 var store = CustomModuleStore.Load();
-                if (store.RemoveModule(moduleName))
+                bool deleted;
+                bool wasLabel = CustomModuleStore.TryParseLabelDisplay(moduleName, out var labelName);
+                if (wasLabel)
+                {
+                    deleted = store.RemoveLabel(labelName);
+                }
+                else
+                {
+                    deleted = store.RemoveModule(moduleName);
+                }
+                
+                if (deleted)
                 {
                     CustomModuleStore.Save(store);
                     
@@ -234,18 +263,18 @@ namespace Wysg.Musm.Radium.Views
                     LoadCustomModules();
                     RefreshBuiltinModules();
                     
-                    // Also remove from SettingsViewModel.AvailableModules
-                    if (_automationViewModel != null && _automationViewModel.AvailableModules.Contains(moduleName))
+                    // Also remove from SettingsViewModel.AvailableModules when deleting a module
+                    if (!wasLabel && _automationViewModel != null && _automationViewModel.AvailableModules.Contains(moduleName))
                     {
                         _automationViewModel.AvailableModules.Remove(moduleName);
                     }
                     
-                    MessageBox.Show($"Custom module '{moduleName}' deleted successfully.", 
+                    MessageBox.Show($"'{moduleName}' deleted successfully.", 
                         "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
-                    MessageBox.Show($"Failed to delete module '{moduleName}'.", 
+                    MessageBox.Show($"Failed to delete '{moduleName}'.", 
                         "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
@@ -726,7 +755,6 @@ namespace Wysg.Musm.Radium.Views
                 "lstSendReport" => _automationViewModel.SendReportModules,
                 "lstSendReportPreview" => _automationViewModel.SendReportPreviewModules,
                 "lstShortcutSendReportPreview" => _automationViewModel.ShortcutSendReportPreviewModules,
-                "lstShortcutSendReportReportified" => _automationViewModel.ShortcutSendReportReportifiedModules,
                 "lstTest" => _automationViewModel.TestModules,
                 _ => null
             };
@@ -770,8 +798,7 @@ namespace Wysg.Musm.Radium.Views
             ValidatePane("Shortcut: Open study", _automationViewModel.ShortcutOpenNewModules, errors);
             ValidatePane("Send Report", _automationViewModel.SendReportModules, errors);
             ValidatePane("Send Report Preview", _automationViewModel.SendReportPreviewModules, errors);
-            ValidatePane("Shortcut: Send Report Preview", _automationViewModel.ShortcutSendReportPreviewModules, errors);
-            ValidatePane("Shortcut: Send Report Reportified", _automationViewModel.ShortcutSendReportReportifiedModules, errors);
+            ValidatePane("Shortcut: Send Report", _automationViewModel.ShortcutSendReportPreviewModules, errors);
             ValidatePane("Test", _automationViewModel.TestModules, errors);
             
             return errors;
@@ -785,23 +812,63 @@ namespace Wysg.Musm.Radium.Views
         {
             if (modules == null || modules.Count == 0) return;
             
-            var ifStack = new System.Collections.Generic.Stack<(int index, string moduleName)>();
+            CustomModuleStore? store;
+            try
+            {
+                store = CustomModuleStore.Load();
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"[{paneName}] Failed to load custom modules for validation: {ex.Message}");
+                return;
+            }
+            
+            var ifStack = new System.Collections.Generic.Stack<(int index, string moduleName, bool isMessageIf, bool hasElse)>();
             
             for (int i = 0; i < modules.Count; i++)
             {
                 var module = modules[i];
+                var custom = store.GetModule(module);
                 
-                // Check for "If" or "If not" modules
-                if (IsIfModule(module))
+                if (custom != null && (custom.Type == CustomModuleType.If ||
+                                       custom.Type == CustomModuleType.IfNot ||
+                                       custom.Type == CustomModuleType.IfMessageYes))
                 {
-                    ifStack.Push((i + 1, module)); // Store 1-based index for user-friendly messages
+                    bool isMessageIf = custom.Type == CustomModuleType.IfMessageYes;
+                    ifStack.Push((i + 1, module, isMessageIf, false));
+                    continue;
                 }
-                // Check for "End if" module
-                else if (string.Equals(module, "End if", StringComparison.OrdinalIgnoreCase))
+                
+                if (string.Equals(module, ElseIfMessageModuleName, StringComparison.OrdinalIgnoreCase))
                 {
                     if (ifStack.Count == 0)
                     {
-                        errors.Add($"[{paneName}] 'End if' at position {i + 1} has no matching 'If' or 'If not'");
+                        errors.Add($"[{paneName}] '{ElseIfMessageModuleName}' at position {i + 1} has no matching 'If Message ... is Yes'.");
+                        continue;
+                    }
+                    
+                    var top = ifStack.Pop();
+                    if (!top.isMessageIf)
+                    {
+                        errors.Add($"[{paneName}] '{ElseIfMessageModuleName}' at position {i + 1} must reside within an 'If Message ... is Yes' block (found '{top.moduleName}' instead).");
+                    }
+                    else if (top.hasElse)
+                    {
+                        errors.Add($"[{paneName}] Duplicate '{ElseIfMessageModuleName}' detected for '{top.moduleName}' (started at position {top.index}).");
+                    }
+                    else
+                    {
+                        top.hasElse = true;
+                    }
+                    ifStack.Push(top);
+                    continue;
+                }
+                
+                if (string.Equals(module, "End if", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (ifStack.Count == 0)
+                    {
+                        errors.Add($"[{paneName}] 'End if' at position {i + 1} has no matching 'If'.");
                     }
                     else
                     {
@@ -810,41 +877,18 @@ namespace Wysg.Musm.Radium.Views
                 }
             }
             
-            // Check for unclosed if-blocks
             if (ifStack.Count > 0)
             {
                 var unclosed = new System.Collections.Generic.List<string>();
                 while (ifStack.Count > 0)
                 {
-                    var (index, moduleName) = ifStack.Pop();
-                    unclosed.Add($"'{moduleName}' at position {index}");
+                    var (index, moduleName, _, hasElse) = ifStack.Pop();
+                    var extra = hasElse ? " (Else branch declared)" : string.Empty;
+                    unclosed.Add($"'{moduleName}' at position {index}{extra}");
                 }
-                unclosed.Reverse(); // Show in order they appear
+                unclosed.Reverse();
                 errors.Add($"[{paneName}] Unclosed if-blocks:\n  - " + string.Join("\n  - ", unclosed));
             }
-        }
-
-        /// <summary>
-        /// Checks if a module is an "If" or "If not" custom module
-        /// </summary>
-        private bool IsIfModule(string moduleName)
-        {
-            try
-            {
-                var store = CustomModuleStore.Load();
-                var module = store.GetModule(moduleName);
-                
-                if (module != null)
-                {
-                    return module.Type == CustomModuleType.If || module.Type == CustomModuleType.IfNot;
-                }
-            }
-            catch
-            {
-                // Ignore errors and continue
-            }
-            
-            return false;
         }
 
         private void OnCloseWindow(object sender, RoutedEventArgs e)

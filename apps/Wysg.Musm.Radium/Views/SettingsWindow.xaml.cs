@@ -195,9 +195,8 @@ namespace Wysg.Musm.Radium.Views
             {
                 if (FindName("tabsRoot") is TabControl tabs)
                 {
-                    if (FindName("tabGeneral") is TabItem db) tabs.SelectedItem = db;
+                    if (FindName("tabDatabase") is TabItem db) tabs.SelectedItem = db;
                     void Disable(string name) { if (FindName(name) is TabItem ti) ti.IsEnabled = false; }
-                    Disable("tabAutomation");
                     Disable("tabReportify");
                     Disable("tabPhrases");
                     Disable("tabSpy");
@@ -225,7 +224,7 @@ namespace Wysg.Musm.Radium.Views
         // Public method for child tabs to initialize their ListBoxes
         public void InitializeAutomationListBoxes(ListBox newStudy, ListBox addStudy, ListBox library, 
             ListBox shortcutOpenNew, ListBox sendReport,
-            ListBox sendReportPreview, ListBox shortcutSendReportPreview, ListBox shortcutSendReportReportified, ListBox test)
+            ListBox sendReportPreview, ListBox shortcutSendReportPreview, ListBox test)
         {
             if (DataContext is not SettingsViewModel vm) return;
             library.ItemsSource = vm.AvailableModules;
@@ -235,7 +234,6 @@ namespace Wysg.Musm.Radium.Views
             sendReport.ItemsSource = vm.SendReportModules;
             sendReportPreview.ItemsSource = vm.SendReportPreviewModules;
             shortcutSendReportPreview.ItemsSource = vm.ShortcutSendReportPreviewModules;
-            shortcutSendReportReportified.ItemsSource = vm.ShortcutSendReportReportifiedModules;
             test.ItemsSource = vm.TestModules;
         }
 
@@ -357,7 +355,6 @@ namespace Wysg.Musm.Radium.Views
                     "lstSendReport" => vm.SendReportModules,
                     "lstSendReportPreview" => vm.SendReportPreviewModules,
                     "lstShortcutSendReportPreview" => vm.ShortcutSendReportPreviewModules,
-                    "lstShortcutSendReportReportified" => vm.ShortcutSendReportReportifiedModules,
                     "lstTest" => vm.TestModules,
                     _ => null
                 };

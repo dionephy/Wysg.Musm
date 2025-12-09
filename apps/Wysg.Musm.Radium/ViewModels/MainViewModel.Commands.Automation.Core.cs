@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Diagnostics;
@@ -11,6 +12,26 @@ namespace Wysg.Musm.Radium.ViewModels
     /// </summary>
     public partial class MainViewModel
     {
+        private const string ElseIfMessageModuleName = "Else If Message is No";
+
+        private enum MessageBranchState
+        {
+            None,
+            RunningIf,
+            RunningElse,
+            SkipAll
+        }
+
+        private sealed class AutomationIfBlock
+        {
+            public int StartIndex { get; init; }
+            public bool ConditionMet { get; set; }
+            public bool IsMessageBox { get; init; }
+            public int ElseIndex { get; init; }
+            public int EndIndex { get; init; }
+            public MessageBranchState BranchState { get; set; }
+        }
+
         private async Task RunNewStudyProcedureAsync() => await (_newStudyProc != null ? _newStudyProc.ExecuteAsync(this) : Task.Run(OnNewStudy));
 
         // Execute modules sequentially to preserve user-defined order
@@ -22,9 +43,15 @@ namespace Wysg.Musm.Radium.ViewModels
             Services.ProcedureExecutor.SetSessionId(sessionId);
             Debug.WriteLine($"[Automation] Starting sequence '{sequenceName}' with session ID: {sessionId}");
             
-            // Stack to track if-block state: (startIndex, conditionMet)
-            var ifStack = new Stack<(int startIndex, bool conditionMet, bool isNegated)>();
+            var customStore = Wysg.Musm.Radium.Models.CustomModuleStore.Load();
+            var labelPositions = BuildLabelPositions(modules);
+            var gotoHopLimit = Math.Max(modules.Length * 5, 100);
+            int gotoHopCount = 0;
+            
+            var ifStack = new Stack<AutomationIfBlock>();
             bool skipExecution = false;
+            
+            void UpdateSkipExecution() => skipExecution = ifStack.Any(entry => !entry.ConditionMet);
             
             for (int i = 0; i < modules.Length; i++)
             {
@@ -32,6 +59,13 @@ namespace Wysg.Musm.Radium.ViewModels
                 
                 try
                 {
+                    // Treat label entries (e.g., "Label:") as no-op markers
+                    if (Wysg.Musm.Radium.Models.CustomModuleStore.TryParseLabelDisplay(m, out var labelName))
+                    {
+                        Debug.WriteLine($"[Automation] Reached label '{labelName}' at position {i}");
+                        continue;
+                    }
+                    
                     // Handle built-in "End if" module (must be checked first, before skipExecution)
                     if (string.Equals(m, "End if", StringComparison.OrdinalIgnoreCase))
                     {
@@ -42,49 +76,163 @@ namespace Wysg.Musm.Radium.ViewModels
                         }
                         
                         ifStack.Pop();
-                        skipExecution = ifStack.Any(entry => !entry.conditionMet);
+                        UpdateSkipExecution();
                         Debug.WriteLine($"[Automation] End if - resuming execution (skipExecution={skipExecution})");
                         continue;
                     }
                     
-                    // Check if this is a custom module (If, If not, AbortIf, Set, Run)
-                    var customStore = Wysg.Musm.Radium.Models.CustomModuleStore.Load();
+                    if (string.Equals(m, ElseIfMessageModuleName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        HandleElseIf(ref i);
+                        continue;
+                    }
+                    
+                    // Check if this is a custom module (If, If not, AbortIf, Set, Run, Goto, MessageIf)
                     var customModule = customStore.GetModule(m);
 
                     if (customModule != null)
                     {
-                        // Handle If and If not modules (must be checked before skipExecution)
-                        if (customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.If || 
-                            customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot)
+                        // Handle If, If not, and message-if modules before skipExecution
+                        if (customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.If ||
+                            customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot ||
+                            customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfMessageYes)
                         {
+                            if (customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfMessageYes)
+                            {
+                                if (skipExecution)
+                                {
+                                    var skippedBlock = new AutomationIfBlock
+                                    {
+                                        StartIndex = i,
+                                        ConditionMet = false,
+                                        IsMessageBox = true,
+                                        ElseIndex = -1,
+                                        EndIndex = -1,
+                                        BranchState = MessageBranchState.SkipAll
+                                    };
+                                    ifStack.Push(skippedBlock);
+                                    UpdateSkipExecution();
+                                    continue;
+                                }
+                                var bounds = FindMessageBlockBounds(modules, i, customStore);
+                                if (!bounds.HasEnd)
+                                {
+                                    SetStatus($"[{customModule.Name}] Missing 'End if' - skipping block", true);
+                                }
+                                var messageResult = await Services.ProcedureExecutor.ExecuteAsync(customModule.ProcedureName);
+                                var prompt = string.IsNullOrWhiteSpace(messageResult)
+                                    ? "Proceed?"
+                                    : messageResult.Trim();
+                                var caption = string.IsNullOrWhiteSpace(customModule.Name) ? "Automation" : customModule.Name;
+                                bool userChoseYes = false;
+                                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                                {
+                                    var dialogResult = System.Windows.MessageBox.Show(
+                                        prompt,
+                                        caption,
+                                        System.Windows.MessageBoxButton.YesNo,
+                                        System.Windows.MessageBoxImage.Question);
+                                    userChoseYes = dialogResult == System.Windows.MessageBoxResult.Yes;
+                                });
+                                Debug.WriteLine($"[Automation] {customModule.Name}: userChoseYes={userChoseYes}");
+                                SetStatus($"[{customModule.Name}] User selected {(userChoseYes ? "Yes" : "No")}");
+
+                                if (userChoseYes)
+                                {
+                                    var messageBlock = new AutomationIfBlock
+                                    {
+                                        StartIndex = i,
+                                        ConditionMet = true,
+                                        IsMessageBox = true,
+                                        ElseIndex = bounds.ElseIndex,
+                                        EndIndex = bounds.EndIndex,
+                                        BranchState = MessageBranchState.RunningIf
+                                    };
+                                    ifStack.Push(messageBlock);
+                                    UpdateSkipExecution();
+                                }
+                                else if (bounds.ElseIndex >= 0)
+                                {
+                                    var messageBlock = new AutomationIfBlock
+                                    {
+                                        StartIndex = i,
+                                        ConditionMet = true,
+                                        IsMessageBox = true,
+                                        ElseIndex = bounds.ElseIndex,
+                                        EndIndex = bounds.EndIndex,
+                                        BranchState = MessageBranchState.RunningElse
+                                    };
+                                    ifStack.Push(messageBlock);
+                                    UpdateSkipExecution();
+                                    if (bounds.ElseIndex > i)
+                                    {
+                                        i = bounds.ElseIndex - 1;
+                                    }
+                                }
+                                else
+                                {
+                                    var messageBlock = new AutomationIfBlock
+                                    {
+                                        StartIndex = i,
+                                        ConditionMet = false,
+                                        IsMessageBox = true,
+                                        ElseIndex = -1,
+                                        EndIndex = bounds.EndIndex,
+                                        BranchState = MessageBranchState.SkipAll
+                                    };
+                                    ifStack.Push(messageBlock);
+                                    UpdateSkipExecution();
+                                }
+                                continue;
+                            }
+
                             var ifSw = Stopwatch.StartNew();
-                            
-                            // Execute the procedure to get the condition result
                             var result = await Services.ProcedureExecutor.ExecuteAsync(customModule.ProcedureName);
-                            
                             ifSw.Stop();
-                            
-                            // Evaluate condition (true if result is non-empty and not "false")
-                            bool conditionValue = !string.IsNullOrWhiteSpace(result) && 
+                            bool conditionValue = !string.IsNullOrWhiteSpace(result) &&
                                                   !string.Equals(result, "false", StringComparison.OrdinalIgnoreCase);
-                            
-                            // Apply negation for If not
-                            bool conditionMet = customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot 
-                                ? !conditionValue 
+                            bool conditionMet = customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot
+                                ? !conditionValue
                                 : conditionValue;
-                            
-                            // Push to stack
-                            ifStack.Push((i, conditionMet, customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot));
-                            
-                            // Update skip flag (skip if any parent condition is false)
-                            skipExecution = !conditionMet || ifStack.Any(entry => !entry.conditionMet);
-                            
+                            var block = new AutomationIfBlock
+                            {
+                                StartIndex = i,
+                                ConditionMet = conditionMet,
+                                IsMessageBox = false,
+                                ElseIndex = -1,
+                                EndIndex = -1,
+                                BranchState = conditionMet ? MessageBranchState.RunningIf : MessageBranchState.SkipAll
+                            };
+                            ifStack.Push(block);
+                            UpdateSkipExecution();
                             Debug.WriteLine($"[Automation] {customModule.Name}: condition={conditionValue}, negated={customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot}, conditionMet={conditionMet}, skipExecution={skipExecution}");
                             SetStatus($"[{customModule.Name}] {(conditionMet ? "Condition met." : "Condition not met.")} ({ifSw.ElapsedMilliseconds} ms)");
                             continue;
                         }
                         
-                        // If we're inside a false if-block, skip execution of custom modules
+                        if (customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.Goto)
+                        {
+                            if (string.IsNullOrWhiteSpace(customModule.TargetLabelName) ||
+                                !labelPositions.TryGetValue(customModule.TargetLabelName, out var targetIndex))
+                            {
+                                SetStatus($"[{customModule.Name}] Target label '{customModule.TargetLabelName}' not found - sequence aborted.", true);
+                                return;
+                            }
+                            
+                            gotoHopCount++;
+                            if (gotoHopCount > gotoHopLimit)
+                            {
+                                SetStatus($"[{customModule.Name}] Too many goto hops - possible loop detected.", true);
+                                Debug.WriteLine($"[Automation] Aborting due to excessive goto hops (>{gotoHopLimit})");
+                                return;
+                            }
+                            
+                            Debug.WriteLine($"[Automation] {customModule.Name}: jumping to label '{customModule.TargetLabelName}' at index {targetIndex}");
+                            i = targetIndex;
+                            continue;
+                        }
+                        
+                        // If we're inside a false if-block, skip execution of custom modules (except goto handled above)
                         if (skipExecution)
                         {
                             Debug.WriteLine($"[Automation] Skipping custom module '{m}' (inside false if-block)");
@@ -112,26 +260,26 @@ namespace Wysg.Musm.Radium.ViewModels
                     }
 
                     // Standard modules...
-                    if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase) || 
+                    if (string.Equals(m, "NewStudy", StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(m, "NewStudy(obs)", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(m, "NewStudy(Obsolete)", StringComparison.OrdinalIgnoreCase)) 
-                    { 
-                        await RunNewStudyProcedureAsync(); 
+                        string.Equals(m, "NewStudy(Obsolete)", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await RunNewStudyProcedureAsync();
                     }
                     else if (string.Equals(m, "SetStudyLocked", StringComparison.OrdinalIgnoreCase) && _setStudyLockedProc != null) { await _setStudyLockedProc.ExecuteAsync(this); }
-                    else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _setStudyLockedProc != null) { await _setStudyLockedProc.ExecuteAsync(this); } // Legacy alias
+                    else if (string.Equals(m, "LockStudy", StringComparison.OrdinalIgnoreCase) && _setStudyLockedProc != null) { await _setStudyLockedProc.ExecuteAsync(this); }
                     else if (string.Equals(m, "SetStudyOpened", StringComparison.OrdinalIgnoreCase) && _setStudyOpenedProc != null) { await _setStudyOpenedProc.ExecuteAsync(this); }
-                    else if (string.Equals(m, "UnlockStudy", StringComparison.OrdinalIgnoreCase)) 
-                    { 
-                        PatientLocked = false; 
-                        StudyOpened = false; 
-                        SetStatus("[UnlockStudy] Done."); 
+                    else if (string.Equals(m, "UnlockStudy", StringComparison.OrdinalIgnoreCase))
+                    {
+                        PatientLocked = false;
+                        StudyOpened = false;
+                        SetStatus("[UnlockStudy] Done.");
                     }
-                    else if (string.Equals(m, "SetCurrentTogglesOff", StringComparison.OrdinalIgnoreCase)) 
-                    { 
+                    else if (string.Equals(m, "SetCurrentTogglesOff", StringComparison.OrdinalIgnoreCase))
+                    {
                         ProofreadMode = false;
                         Reportified = false;
-                        SetStatus("[SetCurrentTogglesOff] Done."); 
+                        SetStatus("[SetCurrentTogglesOff] Done.");
                     }
                     else if (string.Equals(m, "ClearCurrentFields", StringComparison.OrdinalIgnoreCase) && _clearCurrentFieldsProc != null)
                     {
@@ -157,7 +305,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         if (string.Equals(isVisible, "false", StringComparison.OrdinalIgnoreCase))
                         {
                             SetStatus("Worklist closed - automation aborted", true);
-                            return; // Abort the rest of the sequence
+                            return;
                         }
                         SetStatus("Worklist visible - continuing");
                     }
@@ -166,12 +314,9 @@ namespace Wysg.Musm.Radium.ViewModels
                         var matchResult = await _pacs.PatientNumberMatchAsync();
                         if (string.Equals(matchResult, "false", StringComparison.OrdinalIgnoreCase))
                         {
-                            // Get the actual patient numbers for display
                             var pacsPatientNumber = await _pacs.GetCurrentPatientNumberAsync();
                             var mainPatientNumber = PatientNumber;
                             Debug.WriteLine($"[Automation][AbortIfPatientNumberNotMatch] MISMATCH - PACS: '{pacsPatientNumber}' Main: '{mainPatientNumber}'");
-                            
-                            // Show confirmation MessageBox on UI thread
                             bool forceContinue = false;
                             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                             {
@@ -183,7 +328,6 @@ namespace Wysg.Musm.Radium.ViewModels
                                     "Patient Number Mismatch",
                                     System.Windows.MessageBoxButton.YesNo,
                                     System.Windows.MessageBoxImage.Warning);
-                                
                                 forceContinue = (result == System.Windows.MessageBoxResult.Yes);
                             });
                             
@@ -191,7 +335,7 @@ namespace Wysg.Musm.Radium.ViewModels
                             {
                                 SetStatus($"Patient number mismatch - automation aborted by user (PACS: '{pacsPatientNumber}', Main: '{mainPatientNumber}')", true);
                                 Debug.WriteLine($"[Automation][AbortIfPatientNumberNotMatch] User chose to ABORT");
-                                return; // Abort the rest of the sequence
+                                return;
                             }
                             else
                             {
@@ -209,12 +353,9 @@ namespace Wysg.Musm.Radium.ViewModels
                         var matchResult = await _pacs.StudyDateTimeMatchAsync();
                         if (string.Equals(matchResult, "false", StringComparison.OrdinalIgnoreCase))
                         {
-                            // Get the actual study datetimes for display
                             var pacsStudyDateTime = await _pacs.GetCurrentStudyDateTimeAsync();
                             var mainStudyDateTime = StudyDateTime;
                             Debug.WriteLine($"[Automation][AbortIfStudyDateTimeNotMatch] MISMATCH - PACS: '{pacsStudyDateTime}' Main: '{mainStudyDateTime}'");
-                            
-                            // Show confirmation MessageBox on UI thread
                             bool forceContinue = false;
                             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                             {
@@ -226,7 +367,6 @@ namespace Wysg.Musm.Radium.ViewModels
                                     "Study DateTime Mismatch",
                                     System.Windows.MessageBoxButton.YesNo,
                                     System.Windows.MessageBoxImage.Warning);
-                                
                                 forceContinue = (result == System.Windows.MessageBoxResult.Yes);
                             });
                             
@@ -234,7 +374,7 @@ namespace Wysg.Musm.Radium.ViewModels
                             {
                                 SetStatus($"Study date/time mismatch - automation aborted by user (PACS: '{pacsStudyDateTime}', Main: '{mainStudyDateTime}')", true);
                                 Debug.WriteLine($"[Automation][AbortIfStudyDateTimeNotMatch] User chose to ABORT");
-                                return; // Abort the rest of the sequence
+                                return;
                             }
                             else
                             {
@@ -265,11 +405,11 @@ namespace Wysg.Musm.Radium.ViewModels
                              string.Equals(m, "SetCurrentInMainScreen(obs)", StringComparison.OrdinalIgnoreCase)) { await RunSetCurrentInMainScreenAsync(); }
                     else if (string.Equals(m, "OpenWorklist", StringComparison.OrdinalIgnoreCase)) { await RunOpenWorklistAsync(); }
                     else if (string.Equals(m, "ResultsListSetFocus", StringComparison.OrdinalIgnoreCase)) { await RunResultsListSetFocusAsync(); }
-                    else if (string.Equals(m, "SendReport", StringComparison.OrdinalIgnoreCase)) 
-                    { 
-                        await RunSendReportModuleWithRetryAsync(); 
+                    else if (string.Equals(m, "SendReport", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await RunSendReportModuleWithRetryAsync();
                     }
-                    else if (string.Equals(m, "Reportify", StringComparison.OrdinalIgnoreCase)) 
+                    else if (string.Equals(m, "Reportify", StringComparison.OrdinalIgnoreCase))
                     {
                         ProofreadMode = true;
                         Debug.WriteLine("[Automation] Reportify module - START");
@@ -328,7 +468,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     Debug.WriteLine("[Automation] Module '" + m + "' error: " + ex.Message);
                     SetStatus($"Module '{m}' failed - procedure aborted", true);
-                    return; // ABORT entire sequence on any exception (including GetUntilReportDateTime failure)
+                    return;
                 }
             }
             
@@ -340,24 +480,108 @@ namespace Wysg.Musm.Radium.ViewModels
                 return;
             }
             
-            // NEW: Append success message after all modules succeed
             SetStatus($">> {sequenceName} completed successfully", isError: false);
+            
+            Dictionary<string, int> BuildLabelPositions(string[] source)
+            {
+                var positions = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                for (int index = 0; index < source.Length; index++)
+                {
+                    if (Wysg.Musm.Radium.Models.CustomModuleStore.TryParseLabelDisplay(source[index], out var name))
+                    {
+                        if (!positions.ContainsKey(name))
+                        {
+                            positions.Add(name, index);
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"[Automation] Duplicate label '{name}' detected at index {index} (first at {positions[name]})");
+                        }
+                    }
+                }
+                return positions;
+            }
+            
+            (bool HasEnd, int ElseIndex, int EndIndex) FindMessageBlockBounds(string[] source, int startIndex, Wysg.Musm.Radium.Models.CustomModuleStore store)
+            {
+                int depth = 0;
+                int elseIdx = -1;
+                for (int idx = startIndex + 1; idx < source.Length; idx++)
+                {
+                    var entry = source[idx];
+                    if (string.Equals(entry, "End if", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (depth == 0)
+                        {
+                            return (true, elseIdx, idx);
+                        }
+                        depth--;
+                        continue;
+                    }
+                    
+                    if (string.Equals(entry, ElseIfMessageModuleName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (depth == 0)
+                        {
+                            elseIdx = idx;
+                        }
+                        continue;
+                    }
+                    
+                    var nested = store.GetModule(entry);
+                    if (nested != null && (nested.Type == Wysg.Musm.Radium.Models.CustomModuleType.If ||
+                                           nested.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfNot ||
+                                           nested.Type == Wysg.Musm.Radium.Models.CustomModuleType.IfMessageYes))
+                    {
+                        depth++;
+                    }
+                }
+                return (false, elseIdx, source.Length - 1);
+            }
+            
+            void HandleElseIf(ref int index)
+            {
+                if (skipExecution)
+                {
+                    return;
+                }
+                if (ifStack.Count == 0)
+                {
+                    Debug.WriteLine($"[Automation] WARNING: '{ElseIfMessageModuleName}' without matching message-if at position {index}");
+                    return;
+                }
+                var current = ifStack.Peek();
+                if (!current.IsMessageBox)
+                {
+                    Debug.WriteLine($"[Automation] WARNING: '{ElseIfMessageModuleName}' encountered outside message-if at position {index}");
+                    return;
+                }
+                if (current.BranchState == MessageBranchState.RunningIf)
+                {
+                    current.ConditionMet = false;
+                    current.BranchState = MessageBranchState.SkipAll;
+                    UpdateSkipExecution();
+                    if (current.EndIndex >= 0)
+                    {
+                        index = current.EndIndex - 1;
+                    }
+                    return;
+                }
+                if (current.BranchState == MessageBranchState.RunningElse)
+                {
+                    return;
+                }
+            }
         }
-        
+
         /// <summary>
         /// Built-in module: AutofillCurrentHeader
         /// Handles Chief Complaint and Patient History auto-filling based on toggle states.
-        /// 
-        /// Logic:
-        /// - If copy toggle is ON: Copy Study Remark to Chief Complaint
-        /// - Else if auto toggle is ON: Invoke generate button for Chief Complaint
-        /// - If Patient History auto toggle is ON: Invoke generate button for Patient History
         /// </summary>
         private async Task AutofillCurrentHeaderAsync()
         {
             Debug.WriteLine("[Automation][AutofillCurrentHeader] START");
             
-            // Chief Complaint logic
             if (CopyStudyRemarkToChiefComplaint)
             {
                 Debug.WriteLine("[Automation][AutofillCurrentHeader] Copy toggle ON - copying Study Remark to Chief Complaint");
@@ -367,8 +591,6 @@ namespace Wysg.Musm.Radium.ViewModels
             else if (AutoChiefComplaint)
             {
                 Debug.WriteLine("[Automation][AutofillCurrentHeader] Auto toggle ON - invoking generate for Chief Complaint");
-                
-                // Invoke generate command on UI thread
                 await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     if (GenerateFieldCommand != null && GenerateFieldCommand.CanExecute("chief_complaint"))
@@ -381,7 +603,6 @@ namespace Wysg.Musm.Radium.ViewModels
                         Debug.WriteLine("[Automation][AutofillCurrentHeader] WARNING: Generate command not available for Chief Complaint");
                     }
                 });
-                
                 SetStatus("[AutofillCurrentHeader] Chief Complaint generate invoked.");
             }
             else
@@ -389,12 +610,9 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine("[Automation][AutofillCurrentHeader] Both copy and auto toggles OFF - Chief Complaint not updated");
             }
             
-            // Patient History logic
             if (AutoPatientHistory)
             {
                 Debug.WriteLine("[Automation][AutofillCurrentHeader] Auto toggle ON - invoking generate for Patient History");
-                
-                // Invoke generate command on UI thread
                 await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     if (GenerateFieldCommand != null && GenerateFieldCommand.CanExecute("patient_history"))
@@ -407,7 +625,6 @@ namespace Wysg.Musm.Radium.ViewModels
                         Debug.WriteLine("[Automation][AutofillCurrentHeader] WARNING: Generate command not available for Patient History");
                     }
                 });
-                
                 SetStatus("[AutofillCurrentHeader] Patient History generate invoked.");
             }
             else
@@ -422,9 +639,6 @@ namespace Wysg.Musm.Radium.ViewModels
         /// <summary>
         /// Built-in module: FocusEditorFindings
         /// Brings the MainWindow to the front, activates it, and focuses the Findings editor.
-        /// 
-        /// This module is useful in automation sequences where you want to ensure
-        /// the user's attention is on the Findings editor after performing other operations.
         /// </summary>
         private async Task RunFocusEditorFindingsAsync()
         {
@@ -442,30 +656,23 @@ namespace Wysg.Musm.Radium.ViewModels
                         return;
                     }
                     
-                    // Bring window to front
                     if (mainWindow.WindowState == System.Windows.WindowState.Minimized)
                     {
                         mainWindow.WindowState = System.Windows.WindowState.Normal;
                     }
                     
-                    // Activate the window (brings it to foreground)
                     mainWindow.Activate();
                     mainWindow.Focus();
-                    
                     Debug.WriteLine("[Automation][FocusEditorFindings] MainWindow activated");
                     
-                    // Focus the EditorFindings control
-                    // The MainWindow has gridCenter.EditorFindings which contains the MusmEditor
                     if (mainWindow is Views.MainWindow mw)
                     {
-                        // Find the EditorFindings control
                         var gridCenter = mw.FindName("gridCenter") as Controls.CenterEditingArea;
                         if (gridCenter != null)
                         {
                             var editorFindings = gridCenter.EditorFindings;
                             if (editorFindings != null)
                             {
-                                // Find the underlying MusmEditor (AvalonEdit TextEditor)
                                 var musmEditor = editorFindings.FindName("Editor") as ICSharpCode.AvalonEdit.TextEditor;
                                 if (musmEditor != null)
                                 {

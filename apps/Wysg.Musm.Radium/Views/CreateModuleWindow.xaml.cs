@@ -11,6 +11,7 @@ namespace Wysg.Musm.Radium.Views
     public partial class CreateModuleWindow : Window
     {
         public CustomModule? Result { get; private set; }
+        public string? CreatedLabelName { get; private set; }
         private bool _isInitializing = true;
         
         public CreateModuleWindow()
@@ -18,6 +19,7 @@ namespace Wysg.Musm.Radium.Views
             InitializeComponent();
             LoadProperties();
             LoadProcedures();
+            LoadLabels();
             
             // Set default selection
             cboModuleType.SelectedIndex = 0;
@@ -74,6 +76,34 @@ namespace Wysg.Musm.Radium.Views
             }
         }
         
+        private void LoadLabels()
+        {
+            try
+            {
+                cboGotoLabel.Items.Clear();
+                var store = CustomModuleStore.Load();
+                var labels = store.Labels
+                    .Select(CustomModuleStore.ToLabelDisplay)
+                    .Where(label => !string.IsNullOrWhiteSpace(label))
+                    .OrderBy(label => label, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                
+                foreach (var label in labels)
+                {
+                    cboGotoLabel.Items.Add(label);
+                }
+                
+                if (cboGotoLabel.Items.Count > 0)
+                {
+                    cboGotoLabel.SelectedIndex = 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CreateModule] Error loading labels: {ex.Message}");
+            }
+        }
+        
         // Helper to get proc path (same as AutomationWindow pattern)
         private static string GetProcPath()
         {
@@ -117,7 +147,11 @@ namespace Wysg.Musm.Radium.Views
             if (cboModuleType.SelectedValue != null)
             {
                 var type = cboModuleType.SelectedValue.ToString();
+                var requiresProcedure = type != "Label" && type != "Goto";
                 pnlProperty.Visibility = type == "Set" ? Visibility.Visible : Visibility.Collapsed;
+                pnlProcedure.Visibility = requiresProcedure ? Visibility.Visible : Visibility.Collapsed;
+                pnlLabel.Visibility = type == "Label" ? Visibility.Visible : Visibility.Collapsed;
+                pnlGoto.Visibility = type == "Goto" ? Visibility.Visible : Visibility.Collapsed;
                 
                 // Auto-generate module name
                 if (!_isInitializing)
@@ -150,6 +184,23 @@ namespace Wysg.Musm.Radium.Views
             }
             
             var typeStr = cboModuleType.SelectedValue.ToString();
+            if (typeStr == "Label")
+            {
+                var normalized = CustomModuleStore.NormalizeLabelName(txtLabelName.Text ?? string.Empty);
+                if (string.IsNullOrWhiteSpace(normalized))
+                {
+                    MessageBox.Show("Please enter a label name.", "Validation", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                
+                CreatedLabelName = normalized;
+                Result = null;
+                DialogResult = true;
+                Close();
+                return;
+            }
+            
             var moduleType = typeStr switch
             {
                 "Run" => CustomModuleType.Run,
@@ -157,15 +208,22 @@ namespace Wysg.Musm.Radium.Views
                 "Abort if" => CustomModuleType.AbortIf,
                 "If" => CustomModuleType.If,
                 "If not" => CustomModuleType.IfNot,
+                "Goto" => CustomModuleType.Goto,
+                "If message is Yes" => CustomModuleType.IfMessageYes,
                 _ => CustomModuleType.Run
             };
             
-            if (cboProcedure.SelectedItem is not string procedureName || 
-                string.IsNullOrWhiteSpace(procedureName))
+            string? procedureName = string.Empty;
+            if (moduleType != CustomModuleType.Goto)
             {
-                MessageBox.Show("Please select a custom procedure.", "Validation", 
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
+                if (cboProcedure.SelectedItem is not string selectedProcedure || 
+                    string.IsNullOrWhiteSpace(selectedProcedure))
+                {
+                    MessageBox.Show("Please select a custom procedure.", "Validation", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                procedureName = selectedProcedure;
             }
             
             string? propertyName = null;
@@ -180,13 +238,27 @@ namespace Wysg.Musm.Radium.Views
                 }
             }
             
+            string? targetLabel = null;
+            if (moduleType == CustomModuleType.Goto)
+            {
+                if (cboGotoLabel.SelectedItem is not string selectedLabel || 
+                    !CustomModuleStore.TryParseLabelDisplay(selectedLabel, out var parsedLabel))
+                {
+                    MessageBox.Show("Please select a target label for the goto module.", "Validation", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                targetLabel = parsedLabel;
+            }
+            
             // Create the custom module with auto-generated name
             Result = new CustomModule
             {
                 Name = moduleName,
                 Type = moduleType,
-                ProcedureName = procedureName,
-                PropertyName = propertyName
+                ProcedureName = procedureName ?? string.Empty,
+                PropertyName = propertyName,
+                TargetLabelName = targetLabel
             };
             
             DialogResult = true;
@@ -215,6 +287,22 @@ namespace Wysg.Musm.Radium.Views
             }
         }
         
+        private void OnLabelNameChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!_isInitializing)
+            {
+                UpdateModuleName();
+            }
+        }
+        
+        private void OnGotoLabelChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!_isInitializing)
+            {
+                UpdateModuleName();
+            }
+        }
+        
         private void UpdateModuleName()
         {
             try
@@ -228,12 +316,6 @@ namespace Wysg.Musm.Radium.Views
                 var type = cboModuleType.SelectedValue.ToString();
                 var procedure = cboProcedure.SelectedItem as string;
                 
-                if (string.IsNullOrWhiteSpace(procedure))
-                {
-                    txtGeneratedName.Text = "(Select a procedure to generate name)";
-                    return;
-                }
-                
                 string moduleName;
                 
                 if (type == "Set")
@@ -241,7 +323,11 @@ namespace Wysg.Musm.Radium.Views
                     var property = cboProperty.SelectedItem as string;
                     if (string.IsNullOrWhiteSpace(property))
                     {
-                        moduleName = $"Set [Property] to {procedure}";
+                        moduleName = "Set [Property] to " + (procedure ?? "[Procedure]");
+                    }
+                    else if (string.IsNullOrWhiteSpace(procedure))
+                    {
+                        moduleName = $"Set {property} to [Procedure]";
                     }
                     else
                     {
@@ -250,19 +336,37 @@ namespace Wysg.Musm.Radium.Views
                 }
                 else if (type == "Abort if")
                 {
-                    moduleName = $"Abort if {procedure}";
+                    moduleName = string.IsNullOrWhiteSpace(procedure) ? "Abort if [Procedure]" : $"Abort if {procedure}";
                 }
                 else if (type == "If")
                 {
-                    moduleName = $"If {procedure}";
+                    moduleName = string.IsNullOrWhiteSpace(procedure) ? "If [Procedure]" : $"If {procedure}";
                 }
                 else if (type == "If not")
                 {
-                    moduleName = $"If not {procedure}";
+                    moduleName = string.IsNullOrWhiteSpace(procedure) ? "If not [Procedure]" : $"If not {procedure}";
+                }
+                else if (type == "Label")
+                {
+                    var normalized = CustomModuleStore.NormalizeLabelName(txtLabelName.Text ?? string.Empty);
+                    moduleName = string.IsNullOrEmpty(normalized) ? "Label [Name]" : CustomModuleStore.ToLabelDisplay(normalized);
+                }
+                else if (type == "Goto")
+                {
+                    var selectedLabel = cboGotoLabel.SelectedItem as string;
+                    moduleName = string.IsNullOrWhiteSpace(selectedLabel) ? "Goto [Label]" : $"Goto {selectedLabel}";
                 }
                 else // Run
                 {
-                    moduleName = $"Run {procedure}";
+                    moduleName = string.IsNullOrWhiteSpace(procedure) ? "Run [Procedure]" : $"Run {procedure}";
+                }
+                
+                // Generate name for "If message is Yes" modules
+                if (type == "If message is Yes")
+                {
+                    moduleName = string.IsNullOrWhiteSpace(procedure)
+                        ? "If message [Procedure] is Yes"
+                        : $"If message {procedure} is Yes";
                 }
                 
                 txtGeneratedName.Text = moduleName;

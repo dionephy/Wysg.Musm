@@ -63,7 +63,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 throw; // Propagate abort
             }
             catch (Exception ex)
-            {
+            {                 
                 sw.Stop();
                 Debug.WriteLine($"[CustomModule] Error executing '{module.Name}': {ex.Message}");
                 SetStatus($"[{module.Name}] Error: {ex.Message} ({sw.ElapsedMilliseconds} ms)", true);

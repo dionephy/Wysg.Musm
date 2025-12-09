@@ -573,7 +573,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 <TextBlock DockPanel.Dock="Top" Text="New Study" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
                                 <ListBox x:Name="lstNewStudy" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" 
                                          PreviewMouseMove="OnAutomationProcDrag" DragOver="OnAutomationProcDragOver" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" 
-                                         Tag="NewStudy" MinHeight="80" MaxHeight="150">
+                                         Tag="NewStudy" MinHeight="230" MaxHeight="300">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <ContentControl Content="{Binding Converter={StaticResource CustomModuleSyntaxConverter}}"/>
@@ -588,7 +588,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 <TextBlock DockPanel.Dock="Top" Text="Add Study" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
                                 <ListBox x:Name="lstAddStudy" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" 
                                          PreviewMouseMove="OnAutomationProcDrag" DragOver="OnAutomationProcDragOver" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" 
-                                         Tag="AddStudy" MinHeight="80" MaxHeight="150">
+                                         Tag="AddStudy" MinHeight="230" MaxHeight="300">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <ContentControl Content="{Binding Converter={StaticResource CustomModuleSyntaxConverter}}"/>
@@ -666,13 +666,13 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                         </Border>
 
 
-                        <!-- Shortcut: Open study and Shortcut: Send Report (preview) on same row -->
+                        <!-- Shortcut: Open study and Shortcut: Send Report on same row -->
                         <Border Grid.Row="1" Grid.Column="0" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="Shortcut: Open study" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
                                 <ListBox x:Name="lstShortcutOpenNew" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" 
                                          PreviewMouseMove="OnAutomationProcDrag" DragOver="OnAutomationProcDragOver" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" 
-                                         Tag="ShortcutOpenNew" MinHeight="80" MaxHeight="150">
+                                         Tag="ShortcutOpenNew" MinHeight="230" MaxHeight="300">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <ContentControl Content="{Binding Converter={StaticResource CustomModuleSyntaxConverter}}"/>
@@ -684,10 +684,10 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                         
                         <Border Grid.Row="1" Grid.Column="1" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
                             <DockPanel>
-                                <TextBlock DockPanel.Dock="Top" Text="Shortcut: Send Report (preview)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
+                                <TextBlock DockPanel.Dock="Top" Text="Shortcut: Send Report" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
                                 <ListBox x:Name="lstShortcutSendReportPreview" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" 
                                          PreviewMouseMove="OnAutomationProcDrag" DragOver="OnAutomationProcDragOver" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" 
-                                         Tag="ShortcutSendReportPreview" MinHeight="80" MaxHeight="150">
+                                         Tag="ShortcutSendReportPreview" MinHeight="230" MaxHeight="300">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <ContentControl Content="{Binding Converter={StaticResource CustomModuleSyntaxConverter}}"/>
@@ -703,7 +703,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 <TextBlock DockPanel.Dock="Top" Text="Send Report" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
                                 <ListBox x:Name="lstSendReport" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" 
                                          PreviewMouseMove="OnAutomationProcDrag" DragOver="OnAutomationProcDragOver" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" 
-                                         Tag="SendReport" MinHeight="80" MaxHeight="150">
+                                         Tag="SendReport" MinHeight="230" MaxHeight="300">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <ContentControl Content="{Binding Converter={StaticResource CustomModuleSyntaxConverter}}"/>
@@ -718,7 +718,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 <TextBlock DockPanel.Dock="Top" Text="Send Report Preview" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
                                 <ListBox x:Name="lstSendReportPreview" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" 
                                          PreviewMouseMove="OnAutomationProcDrag" DragOver="OnAutomationProcDragOver" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" 
-                                         Tag="SendReportPreview" MinHeight="80" MaxHeight="150">
+                                         Tag="SendReportPreview" MinHeight="230" MaxHeight="300">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <ContentControl Content="{Binding Converter={StaticResource CustomModuleSyntaxConverter}}"/>
@@ -728,28 +728,13 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                             </DockPanel>
                         </Border>
                         
-                        <!-- Shortcut Send Report (reportified) and Test on same row -->
+                        <!-- Test and Delete on same row -->
                         <Border Grid.Row="3" Grid.Column="0" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Top" Text="Shortcut: Send Report (reportified)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
-                                <ListBox x:Name="lstShortcutSendReportReportified" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" 
-                                         PreviewMouseMove="OnAutomationProcDrag" DragOver="OnAutomationProcDragOver" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" 
-                                         Tag="ShortcutSendReportReportified" MinHeight="80" MaxHeight="150">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <ContentControl Content="{Binding Converter={StaticResource CustomModuleSyntaxConverter}}"/>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </DockPanel>
-                        </Border>
-                        
-                        <Border Grid.Row="3" Grid.Column="1" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,8">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="Test" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#D0D0D0"/>
                                 <ListBox x:Name="lstTest" Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C" AllowDrop="True" 
                                          PreviewMouseMove="OnAutomationProcDrag" DragOver="OnAutomationProcDragOver" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" 
-                                         Tag="Test" MinHeight="80" MaxHeight="150">
+                                         Tag="Test" MinHeight="230" MaxHeight="300">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <ContentControl Content="{Binding Converter={StaticResource CustomModuleSyntaxConverter}}"/>
@@ -760,12 +745,12 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                         </Border>
                         
                         <!-- Delete pane -->
-                        <Border Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" BorderBrush="#8B0000" BorderThickness="2" CornerRadius="4" Padding="6" Background="#3A0000" Margin="0,0,8,8">
+                        <Border Grid.Row="3" Grid.Column="1" BorderBrush="#8B0000" BorderThickness="2" CornerRadius="4" Padding="6" Background="#3A0000" Margin="0,0,8,8">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="🗑️ Delete (Drop here to remove)" FontWeight="SemiBold" Margin="0,0,0,4" Foreground="#FF6B6B"/>
                                 <ListBox x:Name="lstDelete" Background="#2A0000" Foreground="#FF6B6B" BorderBrush="#8B0000" AllowDrop="True" 
                                          DragOver="OnAutomationProcDragOver" Drop="OnAutomationProcDrop" DragLeave="OnAutomationListDragLeave" 
-                                         Tag="Delete" MinHeight="80" MaxHeight="150" IsEnabled="True">
+                                         Tag="Delete" MinHeight="230" MaxHeight="300" IsEnabled="True">
                                     <ListBox.Style>
                                         <Style TargetType="ListBox">
                                             <Setter Property="Template">

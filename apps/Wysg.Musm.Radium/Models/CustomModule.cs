@@ -6,7 +6,7 @@ namespace Wysg.Musm.Radium.Models
 {
     /// <summary>
     /// Represents a custom automation module created by the user.
-    /// Can be Run, Set, or Abort If type.
+    /// Can be Run, Set, Abort/conditional, Goto, etc.
     /// </summary>
     public class CustomModule
     {
@@ -14,6 +14,7 @@ namespace Wysg.Musm.Radium.Models
         public CustomModuleType Type { get; set; }
         public string ProcedureName { get; set; } = string.Empty;
         public string? PropertyName { get; set; } // Only for Set type
+        public string? TargetLabelName { get; set; } // Only for Goto type
         
         public override string ToString() => Name;
     }
@@ -27,15 +28,18 @@ namespace Wysg.Musm.Radium.Models
         Set,
         AbortIf,
         If,
-        IfNot
+        IfNot,
+        Goto,
+        IfMessageYes
     }
     
     /// <summary>
-    /// Storage and management for custom modules.
+    /// Storage and management for custom modules and labels.
     /// </summary>
     public class CustomModuleStore
     {
         public List<CustomModule> Modules { get; set; } = new();
+        public List<string> Labels { get; set; } = new();
         
         private static string GetStorePath()
         {
@@ -54,8 +58,10 @@ namespace Wysg.Musm.Radium.Models
                     return new CustomModuleStore();
                 
                 var json = System.IO.File.ReadAllText(path);
-                var store = System.Text.Json.JsonSerializer.Deserialize<CustomModuleStore>(json);
-                return store ?? new CustomModuleStore();
+                var store = System.Text.Json.JsonSerializer.Deserialize<CustomModuleStore>(json) ?? new CustomModuleStore();
+                store.Modules ??= new List<CustomModule>();
+                store.Labels ??= new List<string>();
+                return store;
             }
             catch (Exception ex)
             {
@@ -83,10 +89,14 @@ namespace Wysg.Musm.Radium.Models
         
         public void AddModule(CustomModule module)
         {
-            // Check for duplicate names
             if (Modules.Any(m => string.Equals(m.Name, module.Name, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new InvalidOperationException($"Module '{module.Name}' already exists");
+            }
+            
+            if (Labels.Any(l => string.Equals(ToLabelDisplay(l), module.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException($"Module '{module.Name}' conflicts with an existing label");
             }
             
             Modules.Add(module);
@@ -106,6 +116,67 @@ namespace Wysg.Musm.Radium.Models
         public CustomModule? GetModule(string name)
         {
             return Modules.FirstOrDefault(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase));
+        }
+        
+        public void AddLabel(string labelName)
+        {
+            var normalized = NormalizeLabelName(labelName);
+            if (string.IsNullOrWhiteSpace(normalized))
+                throw new ArgumentException("Label name cannot be empty", nameof(labelName));
+            
+            if (Labels.Any(l => string.Equals(l, normalized, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException($"Label '{labelName}' already exists");
+            
+            if (Modules.Any(m => string.Equals(m.Name, ToLabelDisplay(normalized), StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException($"Label '{labelName}' conflicts with an existing module");
+            
+            Labels.Add(normalized);
+        }
+        
+        public bool RemoveLabel(string labelName)
+        {
+            var normalized = NormalizeLabelName(labelName);
+            var existing = Labels.FirstOrDefault(l => string.Equals(l, normalized, StringComparison.OrdinalIgnoreCase));
+            if (existing != null)
+            {
+                Labels.Remove(existing);
+                return true;
+            }
+            return false;
+        }
+        
+        public bool LabelExists(string labelName)
+        {
+            var normalized = NormalizeLabelName(labelName);
+            return Labels.Any(l => string.Equals(l, normalized, StringComparison.OrdinalIgnoreCase));
+        }
+        
+        public static string NormalizeLabelName(string labelName)
+        {
+            if (string.IsNullOrWhiteSpace(labelName))
+                return string.Empty;
+            return labelName.Trim().TrimEnd(':').Trim();
+        }
+        
+        public static string ToLabelDisplay(string labelName)
+        {
+            var normalized = NormalizeLabelName(labelName);
+            return string.IsNullOrEmpty(normalized) ? string.Empty : normalized + ":";
+        }
+        
+        public static bool TryParseLabelDisplay(string moduleName, out string labelName)
+        {
+            labelName = string.Empty;
+            if (string.IsNullOrWhiteSpace(moduleName))
+                return false;
+            var trimmed = moduleName.Trim();
+            if (!trimmed.EndsWith(":", StringComparison.Ordinal))
+                return false;
+            var candidate = trimmed[..^1].Trim();
+            if (string.IsNullOrEmpty(candidate))
+                return false;
+            labelName = candidate;
+            return true;
         }
     }
     

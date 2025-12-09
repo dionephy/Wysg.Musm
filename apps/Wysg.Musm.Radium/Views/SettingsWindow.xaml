@@ -110,9 +110,6 @@ Title="Settings" Height="780" Width="1020" WindowStartupLocation="CenterOwner" B
             <TabItem Header="Keyboard" x:Name="tabKeyboard">
                 <tabs:KeyboardSettingsTab/>
             </TabItem>
-            <TabItem Header="Automation" x:Name="tabAutomation">
-                <tabs:AutomationSettingsTab/>
-            </TabItem>
             <TabItem Header="Report Format" x:Name="tabReportify">
                 <tabs:ReportifySettingsTab/>
             </TabItem>

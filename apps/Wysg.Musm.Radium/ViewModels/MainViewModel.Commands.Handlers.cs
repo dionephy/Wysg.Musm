@@ -78,23 +78,11 @@ namespace Wysg.Musm.Radium.ViewModels
             _ = RunModulesSequentially(modules, sequenceName);
         }
 
-        // Executes configured modules for SendReport shortcut depending on Reportified state
+        // Executes configured modules for SendReport shortcut (always uses ShortcutSendReportPreview)
         public void RunSendReportShortcut()
         {
-            string seqRaw;
-            string sequenceName;
-            if (Reportified)
-            {
-                seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutSendReportReportified);
-                sequenceName = "Shortcut: Send report (reportified)";
-                Debug.WriteLine("[SendReportShortcut] Reportified=true, using ShortcutSendReportReportified sequence");
-            }
-            else
-            {
-                seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutSendReportPreview);
-                sequenceName = "Shortcut: Send report (preview)";
-                Debug.WriteLine("[SendReportShortcut] Reportified=false, using ShortcutSendReportPreview sequence");
-            }
+            var seqRaw = GetAutomationSequenceForCurrentPacs(static s => s.ShortcutSendReportPreview);
+            var sequenceName = "Shortcut: Send Report";
 
             var modules = seqRaw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (modules.Length == 0) 
