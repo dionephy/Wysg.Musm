@@ -242,32 +242,16 @@ Result: UI unchanged, only backend state reset
 ? `TempPreviousStudyReportDatetime` ¡æ `null`  
 ? `TempPreviousStudyReportReporter` ¡æ `null`  
 ? `TempPreviousStudyReportHeaderAndFindings` ¡æ `null`  
-? `TempPreviousStudyReportConclusion` ¡æ `null`
-
-### What Does NOT Get Cleared
-
-? Patient demographics (`PatientName`, `PatientNumber`, `PatientSex`, `PatientAge`)  
-? Study metadata (`StudyName`, `StudyDateTime`)  
-? Current report fields (`Findings`, `Conclusion`, `ChiefComplaint`, etc.)  
-? Previous report editor fields (`PreviousFindingsEditorText`, etc.)  
-? Loaded previous studies collection (`PreviousStudies`)  
-? Selected previous study (`SelectedPreviousStudy`)
-
-## Debug Logging
-
-```
-[ClearTempVariables] ===== START =====
-[ClearTempVariables] All temporary variables cleared:
-[ClearTempVariables] - TempPreviousStudyStudyname = null
-[ClearTempVariables] - TempPreviousStudyDatetime = null
+? `TempPreviousStudyReportConclusion` ¡æ `null`  
++? `TempHeader` ¡æ `null`
+@@
 [ClearTempVariables] - TempPreviousStudyReportDatetime = null
 [ClearTempVariables] - TempPreviousStudyReportReporter = null
 [ClearTempVariables] - TempPreviousStudyReportHeaderAndFindings = null
 [ClearTempVariables] - TempPreviousStudyReportConclusion = null
++[ClearTempVariables] - TempHeader = null
 [ClearTempVariables] ===== END: SUCCESS =====
 ```
-
-**Status Message**: "Temporary variables cleared"
 
 ## Error Handling
 

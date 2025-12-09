@@ -39,7 +39,7 @@ namespace Wysg.Musm.Radium.ViewModels
         public string? TempPreviousStudyReportReporter { get; set; }
         public string? TempPreviousStudyReportHeaderAndFindings { get; set; }
         public string? TempPreviousStudyReportConclusion { get; set; }
-
+        public string? TempHeader { get; set; }
 
         private string _currentStudyLabel = "Current\nStudy"; public string CurrentStudyLabel { get => _currentStudyLabel; private set => SetProperty(ref _currentStudyLabel, value); }
 

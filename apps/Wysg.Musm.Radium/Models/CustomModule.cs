@@ -204,9 +204,10 @@ namespace Wysg.Musm.Radium.Models
         public const string PreviousStudyReportReporter = "Previous Study Report Reporter";
         public const string PreviousStudyReportHeaderAndFindings = "Previous Study Report Header and Findings";
         public const string PreviousStudyReportConclusion = "Previous Study Report Conclusion";
-        
-        // Toggle properties (read/write) - boolean values returned as "true"/"false"
-        public const string StudyLocked = "Study Locked";
+        public const string TempHeader = "Temp Header";
+         
+         // Toggle properties (read/write) - boolean values returned as "true"/"false"
+         public const string StudyLocked = "Study Locked";
         public const string StudyOpened = "Study Opened";
         public const string CurrentReportified = "Current Reportified";
         public const string CurrentProofread = "Current Proofread";
@@ -245,7 +246,8 @@ namespace Wysg.Musm.Radium.Models
             CurrentReportified,
             CurrentProofread,
             PreviousProofread,
-            PreviousSplitted
+            PreviousSplitted,
+            TempHeader
         };
         
         /// <summary>
@@ -270,6 +272,7 @@ namespace Wysg.Musm.Radium.Models
             PreviousStudyReportReporter,
             PreviousStudyReportHeaderAndFindings,
             PreviousStudyReportConclusion,
+            TempHeader,
             // Toggles
             StudyLocked,
             StudyOpened,

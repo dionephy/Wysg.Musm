@@ -122,7 +122,10 @@ namespace Wysg.Musm.Radium.ViewModels
                 case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousStudyReportConclusion:
                     TempPreviousStudyReportConclusion = value;
                     break;
-                    
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.TempHeader:
+                    TempHeader = value;
+                    break;
+                
                 // Toggle properties - parse boolean from string
                 case Wysg.Musm.Radium.Models.CustomModuleProperties.StudyLocked:
                     PatientLocked = string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
@@ -189,7 +192,9 @@ namespace Wysg.Musm.Radium.ViewModels
                     return TempPreviousStudyReportHeaderAndFindings;
                 case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousStudyReportConclusion:
                     return TempPreviousStudyReportConclusion;
-                    
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.TempHeader:
+                    return TempHeader;
+                
                 // Toggle properties - return "true" or "false"
                 case Wysg.Musm.Radium.Models.CustomModuleProperties.StudyLocked:
                     return PatientLocked ? "true" : "false";

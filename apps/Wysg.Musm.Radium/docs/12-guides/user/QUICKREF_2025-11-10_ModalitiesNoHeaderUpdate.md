@@ -1,11 +1,11 @@
-﻿# QUICKREF: Modalities No Header Update Setting
+﻿# QUICKREF: Modalities No Header Update Setting
+
 
 **Date**: 2025-11-25  
 **Type**: Quick Reference  
 **Category**: User Reference  
 **Status**: ? Active
 
----
 
 ## Summary
 
@@ -56,6 +56,12 @@ Click "Save Automation" button
 - When `ShouldSkipHeaderUpdateForXR()` is called
 - Header component updates are skipped for excluded modalities
 
+### Automation Module: If Modality with Header
+- Add `If Modality with Header` to automation sequences when you only want certain steps to run for header-enabled modalities.
+- If the current study modality **is not** in the exclusion list, the next modules execute normally.
+- If the modality **is** excluded, execution jumps to the matching `End if` (or optional else-branch) so header-only logic is skipped automatically.
+- Uses the same LOINC-based modality detection as Send Report and Comparison updates, so XR/CR/DX rules stay consistent.
+
 ---
 
 ## Storage
@@ -98,9 +104,4 @@ bool shouldSkip = excludedModalities.Contains(currentModality.ToUpperInvariant()
 **New**: Leave textbox empty
 
 ---
-
-## Related Documents
-
-- `ENHANCEMENT_2025-11-10_ModalitiesNoHeaderUpdate.md` - Full specification
-- `IMPLEMENTATION_SUMMARY_AddPreviousStudyComparison.md` - Integration with AddPreviousStudy
-
+## Related Documents- `ENHANCEMENT_2025-11-10_ModalitiesNoHeaderUpdate.md` - Full specification- `IMPLEMENTATION_SUMMARY_AddPreviousStudyComparison.md` - Integration with AddPreviousStudy

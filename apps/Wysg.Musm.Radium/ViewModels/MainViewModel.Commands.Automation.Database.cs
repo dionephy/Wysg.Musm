@@ -414,6 +414,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 TempPreviousStudyReportReporter = null;
                 TempPreviousStudyReportHeaderAndFindings = null;
                 TempPreviousStudyReportConclusion = null;
+                TempHeader = null;
                 
                 Debug.WriteLine("[ClearTempVariables] All temporary variables cleared:");
                 Debug.WriteLine("[ClearTempVariables] - TempPreviousStudyStudyname = null");
@@ -422,6 +423,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine("[ClearTempVariables] - TempPreviousStudyReportReporter = null");
                 Debug.WriteLine("[ClearTempVariables] - TempPreviousStudyReportHeaderAndFindings = null");
                 Debug.WriteLine("[ClearTempVariables] - TempPreviousStudyReportConclusion = null");
+                Debug.WriteLine("[ClearTempVariables] - TempHeader = null");
                 
                 SetStatus("Temporary variables cleared");
                 Debug.WriteLine("[ClearTempVariables] ===== END: SUCCESS =====");

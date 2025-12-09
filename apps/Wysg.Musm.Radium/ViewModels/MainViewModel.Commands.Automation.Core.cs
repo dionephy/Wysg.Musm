@@ -13,6 +13,7 @@ namespace Wysg.Musm.Radium.ViewModels
     public partial class MainViewModel
     {
         private const string ElseIfMessageModuleName = "Else If Message is No";
+        private const string IfModalityWithHeaderModuleName = "If Modality with Header";
 
         private enum MessageBranchState
         {
@@ -87,6 +88,26 @@ namespace Wysg.Musm.Radium.ViewModels
                         continue;
                     }
                     
+                    if (string.Equals(m, IfModalityWithHeaderModuleName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var (hasHeader, modality) = await EvaluateModalityHeaderSettingAsync();
+                        var block = new AutomationIfBlock
+                        {
+                            StartIndex = i,
+                            ConditionMet = hasHeader,
+                            IsMessageBox = false,
+                            ElseIndex = -1,
+                            EndIndex = -1,
+                            BranchState = hasHeader ? MessageBranchState.RunningIf : MessageBranchState.SkipAll
+                        };
+                        ifStack.Push(block);
+                        UpdateSkipExecution();
+                        var modalityLabel = string.IsNullOrWhiteSpace(modality) ? "(unknown)" : modality;
+                        Debug.WriteLine($"[Automation][If Modality with Header] modality='{modalityLabel}', conditionMet={hasHeader}");
+                        SetStatus($"[{IfModalityWithHeaderModuleName}] {(hasHeader ? $"'{modalityLabel}' includes header" : $"'{modalityLabel}' excluded - skipping block")}");
+                        continue;
+                    }
+                    
                     // Check if this is a custom module (If, If not, AbortIf, Set, Run, Goto, MessageIf)
                     var customModule = customStore.GetModule(m);
 
@@ -123,7 +144,7 @@ namespace Wysg.Musm.Radium.ViewModels
                                 var prompt = string.IsNullOrWhiteSpace(messageResult)
                                     ? "Proceed?"
                                     : messageResult.Trim();
-                                var caption = string.IsNullOrWhiteSpace(customModule.Name) ? "Automation" : customModule.Name;
+                                const string caption = "Confirmation";
                                 bool userChoseYes = false;
                                 await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                                 {
@@ -186,6 +207,23 @@ namespace Wysg.Musm.Radium.ViewModels
                                 continue;
                             }
 
+                            if (skipExecution)
+                            {
+                                var skippedBlock = new AutomationIfBlock
+                                {
+                                    StartIndex = i,
+                                    ConditionMet = false,
+                                    IsMessageBox = false,
+                                    ElseIndex = -1,
+                                    EndIndex = -1,
+                                    BranchState = MessageBranchState.SkipAll
+                                };
+                                ifStack.Push(skippedBlock);
+                                UpdateSkipExecution();
+                                Debug.WriteLine($"[Automation] Skipping condition '{customModule.Name}' (parent block false)");
+                                continue;
+                            }
+ 
                             var ifSw = Stopwatch.StartNew();
                             var result = await Services.ProcedureExecutor.ExecuteAsync(customModule.ProcedureName);
                             ifSw.Stop();

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Diagnostics;
@@ -278,43 +279,15 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             try
             {
-                // Extract modality from current study
-                string? currentModality = null;
-                if (!string.IsNullOrWhiteSpace(StudyName))
+                var (hasHeader, modality) = await EvaluateModalityHeaderSettingAsync();
+                if (!hasHeader)
                 {
-                    // Try to extract modality from studyname using LOINC mapping
-                    currentModality = await ExtractModalityAsync(StudyName);
-                    Debug.WriteLine($"[DetermineSendReportProcedure] Current study modality: '{currentModality}', StudyName: '{StudyName}'");
+                    var modalityLabel = string.IsNullOrWhiteSpace(modality) ? "(unknown)" : modality;
+                    Debug.WriteLine($"[DetermineSendReportProcedure] Using SendReportWithoutHeader - modality '{modalityLabel}' is in exclusion list");
+                    SetStatus($"Using send without header (modality '{modalityLabel}' configured for header-less send)");
+                    return "SendReportWithoutHeader";
                 }
-                
-                // Check ModalitiesNoHeaderUpdate setting
-                if (_localSettings != null && !string.IsNullOrWhiteSpace(currentModality))
-                {
-                    var modalitiesNoHeaderUpdate = _localSettings.ModalitiesNoHeaderUpdate ?? string.Empty;
-                    Debug.WriteLine($"[DetermineSendReportProcedure] ModalitiesNoHeaderUpdate setting: '{modalitiesNoHeaderUpdate}'");
-                    
-                    if (!string.IsNullOrWhiteSpace(modalitiesNoHeaderUpdate))
-                    {
-                        // Parse comma-separated list and check if current modality is in the list
-                        var excludedModalities = modalitiesNoHeaderUpdate
-                            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                            .Select(m => m.Trim().ToUpperInvariant())
-                            .Where(m => !string.IsNullOrEmpty(m))
-                            .ToHashSet();
-                        
-                        bool shouldSendWithoutHeader = excludedModalities.Contains(currentModality.ToUpperInvariant());
-                        Debug.WriteLine($"[DetermineSendReportProcedure] Excluded modalities: [{string.Join(", ", excludedModalities)}]");
-                        Debug.WriteLine($"[DetermineSendReportProcedure] Should send without header: {shouldSendWithoutHeader}");
-                        
-                        if (shouldSendWithoutHeader)
-                        {
-                            Debug.WriteLine($"[DetermineSendReportProcedure] Using SendReportWithoutHeader - modality '{currentModality}' is in exclusion list");
-                            SetStatus($"Using send without header (modality '{currentModality}' configured for header-less send)");
-                            return "SendReportWithoutHeader";
-                        }
-                    }
-                }
-                
+
                 Debug.WriteLine("[DetermineSendReportProcedure] Using standard SendReport procedure");
                 return "SendReport";
             }
@@ -324,6 +297,61 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine($"[DetermineSendReportProcedure] Falling back to standard SendReport procedure");
                 return "SendReport"; // Fallback to standard procedure on error
             }
+        }
+
+        private HashSet<string> GetModalitiesWithoutHeader()
+        {
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var raw = _localSettings?.ModalitiesNoHeaderUpdate ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return set;
+            }
+
+            foreach (var token in raw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var trimmed = token.Trim();
+                if (!string.IsNullOrEmpty(trimmed))
+                {
+                    set.Add(trimmed);
+                }
+            }
+
+            return set;
+        }
+
+        private async Task<(bool HasHeader, string? Modality)> EvaluateModalityHeaderSettingAsync()
+        {
+            string? currentModality = null;
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(StudyName))
+                {
+                    currentModality = await ExtractModalityAsync(StudyName);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ModalityHeaderEval] Failed to extract modality: {ex.Message}");
+            }
+
+            var excluded = GetModalitiesWithoutHeader();
+            var hasHeader = true;
+
+            if (!string.IsNullOrWhiteSpace(currentModality) && excluded.Count > 0)
+            {
+                hasHeader = !excluded.Contains(currentModality);
+            }
+
+            Debug.WriteLine($"[ModalityHeaderEval] modality='{currentModality ?? "(unknown)"}', excludedCount={excluded.Count}, hasHeader={hasHeader}");
+            return (hasHeader, currentModality);
+        }
+
+        private async Task<bool> CurrentModalityHasHeaderAsync()
+        {
+            var (hasHeader, _) = await EvaluateModalityHeaderSettingAsync();
+            return hasHeader;
         }
     }
 }

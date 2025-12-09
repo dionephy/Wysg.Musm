@@ -23,6 +23,7 @@ namespace Wysg.Musm.Radium.Views
         private ObservableCollection<string> _customModules = new();
         private ObservableCollection<string> _builtinModules = new(); // Filtered built-in modules (excluding custom)
         private const string ElseIfMessageModuleName = "Else If Message is No";
+        private const string IfModalityWithHeaderModuleName = "If Modality with Header";
         
         // Drag-drop visual feedback fields
         private Border? _automationDragGhost;
@@ -42,17 +43,6 @@ namespace Wysg.Musm.Radium.Views
                 if (FindName("txtModalitiesNoHeaderUpdate") is TextBox txtModalities && _automationViewModel != null)
                 {
                     txtModalities.SetBinding(TextBox.TextProperty, new System.Windows.Data.Binding("ModalitiesNoHeaderUpdate")
-                    {
-                        Source = _automationViewModel,
-                        Mode = System.Windows.Data.BindingMode.TwoWay,
-                        UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
-                    });
-                }
-                
-                // Bind session-based cache bookmarks textbox
-                if (FindName("txtSessionBasedCacheBookmarks") is TextBox txtSessionCache && _automationViewModel != null)
-                {
-                    txtSessionCache.SetBinding(TextBox.TextProperty, new System.Windows.Data.Binding("SessionBasedCacheBookmarks")
                     {
                         Source = _automationViewModel,
                         Mode = System.Windows.Data.BindingMode.TwoWay,
@@ -836,6 +826,12 @@ namespace Wysg.Musm.Radium.Views
                 {
                     bool isMessageIf = custom.Type == CustomModuleType.IfMessageYes;
                     ifStack.Push((i + 1, module, isMessageIf, false));
+                    continue;
+                }
+                
+                if (string.Equals(module, IfModalityWithHeaderModuleName, StringComparison.OrdinalIgnoreCase))
+                {
+                    ifStack.Push((i + 1, module, false, false));
                     continue;
                 }
                 

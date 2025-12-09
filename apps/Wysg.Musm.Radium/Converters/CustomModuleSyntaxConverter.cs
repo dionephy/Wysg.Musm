@@ -40,6 +40,11 @@ namespace Wysg.Musm.Radium.Converters
                 MaxWidth = 230
             };
             
+            if (TryBuildMessagePromptDisplay(moduleName, out var messageBlock))
+            {
+                return messageBlock;
+            }
+            
             // Check if this is a custom module (starts with special keywords) or built-in module
             // Custom modules start with: "Set ", "Run ", "Abort if ", "If ", "If not "
             bool isCustomModule = moduleName.StartsWith("Set ", StringComparison.OrdinalIgnoreCase) ||
@@ -74,6 +79,39 @@ namespace Wysg.Musm.Radium.Converters
             ApplySyntaxColoring(textBlock, displayText);
             
             return textBlock;
+        }
+        
+        private static bool TryBuildMessagePromptDisplay(string moduleName, out TextBlock formatted)
+        {
+            const string prefix = "if message ";
+            const string suffix = " is yes";
+
+            formatted = default!;
+
+            if (!moduleName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ||
+                !moduleName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var procedurePortion = moduleName.Substring(prefix.Length, moduleName.Length - prefix.Length - suffix.Length).Trim();
+            if (procedurePortion.Length == 0)
+            {
+                return false;
+            }
+
+            formatted = new TextBlock
+            {
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 230
+            };
+
+            formatted.Inlines.Add(new Run("If Message") { Foreground = KeywordBrush });
+            formatted.Inlines.Add(new LineBreak());
+            formatted.Inlines.Add(new Run(procedurePortion) { Foreground = BookmarkBrush });
+            formatted.Inlines.Add(new LineBreak());
+            formatted.Inlines.Add(new Run("is Yes") { Foreground = KeywordBrush });
+            return true;
         }
         
         private void ApplySyntaxColoring(TextBlock textBlock, string text)

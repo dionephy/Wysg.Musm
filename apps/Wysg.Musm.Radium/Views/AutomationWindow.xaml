@@ -249,7 +249,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                         <Button Content="Save procedure" Margin="0,0,0,0" Click="OnSaveProcedure" Style="{StaticResource AutomationWindowButtonStyle}"/>
                         <Separator Margin="12,0" Width="10"/>
                         <Button Content="Add procedure" Click="OnAddPacsMethod" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Add new custom procedure"/>
-                        <Button Content="Edit procedure" Margin="6,0,0,0" Click="OnEditPacsMethod" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Edit selected custom procedure"/>
+                        <Button Content="Edit procedure" Margin="6,0,0,0" Click="OnEditPacsMethod" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Edit selected customprocedure"/>
                         <Button Content="Delete procedure" Margin="6,0,0,0" Click="OnDeletePacsMethod" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Delete selected custom procedure"/>
                     </StackPanel>
                     <!-- Second row: Operation management -->
@@ -536,17 +536,6 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                      Style="{StaticResource DarkTextBox}"
                                      ToolTip="Enter comma-separated modality codes (e.g., XR,CR,DX) that should not update header fields"/>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Session-based cache bookmarks (cleared each run):" 
-                                      VerticalAlignment="Center" 
-                                      Foreground="#D0D0D0" 
-                                      Margin="0,0,8,0"/>
-                            <TextBox x:Name="txtSessionBasedCacheBookmarks" 
-                                     VerticalAlignment="Center" 
-                                     Width="500" 
-                                     Style="{StaticResource DarkTextBox}"
-                                     ToolTip="Comma-separated bookmark names that need fresh data each automation run (e.g., ReportText,WorklistSelection). Other bookmarks are cached globally for speed."/>
-                        </StackPanel>
                     </StackPanel>
                     
                     <!-- Main scrollable content area -->
@@ -653,7 +642,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                                         </Style>
                                                     </MenuItem.Style>
                                                 </MenuItem>
-                                            </ContextMenu>
+                                                </ContextMenu>
                                         </ListBox.ContextMenu>
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>

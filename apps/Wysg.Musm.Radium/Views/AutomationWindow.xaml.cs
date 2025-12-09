@@ -222,12 +222,6 @@ namespace Wysg.Musm.Radium.Views
                     {
                         var value = string.Join(",", _sessionCacheBookmarks);
                         localSettings.SessionBasedCacheBookmarks = value;
-                        
-                        // Also update the text box in Automation tab if it exists
-                        if (FindName("txtSessionBasedCacheBookmarks") is System.Windows.Controls.TextBox txtBox)
-                        {
-                            txtBox.Text = value;
-                        }
                     }
                 }
             }

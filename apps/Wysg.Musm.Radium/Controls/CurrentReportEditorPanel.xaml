@@ -141,26 +141,14 @@
 
         <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="2"/>
         
-        <!-- Header Editor - NOW SWITCHES BETWEEN HeaderText AND HeaderDisplay BASED ON ProofreadMode -->
+        <!-- Header Editor - ALWAYS SHOWS HeaderText (no proofread variant) -->
         <editor:EditorControl x:Name="EditorHeader" 
                               Grid.Row="2" 
                               MinHeight="70" 
                               IsReadOnly="True" 
+                              DocumentText="{Binding HeaderText, Mode=OneWay}"
                               PhraseSnapshot="{Binding CurrentPhraseSnapshot}" 
-                              PhraseSemanticTags="{Binding PhraseSemanticTags}">
-            <editor:EditorControl.Style>
-                <Style TargetType="editor:EditorControl">
-                    <!-- Default: Show raw formatted header (HeaderText) -->
-                    <Setter Property="DocumentText" Value="{Binding HeaderText, Mode=OneWay}"/>
-                    <Style.Triggers>
-                        <!-- When ProofreadMode is ON: Show proofread header (HeaderDisplay) -->
-                        <DataTrigger Binding="{Binding ProofreadMode}" Value="True">
-                            <Setter Property="DocumentText" Value="{Binding HeaderDisplay, Mode=OneWay}"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </editor:EditorControl.Style>
-        </editor:EditorControl>
+                              PhraseSemanticTags="{Binding PhraseSemanticTags}"/>
         
         <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="2"/>
         
