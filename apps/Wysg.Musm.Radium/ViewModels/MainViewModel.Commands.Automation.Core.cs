@@ -336,6 +336,25 @@ namespace Wysg.Musm.Radium.ViewModels
                              string.Equals(m, "AddPreviousStudy(obs)", StringComparison.OrdinalIgnoreCase)) { await RunAddPreviousStudyModuleAsync(); }
                     else if (string.Equals(m, "FetchPreviousStudies", StringComparison.OrdinalIgnoreCase)) { await RunFetchPreviousStudiesAsync(); }
                     else if (string.Equals(m, "SetComparison", StringComparison.OrdinalIgnoreCase)) { await RunSetComparisonAsync(); }
+                    else if (string.Equals(m, "InsertPreviousStudy", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(m, "InsertPreviousStudyReport", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Debug.WriteLine("[Automation] InsertPreviousStudyReport module - START");
+                        await RunInsertPreviousStudyAsync();
+                        Debug.WriteLine("[Automation] InsertPreviousStudyReport module - COMPLETED");
+                    }
+                    else if (string.Equals(m, "InsertCurrentStudy", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Debug.WriteLine("[Automation] InsertCurrentStudy module - START");
+                        await RunInsertCurrentStudyAsync();
+                        Debug.WriteLine("[Automation] InsertCurrentStudy module - COMPLETED");
+                    }
+                    else if (string.Equals(m, "InsertCurrentStudyReport", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Debug.WriteLine("[Automation] InsertCurrentStudyReport module - START");
+                        await RunInsertCurrentStudyReportAsync();
+                        Debug.WriteLine("[Automation] InsertCurrentStudyReport module - COMPLETED");
+                    }
                     else if (string.Equals(m, "AbortIfWorklistClosed", StringComparison.OrdinalIgnoreCase) ||
                              string.Equals(m, "AbortIfWorklistClosed(obs)", StringComparison.OrdinalIgnoreCase))
                     {
@@ -475,13 +494,6 @@ namespace Wysg.Musm.Radium.ViewModels
                         await RunSavePreviousStudyToDBAsync();
                         Debug.WriteLine("[Automation] SavePreviousStudyToDB module - COMPLETED");
                     }
-                    else if (string.Equals(m, "InsertPreviousStudy", StringComparison.OrdinalIgnoreCase) ||
-                             string.Equals(m, "InsertPreviousStudyReport", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Debug.WriteLine("[Automation] InsertPreviousStudyReport module - START");
-                        await RunInsertPreviousStudyAsync();
-                        Debug.WriteLine("[Automation] InsertPreviousStudyReport module - COMPLETED");
-                    }
                     else if (string.Equals(m, "ClearPreviousFields", StringComparison.OrdinalIgnoreCase) && _clearPreviousFieldsProc != null)
                     {
                         await _clearPreviousFieldsProc.ExecuteAsync(this);
@@ -500,6 +512,10 @@ namespace Wysg.Musm.Radium.ViewModels
                     else if (string.Equals(m, "FocusEditorFindings", StringComparison.OrdinalIgnoreCase))
                     {
                         await RunFocusEditorFindingsAsync();
+                    }
+                    else
+                    {
+                        SetStatus($"[{m}] (no matching procedure)");
                     }
                 }
                 catch (Exception ex)

@@ -107,12 +107,7 @@ namespace Wysg.Musm.Radium.Views
                         case "SimulatePaste":
                         case "SimulateSelectAll":
                         case "SimulateDelete":
-                        case "GetCurrentPatientNumber":
-                        case "GetCurrentStudyDateTime":
-                        case "GetCurrentHeader":
-                        case "GetCurrentFindings":
-                        case "GetCurrentConclusion":
-                            // These operations don't require any arguments
+                            // These keyboard simulations do not take arguments
                             row.Arg1.Type = nameof(ArgKind.String); row.Arg1Enabled = false; row.Arg1.Value = string.Empty;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
@@ -179,14 +174,17 @@ namespace Wysg.Musm.Radium.Views
                             row.Arg2.Type = nameof(ArgKind.Number); row.Arg2Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg2.Value)) row.Arg2.Value = "0";
                             row.Arg3.Type = nameof(ArgKind.String); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
-                        case "TakeLast":
                         case "Trim":
-                        case "ToDateTime":
-                            row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
-                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
+                             row.Arg1.Type = nameof(ArgKind.Var); row.Arg1Enabled = true;
+                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = false; row.Arg2.Value = string.Empty;
+                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
+                             break;
+                        case "GetValueFromSelection":
+                            row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
+                            row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg2.Value)) row.Arg2.Value = "ID";
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;
                             break;
-                        case "GetValueFromSelection":
+                        case "GetDateFromSelectionWait":
                             row.Arg1.Type = nameof(ArgKind.Element); row.Arg1Enabled = true;
                             row.Arg2.Type = nameof(ArgKind.String); row.Arg2Enabled = true; if (string.IsNullOrWhiteSpace(row.Arg2.Value)) row.Arg2.Value = "ID";
                             row.Arg3.Type = nameof(ArgKind.Number); row.Arg3Enabled = false; row.Arg3.Value = string.Empty;

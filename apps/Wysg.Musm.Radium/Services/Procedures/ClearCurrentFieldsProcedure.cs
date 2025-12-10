@@ -22,6 +22,7 @@ namespace Wysg.Musm.Radium.Services.Procedures
             vm.ReportedHeaderAndFindings = string.Empty;
             vm.ReportedFinalConclusion = string.Empty;
             vm.ReportRadiologist = string.Empty;
+            vm.CurrentReportDateTime = null;
             
             // Current editable report fields (bound to Findings/Conclusion editors)
             vm.FindingsText = string.Empty;

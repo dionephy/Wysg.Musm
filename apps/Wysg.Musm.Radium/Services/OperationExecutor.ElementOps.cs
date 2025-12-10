@@ -597,6 +597,67 @@ namespace Wysg.Musm.Radium.Services
             catch { return ("(error)", null); }
         }
 
+        private static (string preview, string? value) ExecuteGetDateFromSelectionWaitWithRetry(
+            Func<AutomationElement?> resolveElement,
+            Func<string?> resolveHeader)
+        {
+            var headerWanted = resolveHeader()?.Trim();
+            if (string.IsNullOrWhiteSpace(headerWanted))
+            {
+                headerWanted = "ID";
+            }
+
+            const int maxWaitMs = 5000;
+            const int intervalMs = 200;
+            var elapsedMs = 0;
+
+            Debug.WriteLine($"[GetDateFromSelectionWait] Waiting for '{headerWanted}' to become a valid date (max {maxWaitMs}ms)");
+
+            while (elapsedMs < maxWaitMs)
+            {
+                try
+                {
+                    var el = resolveElement();
+                    if (el != null)
+                    {
+                        var (_, rawValue) = ExecuteGetValueFromSelection(el, headerWanted);
+                        var trimmed = rawValue?.Trim();
+
+                        if (!string.IsNullOrEmpty(trimmed))
+                        {
+                            if (DateTime.TryParse(trimmed, out _))
+                            {
+                                Debug.WriteLine($"[GetDateFromSelectionWait] SUCCESS after {elapsedMs}ms: '{trimmed}'");
+                                return (trimmed, trimmed);
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"[GetDateFromSelectionWait] Value '{trimmed}' not a date yet (elapsed {elapsedMs}ms)");
+                            }
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"[GetDateFromSelectionWait] Header '{headerWanted}' empty at {elapsedMs}ms");
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[GetDateFromSelectionWait] Element resolve returned null at {elapsedMs}ms");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[GetDateFromSelectionWait] Exception at {elapsedMs}ms: {ex.Message}");
+                }
+
+                System.Threading.Thread.Sleep(intervalMs);
+                elapsedMs += intervalMs;
+            }
+
+            Debug.WriteLine($"[GetDateFromSelectionWait] TIMEOUT after {maxWaitMs}ms - date not detected for '{headerWanted}'");
+            return ($"(timeout - '{headerWanted}' not a date)", null);
+        }
+
         private static (string preview, string? value) ExecuteGetSelectedElement(AutomationElement? listEl, Dictionary<string, AutomationElement>? elementCache)
         {
             if (listEl == null) { return ("(element not resolved)", null); }

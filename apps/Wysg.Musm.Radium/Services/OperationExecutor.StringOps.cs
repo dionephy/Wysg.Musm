@@ -264,6 +264,12 @@ namespace Wysg.Musm.Radium.Services
             return (value, value);
         }
 
+        private static (string preview, string? value) ExecuteTrim(string? s)
+        {
+            var value = s?.Trim();
+            return (value ?? "(null)", value);
+        }
+ 
         private static (string preview, string? value) ExecuteMerge(string? input1, string? input2, string? separator)
         {
             input1 ??= string.Empty;
@@ -281,33 +287,6 @@ namespace Wysg.Musm.Radium.Services
             }
 
             return (merged, merged);
-        }
-
-        private static (string preview, string? value) ExecuteTakeLast(string? combined)
-        {
-            combined ??= string.Empty;
-            var arr = combined.Split('\u001F');
-            var value = arr.Length > 0 ? arr[^1] : string.Empty;
-            return (value, value);
-        }
-
-        private static (string preview, string? value) ExecuteTrim(string? s)
-        {
-            var value = s?.Trim();
-            return (value ?? "(null)", value);
-        }
-
-        private static (string preview, string? value) ExecuteToDateTime(string? s)
-        {
-            if (string.IsNullOrWhiteSpace(s)) { return ("(null)", null); }
-
-            if (DateTime.TryParse(s.Trim(), out var dt))
-            {
-                var iso = dt.ToString("o");
-                return (dt.ToString("yyyy-MM-dd HH:mm:ss"), iso);
-            }
-
-            return ("(parse fail)", null);
         }
 
         private static string UnescapeUserText(string s)

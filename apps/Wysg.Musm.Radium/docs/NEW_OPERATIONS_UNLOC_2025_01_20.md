@@ -3,6 +3,8 @@
 ## Summary
 Added 4 new Custom Procedure operations for accessing editor content and 1 new Automation module for unlocking studies.
 
+> **2025-12-10 Update:** The GetCurrentHeader/GetCurrentFindings/GetCurrentConclusion operations were retired from Radium. Existing procedures should switch to the built-in `CustomModuleProperties` values (via `Echo`) or other sources before re-running. Merge and UnlockStudy remain available.
+
 ## Features Implemented
 
 ### 1. GetCurrentHeader Operation

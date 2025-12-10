@@ -100,7 +100,22 @@ namespace Wysg.Musm.Radium.ViewModels
                 case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentPatientRemark:
                     PatientRemark = value;
                     break;
-                    
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentStudyReportDatetime:
+                    if (string.IsNullOrWhiteSpace(value))
+                        CurrentReportDateTime = null;
+                    else if (DateTime.TryParse(value, out var reportDt))
+                        CurrentReportDateTime = reportDt;
+                    break;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentStudyReportReporter:
+                    ReportRadiologist = value;
+                    break;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentStudyReportHeaderAndFindings:
+                    ReportedHeaderAndFindings = value;
+                    break;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentStudyReportConclusion:
+                    ReportedFinalConclusion = value;
+                    break;
+                
                 // Previous study properties - store in temporary fields
                 case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousStudyStudyname:
                     TempPreviousStudyStudyname = value;
@@ -178,7 +193,15 @@ namespace Wysg.Musm.Radium.ViewModels
                     return StudyRemark;
                 case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentPatientRemark:
                     return PatientRemark;
-                    
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentStudyReportDatetime:
+                    return CurrentReportDateTime?.ToString("yyyy-MM-dd HH:mm:ss");
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentStudyReportReporter:
+                    return ReportRadiologist;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentStudyReportHeaderAndFindings:
+                    return ReportedHeaderAndFindings;
+                case Wysg.Musm.Radium.Models.CustomModuleProperties.CurrentStudyReportConclusion:
+                    return ReportedFinalConclusion;
+                
                 // Previous study properties
                 case Wysg.Musm.Radium.Models.CustomModuleProperties.PreviousStudyStudyname:
                     return TempPreviousStudyStudyname;

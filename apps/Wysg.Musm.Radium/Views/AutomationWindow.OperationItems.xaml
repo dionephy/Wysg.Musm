@@ -9,13 +9,12 @@
         <ComboBoxItem Content="GetName"/>
         <ComboBoxItem Content="GetTextOCR"/>
         <ComboBoxItem Content="Split"/>
-        <ComboBoxItem Content="TakeLast"/>
         <ComboBoxItem Content="Trim"/>
         <ComboBoxItem Content="TrimString"/>
         <ComboBoxItem Content="Invoke"/>
         <ComboBoxItem Content="GetValueFromSelection"/>
+        <ComboBoxItem Content="GetDateFromSelectionWait"/>
         <ComboBoxItem Content="GetSelectedElement"/>
-        <ComboBoxItem Content="ToDateTime"/>
         <ComboBoxItem Content="Replace"/>
         <ComboBoxItem Content="GetHTML"/>
         <ComboBoxItem Content="MouseClick"/>
@@ -38,11 +37,6 @@
         <ComboBoxItem Content="Not"/>
         <ComboBoxItem Content="IsBlank"/>
         <ComboBoxItem Content="GetLongerText"/>
-        <ComboBoxItem Content="GetCurrentPatientNumber"/>
-        <ComboBoxItem Content="GetCurrentStudyDateTime"/>
-        <ComboBoxItem Content="GetCurrentHeader"/>
-        <ComboBoxItem Content="GetCurrentFindings"/>
-        <ComboBoxItem Content="GetCurrentConclusion"/>
         <ComboBoxItem Content="Merge"/>
         <ComboBoxItem Content="Delay"/>
     </x:Array>

@@ -257,6 +257,7 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                         <Button Content="Add operation" Click="OnAddProcRow" Style="{StaticResource AutomationWindowButtonStyle}"/>
                         <Button Content="Duplicate to..." Margin="6,0,0,0" Click="OnDuplicateOperations" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Duplicate all operations from current procedure to another blank procedure"/>
                         <Button Content="Run procedure" Margin="6,0,0,0" Click="OnRunProcedure" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                        <Button Content="Operation manual" Margin="6,0,0,0" Click="OnShowOperationManual" Style="{StaticResource AutomationWindowButtonStyle}" ToolTip="Open the operation reference guide"/>
                     </StackPanel>
                 </StackPanel>
                 <DataGrid x:Name="gridProcSteps" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"

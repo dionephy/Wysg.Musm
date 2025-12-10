@@ -118,7 +118,6 @@ Both implementations include detailed debug logging:
 4. **Robustness**: Graceful fallback ensures no breaking changes for edge cases
 
 ## Related Operations
-- **ToDateTime**: Already formats output as "yyyy-MM-dd HH:mm:ss" (preview) and ISO 8601 (value)
 - **StudyDateTimeMatch**: Compares study datetimes; benefits from consistent format
 - **MainViewModel.UpdateCurrentStudyLabel()**: Also formats StudyDateTime as "yyyy-MM-dd HH:mm:ss"
 

@@ -112,12 +112,8 @@ namespace Wysg.Musm.Radium.Services
                     return ExecuteReplace(resolveArg1String(), resolveArg2String(), resolveArg3String());
                 case "Merge":
                     return ExecuteMerge(resolveArg1String(), resolveArg2String(), resolveArg3String());
-                case "TakeLast":
-                    return ExecuteTakeLast(resolveArg1String());
                 case "Trim":
                     return ExecuteTrim(resolveArg1String());
-                case "ToDateTime":
-                    return ExecuteToDateTime(resolveArg1String());
 
                 // Element Operations
                 case "GetText":
@@ -151,6 +147,8 @@ namespace Wysg.Musm.Radium.Services
                     return ExecuteIsVisible(resolveArg1Element());
                 case "GetValueFromSelection":
                     return ExecuteGetValueFromSelection(resolveArg1Element(), resolveArg2String() ?? "ID");
+                case "GetDateFromSelectionWait":
+                    return ExecuteGetDateFromSelectionWaitWithRetry(resolveArg1Element, resolveArg2String);
                 case "GetSelectedElement":
                     return ExecuteGetSelectedElement(resolveArg1Element(), elementCache);
 
@@ -170,21 +168,9 @@ namespace Wysg.Musm.Radium.Services
                 case "Delay":
                     return ExecuteDelay(resolveArg1String());
 
-                // MainViewModel Operations
-                case "GetCurrentPatientNumber":
-                    return ExecuteGetCurrentPatientNumber();
-                case "GetCurrentStudyDateTime":
-                    return ExecuteGetCurrentStudyDateTime();
-                case "GetCurrentHeader":
-                    return ExecuteGetCurrentHeader();
-                case "GetCurrentFindings":
-                    return ExecuteGetCurrentFindings();
-                case "GetCurrentConclusion":
-                    return ExecuteGetCurrentConclusion();
-
-                default:
-                    return ("(unsupported)", null);
-            }
+                 default:
+                     return ("(unsupported)", null);
+             }
         }
 
         /// <summary>

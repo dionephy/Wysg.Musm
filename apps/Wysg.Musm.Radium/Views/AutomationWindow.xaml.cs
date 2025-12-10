@@ -773,5 +773,21 @@ namespace Wysg.Musm.Radium.Views
                 try { gridChain.CommitEdit(DataGridEditingUnit.Cell, true); gridChain.CommitEdit(DataGridEditingUnit.Row, true); } catch { }
             }
         }
+
+        private void OnShowOperationManual(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var dialog = new OperationManualWindow
+                {
+                    Owner = this
+                };
+                dialog.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Unable to open the operation manual.\n\n{ex.Message}", "Operation Manual", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }

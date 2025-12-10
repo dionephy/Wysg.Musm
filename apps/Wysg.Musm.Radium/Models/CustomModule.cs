@@ -196,6 +196,10 @@ namespace Wysg.Musm.Radium.Models
         public const string CurrentStudyDatetime = "Current Study Datetime";
         public const string CurrentStudyRemark = "Current Study Remark";
         public const string CurrentPatientRemark = "Current Patient Remark";
+        public const string CurrentStudyReportDatetime = "Current Study Report Datetime";
+        public const string CurrentStudyReportReporter = "Current Study Report Reporter";
+        public const string CurrentStudyReportHeaderAndFindings = "Current Study Report Header and Findings";
+        public const string CurrentStudyReportConclusion = "Current Study Report Conclusion";
         
         // Previous study properties (read/write)
         public const string PreviousStudyStudyname = "Previous Study Studyname";
@@ -233,6 +237,10 @@ namespace Wysg.Musm.Radium.Models
             CurrentStudyDatetime,
             CurrentStudyRemark,
             CurrentPatientRemark,
+            CurrentStudyReportDatetime,
+            CurrentStudyReportReporter,
+            CurrentStudyReportHeaderAndFindings,
+            CurrentStudyReportConclusion,
             // Previous study
             PreviousStudyStudyname,
             PreviousStudyDatetime,
@@ -265,6 +273,10 @@ namespace Wysg.Musm.Radium.Models
             CurrentStudyDatetime,
             CurrentStudyRemark,
             CurrentPatientRemark,
+            CurrentStudyReportDatetime,
+            CurrentStudyReportReporter,
+            CurrentStudyReportHeaderAndFindings,
+            CurrentStudyReportConclusion,
             // Previous study
             PreviousStudyStudyname,
             PreviousStudyDatetime,

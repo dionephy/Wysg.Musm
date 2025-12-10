@@ -678,31 +678,12 @@ The documentation is now:
 
 ## Recent Updates
 
+### 2025-12-10: Procedure Operation Manual Dialog
+- Added a dedicated **Operation manual** button to the Automation window Procedure tab that opens a searchable dialog covering every operation, its purpose, and argument requirements.
+- Dialog content is driven by a new `OperationManualCatalog`, ensuring descriptions stay consistent with `OperationExecutor` logic and the Procedure grid configuration rules.
+- **Files Modified**: `Views/AutomationWindow.xaml`, `Views/AutomationWindow.xaml.cs`, `Views/OperationManualWindow.xaml`, `Views/OperationManualWindow.xaml.cs`, `ViewModels/OperationManualCatalog.cs`
+- **Documentation**: `docs/00-current/FEATURE_2025-12-10_OperationManualDialog.md`
+- **Status**: ? Complete, build verified
+
 ### 2025-12-09: GetText Arg1 Preservation
-- Fixed Automation Window regression that forced `GetText` Arg1 back to `Element` when running procedures, which broke cached element chaining.
-- Logic now defaults Arg1 to `Element` only when it is still at the initial placeholder, preserving user-selected `Var` references.
-- **Files Modified**: `Views/AutomationWindow.Procedures.Exec.cs`
-- **Documentation**: `docs/00-current/FIX_2025-12-09_GetTextArgTypeReset.md`
-- **Status**: ? Complete, Build Pending Verification
-
-### 2025-11-25: Automation Window Tab Structure
-- Reorganized "Automation" window with tab-based layout
-- Tab 1 "UI Bookmark": Process management, bookmark operations, crawl editor
-- Tab 2 "Procedure": Custom procedure creation and execution
-- PACS label remains at top level for constant visibility
-- **Files Modified**: `AutomationWindow.xaml`, `AutomationWindow.Styles.xaml`
-- **Documentation**: `docs/00-current/AUTOMATION_WINDOW_TAB_STRUCTURE_20251125.md`
-- **Status**: ? Complete, Build Successful
-
----
-
-**Virtual Reality Date**: 2025-11-25  
-**Last Updated**: 2025-11-25  
-**Maintained By**: Documentation Team
-
----
-
-**?? Congratulations on completing this comprehensive documentation transformation!**
-
-Your documentation is now a **professional, well-organized, easily maintainable knowledge base** that will serve the project and team for years to come.
 

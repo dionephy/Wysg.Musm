@@ -194,6 +194,32 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
         
+        private async Task RunInsertCurrentStudyAsync()
+        {
+            if (_insertCurrentStudyProc != null)
+            {
+                await _insertCurrentStudyProc.ExecuteAsync(this);
+            }
+            else
+            {
+                Debug.WriteLine("[Automation][InsertCurrentStudy] Procedure not available");
+                SetStatus("InsertCurrentStudy: Module not available", true);
+            }
+        }
+        
+        private async Task RunInsertCurrentStudyReportAsync()
+        {
+            if (_insertCurrentStudyReportProc != null)
+            {
+                await _insertCurrentStudyReportProc.ExecuteAsync(this);
+            }
+            else
+            {
+                Debug.WriteLine("[Automation][InsertCurrentStudyReport] Procedure not available");
+                SetStatus("InsertCurrentStudyReport: Module not available", true);
+            }
+        }
+        
         /// <summary>
         /// FetchPreviousStudies automation module.
         /// Fetches all previous studies from PostgreSQL database (excluding current study) and populates the UI.
