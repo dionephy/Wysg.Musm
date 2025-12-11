@@ -57,11 +57,13 @@ namespace Wysg.Musm.Radium.ViewModels
             for (int i = 0; i < modules.Length; i++)
             {
                 var m = modules[i];
+                var trimmedModule = m?.TrimStart();
                 
                 try
                 {
                     // Treat label entries (e.g., "Label:") as no-op markers
-                    if (Wysg.Musm.Radium.Models.CustomModuleStore.TryParseLabelDisplay(m, out var labelName))
+                    if (!(trimmedModule?.StartsWith("Goto", StringComparison.OrdinalIgnoreCase) ?? false) &&
+                        Wysg.Musm.Radium.Models.CustomModuleStore.TryParseLabelDisplay(m, out var labelName))
                     {
                         Debug.WriteLine($"[Automation] Reached label '{labelName}' at position {i}");
                         continue;
@@ -90,6 +92,22 @@ namespace Wysg.Musm.Radium.ViewModels
                     
                     if (string.Equals(m, IfModalityWithHeaderModuleName, StringComparison.OrdinalIgnoreCase))
                     {
+                        if (skipExecution)
+                        {
+                            var skippedBlock = new AutomationIfBlock
+                            {
+                                StartIndex = i,
+                                ConditionMet = false,
+                                IsMessageBox = false,
+                                ElseIndex = -1,
+                                EndIndex = -1,
+                                BranchState = MessageBranchState.SkipAll
+                            };
+                            ifStack.Push(skippedBlock);
+                            UpdateSkipExecution();
+                            Debug.WriteLine("[Automation][If Modality with Header] Skipped due to parent condition=false");
+                            continue;
+                        }
                         var (hasHeader, modality) = await EvaluateModalityHeaderSettingAsync();
                         var block = new AutomationIfBlock
                         {
@@ -105,6 +123,7 @@ namespace Wysg.Musm.Radium.ViewModels
                         var modalityLabel = string.IsNullOrWhiteSpace(modality) ? "(unknown)" : modality;
                         Debug.WriteLine($"[Automation][If Modality with Header] modality='{modalityLabel}', conditionMet={hasHeader}");
                         SetStatus($"[{IfModalityWithHeaderModuleName}] {(hasHeader ? $"'{modalityLabel}' includes header" : $"'{modalityLabel}' excluded - skipping block")}");
+
                         continue;
                     }
                     
@@ -250,22 +269,16 @@ namespace Wysg.Musm.Radium.ViewModels
                         
                         if (customModule.Type == Wysg.Musm.Radium.Models.CustomModuleType.Goto)
                         {
-                            if (string.IsNullOrWhiteSpace(customModule.TargetLabelName) ||
-                                !labelPositions.TryGetValue(customModule.TargetLabelName, out var targetIndex))
+                            if (skipExecution)
                             {
-                                SetStatus($"[{customModule.Name}] Target label '{customModule.TargetLabelName}' not found - sequence aborted.", true);
+                                Debug.WriteLine($"[Automation] Skipping goto '{customModule.Name}' (inside false if-block)");
+                                continue;
+                            }
+                            if (!TryResolveGotoTarget(customModule.TargetLabelName, customModule.Name, out var targetIndex))
+                            {
                                 return;
                             }
-                            
-                            gotoHopCount++;
-                            if (gotoHopCount > gotoHopLimit)
-                            {
-                                SetStatus($"[{customModule.Name}] Too many goto hops - possible loop detected.", true);
-                                Debug.WriteLine($"[Automation] Aborting due to excessive goto hops (>{gotoHopLimit})");
-                                return;
-                            }
-                            
-                            Debug.WriteLine($"[Automation] {customModule.Name}: jumping to label '{customModule.TargetLabelName}' at index {targetIndex}");
+
                             i = targetIndex;
                             continue;
                         }
@@ -281,6 +294,21 @@ namespace Wysg.Musm.Radium.ViewModels
                         await RunCustomModuleAsync(customModule);
                         continue;
                     }
+                    else if (TryParseInlineGoto(m, out var inlineLabelName))
+                    {
+                        if (skipExecution)
+                        {
+                            Debug.WriteLine($"[Automation] Skipping inline goto '{m}' (inside false if-block)");
+                            continue;
+                        }
+                        if (!TryResolveGotoTarget(inlineLabelName, m, out var targetIndex))
+                        {
+                            return;
+                        }
+
+                        i = targetIndex;
+                        continue;
+                    }
 
                     // If we're inside a false if-block, skip standard modules (including Abort)
                     if (skipExecution)
@@ -293,6 +321,7 @@ namespace Wysg.Musm.Radium.ViewModels
                     if (string.Equals(m, "Abort", StringComparison.OrdinalIgnoreCase))
                     {
                         SetStatus("[Abort]");
+
                         SetStatus($">> {sequenceName} aborted");
                         return; // Immediately abort the entire sequence
                     }
@@ -593,6 +622,52 @@ namespace Wysg.Musm.Radium.ViewModels
                 return (false, elseIdx, source.Length - 1);
             }
             
+            bool TryParseInlineGoto(string moduleName, out string labelName)
+            {
+                labelName = string.Empty;
+                if (string.IsNullOrWhiteSpace(moduleName))
+                {
+                    return false;
+                }
+
+                var trimmed = moduleName.TrimStart();
+                if (!trimmed.StartsWith("Goto", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                var remainder = trimmed.Substring(4).TrimStart();
+                if (string.IsNullOrWhiteSpace(remainder))
+                {
+                    return false;
+                }
+
+                labelName = Wysg.Musm.Radium.Models.CustomModuleStore.NormalizeLabelName(remainder);
+                return !string.IsNullOrEmpty(labelName);
+            }
+
+            bool TryResolveGotoTarget(string? targetLabelName, string moduleDisplayName, out int targetIndex)
+            {
+                targetIndex = -1;
+
+                if (string.IsNullOrWhiteSpace(targetLabelName) || !labelPositions.TryGetValue(targetLabelName, out targetIndex))
+                {
+                    SetStatus($"[{moduleDisplayName}] Target label '{targetLabelName}' not found - sequence aborted.", true);
+                    return false;
+                }
+
+                gotoHopCount++;
+                if (gotoHopCount > gotoHopLimit)
+                {
+                    SetStatus($"[{moduleDisplayName}] Too many goto hops - possible loop detected.", true);
+                    Debug.WriteLine($"[Automation] Aborting due to excessive goto hops (>{gotoHopLimit})");
+                    return false;
+                }
+
+                Debug.WriteLine($"[Automation] {moduleDisplayName}: jumping to label '{targetLabelName}' at index {targetIndex}");
+                return true;
+            }
+
             void HandleElseIf(ref int index)
             {
                 if (skipExecution)
