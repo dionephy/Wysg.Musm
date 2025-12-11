@@ -111,7 +111,7 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         private static readonly Regex RxMultiSpaces = new(@" {2,}", RegexOptions.Compiled);
-        private static readonly Regex RxBlankLines = new(@"(\r?\n){3,}", RegexOptions.Compiled);
+        private static readonly Regex RxBlankLines = new(@"((?:\r?\n)[ \t]*){3,}", RegexOptions.Compiled);
         private static readonly Regex RxArrowAny = new(@"^(--?>|=>)\s*", RegexOptions.Compiled);
         // FIXED: Bullet regex now matches - followed by anything (not just space or EOL)
         // Excludes arrow patterns (doesn't match when followed by another -)
@@ -278,6 +278,33 @@ namespace Wysg.Musm.Radium.ViewModels
                 lines[i] = working;
             }
             
+            if (cfg.RemoveExcessiveBlankLines)
+            {
+                var filteredLines = new List<string>(lines.Length);
+                bool previousBlank = false;
+
+                foreach (var processed in lines)
+                {
+                    bool isBlank = string.IsNullOrEmpty(processed);
+
+                    if (isBlank)
+                    {
+                        if (!previousBlank && filteredLines.Count > 0)
+                        {
+                            filteredLines.Add(string.Empty);
+                        }
+                    }
+                    else
+                    {
+                        filteredLines.Add(processed);
+                    }
+
+                    previousBlank = isBlank;
+                }
+
+                lines = filteredLines.ToArray();
+            }
+
             // Rejoin lines after transformations
             input = string.Join("\n", lines);
 
@@ -292,54 +319,85 @@ namespace Wysg.Musm.Radium.ViewModels
                 
                 if (effectiveLineMode)
                 {
-                    // LINE MODE: Number each line as a separate point, remove all blank lines
-                    // ONLY applies when there's a single paragraph (no blank line separators)
-                    // NEW: With ConsiderArrowBulletContinuation, lines starting with arrow/bullet are continuations
                     var linesList = input.Split('\n');
                     var resultLines = new List<string>();
                     int num = 1;
-                    
-                    foreach (var line in linesList)
+                    int index = 0;
+
+                    while (index < linesList.Length)
                     {
-                        var trimmed = line.Trim();
-                        
-                        // Skip completely blank lines
-                        if (string.IsNullOrWhiteSpace(trimmed))
+                        while (index < linesList.Length && string.IsNullOrWhiteSpace(linesList[index]))
                         {
-                            continue; // Don't add blank lines at all in line mode
+                            index++;
                         }
-                        
-                        // NEW: Check if line starts with arrow or bullet (after trimming)
-                        bool startsWithArrow = cfg.ConsiderArrowBulletContinuation && 
-                                               (trimmed.StartsWith(cfg.Arrow + " ") || trimmed.StartsWith(" " + cfg.Arrow + " "));
-                        bool startsWithBullet = cfg.ConsiderArrowBulletContinuation && 
-                                                (trimmed.StartsWith(cfg.DetailingPrefix + " ") || trimmed.StartsWith(" " + cfg.DetailingPrefix + " "));
-                        bool isContinuation = startsWithArrow || startsWithBullet;
-                        
-                        // Check if this line already has a number (from manual entry)
-                        bool hasNumber = RxNumbered.IsMatch(trimmed);
-                        
-                        if (isContinuation && resultLines.Count > 0)
+
+                        if (index >= linesList.Length)
+                            break;
+
+                        int blockEnd = index;
+                        bool blockHasContinuationMarker = false;
+
+                        while (blockEnd < linesList.Length && !string.IsNullOrWhiteSpace(linesList[blockEnd]))
                         {
-                            // This is a continuation line (arrow/bullet) - indent it under previous numbered line
-                            resultLines.Add($"   {trimmed}");
+                            if (cfg.ConsiderArrowBulletContinuation)
+                            {
+                                var probe = linesList[blockEnd].Trim();
+                                if (IsArrowContinuationLine(probe, cfg) || IsBulletContinuationLine(probe, cfg))
+                                {
+                                    blockHasContinuationMarker = true;
+                                }
+                            }
+
+                            blockEnd++;
                         }
-                        else if (hasNumber)
+
+                        if (cfg.ConsiderArrowBulletContinuation && blockHasContinuationMarker)
                         {
-                            // Line already numbered - renumber for consistency
-                            var match = RxNumbered.Match(trimmed);
-                            var content = trimmed.Substring(match.Length);
-                            resultLines.Add($"{num}. {content}");
+                            bool firstLineInBlock = true;
+                            for (int i = index; i < blockEnd; i++)
+                            {
+                                var trimmed = linesList[i].Trim();
+                                if (trimmed.Length == 0)
+                                    continue;
+
+                                if (firstLineInBlock)
+                                {
+                                    resultLines.Add($"{num}. {StripLeadingNumber(trimmed)}");
+                                    firstLineInBlock = false;
+                                }
+                                else
+                                {
+                                    resultLines.Add($"   {trimmed}");
+                                }
+                            }
+
                             num++;
                         }
                         else
                         {
-                            // Line not numbered and not a continuation - add number
-                            resultLines.Add($"{num}. {trimmed}");
-                            num++;
+                            for (int i = index; i < blockEnd; i++)
+                            {
+                                var trimmed = linesList[i].Trim();
+                                if (trimmed.Length == 0)
+                                    continue;
+
+                                bool startsWithArrow = cfg.ConsiderArrowBulletContinuation && IsArrowContinuationLine(trimmed, cfg);
+                                bool startsWithBullet = cfg.ConsiderArrowBulletContinuation && IsBulletContinuationLine(trimmed, cfg);
+
+                                if ((startsWithArrow || startsWithBullet) && resultLines.Count > 0)
+                                {
+                                    resultLines.Add($"   {trimmed}");
+                                    continue;
+                                }
+
+                                resultLines.Add($"{num}. {StripLeadingNumber(trimmed)}");
+                                num++;
+                            }
                         }
+
+                        index = blockEnd;
                     }
-                    
+
                     input = string.Join("\n", resultLines);
                 }
                 else
@@ -402,6 +460,37 @@ namespace Wysg.Musm.Radium.ViewModels
             }
 
             return input;
+        }
+
+        private static string StripLeadingNumber(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return string.Empty;
+
+            var match = RxNumbered.Match(text);
+            return match.Success ? text.Substring(match.Length).TrimStart() : text;
+        }
+
+        private static bool IsArrowContinuationLine(string text, ReportifyConfig cfg)
+        {
+            if (!cfg.ConsiderArrowBulletContinuation || string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(cfg.Arrow))
+                return false;
+
+            if (text.StartsWith(cfg.Arrow + " ", StringComparison.Ordinal))
+                return true;
+
+            return string.Equals(text, cfg.Arrow, StringComparison.Ordinal);
+        }
+
+        private static bool IsBulletContinuationLine(string text, ReportifyConfig cfg)
+        {
+            if (!cfg.ConsiderArrowBulletContinuation || string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(cfg.DetailingPrefix))
+                return false;
+
+            if (text.StartsWith(cfg.DetailingPrefix + " ", StringComparison.Ordinal))
+                return true;
+
+            return string.Equals(text, cfg.DetailingPrefix, StringComparison.Ordinal);
         }
 
         // For dereportify we already had logic; keep existing DereportifySingleLine methods.
