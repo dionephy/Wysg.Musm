@@ -9,6 +9,7 @@ namespace Wysg.Musm.Editor.Snippets;
 
 public sealed class MusmCompletionData : ICompletionData
 {
+    private const double ExactPhrasePriorityBoost = 1000d; // Ensures exact phrase matches outrank other completion types
     /// <summary>
     /// Text property used for filtering by AvalonEdit's CompletionList.
     /// IMPORTANT: This should contain ONLY the trigger/shortcut text, NOT the description.
@@ -85,6 +86,13 @@ public sealed class MusmCompletionData : ICompletionData
 
         if (string.IsNullOrEmpty(matchKey))
             return;
+
+        // If the user typed an exact phrase, force it to the top regardless of snippets/hotkeys
+        if (!IsSnippet && !IsHotkey && matchKey.Equals(input, StringComparison.OrdinalIgnoreCase))
+        {
+            Priority += ExactPhrasePriorityBoost;
+            return;
+        }
 
         // Calculate match quality bonus (within same category)
         double bonus = 0;

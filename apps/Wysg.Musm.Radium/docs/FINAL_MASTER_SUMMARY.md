@@ -678,12 +678,16 @@ The documentation is now:
 
 ## Recent Updates
 
+### 2025-12-11: Phrase Completion Exact Match Priority
+- Boosted completion sorting so exact phrase matches outrank snippets and hotkeys, preventing unintended hotkey triggers when the typed token already exists in the phrase catalog.
+- **Files Modified**: `src/Wysg.Musm.Editor/Snippets/MusmCompletionData.cs`
+- **Documentation**: `docs/00-current/FIX_2025-12-11_PhraseCompletionExactMatchPriority.md`
+- **Status**: ✅ Complete, waiting on downstream verification in Radium builds
+
 ### 2025-12-10: Procedure Operation Manual Dialog
 - Added a dedicated **Operation manual** button to the Automation window Procedure tab that opens a searchable dialog covering every operation, its purpose, and argument requirements.
 - Dialog content is driven by a new `OperationManualCatalog`, ensuring descriptions stay consistent with `OperationExecutor` logic and the Procedure grid configuration rules.
 - **Files Modified**: `Views/AutomationWindow.xaml`, `Views/AutomationWindow.xaml.cs`, `Views/OperationManualWindow.xaml`, `Views/OperationManualWindow.xaml.cs`, `ViewModels/OperationManualCatalog.cs`
 - **Documentation**: `docs/00-current/FEATURE_2025-12-10_OperationManualDialog.md`
 - **Status**: ✅ Complete, build verified
-
-### 2025-12-09: GetText Arg1 Preservation
 
