@@ -1,41 +1,77 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Windows.Input;
 
 namespace Wysg.Musm.Radium.Services
 {
     /// <summary>
     /// Service that monitors global keyboard input and triggers editor autofocus
-    /// when configured keys are pressed while a target UI element has focus.
+    /// when configured keys are pressed while a target PACS window has focus.
     /// 
-    /// Based on legacy MainViewModel.KeyHookTarget pattern but with configurable
-    /// bookmark targeting and key type filtering.
+    /// <para><b>How It Works:</b></para>
+    /// <list type="number">
+    ///   <item>Installs a low-level keyboard hook (WH_KEYBOARD_LL) to intercept all keypresses</item>
+    ///   <item>When a key is pressed, checks if the foreground window title matches the configured PACS title</item>
+    ///   <item>Uses Win32 GetClassName() to detect if the focused element is a text input control</item>
+    ///   <item>If NOT a text input ¡æ blocks the key, focuses Radium editor, and replays the key via SendKeys</item>
+    ///   <item>If IS a text input ¡æ passes the key through normally (user is typing in worklist, search box, etc.)</item>
+    /// </list>
     /// 
-    /// Performance: Optimized for minimal latency in hook callback.
-    /// Logging is disabled by default for speed; set ENABLE_DIAGNOSTIC_LOGGING to true for debugging.
+    /// <para><b>Why Class Name Detection:</b></para>
+    /// Previous approaches using FlaUI bookmark HWND comparison failed because:
+    /// <list type="bullet">
+    ///   <item>FlaUI calls are too slow (5-50ms) for hook callbacks which must return immediately</item>
+    ///   <item>WPF/MFC container elements often share the same native HWND with their children</item>
+    /// </list>
+    /// Win32 class names (Edit, ComboBox, SysListView32, etc.) are unique per control type and
+    /// can be retrieved in microseconds, making them ideal for hook callback detection.
+    /// 
+    /// <para><b>Key Technologies:</b></para>
+    /// <list type="bullet">
+    ///   <item><c>SetWindowsHookEx(WH_KEYBOARD_LL)</c> - Global keyboard hook</item>
+    ///   <item><c>GetClassName()</c> - Fast Win32 control type detection</item>
+    ///   <item><c>GetGUIThreadInfo()</c> - Get the actual focused window handle</item>
+    ///   <item><c>SendKeys.SendWait()</c> - Replay keys (bypasses SendInput hook restrictions)</item>
+    /// </list>
     /// </summary>
+    /// <remarks>
+    /// <para><b>CRITICAL:</b> The hook callback must return immediately. Any delay allows Windows
+    /// to dispatch the key to the target application before it can be blocked.</para>
+    /// 
+    /// <para><b>Configuration:</b></para>
+    /// <list type="bullet">
+    ///   <item><c>EditorAutofocusEnabled</c> - Master enable/disable switch</item>
+    ///   <item><c>EditorAutofocusWindowTitle</c> - Partial window title to match (e.g., "INFINITT PACS")</item>
+    ///   <item><c>EditorAutofocusKeyTypes</c> - Comma-separated key types: Alphabet, Numbers, Space, Tab, Symbols</item>
+    /// </list>
+    /// </remarks>
     public sealed class EditorAutofocusService : IDisposable
     {
         private readonly IRadiumLocalSettings _settings;
         private readonly Action _focusEditorCallback;
         private IntPtr _hookHandle = IntPtr.Zero;
-        private LowLevelKeyboardProc? _hookProc; // Keep delegate alive to prevent GC
+        private LowLevelKeyboardProc? _hookProc;
         private bool _isDisposed;
-        
-        // Cached bookmark resolution to avoid expensive FlaUI calls on every keypress
-        private IntPtr _cachedBookmarkHwnd = IntPtr.Zero;
-        private string? _cachedBookmarkName = null;
-        private DateTime _lastBookmarkCacheTime = DateTime.MinValue;
-        private static readonly TimeSpan BookmarkCacheExpiry = TimeSpan.FromSeconds(2); // Re-resolve every 2 seconds
 
-        // Autofocus operation queue to prevent race conditions
-        private readonly System.Collections.Concurrent.ConcurrentQueue<char> _pendingKeys = new();
-        private int _isProcessingQueue = 0; // 0 = idle, 1 = processing
+        /// <summary>
+        /// Queue for async key processing. Keys are captured in the hook callback (sync)
+        /// and processed on the UI thread (async) to avoid blocking the hook.
+        /// </summary>
+        private readonly ConcurrentQueue<char> _pendingKeys = new();
+        private int _isProcessing = 0;
 
-        // Diagnostic logging flag - set to true only when debugging performance issues
+        /// <summary>
+        /// Cached window title from settings. Read once at Start() to avoid
+        /// accessing settings on every keypress.
+        /// </summary>
+        private string? _cachedWindowTitle = null;
+
+        // Diagnostic logging - set to false for production, true for debugging
         private const bool ENABLE_DIAGNOSTIC_LOGGING = false;
 
         // Windows hook constants
@@ -43,7 +79,41 @@ namespace Wysg.Musm.Radium.Services
         private const int WM_KEYDOWN = 0x0100;
         private const int WM_SYSKEYDOWN = 0x0104;
 
-        // Delegate for low-level keyboard hook
+        // Modifier virtual keys (used to detect Ctrl, Alt, Win which should NOT trigger autofocus)
+        private const int VK_LSHIFT = 0xA0;
+        private const int VK_RSHIFT = 0xA1;
+        private const int VK_LCONTROL = 0xA2;
+        private const int VK_RCONTROL = 0xA3;
+        private const int VK_CONTROL = 0x11;
+        private const int VK_LMENU = 0xA4;
+        private const int VK_RMENU = 0xA5;
+        private const int VK_MENU = 0x12;
+        private const int VK_LWIN = 0x5B;
+        private const int VK_RWIN = 0x5C;
+
+        /// <summary>
+        /// Window class names that indicate text input controls.
+        /// When the focused element has one of these class names, autofocus is NOT triggered
+        /// because the user is typing in that control (worklist search, patient ID field, etc.).
+        /// </summary>
+        private static readonly HashSet<string> TextInputClassNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Edit",           // Standard Windows edit control
+            "RichEdit",       // Rich text edit
+            "RichEdit20A",    // Rich text edit ANSI
+            "RichEdit20W",    // Rich text edit Unicode
+            "RichEdit50W",    // Rich text edit v5
+            "RICHEDIT50W",    // Rich text edit v5 (uppercase)
+            "TextBox",        // WPF TextBox
+            "ComboBox",       // ComboBox with edit
+            "ComboBoxEx32",   // Extended ComboBox
+            "SysListView32",  // ListView (worklist - may have inline edit)
+            "SysTreeView32",  // TreeView (may have inline edit)
+            "Scintilla",      // Scintilla editor control
+        };
+
+        #region P/Invoke Declarations
+
         private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -62,9 +132,27 @@ namespace Wysg.Musm.Radium.Services
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
 
-        /// <summary>
-        /// KBDLLHOOKSTRUCT structure for low-level keyboard input
-        /// </summary>
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int vKey);
+
+        [DllImport("user32.dll")]
+        private static extern int ToUnicode(uint wVirtKey, uint wScanCode, byte[] lpKeyState, StringBuilder pwszBuff, int cchBuff, uint wFlags);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetKeyboardState(byte[] lpKeyState);
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
+
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
         [StructLayout(LayoutKind.Sequential)]
         private struct KBDLLHOOKSTRUCT
         {
@@ -75,563 +163,6 @@ namespace Wysg.Musm.Radium.Services
             public IntPtr dwExtraInfo;
         }
 
-        public EditorAutofocusService(IRadiumLocalSettings settings, Action focusEditorCallback)
-        {
-            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            _focusEditorCallback = focusEditorCallback ?? throw new ArgumentNullException(nameof(focusEditorCallback));
-        }
-
-        /// <summary>
-        /// Starts monitoring keyboard input for autofocus triggers.
-        /// </summary>
-        public void Start()
-        {
-            if (_hookHandle != IntPtr.Zero)
-            {
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine("[EditorAutofocusService] Hook already installed");
-                return;
-            }
-
-            if (!_settings.EditorAutofocusEnabled)
-            {
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine("[EditorAutofocusService] Autofocus disabled in settings, not starting hook");
-                return;
-            }
-
-            try
-            {
-                // Keep delegate alive to prevent GC collection
-                _hookProc = HookCallback;
-                
-                using var curProcess = System.Diagnostics.Process.GetCurrentProcess();
-                using var curModule = curProcess.MainModule;
-                
-                _hookHandle = SetWindowsHookEx(WH_KEYBOARD_LL, _hookProc, GetModuleHandle(curModule?.ModuleName ?? ""), 0);
-                
-                if (_hookHandle == IntPtr.Zero)
-                {
-                    var error = Marshal.GetLastWin32Error();
-                    Debug.WriteLine($"[EditorAutofocusService] Failed to install hook. Error: {error}");
-                }
-                else if (ENABLE_DIAGNOSTIC_LOGGING)
-                {
-                    Debug.WriteLine("[EditorAutofocusService] Keyboard hook installed successfully");
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[EditorAutofocusService] Error starting hook: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Stops monitoring keyboard input.
-        /// </summary>
-        public void Stop()
-        {
-            if (_hookHandle != IntPtr.Zero)
-            {
-                UnhookWindowsHookEx(_hookHandle);
-                _hookHandle = IntPtr.Zero;
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine("[EditorAutofocusService] Keyboard hook uninstalled");
-            }
-            
-            // Clear cached bookmark
-            _cachedBookmarkHwnd = IntPtr.Zero;
-            _cachedBookmarkName = null;
-        }
-
-        /// <summary>
-        /// Low-level keyboard hook callback.
-        /// </summary>
-        private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
-        {
-            try
-            {
-                // Only process if code is HC_ACTION (0)
-                if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
-                {
-                    var hookStruct = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
-                    var key = KeyInterop.KeyFromVirtualKey((int)hookStruct.vkCode);
-
-                    if (ENABLE_DIAGNOSTIC_LOGGING)
-                        Debug.WriteLine($"[EditorAutofocus] Key pressed: {key}");
-
-                    // Check if autofocus should trigger
-                    if (ShouldTriggerAutofocus(key))
-                    {
-                        if (ENABLE_DIAGNOSTIC_LOGGING)
-                            Debug.WriteLine($"[EditorAutofocus] ShouldTriggerAutofocus returned TRUE for key: {key}");
-                        
-                        // Get character before any async operations
-                        char keyChar = GetCharFromKey(key);
-                        
-                        // STRATEGY: Consume original key, focus editor, then send the key
-                        // This ensures exactly one character is inserted (the sent key)
-                        // We use BeginInvoke to avoid blocking the hook callback
-                        System.Windows.Application.Current?.Dispatcher.BeginInvoke(
-                            System.Windows.Threading.DispatcherPriority.Send,
-                            new Action(() =>
-                            {
-                                try
-                                {
-                                    // Focus editor first
-                                    _focusEditorCallback();
-                                    
-                                    // Small delay to ensure focus transfer completes
-                                    // This is critical for consistent single-character insertion
-                                    System.Threading.Thread.Sleep(10);
-                                    
-                                    // Send the key (only once, since we consumed the original)
-                                    if (keyChar != '\0')
-                                    {
-                                        string keyString = keyChar switch
-                                        {
-                                            '+' => "{+}",
-                                            '^' => "{^}",
-                                            '%' => "{%}",
-                                            '~' => "{~}",
-                                            '(' => "{(}",
-                                            ')' => "{)}",
-                                            '{' => "{{}",
-                                            '}' => "{}}",
-                                            '[' => "{[}",
-                                            ']' => "{]}",
-                                            _ => keyChar.ToString()
-                                        };
-                                        
-                                        System.Windows.Forms.SendKeys.SendWait(keyString);
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    if (ENABLE_DIAGNOSTIC_LOGGING)
-                                        Debug.WriteLine($"[EditorAutofocus] Error in dispatcher callback: {ex.Message}");
-                                }
-                            }));
-                        
-                        // CONSUME the original key to prevent it from reaching any window
-                        // This ensures only our sent key arrives at the editor (single character)
-                        return (IntPtr)1;
-                    }
-                    else
-                    {
-                        if (ENABLE_DIAGNOSTIC_LOGGING)
-                            Debug.WriteLine($"[EditorAutofocus] ShouldTriggerAutofocus returned FALSE for key: {key}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Exception in HookCallback: {ex.Message}");
-            }
-
-            // Pass through to next hook for non-autofocus keys
-            return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
-        }
-
-        /// <summary>
-        /// Sends a keypress using SendInput (faster and more reliable than SendKeys).
-        /// </summary>
-        private static void SendKeyPress(char ch)
-        {
-            try
-            {
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] SendKeyPress called for '{ch}'");
-                
-                // Convert character to virtual key code
-                short vk = VkKeyScan(ch);
-                if (vk == -1) 
-                {
-                    if (ENABLE_DIAGNOSTIC_LOGGING)
-                        Debug.WriteLine($"[EditorAutofocus] VkKeyScan failed for '{ch}'");
-                    return; // Character cannot be mapped
-                }
-                
-                byte virtualKey = (byte)(vk & 0xFF);
-                byte shiftState = (byte)((vk >> 8) & 0xFF);
-                bool needShift = (shiftState & 1) != 0;
-                
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] VK={virtualKey}, NeedShift={needShift}");
-                
-                INPUT[] inputs = needShift ? new INPUT[4] : new INPUT[2];
-                int inputIndex = 0;
-                
-                // Press Shift if needed
-                if (needShift)
-                {
-                    inputs[inputIndex++] = new INPUT
-                    {
-                        type = INPUT_KEYBOARD,
-                        ki = new KEYBDINPUT { wVk = VK_SHIFT, dwFlags = 0 }
-                    };
-                }
-                
-                // Press key
-                inputs[inputIndex++] = new INPUT
-                {
-                    type = INPUT_KEYBOARD,
-                    ki = new KEYBDINPUT { wVk = virtualKey, dwFlags = 0 }
-                };
-                
-                // Release key
-                inputs[inputIndex++] = new INPUT
-                {
-                    type = INPUT_KEYBOARD,
-                    ki = new KEYBDINPUT { wVk = virtualKey, dwFlags = KEYEVENTF_KEYUP }
-                };
-                
-                // Release Shift if needed
-                if (needShift)
-                {
-                    inputs[inputIndex] = new INPUT
-                    {
-                        type = INPUT_KEYBOARD,
-                        ki = new KEYBDINPUT { wVk = VK_SHIFT, dwFlags = KEYEVENTF_KEYUP }
-                    };
-                }
-                
-                uint result = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
-                
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] SendInput returned {result} (expected {inputs.Length})");
-            }
-            catch (Exception ex) 
-            { 
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] SendKeyPress exception: {ex.Message}");
-            }
-        }
-
-        // P/Invoke declarations for SendInput
-        private const int INPUT_KEYBOARD = 1;
-        private const uint KEYEVENTF_KEYUP = 0x0002;
-        private const byte VK_SHIFT = 0x10;
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct INPUT
-        {
-            public int type;
-            public KEYBDINPUT ki;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct KEYBDINPUT
-        {
-            public ushort wVk;
-            public ushort wScan;
-            public uint dwFlags;
-            public uint time;
-            public IntPtr dwExtraInfo;
-        }
-
-        [DllImport("user32.dll")]
-        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
-
-        [DllImport("user32.dll")]
-        private static extern short VkKeyScan(char ch);
-
-        /// <summary>
-        /// Converts a WPF Key to a character for SendKeys.
-        /// </summary>
-        private static char GetCharFromKey(Key key)
-        {
-            // Alphabet keys
-            if (key >= Key.A && key <= Key.Z)
-                return (char)('a' + (key - Key.A));
-            
-            // Number keys (main keyboard)
-            if (key >= Key.D0 && key <= Key.D9)
-                return (char)('0' + (key - Key.D0));
-            
-            // Numpad keys
-            if (key >= Key.NumPad0 && key <= Key.NumPad9)
-                return (char)('0' + (key - Key.NumPad0));
-            
-            // Space
-            if (key == Key.Space)
-                return ' ';
-            
-            // Tab
-            if (key == Key.Tab)
-                return '\t';
-            
-            // Common symbols (OEM keys)
-            return key switch
-            {
-                Key.OemPeriod => '.',
-                Key.OemComma => ',',
-                Key.OemQuestion => '/',
-                Key.OemSemicolon => ';',
-                Key.OemQuotes => '\'',
-                Key.OemOpenBrackets => '[',
-                Key.OemCloseBrackets => ']',
-                Key.OemPipe => '\\',
-                Key.OemPlus => '=',
-                Key.OemMinus => '-',
-                Key.OemTilde => '`',
-                _ => '\0' // Null character for unsupported keys
-            };
-        }
-
-        /// <summary>
-        /// Determines if the given key should trigger autofocus based on current settings.
-        /// </summary>
-        private bool ShouldTriggerAutofocus(Key key)
-        {
-            if (ENABLE_DIAGNOSTIC_LOGGING)
-                Debug.WriteLine($"[EditorAutofocus] ShouldTriggerAutofocus called for key: {key}");
-            
-            // Quick checks first (fastest to slowest)
-            if (!_settings.EditorAutofocusEnabled)
-            {
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Feature disabled in settings");
-                return false;
-            }
-
-            // Check for modifier keys - only trigger on plain keys
-            if (Keyboard.Modifiers != ModifierKeys.None)
-            {
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Modifier keys pressed: {Keyboard.Modifiers}");
-                return false;
-            }
-
-            // Check if key matches configured key types
-            if (!IsKeyTypeEnabled(key))
-            {
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Key type not enabled for key: {key}");
-                return false;
-            }
-
-            // SHORT-CIRCUIT: If Radium window already has focus, don't trigger autofocus
-            // This prevents the expensive foreground window check when typing in the editor
-            try
-            {
-                var currentForeground = GetForegroundWindow();
-                var radiumHwnd = new System.Windows.Interop.WindowInteropHelper(
-                    System.Windows.Application.Current?.MainWindow).Handle;
-                
-                if (currentForeground == radiumHwnd)
-                {
-                    if (ENABLE_DIAGNOSTIC_LOGGING)
-                        Debug.WriteLine($"[EditorAutofocus] Radium already has focus, skipping");
-                    return false;
-                }
-            }
-            catch { /* Fall through to normal check */ }
-
-            // Most expensive check last - foreground window matches bookmark
-            bool matches = IsForegroundWindowTargetBookmark();
-            
-            if (ENABLE_DIAGNOSTIC_LOGGING)
-                Debug.WriteLine($"[EditorAutofocus] IsForegroundWindowTargetBookmark returned: {matches}");
-            
-            return matches;
-        }
-
-        /// <summary>
-        /// Checks if the foreground window matches the configured bookmark.
-        /// Uses cached bookmark HWND to avoid expensive FlaUI resolution on every keypress.
-        /// IMPORTANT: Only triggers if the EXACT bookmark element has focus, not its children/descendants.
-        /// 
-        /// Two-stage matching for performance:
-        /// 1. Fast: Check window title (rejects non-PACS apps immediately)
-        /// 2. Precise: Check bookmark HWND (rejects child elements within PACS)
-        /// </summary>
-        private bool IsForegroundWindowTargetBookmark()
-        {
-            var bookmarkName = _settings.EditorAutofocusBookmark;
-            var windowTitle = _settings.EditorAutofocusWindowTitle;
-            
-            if (ENABLE_DIAGNOSTIC_LOGGING)
-            {
-                Debug.WriteLine($"[EditorAutofocus] IsForegroundWindowTargetBookmark called:");
-                Debug.WriteLine($"  BookmarkName: '{bookmarkName}'");
-                Debug.WriteLine($"  WindowTitle: '{windowTitle}'");
-            }
-            
-            var foregroundHwnd = GetForegroundWindow();
-            if (foregroundHwnd == IntPtr.Zero)
-                return false;
-            
-            // STAGE 1: Fast window title check (avoids expensive bookmark resolve for non-PACS apps)
-            // If window title is configured, check it FIRST as a gate
-            if (!string.IsNullOrWhiteSpace(windowTitle))
-            {
-                var title = GetWindowTitle(foregroundHwnd);
-                
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Stage 1 - Window title check: '{title}'");
-                
-                // If title doesn't match, reject immediately (not PACS app)
-                if (string.IsNullOrWhiteSpace(title) || !title.Contains(windowTitle, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (ENABLE_DIAGNOSTIC_LOGGING)
-                        Debug.WriteLine($"[EditorAutofocus] Stage 1 REJECT - Title mismatch");
-                    return false;
-                }
-                
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Stage 1 PASS - Title matches, proceeding to Stage 2");
-            }
-            else
-            {
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Stage 1 SKIP - No window title configured");
-            }
-            
-            // STAGE 2: Precise bookmark HWND check (filters out child elements within PACS)
-            // If bookmark is configured, use exact HWND matching to exclude child controls
-            if (string.IsNullOrWhiteSpace(bookmarkName))
-            {
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Stage 2 SKIP - No bookmark configured, accepting based on title match");
-                
-                // If only title is configured (no bookmark), accept based on title alone
-                // This is legacy behavior but won't filter child elements
-                return !string.IsNullOrWhiteSpace(windowTitle);
-            }
-
-            try
-            {
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Stage 2 - Bookmark HWND check");
-                
-                // Check if we need to refresh the cached bookmark HWND
-                bool needRefresh = _cachedBookmarkName != bookmarkName ||
-                                   _cachedBookmarkHwnd == IntPtr.Zero ||
-                                   (DateTime.Now - _lastBookmarkCacheTime) > BookmarkCacheExpiry;
-
-                if (needRefresh)
-                {
-                    // Resolve bookmark by name (simplified - no enum parsing)
-                    var (bookmarkHwnd, _) = UiBookmarks.Resolve(bookmarkName);
-                    
-                    // Cache the result
-                    _cachedBookmarkHwnd = bookmarkHwnd;
-                    _cachedBookmarkName = bookmarkName;
-                    _lastBookmarkCacheTime = DateTime.Now;
-                    
-                    if (ENABLE_DIAGNOSTIC_LOGGING)
-                        Debug.WriteLine($"[EditorAutofocus] Bookmark '{bookmarkName}' resolved to HWND: 0x{bookmarkHwnd:X}");
-                }
-
-                // Get the actual focused element (not just top-level window)
-                var focusedHwnd = GetFocusedWindowHandle(foregroundHwnd);
-                
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                {
-                    Debug.WriteLine($"[EditorAutofocus] Stage 2 - HWND comparison:");
-                    Debug.WriteLine($"  Foreground HWND: 0x{foregroundHwnd:X}");
-                    Debug.WriteLine($"  Focused HWND:    0x{focusedHwnd:X}");
-                    Debug.WriteLine($"  Bookmark HWND:   0x{_cachedBookmarkHwnd:X}");
-                }
-                
-                // Exact HWND match: only the bookmarked element itself triggers
-                bool matches = _cachedBookmarkHwnd == focusedHwnd;
-                
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Stage 2 result: {(matches ? "ACCEPT" : "REJECT")} - HWND exact match: {matches}");
-                
-                return matches;
-            }
-            catch (Exception ex)
-            {
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Stage 2 EXCEPTION: {ex.Message}");
-                
-                // Clear cache on error
-                _cachedBookmarkHwnd = IntPtr.Zero;
-                _cachedBookmarkName = null;
-                return false;
-            }
-        }
-        
-        /// <summary>
-        /// Gets the HWND of the currently focused element within the foreground window.
-        /// Uses GetGUIThreadInfo to get the actual focused control, not just the top-level window.
-        /// This allows us to distinguish between the parent window and its child controls.
-        /// </summary>
-        private static IntPtr GetFocusedWindowHandle(IntPtr foregroundHwnd)
-        {
-            try
-            {
-                // Get the thread ID of the foreground window
-                uint threadId = GetWindowThreadProcessId(foregroundHwnd, IntPtr.Zero);
-                if (threadId == 0)
-                {
-                    if (ENABLE_DIAGNOSTIC_LOGGING)
-                        Debug.WriteLine($"[EditorAutofocus] GetWindowThreadProcessId failed, using foreground HWND");
-                    return foregroundHwnd;
-                }
-                
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Thread ID: {threadId}");
-                
-                // Get GUI thread info to find the actual focused window
-                GUITHREADINFO info = new GUITHREADINFO();
-                info.cbSize = (uint)Marshal.SizeOf(info);
-                
-                if (GetGUIThreadInfo(threadId, ref info))
-                {
-                    if (ENABLE_DIAGNOSTIC_LOGGING)
-                    {
-                        Debug.WriteLine($"[EditorAutofocus] GUI Thread Info:");
-                        Debug.WriteLine($"  hwndActive:  0x{info.hwndActive:X}");
-                        Debug.WriteLine($"  hwndFocus:   0x{info.hwndFocus:X}");
-                        Debug.WriteLine($"  hwndCapture: 0x{info.hwndCapture:X}");
-                    }
-                    
-                    // Priority 1: hwndFocus (actual focused control)
-                    if (info.hwndFocus != IntPtr.Zero)
-                    {
-                        if (ENABLE_DIAGNOSTIC_LOGGING)
-                            Debug.WriteLine($"[EditorAutofocus] Using hwndFocus: 0x{info.hwndFocus:X}");
-                        return info.hwndFocus;
-                    }
-                    
-                    // Priority 2: hwndActive (active window in thread)
-                    if (info.hwndActive != IntPtr.Zero)
-                    {
-                        if (ENABLE_DIAGNOSTIC_LOGGING)
-                            Debug.WriteLine($"[EditorAutofocus] Using hwndActive: 0x{info.hwndActive:X}");
-                        return info.hwndActive;
-                    }
-                }
-                else
-                {
-                    if (ENABLE_DIAGNOSTIC_LOGGING)
-                        Debug.WriteLine($"[EditorAutofocus] GetGUIThreadInfo failed");
-                }
-                
-                // Fallback: return the foreground window if we can't get focus info
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Using foreground HWND (fallback): 0x{foregroundHwnd:X}");
-                return foregroundHwnd;
-            }
-            catch (Exception ex)
-            {
-                if (ENABLE_DIAGNOSTIC_LOGGING)
-                    Debug.WriteLine($"[EditorAutofocus] Exception in GetFocusedWindowHandle: {ex.Message}");
-                return foregroundHwnd;
-            }
-        }
-        
-        [DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
-        
-        [DllImport("user32.dll")]
-        private static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
-        
         [StructLayout(LayoutKind.Sequential)]
         private struct GUITHREADINFO
         {
@@ -646,22 +177,402 @@ namespace Wysg.Musm.Radium.Services
             public System.Drawing.Rectangle rcCaret;
         }
 
+        #endregion
+
         /// <summary>
-        /// Gets the window title for the given window handle.
+        /// Creates a new instance of the EditorAutofocusService.
         /// </summary>
-        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-        
-        private static string GetWindowTitle(IntPtr hWnd)
+        /// <param name="settings">Settings provider for configuration values.</param>
+        /// <param name="focusEditorCallback">Callback to focus the Radium editor when autofocus triggers.</param>
+        public EditorAutofocusService(IRadiumLocalSettings settings, Action focusEditorCallback)
         {
-            const int nMaxCount = 512;
-            var windowText = new StringBuilder(nMaxCount);
-            
-            if (GetWindowText(hWnd, windowText, nMaxCount) > 0)
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _focusEditorCallback = focusEditorCallback ?? throw new ArgumentNullException(nameof(focusEditorCallback));
+        }
+
+        /// <summary>
+        /// Starts monitoring keyboard input for autofocus triggers.
+        /// Installs a global low-level keyboard hook.
+        /// </summary>
+        public void Start()
+        {
+            if (_hookHandle != IntPtr.Zero)
             {
-                return windowText.ToString();
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine("[EditorAutofocusService] Hook already installed");
+                return;
             }
-            return string.Empty;
+
+            if (!_settings.EditorAutofocusEnabled)
+            {
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine("[EditorAutofocusService] Autofocus disabled in settings");
+                return;
+            }
+
+            // Cache window title setting (read once to avoid accessing settings on every keypress)
+            _cachedWindowTitle = _settings.EditorAutofocusWindowTitle;
+
+            if (string.IsNullOrWhiteSpace(_cachedWindowTitle))
+            {
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine("[EditorAutofocusService] No window title configured, not starting");
+                return;
+            }
+
+            try
+            {
+                // Keep delegate alive to prevent GC collection
+                _hookProc = HookCallback;
+
+                using var curProcess = Process.GetCurrentProcess();
+                using var curModule = curProcess.MainModule;
+
+                _hookHandle = SetWindowsHookEx(WH_KEYBOARD_LL, _hookProc, GetModuleHandle(curModule?.ModuleName ?? ""), 0);
+
+                if (_hookHandle == IntPtr.Zero)
+                {
+                    var error = Marshal.GetLastWin32Error();
+                    Debug.WriteLine($"[EditorAutofocusService] Failed to install hook. Error: {error}");
+                }
+                else if (ENABLE_DIAGNOSTIC_LOGGING)
+                {
+                    Debug.WriteLine($"[EditorAutofocusService] Keyboard hook installed. Monitoring for window title: '{_cachedWindowTitle}'");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[EditorAutofocusService] Error starting hook: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Stops monitoring keyboard input and removes the hook.
+        /// </summary>
+        public void Stop()
+        {
+            if (_hookHandle != IntPtr.Zero)
+            {
+                UnhookWindowsHookEx(_hookHandle);
+                _hookHandle = IntPtr.Zero;
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine("[EditorAutofocusService] Keyboard hook uninstalled");
+            }
+
+            // Clear any pending keys
+            while (_pendingKeys.TryDequeue(out _)) { }
+        }
+
+        /// <summary>
+        /// Low-level keyboard hook callback.
+        /// <para><b>CRITICAL:</b> This must be extremely fast. Any delay allows Windows to
+        /// dispatch the key to the target application before we can block it.</para>
+        /// </summary>
+        private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            try
+            {
+                if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
+                {
+                    var hookStruct = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+                    var key = KeyInterop.KeyFromVirtualKey((int)hookStruct.vkCode);
+
+                    // FAST check - native Win32 only, no FlaUI, no slow operations
+                    if (ShouldTriggerAutofocusFast(key))
+                    {
+                        // Don't trigger for Ctrl+, Alt+, Win+ combinations
+                        if (HasDisallowedModifier())
+                            return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+
+                        // Get character while keyboard state is valid
+                        char keyChar = GetCharFromKey((int)hookStruct.vkCode, (int)hookStruct.scanCode);
+
+                        if (ENABLE_DIAGNOSTIC_LOGGING)
+                            Debug.WriteLine($"[EditorAutofocus] BLOCKING key: {key}, char: '{keyChar}'");
+
+                        // Queue for async processing on UI thread
+                        if (keyChar != '\0')
+                        {
+                            _pendingKeys.Enqueue(keyChar);
+                            TriggerAsyncProcessing();
+                        }
+
+                        // BLOCK the key immediately - return non-zero to consume the key
+                        return (IntPtr)1;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Hook exception: {ex.Message}");
+            }
+
+            // Pass through to next hook
+            return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+        }
+
+        /// <summary>
+        /// Fast autofocus check using only native Win32 APIs.
+        /// <para>Triggers autofocus when:</para>
+        /// <list type="number">
+        ///   <item>Key type is enabled in settings</item>
+        ///   <item>Radium doesn't already have focus</item>
+        ///   <item>Window title matches configured PACS title</item>
+        ///   <item>Focused control is NOT a text input (Edit, ComboBox, ListView, etc.)</item>
+        /// </list>
+        /// </summary>
+        private bool ShouldTriggerAutofocusFast(Key key)
+        {
+            // Check if feature is enabled
+            if (!_settings.EditorAutofocusEnabled)
+                return false;
+
+            // Check if key type is enabled
+            if (!IsKeyTypeEnabled(key))
+                return false;
+
+            // Get foreground window
+            var foregroundHwnd = GetForegroundWindow();
+            if (foregroundHwnd == IntPtr.Zero)
+                return false;
+
+            // Check if Radium already has focus (don't intercept our own keys)
+            try
+            {
+                var radiumHwnd = new System.Windows.Interop.WindowInteropHelper(
+                    System.Windows.Application.Current?.MainWindow).Handle;
+                if (foregroundHwnd == radiumHwnd)
+                    return false;
+            }
+            catch { }
+
+            // Check window title matches configured PACS title
+            if (string.IsNullOrWhiteSpace(_cachedWindowTitle))
+                return false;
+
+            var title = GetWindowTitleFast(foregroundHwnd);
+            if (string.IsNullOrEmpty(title) || !title.Contains(_cachedWindowTitle, StringComparison.OrdinalIgnoreCase))
+            {
+                // Window title doesn't match - not the target PACS app
+                return false;
+            }
+
+            // Check if focused element is a text input control
+            // If it is, DON'T trigger autofocus (user is typing in worklist, search box, etc.)
+            var focusedHwnd = GetFocusedHwndFast(foregroundHwnd);
+            if (focusedHwnd != IntPtr.Zero)
+            {
+                var className = GetClassNameFast(focusedHwnd);
+                
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] Focused HWND=0x{focusedHwnd:X}, ClassName='{className}'");
+
+                if (IsTextInputControl(className))
+                {
+                    if (ENABLE_DIAGNOSTIC_LOGGING)
+                        Debug.WriteLine($"[EditorAutofocus] Text input control detected ('{className}'), not triggering");
+                    return false;
+                }
+            }
+
+            // All checks passed - trigger autofocus
+            if (ENABLE_DIAGNOSTIC_LOGGING)
+                Debug.WriteLine($"[EditorAutofocus] Triggering autofocus (title='{title}', focused class not a text input)");
+
+            return true;
+        }
+
+        /// <summary>
+        /// Check if class name indicates a text input control where the user might be typing.
+        /// </summary>
+        private static bool IsTextInputControl(string? className)
+        {
+            if (string.IsNullOrEmpty(className))
+                return false;
+
+            // Check exact match against known text input class names
+            if (TextInputClassNames.Contains(className))
+                return true;
+
+            // Check partial matches for common patterns (e.g., "MyAppEdit", "CustomTextBox")
+            if (className.Contains("Edit", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (className.Contains("TextBox", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (className.Contains("ComboBox", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Fast window title retrieval using native Win32 GetWindowText.
+        /// </summary>
+        private static string GetWindowTitleFast(IntPtr hWnd)
+        {
+            var sb = new StringBuilder(256);
+            GetWindowText(hWnd, sb, sb.Capacity);
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Fast class name retrieval using native Win32 GetClassName.
+        /// </summary>
+        private static string GetClassNameFast(IntPtr hWnd)
+        {
+            var sb = new StringBuilder(256);
+            GetClassName(hWnd, sb, sb.Capacity);
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Get the HWND of the actually focused control using GetGUIThreadInfo.
+        /// This returns the focused child control, not just the top-level window.
+        /// </summary>
+        private static IntPtr GetFocusedHwndFast(IntPtr foregroundHwnd)
+        {
+            uint threadId = GetWindowThreadProcessId(foregroundHwnd, IntPtr.Zero);
+            if (threadId == 0)
+                return foregroundHwnd;
+
+            var info = new GUITHREADINFO { cbSize = (uint)Marshal.SizeOf<GUITHREADINFO>() };
+            if (GetGUIThreadInfo(threadId, ref info))
+            {
+                if (info.hwndFocus != IntPtr.Zero)
+                    return info.hwndFocus;
+                if (info.hwndActive != IntPtr.Zero)
+                    return info.hwndActive;
+            }
+
+            return foregroundHwnd;
+        }
+
+        /// <summary>
+        /// Triggers async processing of pending keys on the UI thread.
+        /// Uses compare-exchange to ensure only one processing task runs at a time.
+        /// </summary>
+        private void TriggerAsyncProcessing()
+        {
+            if (Interlocked.CompareExchange(ref _isProcessing, 1, 0) != 0)
+                return;
+
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.Input,
+                new Action(ProcessPendingKeys));
+        }
+
+        /// <summary>
+        /// Processes pending keys on the UI thread.
+        /// Focuses the editor first, then replays each queued key via SendKeys.
+        /// </summary>
+        private void ProcessPendingKeys()
+        {
+            try
+            {
+                bool focusedEditor = false;
+
+                while (_pendingKeys.TryDequeue(out char keyChar))
+                {
+                    if (!focusedEditor)
+                    {
+                        _focusEditorCallback();
+                        Thread.Sleep(30); // Wait for focus to be established
+                        focusedEditor = true;
+                    }
+
+                    if (keyChar != '\0')
+                    {
+                        string keyString = EscapeForSendKeys(keyChar);
+                        if (ENABLE_DIAGNOSTIC_LOGGING)
+                            Debug.WriteLine($"[EditorAutofocus] Sending: '{keyString}'");
+
+                        // SendKeys.SendWait bypasses SendInput restrictions from hook contexts
+                        System.Windows.Forms.SendKeys.SendWait(keyString);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ENABLE_DIAGNOSTIC_LOGGING)
+                    Debug.WriteLine($"[EditorAutofocus] ProcessPendingKeys error: {ex.Message}");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _isProcessing, 0);
+
+                // Check if more keys arrived while processing
+                if (!_pendingKeys.IsEmpty)
+                    TriggerAsyncProcessing();
+            }
+        }
+
+        /// <summary>
+        /// Escapes special characters for SendKeys format.
+        /// Characters like +, ^, %, ~, {, } have special meanings in SendKeys.
+        /// </summary>
+        private static string EscapeForSendKeys(char keyChar)
+        {
+            return keyChar switch
+            {
+                '+' => "{+}",   // Shift modifier
+                '^' => "{^}",   // Ctrl modifier
+                '%' => "{%}",   // Alt modifier
+                '~' => "{~}",   // Enter key
+                '(' => "{(}",
+                ')' => "{)}",
+                '{' => "{{}",
+                '}' => "{}}",
+                '[' => "{[}",
+                ']' => "{]}",
+                _ => keyChar.ToString()
+            };
+        }
+
+        /// <summary>
+        /// Converts a virtual key code to a character using the current keyboard state.
+        /// </summary>
+        private char GetCharFromKey(int virtualKey, int scanCode)
+        {
+            try
+            {
+                var keyState = new byte[256];
+                if (!GetKeyboardState(keyState))
+                    return '\0';
+
+                var buffer = new StringBuilder(8);
+                int result = ToUnicode((uint)virtualKey, (uint)scanCode, keyState, buffer, buffer.Capacity, 0);
+
+                if (result > 0)
+                    return buffer[0];
+            }
+            catch { }
+
+            return '\0';
+        }
+
+        /// <summary>
+        /// Checks if a disallowed modifier key (Ctrl, Alt, Win) is pressed.
+        /// We don't want to intercept keyboard shortcuts like Ctrl+C.
+        /// </summary>
+        private static bool HasDisallowedModifier()
+        {
+            return IsVirtualKeyPressed(VK_CONTROL) ||
+                   IsVirtualKeyPressed(VK_LCONTROL) ||
+                   IsVirtualKeyPressed(VK_RCONTROL) ||
+                   IsVirtualKeyPressed(VK_MENU) ||
+                   IsVirtualKeyPressed(VK_LMENU) ||
+                   IsVirtualKeyPressed(VK_RMENU) ||
+                   IsVirtualKeyPressed(VK_LWIN) ||
+                   IsVirtualKeyPressed(VK_RWIN);
+        }
+
+        /// <summary>
+        /// Checks if a virtual key is currently pressed using GetAsyncKeyState.
+        /// </summary>
+        private static bool IsVirtualKeyPressed(int virtualKey)
+        {
+            return (GetAsyncKeyState(virtualKey) & 0x8000) != 0;
         }
 
         /// <summary>
@@ -677,18 +588,14 @@ namespace Wysg.Musm.Radium.Services
                 keyTypesStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                 StringComparer.OrdinalIgnoreCase);
 
-            if (enabledTypes.Contains("Alphabet") && IsAlphabetKey(key))
+            if (enabledTypes.Contains("Alphabet") && key >= Key.A && key <= Key.Z)
                 return true;
-
-            if (enabledTypes.Contains("Numbers") && IsNumberKey(key))
+            if (enabledTypes.Contains("Numbers") && ((key >= Key.D0 && key <= Key.D9) || (key >= Key.NumPad0 && key <= Key.NumPad9)))
                 return true;
-
             if (enabledTypes.Contains("Space") && key == Key.Space)
                 return true;
-
             if (enabledTypes.Contains("Tab") && key == Key.Tab)
                 return true;
-
             if (enabledTypes.Contains("Symbols") && IsSymbolKey(key))
                 return true;
 
@@ -696,19 +603,7 @@ namespace Wysg.Musm.Radium.Services
         }
 
         /// <summary>
-        /// Checks if key is an alphabet key (A-Z).
-        /// </summary>
-        private static bool IsAlphabetKey(Key key) => key >= Key.A && key <= Key.Z;
-
-        /// <summary>
-        /// Checks if key is a number key (0-9, including numpad).
-        /// </summary>
-        private static bool IsNumberKey(Key key) =>
-            (key >= Key.D0 && key <= Key.D9) ||
-            (key >= Key.NumPad0 && key <= Key.NumPad9);
-
-        /// <summary>
-        /// Checks if key is a symbol/punctuation key.
+        /// Checks if the key is a symbol/punctuation key.
         /// </summary>
         private static bool IsSymbolKey(Key key)
         {
@@ -722,6 +617,9 @@ namespace Wysg.Musm.Radium.Services
             };
         }
 
+        /// <summary>
+        /// Disposes the service and removes the keyboard hook.
+        /// </summary>
         public void Dispose()
         {
             if (_isDisposed)
@@ -729,7 +627,6 @@ namespace Wysg.Musm.Radium.Services
 
             Stop();
             _isDisposed = true;
-            Debug.WriteLine("[EditorAutofocusService] Disposed");
         }
     }
 }

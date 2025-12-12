@@ -678,16 +678,11 @@ The documentation is now:
 
 ## Recent Updates
 
-### 2025-12-11: Phrase Completion Exact Match Priority
-- Boosted completion sorting so exact phrase matches outrank snippets and hotkeys, preventing unintended hotkey triggers when the typed token already exists in the phrase catalog.
-- **Files Modified**: `src/Wysg.Musm.Editor/Snippets/MusmCompletionData.cs`
-- **Documentation**: `docs/00-current/FIX_2025-12-11_PhraseCompletionExactMatchPriority.md`
-- **Status**: ✅ Complete, waiting on downstream verification in Radium builds
-
-### 2025-12-10: Procedure Operation Manual Dialog
-- Added a dedicated **Operation manual** button to the Automation window Procedure tab that opens a searchable dialog covering every operation, its purpose, and argument requirements.
-- Dialog content is driven by a new `OperationManualCatalog`, ensuring descriptions stay consistent with `OperationExecutor` logic and the Procedure grid configuration rules.
-- **Files Modified**: `Views/AutomationWindow.xaml`, `Views/AutomationWindow.xaml.cs`, `Views/OperationManualWindow.xaml`, `Views/OperationManualWindow.xaml.cs`, `ViewModels/OperationManualCatalog.cs`
-- **Documentation**: `docs/00-current/FEATURE_2025-12-10_OperationManualDialog.md`
-- **Status**: ✅ Complete, build verified
+### 2025-12-12: Editor Autofocus Target Key Suppression
+- **Problem**: Keys were leaking to PACS or being incorrectly blocked for child elements (worklist, search boxes).
+- **Root Causes**: (1) FlaUI bookmark resolution was too slow for hook callbacks, (2) WPF/MFC container elements share HWNDs with children making HWND comparison unreliable.
+- **Solution**: Replaced FlaUI bookmark detection with native Win32 `GetClassName()` API. Detects if focused element is a text input control (Edit, ComboBox, SysListView32, etc.) and only triggers autofocus when NO text input has focus. Uses `SendKeys.SendWait` for key replay which bypasses `SendInput` restrictions from hook contexts.
+- **Files Modified**: `apps/Wysg.Musm.Radium/Services/EditorAutofocusService.cs`
+- **Documentation**: `docs/00-current/FIX_2025-12-12_EditorAutofocusTargetKeySuppression.md`
+- **Status**: ✅ Complete - Viewer panel captures keys to Radium; text inputs receive their own keys normally
 
