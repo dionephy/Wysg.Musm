@@ -18,9 +18,21 @@ namespace Wysg.Musm.Radium.ViewModels
             get => _reportified; 
             set 
             { 
-                // CRITICAL FIX: Always raise PropertyChanged event first to ensure UI synchronization
-                // This is essential for automation modules that set Reportified=true
+                // CRITICAL FIX: Check if actually changing BEFORE applying transformations
                 bool actualChanged = (_reportified != value);
+                
+                // When turning OFF (un-reportifying), update backing fields BEFORE raising PropertyChanged
+                // This ensures XAML triggers see the correct values when the binding switches
+                if (actualChanged && !value)
+                {
+                    // Restore raw values to backing fields BEFORE the flag changes
+                    // so that when XAML re-evaluates FindingsText, it gets the raw value
+                    _suppressAutoToggle = true;
+                    _findingsText = _rawFindings;
+                    _conclusionText = _rawConclusion;
+                    _headerText = _rawHeader;
+                    _suppressAutoToggle = false;
+                }
                 
                 // Update backing field
                 _reportified = value;
@@ -31,13 +43,22 @@ namespace Wysg.Musm.Radium.ViewModels
                 // Notify display properties since reportified state affects them
                 OnPropertyChanged(nameof(FindingsDisplay));
                 OnPropertyChanged(nameof(ConclusionDisplay));
-                OnPropertyChanged(nameof(HeaderDisplay)); // NEW: Also notify header display
+                OnPropertyChanged(nameof(HeaderDisplay));
                 
-                // Only apply transformations if value actually changed
-                if (actualChanged)
+                // Notify the text properties so EditorControl rebinds correctly
+                OnPropertyChanged(nameof(FindingsText));
+                OnPropertyChanged(nameof(ConclusionText));
+                OnPropertyChanged(nameof(HeaderText));
+                
+                // Apply transformations only when turning ON (raw values already restored above for OFF)
+                if (actualChanged && value)
                 {
                     ToggleReportified(value);
                 }
+                
+                // Notify the raw editable properties so top grid textboxes update
+                OnPropertyChanged(nameof(RawFindingsTextEditable));
+                OnPropertyChanged(nameof(RawConclusionTextEditable));
             } 
         }
 
@@ -359,6 +380,8 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private void ToggleReportified(bool value)
         {
+            // This method is now only called when turning ON (reportifying)
+            // Un-reportify logic is handled in the Reportified setter
             if (value)
             {
                 CaptureRawIfNeeded();
@@ -368,18 +391,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 ConclusionText = ApplyReportifyConclusion(_rawConclusion);
                 _suppressAutoToggle = false;
             }
-            else
-            {
-                _suppressAutoToggle = true;
-                HeaderText = _rawHeader;
-                FindingsText = _rawFindings;
-                ConclusionText = _rawConclusion;
-                _suppressAutoToggle = false;
-            }
-            
-            // CRITICAL FIX: Notify the raw editable properties so top grid textboxes update
-            OnPropertyChanged(nameof(RawFindingsTextEditable));
-            OnPropertyChanged(nameof(RawConclusionTextEditable));
+            // Note: Un-reportify case is handled in the Reportified setter
+            // to ensure backing fields are updated BEFORE PropertyChanged is raised
         }
         private void CaptureRawIfNeeded()
         {
