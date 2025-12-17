@@ -37,6 +37,7 @@ namespace Wysg.Musm.Radium.ViewModels
         };
 
         private readonly IStudynameLoincRepository _repo;
+        private string? _pendingPreselectStudyname;
         public StudynameLoincViewModel(IStudynameLoincRepository repo)
         {
             _repo = repo;
@@ -187,10 +188,7 @@ namespace Wysg.Musm.Radium.ViewModels
                 var rows = await _repo.GetStudynamesAsync();
                 foreach (var row in rows)
                     Studynames.Add(new StudynameItem { Id = row.Id, Studyname = row.Studyname });
-                if (SelectedStudyname == null && Studynames.Count > 0)
-                {
-                    SelectedStudyname = Studynames[0];
-                }
+                ApplyPendingPreselectOrFallback();
                 
                 // Load mapped studynames
                 await LoadMappedStudynamesAsync();
@@ -198,18 +196,32 @@ namespace Wysg.Musm.Radium.ViewModels
             catch { }
         }
 
-        public void Preselect(string studyname) => _ = PreselectAsync(studyname);
-        private async Task PreselectAsync(string studyname)
+        public void Preselect(string studyname)
         {
-            var found = Studynames.FirstOrDefault(s => s.Studyname == studyname);
-            if (found == null)
+            _pendingPreselectStudyname = string.IsNullOrWhiteSpace(studyname) ? null : studyname.Trim();
+            ApplyPendingPreselectOrFallback();
+        }
+
+        private void ApplyPendingPreselectOrFallback()
+        {
+            if (Studynames.Count == 0)
+                return;
+
+            if (!string.IsNullOrWhiteSpace(_pendingPreselectStudyname))
             {
-                var id = await _repo.EnsureStudynameAsync(studyname);
-                var item = new StudynameItem { Id = id, Studyname = studyname };
-                Studynames.Add(item);
-                SelectedStudyname = item;
+                var match = Studynames.FirstOrDefault(s => string.Equals(s.Studyname, _pendingPreselectStudyname, StringComparison.OrdinalIgnoreCase));
+                if (match != null)
+                {
+                    SelectedStudyname = match;
+                    _pendingPreselectStudyname = null;
+                    return;
+                }
             }
-            else SelectedStudyname = found;
+
+            if (SelectedStudyname == null)
+            {
+                SelectedStudyname = Studynames[0];
+            }
         }
 
         private async Task LoadMappedStudynamesAsync()

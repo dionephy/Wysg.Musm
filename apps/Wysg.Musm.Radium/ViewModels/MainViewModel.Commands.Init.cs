@@ -200,7 +200,11 @@ namespace Wysg.Musm.Radium.ViewModels
             SendReportPreviewCommand = new DelegateCommand(_ => OnSendReportPreview(), _ => PatientLocked);
             SendReportCommand = new DelegateCommand(_ => OnSendReport(), _ => PatientLocked);
             SelectPreviousStudyCommand = new DelegateCommand(o => OnSelectPrevious(o), _ => PatientLocked);
-            OpenStudynameMapCommand = new DelegateCommand(_ => Views.StudynameLoincWindow.Open());
+            OpenStudynameMapCommand = new DelegateCommand(_ =>
+            {
+                var preselect = string.IsNullOrWhiteSpace(StudyName) ? null : StudyName.Trim();
+                Views.StudynameLoincWindow.Open(preselect);
+            });
             GenerateFieldCommand = new DelegateCommand(p => OnGenerateField(p));
             EditStudyTechniqueCommand = new DelegateCommand(_ => OnEditStudyTechnique(), _ => PatientLocked);
             EditComparisonCommand = new DelegateCommand(_ => OnEditComparison(), _ => PatientLocked);
