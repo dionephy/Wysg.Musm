@@ -686,3 +686,19 @@ The documentation is now:
 - **Documentation**: `docs/00-current/FIX_2025-12-12_EditorAutofocusTargetKeySuppression.md`
 - **Status**: ✅ Complete - Viewer panel captures keys to Radium; text inputs receive their own keys normally
 
+### 2025-12-17: Completion Window Punctuation Commit
+- **Problem**: Committing a completion with punctuation keys such as `,`, `.`, or `;` dropped the typed character, so `br` → `brain` instead of `brain,`.
+- **Root Cause**: `OnTextEntering` consumed non-alphanumeric input when the completion window was open but never reinserted the triggering text.
+- **Solution**: After requesting insertion, the handler now reinjects any non-whitespace punctuation at the caret so the committed token keeps the typed character. Scope is limited to hotkey completions so snippets/phrases follow their own formatting rules, and the selected item is resolved via the popup ListBox to detect hotkeys reliably.
+- **Files Modified**: `src/Wysg.Musm.Editor/Controls/EditorControl.Popup.cs`
+- **Documentation**: `docs/00-current/FIX_2025-12-17_CompletionPunctuationCommit.md`
+- **Status**: ✅ Complete - Hotkey punctuation commits now yield `brain,`, `brain.` etc. without extra typing
+
+### 2025-12-17: Numeric Tokens Skip Completion
+- **Problem**: Typing a number such as `3` triggered the completion popup and committing with Space inserted the first suggestion (`3rd`).
+- **Root Cause**: Completion bootstrap logic never differentiated numeric tokens from normal words.
+- **Solution**: When the current word is digit-only, the popup is suppressed/closed so numbers can be typed normally.
+- **Files Modified**: `src/Wysg.Musm.Editor/Controls/EditorControl.Popup.cs`
+- **Documentation**: `docs/00-current/FIX_2025-12-17_SuppressNumericCompletion.md`
+- **Status**: ✅ Complete - Numeric typing no longer auto-expands hotkeys
+
