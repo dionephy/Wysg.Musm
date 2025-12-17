@@ -217,6 +217,26 @@ public static class SnippetInputHandler
             var cur = session.Current;
             if (cur is null) { Exit(); e.Handled = true; return; }
 
+            string ResolveSelectedOptionText()
+            {
+                if (cur.Options.Count == 0)
+                    return string.Empty;
+
+                if (cur.Mode == 3)
+                {
+                    var key = session.ChoiceBuffer.ToString();
+                    var match = cur.Options.FirstOrDefault(o => o.Key.Equals(key, System.StringComparison.OrdinalIgnoreCase))
+                               ?? cur.Options.FirstOrDefault(o => o.Key.Equals(session.Popup?.Selected?.Key, System.StringComparison.OrdinalIgnoreCase))
+                               ?? cur.Options.FirstOrDefault();
+                    return match?.Text ?? string.Empty;
+                }
+
+                var selectedKey = session.Popup?.Selected?.Key;
+                var matchMode1 = cur.Options.FirstOrDefault(o => o.Key.Equals(selectedKey, System.StringComparison.OrdinalIgnoreCase))
+                               ?? cur.Options.FirstOrDefault();
+                return matchMode1?.Text ?? string.Empty;
+            }
+
             // Prevent caret moving out with arrow keys
             if (e.Key is Key.Left or Key.Right or Key.Home or Key.End)
             {
@@ -339,27 +359,10 @@ public static class SnippetInputHandler
                     e.Handled = true;
                     return;
                 }
-                else if (cur.Mode == 3)
-                {
-                    // Use accumulated buffer to resolve
-                    var key = session.ChoiceBuffer.ToString();
-                    var match = cur.Options.FirstOrDefault(o => o.Key.Equals(key, System.StringComparison.OrdinalIgnoreCase))
-                               ?? cur.Options.FirstOrDefault(o => o.Key.Equals(session.Popup?.Selected?.Key, System.StringComparison.OrdinalIgnoreCase))
-                               ?? cur.Options.FirstOrDefault();
-                    AcceptOptionAndComplete(match?.Text ?? string.Empty);
-                    e.Handled = true;
-                    return;
-                }
-                else if (cur.Mode == 1)
-                {
-                    // Use popup selected or default first
-                    var selectedKey = session.Popup?.Selected?.Key;
-                    var match = cur.Options.FirstOrDefault(o => o.Key.Equals(selectedKey, System.StringComparison.OrdinalIgnoreCase))
-                               ?? cur.Options.FirstOrDefault();
-                    AcceptOptionAndComplete(match?.Text ?? string.Empty);
-                    e.Handled = true;
-                    return;
-                }
+
+                AcceptOptionAndComplete(ResolveSelectedOptionText());
+                e.Handled = true;
+                return;
             }
 
             if (e.Key == Key.Enter)
@@ -382,7 +385,11 @@ public static class SnippetInputHandler
                     ReplaceSelection(area, output);
                     MarkCurrentCompleted();
                 }
-                
+                else if (cur.Options.Count > 0)
+                {
+                    AcceptOptionAndComplete(ResolveSelectedOptionText());
+                }
+
                 // End snippet mode and move caret to next line; apply fallback replacement for remaining placeholders
                 ApplyFallbackAndEnd(moveToNextLine: true);
                 e.Handled = true;

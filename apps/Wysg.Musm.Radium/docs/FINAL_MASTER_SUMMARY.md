@@ -702,3 +702,11 @@ The documentation is now:
 - **Documentation**: `docs/00-current/FIX_2025-12-17_SuppressNumericCompletion.md`
 - **Status**: ✅ Complete - Numeric typing no longer auto-expands hotkeys
 
+### 2025-12-17: Snippet Enter Respects Selection
+- **Problem**: In snippet placeholders, pressing Enter always inserted the first option even when another item was selected.
+- **Root Cause**: Enter handling bypassed the popup selection and fell back to the default option.
+- **Solution**: Centralized option resolution so both Tab and Enter use the highlighted entry (including Mode 3 buffers) before exiting snippet mode.
+- **Files Modified**: `src/Wysg.Musm.Editor/Snippets/SnippetInputHandler.cs`
+- **Documentation**: `docs/00-current/FIX_2025-12-17_SnippetModeEnterSelection.md`
+- **Status**: ✅ Complete - Enter now inserts whichever snippet option is selected
+
