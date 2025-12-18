@@ -1,5 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 using Wysg.Musm.Radium.Services;
@@ -9,7 +11,7 @@ namespace Wysg.Musm.Radium.ViewModels
     public partial class SignUpViewModel : ObservableObject
     {
         private readonly IAuthService _auth;
-        private readonly AzureSqlCentralService _central;
+        private readonly RadiumApiClient _apiClient;
 
         private string _email = string.Empty;
         public string Email
@@ -34,10 +36,10 @@ namespace Wysg.Musm.Radium.ViewModels
 
         public IRelayCommand SignUpCommand { get; }
 
-        public SignUpViewModel(IAuthService auth, AzureSqlCentralService central)
+        public SignUpViewModel(IAuthService auth, RadiumApiClient apiClient)
         {
             _auth = auth;
-            _central = central;
+            _apiClient = apiClient;
             SignUpCommand = new AsyncRelayCommand<object?>(OnSignUpAsync);
         }
 
@@ -53,24 +55,47 @@ namespace Wysg.Musm.Radium.ViewModels
             if (string.IsNullOrWhiteSpace(password)) { ErrorMessage = "Password is required."; return; }
 
             ErrorMessage = string.Empty;
-            var result = await _auth.SignUpWithEmailPasswordAsync(Email.Trim(), password, string.IsNullOrWhiteSpace(DisplayName) ? null : DisplayName.Trim());
-            if (!result.Success)
+            try
             {
-                ErrorMessage = result.Error;
-                return;
-            }
-
-            // Create account row centrally
-            await _central.EnsureAccountAsync(result.UserId, result.Email, result.DisplayName);
-
-            // Close the window on success
-            System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
-            {
-                foreach (var win in System.Windows.Application.Current!.Windows)
+                var result = await _auth.SignUpWithEmailPasswordAsync(Email.Trim(), password, string.IsNullOrWhiteSpace(DisplayName) ? null : DisplayName.Trim());
+                if (!result.Success)
                 {
-                    if (win is System.Windows.Window w && w.DataContext == this) { w.DialogResult = true; w.Close(); break; }
+                    ErrorMessage = result.Error;
+                    return;
                 }
-            });
+
+                // Set Firebase token for API authentication
+                _apiClient.SetAuthToken(result.IdToken);
+
+                // Create account row via API
+                await _apiClient.EnsureAccountAsync(new EnsureAccountRequest
+                {
+                    Uid = result.UserId,
+                    Email = result.Email,
+                    DisplayName = result.DisplayName ?? string.Empty
+                });
+
+                // Close the window on success
+                System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+                {
+                    foreach (var win in System.Windows.Application.Current!.Windows)
+                    {
+                        if (win is System.Windows.Window w && w.DataContext == this) { w.DialogResult = true; w.Close(); break; }
+                    }
+                });
+            }
+            catch (HttpRequestException hre)
+            {
+                ErrorMessage = $"Cannot connect to server: {hre.Message}";
+            }
+            catch (TaskCanceledException)
+            {
+                ErrorMessage = "Server connection timeout. Please ensure the API is running.";
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"Sign-up error: {ex.Message}";
+            }
         }
     }
 }
