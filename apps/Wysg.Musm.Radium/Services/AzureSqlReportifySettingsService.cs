@@ -18,7 +18,7 @@ namespace Wysg.Musm.Radium.Services
         public async Task<string?> GetSettingsJsonAsync(long accountId)
         {
             if (accountId <= 0) return null;
-            const string sql = "SELECT settings_json FROM radium.reportify_setting WHERE account_id=@id";
+            const string sql = "SELECT settings_json FROM radium.user_setting WHERE account_id=@id";
             await using var con = CreateConnection();
             try
             {
@@ -34,12 +34,12 @@ namespace Wysg.Musm.Radium.Services
         public async Task<(string settingsJson,long rev)> UpsertAsync(long accountId, string settingsJson)
         {
             if (accountId <= 0) return (settingsJson, 0);
-            const string up = @"UPDATE radium.reportify_setting
+            const string up = @"UPDATE radium.user_setting
 SET settings_json=@json, updated_at=SYSUTCDATETIME(), rev = CASE WHEN settings_json=@json THEN rev ELSE rev+1 END
 WHERE account_id=@id";
-            const string ins = @"INSERT INTO radium.reportify_setting(account_id, settings_json, updated_at, rev)
+            const string ins = @"INSERT INTO radium.user_setting(account_id, settings_json, updated_at, rev)
 VALUES(@id,@json,SYSUTCDATETIME(),1)";
-            const string sel = @"SELECT settings_json, rev FROM radium.reportify_setting WHERE account_id=@id";
+            const string sel = @"SELECT settings_json, rev FROM radium.user_setting WHERE account_id=@id";
             await using var con = CreateConnection();
             await con.OpenAsync();
             await using (var cmd = new SqlCommand(up, con))
@@ -71,7 +71,7 @@ VALUES(@id,@json,SYSUTCDATETIME(),1)";
         public async Task<bool> DeleteAsync(long accountId)
         {
             if (accountId <= 0) return false;
-            const string sql = "DELETE FROM radium.reportify_setting WHERE account_id=@id";
+            const string sql = "DELETE FROM radium.user_setting WHERE account_id=@id";
             await using var con = CreateConnection();
             try
             {

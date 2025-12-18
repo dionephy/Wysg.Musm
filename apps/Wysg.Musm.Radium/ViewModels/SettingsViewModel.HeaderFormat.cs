@@ -8,7 +8,13 @@ namespace Wysg.Musm.Radium.ViewModels
         public string? HeaderFormatTemplate
         {
             get => _headerFormatTemplate;
-            set => SetProperty(ref _headerFormatTemplate, value);
+            set
+            {
+                if (SetProperty(ref _headerFormatTemplate, value))
+                {
+                    UpdateReportifyJson();
+                }
+            }
         }
     }
 }

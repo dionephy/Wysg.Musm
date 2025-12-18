@@ -917,12 +917,8 @@ namespace Wysg.Musm.Radium.ViewModels
                     return;
                 }
 
-                // Use user-configured header template if available
-                var template = _localSettings?.HeaderFormatTemplate;
-                if (string.IsNullOrWhiteSpace(template))
-                {
-                    template = "Clinical information: {Chief Complaint}\n- {Patient History Lines}\nTechniques: {Techniques}\nComparison: {Comparison}";
-                }
+                // Use user-configured header template from central settings
+                var template = GetHeaderTemplate();
                 var formatted = BuildHeaderFromTemplate(template);
                 HeaderText = formatted;
             }
@@ -1118,6 +1114,35 @@ namespace Wysg.Musm.Radium.ViewModels
             }
             
             return string.Join("\n", outputLines).Trim();
+        }
+        
+        private string GetHeaderTemplate()
+        {
+            const string DefaultTemplate = "Clinical information: {Chief Complaint}\n- {Patient History Lines}\nTechniques: {Techniques}\nComparison: {Comparison}";
+            try
+            {
+                // Prefer central setting if present
+                var json = _tenant?.ReportifySettingsJson;
+                if (!string.IsNullOrWhiteSpace(json))
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(json);
+                    var root = doc.RootElement;
+                    if (root.TryGetProperty("header_format_template", out var tpl) && tpl.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        var val = tpl.GetString();
+                        if (!string.IsNullOrWhiteSpace(val)) return val!;
+                    }
+                }
+
+                // Fallback to local persisted template if central missing/empty
+                var localTemplate = _localSettings?.HeaderFormatTemplate;
+                if (!string.IsNullOrWhiteSpace(localTemplate)) return localTemplate!;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HeaderTemplate] parse error: {ex.Message}");
+            }
+            return DefaultTemplate;
         }
     }
 }

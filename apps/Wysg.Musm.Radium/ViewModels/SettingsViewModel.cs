@@ -42,6 +42,8 @@ namespace Wysg.Musm.Radium.ViewModels
     
     public partial class SettingsViewModel : ObservableObject
     {
+        private const string DefaultHeaderFormatTemplate = "Clinical information: {Chief Complaint}\n- {Patient History Lines}\nTechniques: {Techniques}\nComparison: {Comparison}";
+
         private readonly IRadiumLocalSettings _local;
         private readonly ITenantRepository? _tenantRepo; // added
 
@@ -196,6 +198,9 @@ namespace Wysg.Musm.Radium.ViewModels
         {
             _local = local;
             _reportifySvc = reportifySvc; _tenant = tenant; Phrases = phrases; _tenantRepo = tenantRepo;
+            // Initialize header template from local (preserve user customization even if central JSON lacks the field)
+            HeaderFormatTemplate = _local.HeaderFormatTemplate ?? DefaultHeaderFormatTemplate;
+
             LocalConnectionString = _local.LocalConnectionString ?? "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas";
             // Initialize central connection string with provided default if none persisted
             CentralConnectionString = string.IsNullOrWhiteSpace(_local.CentralConnectionString) ? DefaultCentralAzureSqlConnection: _local.CentralConnectionString;
@@ -261,8 +266,13 @@ namespace Wysg.Musm.Radium.ViewModels
             // Load custom modules into available modules
             LoadCustomModulesIntoAvailable();
 
-            // Load header format template from local settings
-            HeaderFormatTemplate = _local.HeaderFormatTemplate ?? "Clinical information: {Chief Complaint}\n- {Patient History Lines}\nTechniques: {Techniques}\nComparison: {Comparison}";
+            // HeaderFormatTemplate: Load from central settings first (via ApplyReportifyJson above),
+            // then fall back to local settings if central is empty
+            if (string.IsNullOrEmpty(HeaderFormatTemplate))
+            {
+                HeaderFormatTemplate = _local.HeaderFormatTemplate ?? DefaultHeaderFormatTemplate;
+            }
+            System.Diagnostics.Debug.WriteLine($"[SettingsVM] Constructor: Final HeaderFormatTemplate = '{HeaderFormatTemplate}'");
         }
         
         /// <summary>
@@ -296,8 +306,10 @@ namespace Wysg.Musm.Radium.ViewModels
             if (!CanPersistSettings()) return;
             try 
             { 
+                System.Diagnostics.Debug.WriteLine($"[SettingsVM] Saving reportify settings to central (len={ReportifySettingsJson.Length})");
                 var res = await _reportifySvc!.UpsertAsync(_tenant!.AccountId, ReportifySettingsJson); 
                 _tenant.ReportifySettingsJson = res.settingsJson; 
+                System.Diagnostics.Debug.WriteLine($"[SettingsVM] Saved reportify settings, rev={res.rev}");
                 
                 // Force immediate notification to MainViewModel to reload config
                 // This ensures the next reportify operation uses the new settings
@@ -316,6 +328,11 @@ namespace Wysg.Musm.Radium.ViewModels
                 string GetDef(string prop, string def)
                 {
                     if (root.TryGetProperty("defaults", out var d) && d.TryGetProperty(prop, out var el) && el.ValueKind == System.Text.Json.JsonValueKind.String) return el.GetString() ?? def;
+                    return def;
+                }
+                string GetStr(string name, string def)
+                {
+                    if (root.TryGetProperty(name, out var el) && el.ValueKind == System.Text.Json.JsonValueKind.String) return el.GetString() ?? def;
                     return def;
                 }
                 RemoveExcessiveBlanks = GetBool("remove_excessive_blanks", RemoveExcessiveBlanks);
@@ -342,11 +359,15 @@ namespace Wysg.Musm.Radium.ViewModels
                 NumberConclusionLinesOnOneParagraph = GetBool("number_conclusion_lines_on_one_paragraph", NumberConclusionLinesOnOneParagraph);
                 CapitalizeAfterBulletOrNumber = GetBool("capitalize_after_bullet_or_number", CapitalizeAfterBulletOrNumber);
                 ConsiderArrowBulletContinuation = GetBool("consider_arrow_bullet_continuation", ConsiderArrowBulletContinuation);
+                // NEW: Load header format template from central settings (fallback to current/local/default instead of hardcoded default)
+                var headerFallback = HeaderFormatTemplate ?? _local.HeaderFormatTemplate ?? DefaultHeaderFormatTemplate;
+                HeaderFormatTemplate = GetStr("header_format_template", headerFallback);
+                System.Diagnostics.Debug.WriteLine($"[SettingsVM] ApplyReportifyJson: Loaded HeaderFormatTemplate = '{HeaderFormatTemplate}'");
                 // Deprecated: ignore preserve_known_tokens from stored JSON
                 DefaultArrow = GetDef("arrow", DefaultArrow);
                 DefaultConclusionNumbering = GetDef("conclusion_numbering", DefaultConclusionNumbering);
                 DefaultDetailingPrefix = GetDef("detailing_prefix", DefaultDetailingPrefix);
-                DefaultDifferentialDiagnosis = GetDef("differential_diagnosis", DefaultDifferentialDiagnosis); // NEW: Load default differential diagnosis
+                DefaultDifferentialDiagnosis = GetDef("differential_diagnosis", DefaultDifferentialDiagnosis);
                 UpdateReportifyJson();
             }
             catch { }
@@ -380,8 +401,23 @@ namespace Wysg.Musm.Radium.ViewModels
             // Save SessionBasedCacheBookmarks to local settings (global setting)
             _local.SessionBasedCacheBookmarks = SessionBasedCacheBookmarks ?? string.Empty;
             
-            // NEW: persist header format template
+            // CHANGED: Header format template is saved centrally via reportify settings
+            // Also keep local copy as fallback
             _local.HeaderFormatTemplate = HeaderFormatTemplate ?? string.Empty;
+            
+            // Refresh JSON to ensure latest template/flags are included
+            UpdateReportifyJson();
+            System.Diagnostics.Debug.WriteLine($"[SettingsVM] Save() ReportifySettingsJson payload length={ReportifySettingsJson.Length}");
+            
+            // Save reportify settings to central DB (includes header_format_template)
+            if (CanPersistSettings())
+            {
+                _ = SaveReportifySettingsAsync();
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[SettingsVM] CanPersistSettings=false; central save skipped (header template only stored locally)");
+            }
             
             // NEW: notify MainViewModel to refresh header if there is existing content
             try
@@ -560,6 +596,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 number_conclusion_lines_on_one_paragraph = NumberConclusionLinesOnOneParagraph,
                 capitalize_after_bullet_or_number = CapitalizeAfterBulletOrNumber,
                 consider_arrow_bullet_continuation = ConsiderArrowBulletContinuation,
+                // NEW: Include header format template for central persistence
+                header_format_template = HeaderFormatTemplate,
                 defaults = new
                 {
                     arrow = DefaultArrow,

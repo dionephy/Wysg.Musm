@@ -35,18 +35,65 @@ namespace Wysg.Musm.Radium.Models
     
     /// <summary>
     /// Storage and management for custom modules and labels.
+    /// Storage path can be overridden via <see cref="GetStorePathOverride"/> for per-tenant (PACS-scoped) storage.
     /// </summary>
     public class CustomModuleStore
     {
+        /// <summary>
+        /// Optional override for the custom modules storage path.
+        /// Set this to enable per-tenant (PACS-scoped) custom module storage.
+        /// Pattern follows UiBookmarks.GetStorePathOverride.
+        /// </summary>
+        public static Func<string>? GetStorePathOverride { get; set; }
+        
         public List<CustomModule> Modules { get; set; } = new();
         public List<string> Labels { get; set; } = new();
         
         private static string GetStorePath()
         {
+            if (GetStorePathOverride != null)
+            {
+                try 
+                { 
+                    var path = GetStorePathOverride();
+                    System.Diagnostics.Debug.WriteLine($"[CustomModuleStore][GetStorePath] Override path: {path}");
+                    
+                    // Migrate from legacy root location if needed
+                    if (!System.IO.File.Exists(path))
+                    {
+                        var legacyPath = System.IO.Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                            "Wysg.Musm", "Radium", "custom-modules.json");
+                        if (System.IO.File.Exists(legacyPath))
+                        {
+                            try
+                            {
+                                var targetDir = System.IO.Path.GetDirectoryName(path);
+                                if (!string.IsNullOrEmpty(targetDir))
+                                    System.IO.Directory.CreateDirectory(targetDir);
+                                System.IO.File.Copy(legacyPath, path, overwrite: false);
+                                System.Diagnostics.Debug.WriteLine($"[CustomModuleStore] Migrated from legacy: {legacyPath} -> {path}");
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[CustomModuleStore] Migration failed: {ex.Message}");
+                            }
+                        }
+                    }
+                    
+                    return path; 
+                } 
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CustomModuleStore][GetStorePath] Override failed: {ex.Message}");
+                }
+            }
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var dir = System.IO.Path.Combine(appData, "Wysg.Musm", "Radium");
             System.IO.Directory.CreateDirectory(dir);
-            return System.IO.Path.Combine(dir, "custom-modules.json");
+            var fallback = System.IO.Path.Combine(dir, "custom-modules.json");
+            System.Diagnostics.Debug.WriteLine($"[CustomModuleStore][GetStorePath] Fallback path: {fallback}");
+            return fallback;
         }
         
         public static CustomModuleStore Load()
@@ -54,18 +101,23 @@ namespace Wysg.Musm.Radium.Models
             try
             {
                 var path = GetStorePath();
+                System.Diagnostics.Debug.WriteLine($"[CustomModuleStore][Load] Loading from: {path}");
                 if (!System.IO.File.Exists(path))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CustomModuleStore][Load] File does not exist, returning empty store");
                     return new CustomModuleStore();
+                }
                 
                 var json = System.IO.File.ReadAllText(path);
                 var store = System.Text.Json.JsonSerializer.Deserialize<CustomModuleStore>(json) ?? new CustomModuleStore();
                 store.Modules ??= new List<CustomModule>();
                 store.Labels ??= new List<string>();
+                System.Diagnostics.Debug.WriteLine($"[CustomModuleStore][Load] Loaded {store.Modules.Count} modules, {store.Labels.Count} labels");
                 return store;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[CustomModuleStore] Load error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[CustomModuleStore][Load] Error: {ex.Message}");
                 return new CustomModuleStore();
             }
         }
@@ -115,7 +167,20 @@ namespace Wysg.Musm.Radium.Models
         
         public CustomModule? GetModule(string name)
         {
-            return Modules.FirstOrDefault(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase));
+            var result = Modules.FirstOrDefault(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (result == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CustomModuleStore][GetModule] Module '{name}' NOT FOUND in store (has {Modules.Count} modules)");
+                if (Modules.Count > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CustomModuleStore][GetModule] Available modules: {string.Join(", ", Modules.Select(m => m.Name))}");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[CustomModuleStore][GetModule] Module '{name}' FOUND: Type={result.Type}, Procedure={result.ProcedureName}");
+            }
+            return result;
         }
         
         public void AddLabel(string labelName)

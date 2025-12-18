@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 
@@ -14,11 +15,22 @@ namespace Wysg.Musm.Radium.Services
         {
             if (_getProcPathOverride != null)
             {
-                try { return _getProcPathOverride(); } catch { }
+                try 
+                { 
+                    var path = _getProcPathOverride();
+                    Debug.WriteLine($"[ProcedureExecutor][GetProcPath] Override path: {path}");
+                    return path; 
+                } 
+                catch (Exception ex) 
+                { 
+                    Debug.WriteLine($"[ProcedureExecutor][GetProcPath] Override failed: {ex.Message}");
+                }
             }
             var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Wysg.Musm", "Radium");
             Directory.CreateDirectory(dir);
-            return Path.Combine(dir, "ui-procedures.json");
+            var fallback = Path.Combine(dir, "ui-procedures.json");
+            Debug.WriteLine($"[ProcedureExecutor][GetProcPath] Fallback path: {fallback}");
+            return fallback;
         }
 
         private static ProcStore Load()
@@ -26,10 +38,22 @@ namespace Wysg.Musm.Radium.Services
             try
             {
                 var p = GetProcPath();
-                if (!File.Exists(p)) return new ProcStore();
-                return JsonSerializer.Deserialize<ProcStore>(File.ReadAllText(p), new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? new ProcStore();
+                Debug.WriteLine($"[ProcedureExecutor][Load] Loading from: {p}");
+                if (!File.Exists(p)) 
+                {
+                    Debug.WriteLine($"[ProcedureExecutor][Load] File does not exist, returning empty store");
+                    return new ProcStore();
+                }
+                var json = File.ReadAllText(p);
+                var store = JsonSerializer.Deserialize<ProcStore>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? new ProcStore();
+                Debug.WriteLine($"[ProcedureExecutor][Load] Loaded {store.Methods.Count} procedures: {string.Join(", ", store.Methods.Keys)}");
+                return store;
             }
-            catch { return new ProcStore(); }
+            catch (Exception ex) 
+            { 
+                Debug.WriteLine($"[ProcedureExecutor][Load] Error: {ex.Message}");
+                return new ProcStore(); 
+            }
         }
 
         private static void Save(ProcStore s)
@@ -39,7 +63,10 @@ namespace Wysg.Musm.Radium.Services
                 var p = GetProcPath();
                 File.WriteAllText(p, JsonSerializer.Serialize(s, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true }));
             }
-            catch { }
+            catch (Exception ex) 
+            { 
+                Debug.WriteLine($"[ProcedureExecutor][Save] Error: {ex.Message}");
+            }
         }
 
         /// <summary>

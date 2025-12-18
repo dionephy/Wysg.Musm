@@ -294,13 +294,23 @@ namespace Wysg.Musm.Radium
 
             services.AddSingleton<IReportifySettingsService>(sp =>
             {
+                if (useApi)
+                {
+                    Debug.WriteLine("[DI] Using ApiReportifySettingsService (API mode)");
+                    return new ApiReportifySettingsService(
+                        sp.GetRequiredService<IUserSettingsApiClient>(),
+                        sp.GetRequiredService<ITenantContext>());
+                }
+
                 var settings = sp.GetRequiredService<IRadiumLocalSettings>();
                 var cs = settings.CentralConnectionString ?? string.Empty;
                 if (cs.IndexOf("database.windows.net", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    Debug.WriteLine("[DI] Using AzureSqlReportifySettingsService");
+                    Debug.WriteLine("[DI] Using AzureSqlReportifySettingsService (direct DB mode)");
                     return new AzureSqlReportifySettingsService(settings);
                 }
+
+                Debug.WriteLine("[DI] Using Postgres ReportifySettingsService (direct DB mode)");
                 return new ReportifySettingsService(sp.GetRequiredService<ICentralDataSourceProvider>(), settings);
             });
             services.AddSingleton<IStudynameLoincRepository, StudynameLoincRepository>();    // Mapping study names to LOINC codes
@@ -411,15 +421,11 @@ namespace Wysg.Musm.Radium
                 loginSuccess = true;
                 try
                 {
-                    // After login, set per-PACS spy settings path override for ProcedureExecutor
+                    // Initialize AccountStoragePaths with tenant context for dynamic per-account path resolution
                     var tenant = _host.Services.GetRequiredService<ITenantContext>();
-                    string pacsKey = string.IsNullOrWhiteSpace(tenant.CurrentPacsKey) ? "default_pacs" : tenant.CurrentPacsKey;
-                    string baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey));
-                    Directory.CreateDirectory(baseDir);
-                    string spyPath = Path.Combine(baseDir, "ui-procedures.json");
-                    ProcedureExecutor.SetProcPathOverride(() => spyPath);
-                    string bookmarksPath = Path.Combine(baseDir, "bookmarks.json");
-                    UiBookmarks.GetStorePathOverride = () => bookmarksPath;
+                    AccountStoragePaths.Initialize(tenant);
+                    AccountStoragePaths.ConfigurePathOverrides();
+                    Debug.WriteLine($"[App][LoginSuccess] AccountStoragePaths configured for AccountId={tenant.AccountId}, PacsKey={tenant.CurrentPacsKey}");
 
                     BackgroundTask.Run("PhrasePreload", async () =>
                     {
@@ -437,7 +443,11 @@ namespace Wysg.Musm.Radium
                         }
                     });
                 }
-                catch { /* Non-fatal preload error suppressed */ }
+                catch (Exception ex) 
+                { 
+                    Debug.WriteLine($"[App][LoginSuccess] Error configuring paths: {ex.Message}");
+                    /* Non-fatal preload error suppressed */ 
+                }
                 splashLoginWindow.Close();
             };
 

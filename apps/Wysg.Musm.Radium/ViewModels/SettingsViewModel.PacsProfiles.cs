@@ -54,16 +54,14 @@ namespace Wysg.Musm.Radium.ViewModels
                 Debug.WriteLine($"[SettingsVM] Switching PACS from '{oldValue?.PacsKey}' to '{newValue.PacsKey}'");
                 _tenant.CurrentPacsKey = newValue.PacsKey;
 
-                var pacsKey = string.IsNullOrWhiteSpace(newValue.PacsKey) ? "default_pacs" : newValue.PacsKey;
-                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var baseDir = System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey));
-                System.IO.Directory.CreateDirectory(baseDir);
-                var spyPath = System.IO.Path.Combine(baseDir, "ui-procedures.json");
-                ProcedureExecutor.SetProcPathOverride(() => spyPath);
-                var bookmarksPath = System.IO.Path.Combine(baseDir, "bookmarks.json");
-                UiBookmarks.GetStorePathOverride = () => bookmarksPath;
+                // Reconfigure path overrides to use new PACS key via centralized AccountStoragePaths
+                // This dynamically resolves paths based on current tenant context
+                AccountStoragePaths.ConfigurePathOverrides();
+                
+                Debug.WriteLine($"[SettingsVM] Path overrides reconfigured for PACS={newValue.PacsKey}");
 
                 // Immediately switch Automation tab to the selected PACS
+                var pacsKey = string.IsNullOrWhiteSpace(newValue.PacsKey) ? "default_pacs" : newValue.PacsKey;
                 SelectedPacsForAutomation = pacsKey;
             }
         }
@@ -159,6 +157,17 @@ namespace Wysg.Musm.Radium.ViewModels
                 }
                 else
                 {
+                    // Legacy migration: copy from pre-account path if exists
+                    var legacy = GetLegacyAutomationFilePath(pacsKey);
+                    if (System.IO.File.Exists(legacy))
+                    {
+                        var dir = System.IO.Path.GetDirectoryName(automationFile);
+                        if (!string.IsNullOrEmpty(dir)) System.IO.Directory.CreateDirectory(dir);
+                        System.IO.File.Copy(legacy, automationFile, overwrite: true);
+                        Debug.WriteLine($"[SettingsVM] Migrated automation from {legacy}");
+                        LoadAutomationForPacs(pacsKey);
+                        return;
+                    }
                     Debug.WriteLine($"[SettingsVM] No automation file found at {automationFile}");
                 }
             }
@@ -251,7 +260,14 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
-        private static string GetAutomationFilePath(string pacsKey)
+        private string GetAutomationFilePath(string pacsKey)
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var accountSegment = _tenant?.AccountId > 0 ? _tenant.AccountId.ToString() : "account0";
+            return System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Accounts", accountSegment, "Pacs", SanitizeFileName(pacsKey), "automation.json");
+        }
+
+        private string GetLegacyAutomationFilePath(string pacsKey)
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             return System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey), "automation.json");

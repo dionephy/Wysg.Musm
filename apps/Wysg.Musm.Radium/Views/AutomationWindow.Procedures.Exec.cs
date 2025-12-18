@@ -673,40 +673,8 @@ namespace Wysg.Musm.Radium.Views
 
         private static string GetProcPath()
         {
-            try
-            {
-                if (UiBookmarks.GetStorePathOverride != null)
-                {
-                    var bookmarkPath = UiBookmarks.GetStorePathOverride.Invoke();
-                    if (!string.IsNullOrWhiteSpace(bookmarkPath))
-                    {
-                        var baseDir = System.IO.Path.GetDirectoryName(bookmarkPath);
-                        if (!string.IsNullOrEmpty(baseDir))
-                        {
-                            System.IO.Directory.CreateDirectory(baseDir);
-                            return System.IO.Path.Combine(baseDir, "ui-procedures.json");
-                        }
-                    }
-                }
-
-                if (System.Windows.Application.Current is Wysg.Musm.Radium.App app)
-                {
-                    try
-                    {
-                        var tenant = (Wysg.Musm.Radium.Services.ITenantContext?)app.Services.GetService(typeof(Wysg.Musm.Radium.Services.ITenantContext));
-                        var pacsKey = string.IsNullOrWhiteSpace(tenant?.CurrentPacsKey) ? "default_pacs" : tenant!.CurrentPacsKey;
-                        var dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey));
-                        System.IO.Directory.CreateDirectory(dir);
-                        return System.IO.Path.Combine(dir, "ui-procedures.json");
-                    }
-                    catch { }
-                }
-            }
-            catch { }
-
-            var legacyDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Wysg.Musm", "Radium");
-            System.IO.Directory.CreateDirectory(legacyDir);
-            return System.IO.Path.Combine(legacyDir, "ui-procedures.json");
+            // Use centralized AccountStoragePaths service for consistent per-account resolution
+            return Wysg.Musm.Radium.Services.AccountStoragePaths.GetProceduresPath();
         }
         private static ProcStore LoadProcStore()
         {

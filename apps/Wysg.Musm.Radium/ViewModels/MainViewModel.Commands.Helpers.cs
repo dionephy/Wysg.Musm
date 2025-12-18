@@ -57,10 +57,22 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
-        private static string GetAutomationFilePath(string pacsKey)
+        private string GetAutomationFilePath(string pacsKey)
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            return System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey), "automation.json");
+            var accountSegment = _tenant?.AccountId > 0 ? _tenant.AccountId.ToString() : "account0";
+            var path = System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Accounts", accountSegment, "Pacs", SanitizeFileName(pacsKey), "automation.json");
+            if (!System.IO.File.Exists(path))
+            {
+                var legacy = System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey), "automation.json");
+                if (System.IO.File.Exists(legacy))
+                {
+                    var dir = System.IO.Path.GetDirectoryName(path);
+                    if (!string.IsNullOrEmpty(dir)) System.IO.Directory.CreateDirectory(dir);
+                    System.IO.File.Copy(legacy, path, overwrite: true);
+                }
+            }
+            return path;
         }
 
         private static string SanitizeFileName(string name)
