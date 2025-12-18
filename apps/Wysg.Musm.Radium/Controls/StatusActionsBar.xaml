@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Loaded="OnLoaded">
     <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <!-- Fallback style used only if parent does not provide DarkToggleButtonStyle -->
         <Style x:Key="_LocalDarkToggleButtonStyle" TargetType="ToggleButton">
             <Setter Property="Background" Value="#2D2D30"/>
@@ -20,7 +21,26 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" Grid.Column="0">
-                <Button Content="Manage studyname" Command="{Binding OpenStudynameMapCommand}"/>
+                <Button Content="Manage studyname" Command="{Binding OpenStudynameMapCommand}" ToolTip="Current studyname is missing a LOINC mapping." ToolTipService.IsEnabled="{Binding StudynameMappingNeedsAttention}">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Padding" Value="8,4"/>
+                            <Setter Property="Margin" Value="0"/>
+                            <Setter Property="Background" Value="#FF1E1E1E"/>
+                            <Setter Property="Foreground" Value="#FFE0E0E0"/>
+                            <Setter Property="BorderBrush" Value="#FF3C3C3C"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StudynameMappingNeedsAttention}" Value="True">
+                                    <Setter Property="Background" Value="#FFB3261E"/>
+                                    <Setter Property="BorderBrush" Value="#FF7A1B13"/>
+                                    <Setter Property="Foreground" Value="#FFFFFFFF"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
                 <Separator Width="10"/>
                 <Button Content="Force Ghost" Click="OnForceGhost_Click"/>
                 <Button Content="Settings" Click="OnOpenSettings_Click"/>

@@ -206,12 +206,35 @@ namespace Wysg.Musm.Radium.ViewModels
             }
             catch (Exception ex) { Debug.WriteLine("[PrevLoad] error: " + ex.Message); }
         }
+        
+        public async Task RefreshPreviousStudyModalitiesAsync()
+        {
+            if (_studynameLoincRepo == null || PreviousStudies.Count == 0)
+                return;
 
-        /// <summary>
-        /// Extracts modality from studyname using LOINC mapping.
-        /// First tries to get modality from LOINC part mapping (Rad.Modality.Modality Type).
-        /// Falls back to simple prefix extraction from studyname if no LOINC mapping exists.
-        /// </summary>
+            foreach (var tab in PreviousStudies)
+            {
+                var studyname = tab.SelectedReport?.Studyname
+                               ?? tab.Reports.FirstOrDefault()?.Studyname
+                               ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(studyname))
+                    continue;
+
+                var newModality = await ExtractModalityAsync(studyname);
+                if (!string.Equals(tab.Modality, newModality, StringComparison.OrdinalIgnoreCase))
+                {
+                    tab.Modality = newModality;
+                    tab.Title = $"{newModality} {tab.StudyDateTime:yyyy-MM-dd}";
+                }
+            }
+        }
+ 
+         /// <summary>
+         /// Extracts modality from studyname using LOINC mapping.
+         /// First tries to get modality from LOINC part mapping (Rad.Modality.Modality Type).
+         /// Falls back to simple prefix extraction from studyname if no LOINC mapping exists.
+         /// </summary>
         private async Task<string> ExtractModalityAsync(string studyname)
         {
             if (string.IsNullOrWhiteSpace(studyname))

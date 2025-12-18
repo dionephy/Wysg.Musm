@@ -183,6 +183,16 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
         
+        public async Task RefreshAfterMappingAsync()
+        {
+            await CheckLoincMapsAsync();
+
+            foreach (var study in AvailableStudies.Where(s => s.HasLoincMap))
+            {
+                await RefreshModalityForStudyAsync(study);
+            }
+        }
+        
         /// <summary>
         /// Refreshes the modality for a study after LOINC mapping has been added.
         /// </summary>

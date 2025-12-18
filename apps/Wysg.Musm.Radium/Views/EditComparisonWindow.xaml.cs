@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using Microsoft.Extensions.DependencyInjection;
@@ -78,6 +79,16 @@ namespace Wysg.Musm.Radium.Views
         {
             DialogResult = false;
             Close();
+        }
+        
+        public Task RefreshAfterMappingAsync()
+        {
+            if (DataContext is EditComparisonViewModel vm)
+            {
+                return vm.RefreshAfterMappingAsync();
+            }
+
+            return Task.CompletedTask;
         }
     }
     

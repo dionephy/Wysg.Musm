@@ -34,17 +34,29 @@ namespace Wysg.Musm.Radium.Views
                 {
                     // Refresh study_techniques from the default technique combination
                     await mainVm.RefreshStudyTechniqueFromDefaultAsync();
+                    mainVm.RefreshStudynameMappingStatus();
                     Debug.WriteLine("[StudynameLoincWindow] Study_techniques refresh completed");
                 }
                 else
                 {
                     Debug.WriteLine("[StudynameLoincWindow] WARN: Could not find MainViewModel - MainWindow.DataContext is not MainViewModel");
                 }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[StudynameLoincWindow] Error refreshing study_techniques on window close: {ex.Message}");
-            }
+
+                var comparisonWindows = Application.Current?.Windows.OfType<EditComparisonWindow>().ToList();
+                if (comparisonWindows != null && comparisonWindows.Count > 0)
+                {
+                    foreach (var window in comparisonWindows)
+                    {
+                        await window.RefreshAfterMappingAsync();
+                    }
+
+                    Debug.WriteLine($"[StudynameLoincWindow] Notified {comparisonWindows.Count} comparison window(s) about mapping changes");
+                }
+             }
+             catch (Exception ex)
+             {
+                 Debug.WriteLine($"[StudynameLoincWindow] Error refreshing study_techniques on window close: {ex.Message}");
+             }
         }
 
         private void OnPartItemDoubleClick(object sender, MouseButtonEventArgs e)

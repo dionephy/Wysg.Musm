@@ -16,9 +16,27 @@ namespace Wysg.Musm.Radium.ViewModels
         public sealed class PreviousStudyTab : BaseViewModel
         {
             public Guid Id { get; set; }
-            public string Title { get; set; } = string.Empty;
-            public DateTime StudyDateTime { get; set; }
-            public string Modality { get; set; } = string.Empty;
+            
+            private string _title = string.Empty;
+            public string Title
+            {
+                get => _title;
+                set => SetProperty(ref _title, value ?? string.Empty);
+            }
+            
+            private DateTime _studyDateTime;
+            public DateTime StudyDateTime
+            {
+                get => _studyDateTime;
+                set => SetProperty(ref _studyDateTime, value);
+            }
+            
+            private string _modality = string.Empty;
+            public string Modality
+            {
+                get => _modality;
+                set => SetProperty(ref _modality, value ?? string.Empty);
+            }
             
             private string _header = string.Empty;
             public string Header

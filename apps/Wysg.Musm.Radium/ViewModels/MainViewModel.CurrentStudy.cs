@@ -21,7 +21,19 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _patientNumber = string.Empty; public string PatientNumber { get => _patientNumber; set { if (SetProperty(ref _patientNumber, value)) UpdateCurrentStudyLabel(); } }
         private string _patientSex = string.Empty; public string PatientSex { get => _patientSex; set { if (SetProperty(ref _patientSex, value)) UpdateCurrentStudyLabel(); } }
         private string _patientAge = string.Empty; public string PatientAge { get => _patientAge; set { if (SetProperty(ref _patientAge, value)) UpdateCurrentStudyLabel(); } }
-        private string _studyName = string.Empty; public string StudyName { get => _studyName; set { if (SetProperty(ref _studyName, value)) UpdateCurrentStudyLabel(); } }
+        private string _studyName = string.Empty;
+        public string StudyName
+        {
+            get => _studyName;
+            set
+            {
+                if (SetProperty(ref _studyName, value))
+                {
+                    UpdateCurrentStudyLabel();
+                    ScheduleStudynameMappingCheck();
+                }
+            }
+        }
         private string _studyDateTime = string.Empty; public string StudyDateTime { get => _studyDateTime; set { if (SetProperty(ref _studyDateTime, value)) UpdateCurrentStudyLabel(); } }
 
         // Report DateTime: when the current study's report was created (distinct from StudyDateTime which is when the study was performed)

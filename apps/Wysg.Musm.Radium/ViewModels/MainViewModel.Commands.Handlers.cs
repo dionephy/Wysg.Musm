@@ -128,7 +128,7 @@ namespace Wysg.Musm.Radium.ViewModels
             }
         }
 
-        private void OnEditComparison()
+        private async void OnEditComparison()
         {
             try
             {
@@ -167,6 +167,8 @@ namespace Wysg.Musm.Radium.ViewModels
                 {
                     Debug.WriteLine("[EditComparison] User cancelled");
                 }
+
+                await RefreshPreviousStudyModalitiesAsync();
             }
             catch (Exception ex)
             {
