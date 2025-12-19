@@ -357,7 +357,9 @@ namespace Wysg.Musm.Radium
                 sp.GetService<IRadStudyRepository>()
             ));
             services.AddSingleton<Wysg.Musm.Radium.Services.Procedures.IInsertCurrentStudyReportProcedure>(sp => new Wysg.Musm.Radium.Services.Procedures.InsertCurrentStudyReportProcedure(
-                sp.GetService<IRadStudyRepository>()
+                sp.GetService<IRadStudyRepository>(),
+                sp.GetService<IExportedReportsApiClient>(),
+                sp.GetService<ITenantContext>()
             ));
 
             // ViewModels (transient) -----------------------------------------------------------
@@ -401,6 +403,9 @@ namespace Wysg.Musm.Radium
                 sp.GetService<PhrasesViewModel>(), // compose phrases tab inside settings
                 sp.GetRequiredService<ITenantRepository>() // pass tenant repo so SettingsVM can load PACS from DB
             ));
+
+            // Snowstorm client (used by phrase extraction / SNOMED browsing)
+            services.AddSingleton<ISnowstormClient, SnowstormClient>();
         }
 
         /// <summary>
