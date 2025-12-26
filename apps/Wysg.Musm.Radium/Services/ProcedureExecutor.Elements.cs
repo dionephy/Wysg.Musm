@@ -147,16 +147,22 @@ namespace Wysg.Musm.Radium.Services
         }
 
         /// <summary>
-        /// FAST staleness check - avoids cross-process COM calls when possible.
-        /// Uses try-catch to handle COM exceptions gracefully.
+        /// FAST staleness check - attempts to detect disconnected COM elements.
+        /// Checks both ControlType and Name properties since GetText primarily uses Name.
+        /// Uses try-catch to handle COM exceptions gracefully (e.g., 0x80040201).
         /// </summary>
         private static bool IsElementAliveFast(AutomationElement el)
         {
             try
             {
-                // FAST PATH: Try to access a property that FlaUI may have cached locally
-                // ControlType is often cached and doesn't require a round-trip
+                // Check ControlType first (often cached locally)
                 _ = el.ControlType;
+                
+                // CRITICAL: Also check Name property - this is what GetText uses first
+                // Stale elements often fail when accessing Name even if ControlType succeeds
+                // This catches COM exception 0x80040201 ("Cannot invoke subscribers from event")
+                _ = el.Name;
+                
                 return true;
             }
             catch
