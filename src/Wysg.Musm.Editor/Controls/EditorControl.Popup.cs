@@ -138,16 +138,12 @@ namespace Wysg.Musm.Editor.Controls
                     bool isWhitespace = char.IsWhiteSpace(firstChar);
                     string trailingText = e.Text;
 
-                    var listBox = _completionWindow.CompletionList?.ListBox;
-                    var selectedData = listBox?.SelectedItem as MusmCompletionData;
-                    bool preservePunctuation = selectedData?.IsHotkey == true;
-
                     _completionWindow.CompletionList.RequestInsertion(e);
                     e.Handled = true; // guarantee the non-alnum char is handled by us
 
-                    if (preservePunctuation && !isWhitespace && Editor.Document != null && trailingText.Length > 0)
+                    if (!isWhitespace && Editor.Document != null && trailingText.Length > 0)
                     {
-                        // Preserve punctuation (.,;: etc.) for hotkey commits only
+                        // Preserve punctuation (.,;: etc.) for any completion commit
                         int caret = Editor.CaretOffset;
                         Editor.Document.Insert(caret, trailingText);
                         Editor.CaretOffset = caret + trailingText.Length;

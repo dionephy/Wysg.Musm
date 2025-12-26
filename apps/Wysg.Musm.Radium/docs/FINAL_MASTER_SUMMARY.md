@@ -710,3 +710,11 @@ The documentation is now:
 - **Documentation**: `docs/00-current/FIX_2025-12-17_SnippetModeEnterSelection.md`
 - **Status**: ✅ Complete - Enter now inserts whichever snippet option is selected
 
+### 2025-12-19: Completion Window Punctuation Commit Regression
+- **Problem**: Punctuation keys used to commit completions (`,`, `.`, `;`, `:`, `)`) were dropped when the selected item was not marked as a hotkey, leaving inserted text without the typed punctuation.
+- **Root Cause**: Punctuation reinsertion in `OnTextEntering` was gated on `IsHotkey`, so phrase/snippet completions consumed the key without reappending it.
+- **Solution**: Always reinsert non-whitespace punctuation after completion insertion regardless of completion type while keeping whitespace handling unchanged.
+- **Files Modified**: `src/Wysg.Musm.Editor/Controls/EditorControl.Popup.cs`
+- **Documentation**: `docs/00-current/FIX_2025-12-19_CompletionPunctuationCommitRegression.md`
+- **Status**: ✅ Complete - Punctuation commits now preserve the typed character for all completion items
+
