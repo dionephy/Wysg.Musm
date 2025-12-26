@@ -62,6 +62,9 @@ namespace Wysg.Musm.Radium.Services
         // Snowstorm network settings
         public string? SnowstormBaseUrl { get => ReadSecret("snowstorm_base_url"); set => WriteSecret("snowstorm_base_url", value ?? string.Empty); }
 
+        // API base URL
+        public string? ApiBaseUrl { get => ReadSecret("api_base_url"); set => WriteSecret("api_base_url", value ?? string.Empty); }
+
         // Window placement (left,top,width,height,state)
         public string? MainWindowPlacement { get => ReadSecret("main_window_placement"); set => WriteSecret("main_window_placement", value ?? string.Empty); }
 

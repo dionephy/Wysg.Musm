@@ -7,7 +7,6 @@ using System.Windows;
 using Wysg.Musm.Radium.Services;
 using System.Text.Json;
 using System.Collections.Generic;
-using Microsoft.Data.SqlClient; // added for Azure SQL
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -43,6 +42,7 @@ namespace Wysg.Musm.Radium.ViewModels
     public partial class SettingsViewModel : ObservableObject
     {
         private const string DefaultHeaderFormatTemplate = "Clinical information: {Chief Complaint}\n- {Patient History Lines}\nTechniques: {Techniques}\nComparison: {Comparison}";
+        private const string HardcodedPassword = "`123qweas";
 
         private readonly IRadiumLocalSettings _local;
         private readonly ITenantRepository? _tenantRepo; // added
@@ -50,20 +50,16 @@ namespace Wysg.Musm.Radium.ViewModels
         [ObservableProperty]
         private bool isBusy; // used by async commands in PACS profiles partial
 
-        // User-requested default (note: quoted Authentication as provided)
-        private const string DefaultCentralAzureSqlConnection = "Server=tcp:musm-server.database.windows.net,1433;Initial Catalog=musmdb;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication=\"Active Directory Default\";";
-
         [ObservableProperty]
         private string? localConnectionString;
 
         [ObservableProperty]
-        private string? centralConnectionString;
-
-        [ObservableProperty]
         private string? snowstormBaseUrl; // new: Snowstorm server base URL
 
-        // Back-compat binding
-        // New: editable central (Azure SQL) connection string (passwordless AAD)
+        [ObservableProperty]
+        private string? apiBaseUrl;
+
+        // Back-compat binding (legacy alias)
         public string? ConnectionString
         {
             get => LocalConnectionString;
@@ -146,7 +142,6 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _sampleAfterText = string.Empty; public string SampleAfterText { get => _sampleAfterText; set => SetProperty(ref _sampleAfterText, value); }
         public IRelayCommand SaveCommand { get; }
         public IRelayCommand TestLocalCommand { get; }
-        public IRelayCommand TestCentralCommand { get; } // new
         public IRelayCommand SaveAutomationCommand { get; }
         public IRelayCommand ShowReportifySampleCommand { get; }
         public IRelayCommand SaveReportifySettingsCommand { get; }
@@ -201,14 +196,13 @@ namespace Wysg.Musm.Radium.ViewModels
             // Initialize header template from local (preserve user customization even if central JSON lacks the field)
             HeaderFormatTemplate = _local.HeaderFormatTemplate ?? DefaultHeaderFormatTemplate;
 
-            LocalConnectionString = _local.LocalConnectionString ?? "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres;Password=`123qweas";
-            // Initialize central connection string with provided default if none persisted
-            CentralConnectionString = string.IsNullOrWhiteSpace(_local.CentralConnectionString) ? DefaultCentralAzureSqlConnection: _local.CentralConnectionString;
-            SnowstormBaseUrl = _local.SnowstormBaseUrl ?? "https://snowstorm.ihtsdotools.org/snowstorm/snomed-ct"; // sensible default
+            var persistedLocal = _local.LocalConnectionString ?? "Host=127.0.0.1;Port=5432;Database=wysg_dev;Username=postgres";
+            LocalConnectionString = StripPassword(persistedLocal);
+            SnowstormBaseUrl = _local.SnowstormBaseUrl ?? "http://127.0.0.1:8080/"; // sensible default
+            ApiBaseUrl = _local.ApiBaseUrl ?? "http://127.0.0.1:5205/";
             
             SaveCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(Save);
             TestLocalCommand = new AsyncRelayCommand(TestLocalAsync);
-            TestCentralCommand = new AsyncRelayCommand(TestCentralAsync); // new
             SaveAutomationCommand = new RelayCommand(SaveAutomation);
             ShowReportifySampleCommand = new RelayCommand<string?>(ShowSample);
             SaveReportifySettingsCommand = new AsyncRelayCommand(SaveReportifySettingsAsync, CanPersistSettings);
@@ -277,7 +271,7 @@ namespace Wysg.Musm.Radium.ViewModels
         
         /// <summary>
         /// Load available bookmarks from UiBookmarks into AvailableBookmarks collection.
-        /// This populates the dropdown in Settings ¡æ Keyboard ¡æ Editor Autofocus target.
+        /// This populates the dropdown in Settings  Keyboard  Editor Autofocus target.
         /// </summary>
         private void LoadAvailableBookmarks()
         {
@@ -390,10 +384,9 @@ namespace Wysg.Musm.Radium.ViewModels
 
         private void Save()
         {
-            _local.LocalConnectionString = LocalConnectionString ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(CentralConnectionString))
-                _local.CentralConnectionString = CentralConnectionString!.Trim();
+            _local.LocalConnectionString = AppendPassword(LocalConnectionString);
             _local.SnowstormBaseUrl = SnowstormBaseUrl ?? string.Empty;
+            _local.ApiBaseUrl = ApiBaseUrl ?? string.Empty;
             
             // Save ModalitiesNoHeaderUpdate to local settings (global setting)
             _local.ModalitiesNoHeaderUpdate = ModalitiesNoHeaderUpdate ?? string.Empty;
@@ -506,77 +499,72 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         private async Task TestLocalAsync() => await TestAsync(LocalConnectionString, "Local");
-        private async Task TestCentralAsync()
-        {
-            // Prefer unsaved typed value if present
-            var cs = !string.IsNullOrWhiteSpace(CentralConnectionString) ? CentralConnectionString : _local.CentralConnectionString;
-            await TestAsync(cs, "Central");
-        }
 
         private static async Task TestAsync(string? cs, string label)
-        {
+         {
             if (string.IsNullOrWhiteSpace(cs))
             {
                 MessageBox.Show($"{label} connection string empty.", "Test", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            bool isAzureSql = cs.IndexOf("database.windows.net", System.StringComparison.OrdinalIgnoreCase) >= 0 || cs.Contains("Initial Catalog=");
             try
             {
-                if (isAzureSql)
-                {
-                    await using var con = new SqlConnection(cs);
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
-                    await con.OpenAsync();
-                    await using var cmd = new SqlCommand("SELECT TOP (1) name FROM sys.tables", con);
-                    await cmd.ExecuteScalarAsync();
-                    sw.Stop();
-                    MessageBox.Show($"{label} Azure SQL OK ({sw.ElapsedMilliseconds} ms).", "Test", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                else
-                {
-                    await using var con = new NpgsqlConnection(cs);
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
-                    await con.OpenAsync();
-                    await using var cmd = new NpgsqlCommand("SELECT 1", con);
-                    await cmd.ExecuteScalarAsync();
-                    sw.Stop();
-                    MessageBox.Show($"{label} Postgres OK ({sw.ElapsedMilliseconds} ms).", "Test", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
+                var effective = AppendPassword(cs);
+                await using var con = new NpgsqlConnection(effective);
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                await con.OpenAsync();
+                await using var cmd = new NpgsqlCommand("SELECT 1", con);
+                await cmd.ExecuteScalarAsync();
+                sw.Stop();
+                MessageBox.Show($"{label} connection OK ({sw.ElapsedMilliseconds} ms).", "Test", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (System.Exception ex)
             {
-                // Azure AD passwordless fallback: try interactive if default failed
-                if (isAzureSql && cs.Contains("Authentication=Active Directory Default", System.StringComparison.OrdinalIgnoreCase)
-                    && (ex.Message.IndexOf("DefaultAzureCredential", System.StringComparison.OrdinalIgnoreCase) >= 0
-                        || ex.Message.IndexOf("failed to retrieve a token", System.StringComparison.OrdinalIgnoreCase) >= 0))
-                {
-                    try
-                    {
-                        var interactiveCs = cs.Replace("Authentication=Active Directory Default", "Authentication=Active Directory Interactive", System.StringComparison.OrdinalIgnoreCase);
-                        await using var conI = new SqlConnection(interactiveCs);
-                        var swI = System.Diagnostics.Stopwatch.StartNew();
-                        await conI.OpenAsync(); // will show interactive login dialog
-                        await using var cmdI = new SqlCommand("SELECT TOP (1) name FROM sys.tables", conI);
-                        await cmdI.ExecuteScalarAsync();
-                        swI.Stop();
-                        MessageBox.Show($"{label} Azure SQL OK via Interactive ({swI.ElapsedMilliseconds} ms). Revert to Default after successful token acquisition.", "Test", MessageBoxButton.OK, MessageBoxImage.Information);
-                        return;
-                    }
-                    catch (System.Exception ex2)
-                    {
-                        MessageBox.Show($"{label} interactive fallback failed: {ex2.Message}", "Test", MessageBoxButton.OK, MessageBoxImage.Error);
-                        return;
-                    }
-                }
                 MessageBox.Show($"{label} failed: {ex.Message}", "Test", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+         }
+        
+        private static string StripPassword(string? cs)
+        {
+            if (string.IsNullOrWhiteSpace(cs)) return string.Empty;
+            try
+            {
+                var builder = new NpgsqlConnectionStringBuilder(cs);
+                if (builder.ContainsKey("Password")) builder.Remove("Password");
+                if (builder.ContainsKey("Pwd")) builder.Remove("Pwd");
+                return builder.ConnectionString;
+            }
+            catch
+            {
+                // Fallback: best-effort removal via simple replace
+                return cs.Replace("Password=`123qweas", string.Empty, System.StringComparison.OrdinalIgnoreCase)
+                         .Replace("Pwd=`123qweas", string.Empty, System.StringComparison.OrdinalIgnoreCase);
             }
         }
 
-        private void UpdateReportifyJson()
+        private static string AppendPassword(string? cs)
         {
-            var obj = new
+            var baseCs = cs ?? string.Empty;
+            try
             {
+                var builder = new NpgsqlConnectionStringBuilder(baseCs)
+                {
+                    Password = HardcodedPassword
+                };
+                return builder.ConnectionString;
+            }
+            catch
+            {
+                return string.IsNullOrWhiteSpace(baseCs)
+                    ? $"Password={HardcodedPassword}"
+                    : (baseCs.Contains("Password=", System.StringComparison.OrdinalIgnoreCase) ? baseCs : baseCs.TrimEnd(';') + $";Password={HardcodedPassword}");
+            }
+        }
+     
+         private void UpdateReportifyJson()
+         {
+             var obj = new
+             {
                 remove_excessive_blanks = RemoveExcessiveBlanks,
                 remove_excessive_blank_lines = RemoveExcessiveBlankLines,
                 capitalize_sentence = CapitalizeSentence,
@@ -605,9 +593,9 @@ namespace Wysg.Musm.Radium.ViewModels
                     detailing_prefix = DefaultDetailingPrefix,
                     differential_diagnosis = DefaultDifferentialDiagnosis
                 }
-            };
-            ReportifySettingsJson = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true });
-        }
+             };
+             ReportifySettingsJson = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true });
+         }
 
         private void ShowSample(string? key)
         {

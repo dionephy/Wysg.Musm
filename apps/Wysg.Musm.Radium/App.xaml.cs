@@ -192,14 +192,13 @@ namespace Wysg.Musm.Radium
         /// </summary>
         private void ConfigureServices(HostBuilderContext context, IServiceCollection services)
         {
-            // ✨ NEW: API Settings Configuration
+            // ✨ NEW: API Settings Configuration (base URL now sourced from local settings only)
             var apiSettings = context.Configuration.GetSection("ApiSettings").Get<ApiSettings>() 
                            ?? new ApiSettings();
             services.AddSingleton(apiSettings);
-            Debug.WriteLine($"[DI] API Settings: BaseUrl={apiSettings.BaseUrl}");
 
             // ✨ NEW: Register API Clients (6 clients)
-            RegisterApiClients(services, apiSettings.BaseUrl);
+            RegisterApiClients(services);
 
             // ✨ NEW: Register API Helper Services
             services.AddSingleton<ApiTokenManager>();
@@ -217,9 +216,8 @@ namespace Wysg.Musm.Radium
             // API client (for calling backend API instead of direct DB access) -----------------
             services.AddSingleton<RadiumApiClient>(sp =>
             {
-                // Use environment variable or appsettings for API URL
-                var apiUrl = Environment.GetEnvironmentVariable("RADIUM_API_URL") ?? apiSettings.BaseUrl;
-                Debug.WriteLine($"[DI] Registering RadiumApiClient with base URL: {apiUrl}");
+                var apiUrl = ResolveApiBaseUrl(sp);
+                Debug.WriteLine($"[DI] Registering RadiumApiClient with base URL (settings): {apiUrl}");
                 return new RadiumApiClient(apiUrl);
             });
 
@@ -482,13 +480,12 @@ namespace Wysg.Musm.Radium
         /// ✨ NEW: Register all 6 API clients for backend communication
         /// These replace direct database access for account-specific operations
         /// </summary>
-        private void RegisterApiClients(IServiceCollection services, string baseUrl)
+        private void RegisterApiClients(IServiceCollection services)
         {
-            Debug.WriteLine($"[DI] Registering API clients with base URL: {baseUrl}");
-
             // User Settings API Client
             services.AddScoped<IUserSettingsApiClient>(sp =>
             {
+                var baseUrl = ResolveApiBaseUrl(sp);
                 var httpClient = new System.Net.Http.HttpClient
                 {
                     BaseAddress = new Uri(baseUrl),
@@ -501,6 +498,7 @@ namespace Wysg.Musm.Radium
             // Phrases API Client
             services.AddScoped<IPhrasesApiClient>(sp =>
             {
+                var baseUrl = ResolveApiBaseUrl(sp);
                 var httpClient = new System.Net.Http.HttpClient
                 {
                     BaseAddress = new Uri(baseUrl),
@@ -513,6 +511,7 @@ namespace Wysg.Musm.Radium
             // Hotkeys API Client
             services.AddScoped<IHotkeysApiClient>(sp =>
             {
+                var baseUrl = ResolveApiBaseUrl(sp);
                 var httpClient = new System.Net.Http.HttpClient
                 {
                     BaseAddress = new Uri(baseUrl),
@@ -525,6 +524,7 @@ namespace Wysg.Musm.Radium
             // Snippets API Client
             services.AddScoped<ISnippetsApiClient>(sp =>
             {
+                var baseUrl = ResolveApiBaseUrl(sp);
                 var httpClient = new System.Net.Http.HttpClient
                 {
                     BaseAddress = new Uri(baseUrl),
@@ -537,6 +537,7 @@ namespace Wysg.Musm.Radium
             // SNOMED API Client - Singleton to match ISnomedMapService lifecycle
             services.AddSingleton<ISnomedApiClient>(sp =>
             {
+                var baseUrl = ResolveApiBaseUrl(sp);
                 var httpClient = new System.Net.Http.HttpClient
                 {
                     BaseAddress = new Uri(baseUrl),
@@ -549,6 +550,7 @@ namespace Wysg.Musm.Radium
             // Exported Reports API Client
             services.AddScoped<IExportedReportsApiClient>(sp =>
             {
+                var baseUrl = ResolveApiBaseUrl(sp);
                 var httpClient = new System.Net.Http.HttpClient
                 {
                     BaseAddress = new Uri(baseUrl),
@@ -557,8 +559,19 @@ namespace Wysg.Musm.Radium
                 httpClient.DefaultRequestHeaders.Add("User-Agent", "Wysg.Musm.Radium/1.0");
                 return new ExportedReportsApiClient(httpClient, baseUrl);
             });
+        }
 
-            Debug.WriteLine("[DI] ✅ All 6 API clients registered successfully");
+        private static string ResolveApiBaseUrl(IServiceProvider sp)
+        {
+            var settings = sp.GetRequiredService<IRadiumLocalSettings>();
+            return ResolveApiBaseUrl(settings);
+        }
+
+        private static string ResolveApiBaseUrl(IRadiumLocalSettings settings)
+        {
+            var raw = settings.ApiBaseUrl;
+            if (string.IsNullOrWhiteSpace(raw)) raw = "http://127.0.0.1:5205/"; // UI default
+            return raw.TrimEnd('/') + "/";
         }
     }
 

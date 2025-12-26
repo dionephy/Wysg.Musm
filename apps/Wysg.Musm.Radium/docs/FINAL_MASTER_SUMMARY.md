@@ -678,43 +678,38 @@ The documentation is now:
 
 ## Recent Updates
 
-### 2025-12-12: Editor Autofocus Target Key Suppression
-- **Problem**: Keys were leaking to PACS or being incorrectly blocked for child elements (worklist, search boxes).
-- **Root Causes**: (1) FlaUI bookmark resolution was too slow for hook callbacks, (2) WPF/MFC container elements share HWNDs with children making HWND comparison unreliable.
-- **Solution**: Replaced FlaUI bookmark detection with native Win32 `GetClassName()` API. Detects if focused element is a text input control (Edit, ComboBox, SysListView32, etc.) and only triggers autofocus when NO text input has focus. Uses `SendKeys.SendWait` for key replay which bypasses `SendInput` restrictions from hook contexts.
-- **Files Modified**: `apps/Wysg.Musm.Radium/Services/EditorAutofocusService.cs`
-- **Documentation**: `docs/00-current/FIX_2025-12-12_EditorAutofocusTargetKeySuppression.md`
-- **Status**: ✅ Complete - Viewer panel captures keys to Radium; text inputs receive their own keys normally
+### 2025-12-26: Enforce Settings-Based API Base URL
+- **Problem**: The app ignored the configured API Base URL and kept working via config/env fallbacks, so wrong ports didn’t break API usage.
+- **Solution**: API clients and RadiumApiClient now resolve the base URL only from Settings → Network (`ApiBaseUrl`), with no other fallbacks (default only when unset).
+- **Files Modified**: `apps/Wysg.Musm.Radium/App.xaml.cs`
+- **Documentation**: `docs/00-current/CHANGE_2025-12-26_UseSettingsApiBaseUrl.md`
+- **Status**: ✅ Complete - API endpoint is exclusively driven by the saved setting
 
-### 2025-12-17: Completion Window Punctuation Commit
-- **Problem**: Committing a completion with punctuation keys such as `,`, `.`, or `;` dropped the typed character, so `br` → `brain` instead of `brain,`.
-- **Root Cause**: `OnTextEntering` consumed non-alphanumeric input when the completion window was open but never reinserted the triggering text.
-- **Solution**: After requesting insertion, the handler now reinjects any non-whitespace punctuation at the caret so the committed token keeps the typed character. Scope is limited to hotkey completions so snippets/phrases follow their own formatting rules, and the selected item is resolved via the popup ListBox to detect hotkeys reliably.
-- **Files Modified**: `src/Wysg.Musm.Editor/Controls/EditorControl.Popup.cs`
-- **Documentation**: `docs/00-current/FIX_2025-12-17_CompletionPunctuationCommit.md`
-- **Status**: ✅ Complete - Hotkey punctuation commits now yield `brain,`, `brain.` etc. without extra typing
+### 2025-12-26: Configurable API Base URL
+- **Problem**: API base URL was hardcoded (e.g., http://localhost:5205/), preventing configuration from the UI.
+- **Solution**: Added API Base URL field to Settings → Network with a default of `http://127.0.0.1:5205/` and persisted via local settings.
+- **Files Modified**: `apps/Wysg.Musm.Radium/Views/SettingsTabs/NetworkSettingsTab.xaml`, `apps/Wysg.Musm.Radium/ViewModels/SettingsViewModel.cs`, `apps/Wysg.Musm.Radium/Services/IRadiumLocalSettings.cs`, `apps/Wysg.Musm.Radium/Services/RadiumLocalSettings.cs`
+- **Documentation**: `docs/00-current/CHANGE_2025-12-26_ConfigurableApiBaseUrl.md`
+- **Status**: ✅ Complete - API endpoint is now user-configurable with a local default
 
-### 2025-12-17: Numeric Tokens Skip Completion
-- **Problem**: Typing a number such as `3` triggered the completion popup and committing with Space inserted the first suggestion (`3rd`).
-- **Root Cause**: Completion bootstrap logic never differentiated numeric tokens from normal words.
-- **Solution**: When the current word is digit-only, the popup is suppressed/closed so numbers can be typed normally.
-- **Files Modified**: `src/Wysg.Musm.Editor/Controls/EditorControl.Popup.cs`
-- **Documentation**: `docs/00-current/FIX_2025-12-17_SuppressNumericCompletion.md`
-- **Status**: ✅ Complete - Numeric typing no longer auto-expands hotkeys
+### 2025-12-26: Default Network Values Updated
+- **Problem**: Defaults exposed a password and pointed Snowstorm to a remote endpoint.
+- **Solution**: Default Local Connection String now omits the password (appended internally) and Snowstorm Base URL defaults to `http://127.0.0.1:8080/`.
+- **Files Modified**: `apps/Wysg.Musm.Radium/ViewModels/SettingsViewModel.cs`
+- **Documentation**: `docs/00-current/CHANGE_2025-12-26_DefaultNetworkValues.md`
+- **Status**: ✅ Complete - Fresh profiles show local defaults without revealing the password
 
-### 2025-12-17: Snippet Enter Respects Selection
-- **Problem**: In snippet placeholders, pressing Enter always inserted the first option even when another item was selected.
-- **Root Cause**: Enter handling bypassed the popup selection and fell back to the default option.
-- **Solution**: Centralized option resolution so both Tab and Enter use the highlighted entry (including Mode 3 buffers) before exiting snippet mode.
-- **Files Modified**: `src/Wysg.Musm.Editor/Snippets/SnippetInputHandler.cs`
-- **Documentation**: `docs/00-current/FIX_2025-12-17_SnippetModeEnterSelection.md`
-- **Status**: ✅ Complete - Enter now inserts whichever snippet option is selected
+### 2025-12-26: Hide Local Connection Password in Network Tab
+- **Problem**: The Network tab exposed the full local PostgreSQL connection string, including the password.
+- **Solution**: Strip the password from the textbox and append the hardcoded password when testing/saving so the UI hides credentials.
+- **Files Modified**: `apps/Wysg.Musm.Radium/ViewModels/SettingsViewModel.cs`
+- **Documentation**: `docs/00-current/CHANGE_2025-12-26_HideLocalConnectionPassword.md`
+- **Status**: ✅ Complete - UI no longer shows the password while connectivity remains unchanged
 
-### 2025-12-19: Completion Window Punctuation Commit Regression
-- **Problem**: Punctuation keys used to commit completions (`,`, `.`, `;`, `:`, `)`) were dropped when the selected item was not marked as a hotkey, leaving inserted text without the typed punctuation.
-- **Root Cause**: Punctuation reinsertion in `OnTextEntering` was gated on `IsHotkey`, so phrase/snippet completions consumed the key without reappending it.
-- **Solution**: Always reinsert non-whitespace punctuation after completion insertion regardless of completion type while keeping whitespace handling unchanged.
-- **Files Modified**: `src/Wysg.Musm.Editor/Controls/EditorControl.Popup.cs`
-- **Documentation**: `docs/00-current/FIX_2025-12-19_CompletionPunctuationCommitRegression.md`
-- **Status**: ✅ Complete - Punctuation commits now preserve the typed character for all completion items
+### 2025-12-26: Network Tab Central Connection String Removal
+- **Problem**: The central Azure SQL connection string is no longer used now that all transactions go through the API, leaving an obsolete field in Settings.
+- **Solution**: Removed the central connection string label/textbox from the Network tab and cleaned related properties/commands in `SettingsViewModel`.
+- **Files Modified**: `apps/Wysg.Musm.Radium/Views/SettingsTabs/NetworkSettingsTab.xaml`, `apps/Wysg.Musm.Radium/ViewModels/SettingsViewModel.cs`
+- **Documentation**: `docs/00-current/CHANGE_2025-12-26_RemoveCentralConnectionStringUI.md`
+- **Status**: ✅ Complete - Network settings now show only Local/Intranet and Snowstorm inputs
 

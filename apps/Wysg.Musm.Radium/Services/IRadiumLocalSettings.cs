@@ -25,6 +25,9 @@ namespace Wysg.Musm.Radium.Services
         /// <summary>Base URL for Snowstorm API, e.g. https://snowstorm.ihtsdotools.org/snowstorm/snomed-ct</summary>
         string? SnowstormBaseUrl { get; set; }
 
+        /// <summary>Base URL for Radium API, e.g. http://127.0.0.1:5205/</summary>
+        string? ApiBaseUrl { get; set; }
+
         /// <summary>Ordered modules executed when creating a new study (comma/semicolon delimited).</summary>
         string? AutomationNewStudySequence { get; set; }
         /// <summary>Ordered modules executed when adding a study (comma/semicolon delimited).</summary>
