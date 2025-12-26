@@ -678,8 +678,15 @@ The documentation is now:
 
 ## Recent Updates
 
+### 2025-12-26: Removed Deprecated Azure Central DB Code
+- **Problem**: Legacy direct-DB services for Azure SQL / PostgreSQL central databases remained after migrating to API-only architecture.
+- **Solution**: Removed all deprecated central DB code including AzureSqlCentralService, AzureSqlPhraseService, AzureSqlHotkeyService, AzureSqlSnippetService, AzureSqlReportifySettingsService, AzureSqlSnomedMapService, PhraseService (Postgres), ReportifySettingsService (Postgres), CentralDataSourceProvider, and CentralConnectionString from settings.
+- **Files Removed**: 9 service files; Modified: IRadiumLocalSettings, RadiumLocalSettings, App.xaml.cs, MainViewModel, StudynameLoincRepository
+- **Documentation**: `docs/00-current/CHANGE_2025-12-26_RemoveDeprecatedAzureCentralDB.md`
+- **Status**: ✅ Complete - All central transactions now exclusively via API
+
 ### 2025-12-26: Enforce Settings-Based API Base URL
-- **Problem**: The app ignored the configured API Base URL and kept working via config/env fallbacks, so wrong ports didn’t break API usage.
+- **Problem**: The app ignored the configured API Base URL and kept working via config/env fallbacks, so wrong ports didn't break API usage.
 - **Solution**: API clients and RadiumApiClient now resolve the base URL only from Settings → Network (`ApiBaseUrl`), with no other fallbacks (default only when unset).
 - **Files Modified**: `apps/Wysg.Musm.Radium/App.xaml.cs`
 - **Documentation**: `docs/00-current/CHANGE_2025-12-26_UseSettingsApiBaseUrl.md`

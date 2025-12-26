@@ -17,7 +17,6 @@ namespace Wysg.Musm.Radium.Services
     /// Characteristics:
     ///   * Atomic writes: entire file rewritten on each change; acceptable due to small key set.
     ///   * Resilience: read errors fail silently returning null (callers treat as unset / default).
-    ///   * Environment override: CentralConnectionString can be injected via MUSM_CENTRAL_DB without touching disk.
     ///
     /// Performance: Suitable for infrequent updates (settings dialog). For high-frequency writes a journaled format would be preferable.
     /// Thread-safety: No locking; concurrent writes could race but typical desktop usage avoids multi-thread mutation.
@@ -31,13 +30,6 @@ namespace Wysg.Musm.Radium.Services
 
         // Diagnostic logging flag - set to true only when debugging settings issues
         private const bool ENABLE_DIAGNOSTIC_LOGGING = false;
-
-        // Central: now strictly local (env var MUSM_CENTRAL_DB override removed per request)
-        public string? CentralConnectionString
-        {
-            get => ReadSecret("central");
-            set => WriteSecret("central", value ?? string.Empty);
-        }
 
         public string? LocalConnectionString
         {

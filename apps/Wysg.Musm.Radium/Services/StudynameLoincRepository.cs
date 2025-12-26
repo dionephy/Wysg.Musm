@@ -28,9 +28,7 @@ namespace Wysg.Musm.Radium.Services
 
         private NpgsqlConnection Open()
         {
-            var raw = _settings.LocalConnectionString
-                      ?? GetFallbackLocalCs()
-                      ?? _settings.CentralConnectionString;
+            var raw = _settings.LocalConnectionString ?? GetFallbackLocalCs();
             var b = new NpgsqlConnectionStringBuilder(raw);
             // Avoid logging full password
             var redacted = $"Host={b.Host};Port={b.Port};Db={b.Database};User={b.Username};SSLMode={b.SslMode};Pooling={b.Pooling}";

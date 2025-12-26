@@ -6,15 +6,12 @@ namespace Wysg.Musm.Radium.Services
     ///
     /// Design goals:
     ///   * Keep sensitive connection strings off plain text disk (DPAPI CurrentUser scope).
-    ///   * Allow environment variable override for Central DB (MUSM_CENTRAL_DB) to support packaging / CI scenarios.
     ///   * Provide forward-compatible keys for additional automation / feature flags without schema migration.
     ///
     /// Thread-safety: implementation uses simple file read/writes; callers should treat setters as relatively expensive IO.
     /// </summary>
     public interface IRadiumLocalSettings
     {
-        /// <summary>Encrypted central (Supabase / hosted Postgres) connection string. Env var MUSM_CENTRAL_DB overrides persisted value.</summary>
-        string? CentralConnectionString { get; set; }
         /// <summary>Encrypted local / intranet PostgreSQL connection used for on-prem edit & study storage.</summary>
         string? LocalConnectionString { get; set; }
 

@@ -40,7 +40,6 @@ namespace Wysg.Musm.Radium.ViewModels
         private readonly IHotkeyService _hotkeys; // new: hotkey service for editor completion
         private readonly ISnippetService _snippets; // added
         private readonly PacsService _pacs = new();
-        private readonly ICentralDataSourceProvider? _centralProvider; // (reserved for future use)
         private readonly IRadStudyRepository? _studyRepo;
         private readonly INewStudyProcedure? _newStudyProc;
         private readonly IRadiumLocalSettings? _localSettings;
