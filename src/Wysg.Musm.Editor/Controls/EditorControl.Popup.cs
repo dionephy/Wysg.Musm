@@ -133,6 +133,10 @@ namespace Wysg.Musm.Editor.Controls
             if (_completionWindow != null && e.Text.Length > 0)
             {
                 char firstChar = e.Text[0];
+                if (firstChar == '/' || firstChar == '-')
+                {
+                    return; // do not commit completion on slash or dash
+                }
                 if (!char.IsLetterOrDigit(firstChar))
                 {
                     bool isWhitespace = char.IsWhiteSpace(firstChar);
