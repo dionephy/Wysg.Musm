@@ -167,11 +167,7 @@ namespace Wysg.Musm.Radium.ViewModels
                                 bool userChoseYes = false;
                                 await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                                 {
-                                    var dialogResult = System.Windows.MessageBox.Show(
-                                        prompt,
-                                        caption,
-                                        System.Windows.MessageBoxButton.YesNo,
-                                        System.Windows.MessageBoxImage.Question);
+                                    var dialogResult = ShowGlobalYesNo(prompt, caption, System.Windows.MessageBoxImage.Question);
                                     userChoseYes = dialogResult == System.Windows.MessageBoxResult.Yes;
                                 });
                                 Debug.WriteLine($"[Automation] {customModule.Name}: userChoseYes={userChoseYes}");
@@ -406,13 +402,12 @@ namespace Wysg.Musm.Radium.ViewModels
                             bool forceContinue = false;
                             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                             {
-                                var result = System.Windows.MessageBox.Show(
+                                var result = ShowGlobalYesNo(
                                     $"Patient number mismatch detected!\n\n" +
                                     $"PACS: {pacsPatientNumber}\n" +
                                     $"Radium: {mainPatientNumber}\n\n" +
-                                    $"Do you want to force continue the procedure?",
+                                    "Do you want to force continue the procedure?",
                                     "Patient Number Mismatch",
-                                    System.Windows.MessageBoxButton.YesNo,
                                     System.Windows.MessageBoxImage.Warning);
                                 forceContinue = (result == System.Windows.MessageBoxResult.Yes);
                             });
@@ -445,13 +440,12 @@ namespace Wysg.Musm.Radium.ViewModels
                             bool forceContinue = false;
                             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                             {
-                                var result = System.Windows.MessageBox.Show(
+                                var result = ShowGlobalYesNo(
                                     $"Study date/time mismatch detected!\n\n" +
                                     $"PACS: {pacsStudyDateTime}\n" +
                                     $"Radium: {mainStudyDateTime}\n\n" +
-                                    $"Do you want to force continue the procedure?",
+                                    "Do you want to force continue the procedure?",
                                     "Study DateTime Mismatch",
-                                    System.Windows.MessageBoxButton.YesNo,
                                     System.Windows.MessageBoxImage.Warning);
                                 forceContinue = (result == System.Windows.MessageBoxResult.Yes);
                             });
@@ -564,6 +558,38 @@ namespace Wysg.Musm.Radium.ViewModels
             }
             
             SetStatus($">> {sequenceName} completed successfully", isError: false);
+            
+            System.Windows.MessageBoxResult ShowGlobalYesNo(string text, string caption, System.Windows.MessageBoxImage icon)
+            {
+                var owner = System.Windows.Application.Current?.MainWindow;
+                if (owner != null)
+                {
+                    var prevTopmost = owner.Topmost;
+                    var wasActive = owner.IsActive;
+                    try
+                    {
+                        var hwnd = new System.Windows.Interop.WindowInteropHelper(owner).Handle;
+                        if (hwnd != IntPtr.Zero)
+                        {
+                            Services.NativeMouseHelper.SetForegroundWindow(hwnd);
+                        }
+
+                        owner.Topmost = true;
+                        owner.Activate();
+                        return System.Windows.MessageBox.Show(owner, text, caption, System.Windows.MessageBoxButton.YesNo, icon);
+                    }
+                    finally
+                    {
+                        owner.Topmost = prevTopmost;
+                        if (wasActive)
+                        {
+                            owner.Activate();
+                        }
+                    }
+                }
+
+                return System.Windows.MessageBox.Show(text, caption, System.Windows.MessageBoxButton.YesNo, icon, System.Windows.MessageBoxResult.No, System.Windows.MessageBoxOptions.DefaultDesktopOnly);
+            }
             
             Dictionary<string, int> BuildLabelPositions(string[] source)
             {
