@@ -396,26 +396,63 @@ public class MainViewModel : INotifyPropertyChanged
 
         UserInput = string.Empty;
 
+        var allowTools = EnableMcpTools;
+        var toollessFallbackTried = false;
+
+        while (true)
+        {
+            try
+            {
+                await ExecuteChatAsync(allowTools);
+                break;
+            }
+            catch (HttpRequestException httpEx) when (allowTools && !toollessFallbackTried && httpEx.Message.Contains("tool choice requires --enable-auto-tool-choice", StringComparison.OrdinalIgnoreCase))
+            {
+                toollessFallbackTried = true;
+                allowTools = false;
+                StatusMessage = "Server disallows auto tool choice; retrying without tools. Start server with --enable-auto-tool-choice and --tool-call-parser to enable MCP tools.";
+                continue;
+            }
+            catch (HttpRequestException httpEx)
+            {
+                StatusMessage = $"HTTP error: {httpEx.Message}";
+                MessageBox.Show($"HTTP error: {httpEx.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                break;
+            }
+            catch (OperationCanceledException)
+            {
+                StatusMessage = "Generation cancelled";
+                break;
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error: {ex.Message}";
+                MessageBox.Show($"Failed to get response: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                break;
+            }
+        }
+    }
+
+    private async Task ExecuteChatAsync(bool allowTools)
+    {
+        IsGenerating = true;
+        StatusMessage = allowTools ? "Generating response (tools enabled)..." : "Generating response...";
+        _apiService.BaseUrl = Endpoint;
+
+        _streamingCts?.Dispose();
+        _streamingCts = new CancellationTokenSource();
+        var token = _streamingCts.Token;
+
+        var initialCount = ChatMessages.Count;
         try
         {
-            IsGenerating = true;
-            StatusMessage = "Generating response...";
-            _apiService.BaseUrl = Endpoint;
-
-            _streamingCts?.Dispose();
-            _streamingCts = new CancellationTokenSource();
-            var token = _streamingCts.Token;
-
-            // Build base history (includes system prompt and existing chat + new user message)
             var history = BuildMessageHistory();
-
-            var request = CreateRequest(history);
+            var request = CreateRequest(history, allowTools);
             LastRequestJson = _apiService.SerializeRequest(request);
 
             var assistantMessage = new ChatMessageViewModel("assistant", "") { IsStreaming = true };
             ChatMessages.Add(assistantMessage);
 
-            // Streaming with potential tool calls
             var toolCallBuilders = new Dictionary<int, ToolCallBuilder>();
             var receivedToolCalls = false;
 
@@ -425,13 +462,11 @@ public class MainViewModel : INotifyPropertyChanged
                 var choice = chunk.Choices[0];
                 var delta = choice.Delta;
 
-                // Accumulate content
                 if (!string.IsNullOrEmpty(delta.Content))
                 {
                     assistantMessage.Content += delta.Content;
                 }
 
-                // Accumulate tool calls
                 if (delta.ToolCalls != null && delta.ToolCalls.Count > 0)
                 {
                     receivedToolCalls = true;
@@ -446,7 +481,6 @@ public class MainViewModel : INotifyPropertyChanged
                     }
                 }
 
-                // Stop if model signaled end
                 if (!string.IsNullOrEmpty(choice.FinishReason) && choice.FinishReason != "tool_calls")
                 {
                     break;
@@ -458,7 +492,7 @@ public class MainViewModel : INotifyPropertyChanged
                 }
             }
 
-            if (receivedToolCalls && toolCallBuilders.Count > 0)
+            if (allowTools && receivedToolCalls && toolCallBuilders.Count > 0)
             {
                 assistantMessage.ToolCalls = toolCallBuilders.Values
                     .OrderBy(b => b.Index)
@@ -471,7 +505,6 @@ public class MainViewModel : INotifyPropertyChanged
 
                 assistantMessage.IsStreaming = false;
 
-                // Execute tools and add tool messages
                 foreach (var tc in assistantMessage.ToolCalls)
                 {
                     var execResult = await _mcpService.ExecuteToolAsync(tc.Function.Name, tc.Function.Arguments);
@@ -482,9 +515,8 @@ public class MainViewModel : INotifyPropertyChanged
                     ChatMessages.Add(toolMsg);
                 }
 
-                // Build follow-up request with tool responses
                 var followupHistory = BuildMessageHistory();
-                var followupRequest = CreateRequest(followupHistory);
+                var followupRequest = CreateRequest(followupHistory, allowTools);
                 LastRequestJson = _apiService.SerializeRequest(followupRequest);
 
                 var finalAssistant = new ChatMessageViewModel("assistant", "") { IsStreaming = true };
@@ -515,31 +547,24 @@ public class MainViewModel : INotifyPropertyChanged
                 StatusMessage = "Response complete";
             }
         }
-        catch (HttpRequestException httpEx)
-        {
-            StatusMessage = $"HTTP error: {httpEx.Message}";
-            MessageBox.Show($"HTTP error: {httpEx.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        catch (OperationCanceledException)
-        {
-            StatusMessage = "Generation cancelled";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error: {ex.Message}";
-            MessageBox.Show($"Failed to get response: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
         finally
         {
-            IsGenerating = false;
             _streamingCts?.Dispose();
             _streamingCts = null;
+            IsGenerating = false;
+
+            // cleanup on cancellation or failure
+            if (StatusMessage.StartsWith("HTTP error", StringComparison.OrdinalIgnoreCase) || StatusMessage.StartsWith("Error", StringComparison.OrdinalIgnoreCase) || StatusMessage.Contains("cancelled", StringComparison.OrdinalIgnoreCase))
+            {
+                while (ChatMessages.Count > initialCount)
+                {
+                    ChatMessages.RemoveAt(ChatMessages.Count - 1);
+                }
+            }
         }
     }
 
-    private bool CanSendMessage() => !IsGenerating && !string.IsNullOrWhiteSpace(UserInput);
-
-    private ChatCompletionRequest CreateRequest(List<ChatMessage> messages)
+    private ChatCompletionRequest CreateRequest(List<ChatMessage> messages, bool allowTools)
     {
         var stopList = StopSequences
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -556,12 +581,13 @@ public class MainViewModel : INotifyPropertyChanged
             Stream = UseStreaming
         };
 
-        if (EnableMcpTools && AvailableTools.Count > 0)
+        if (allowTools && AvailableTools.Count > 0)
         {
             request.Tools = AvailableTools
                 .Where(t => t.IsEnabled)
                 .Select(t => t.ToOpenAiTool())
                 .ToList();
+            request.ToolChoice = "auto";
         }
 
         return request;
@@ -583,6 +609,8 @@ public class MainViewModel : INotifyPropertyChanged
 
         return messages;
     }
+
+    private bool CanSendMessage() => !IsGenerating && !string.IsNullOrWhiteSpace(UserInput);
 
     private void StopGeneration()
     {
