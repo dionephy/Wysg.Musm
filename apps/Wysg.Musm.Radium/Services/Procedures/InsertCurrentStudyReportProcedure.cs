@@ -1,5 +1,7 @@
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Wysg.Musm.Radium.Services.ApiClients;
@@ -107,6 +109,12 @@ namespace Wysg.Musm.Radium.Services.Procedures
                         comparison = vm.Comparison ?? string.Empty
                     });
 
+                // Inject PrevReport split info before upload
+                var tempHeader = vm.TempHeader ?? string.Empty;
+                var headerLen = headerAndFindings?.Length ?? 0;
+                var tempHeaderLen = tempHeader?.Length ?? 0;
+                reportJson = AppendPrevReport(reportJson, headerLen, tempHeaderLen, headerAndFindings, conclusion);
+
                 var (reportId, wasInserted) = await _studyRepo.InsertReportIfNotExistsAsync(
                     studyId: studyId.Value,
                     reportDateTime: reportDateTime.Value,
@@ -144,6 +152,60 @@ namespace Wysg.Musm.Radium.Services.Procedures
             finally
             {
                 Debug.WriteLine("[InsertCurrentStudyReport] ===== END =====");
+            }
+        }
+
+        private static string AppendPrevReport(string baseJson, int headerLen, int tempHeaderLen, string headerAndFindings, string conclusion)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(baseJson);
+                using var stream = new MemoryStream();
+                using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
+
+                writer.WriteStartObject();
+                foreach (var prop in doc.RootElement.EnumerateObject())
+                {
+                    if (prop.NameEquals("PrevReport")) continue;
+                    prop.WriteTo(writer);
+                }
+
+                writer.WritePropertyName("PrevReport");
+                writer.WriteStartObject();
+                writer.WriteNumber("header_and_findings_header_splitter_from", tempHeaderLen);
+                writer.WriteNumber("header_and_findings_header_splitter_to", tempHeaderLen);
+                writer.WriteNumber("header_and_findings_conclusion_splitter_from", headerLen);
+                writer.WriteNumber("header_and_findings_conclusion_splitter_to", headerLen);
+                writer.WriteNumber("final_conclusion_header_splitter_from", 0);
+                writer.WriteNumber("final_conclusion_header_splitter_to", 0);
+                writer.WriteNumber("final_conclusion_findings_splitter_from", 0);
+                writer.WriteNumber("final_conclusion_findings_splitter_to", 0);
+                writer.WriteEndObject();
+
+                writer.WriteEndObject();
+                writer.Flush();
+
+                return Encoding.UTF8.GetString(stream.ToArray());
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[InsertCurrentStudyReport] AppendPrevReport parse error: {ex.Message}");
+                return JsonSerializer.Serialize(new
+                {
+                    header_and_findings = headerAndFindings ?? string.Empty,
+                    final_conclusion = conclusion ?? string.Empty,
+                    PrevReport = new
+                    {
+                        header_and_findings_header_splitter_from = tempHeaderLen,
+                        header_and_findings_header_splitter_to = tempHeaderLen,
+                        header_and_findings_conclusion_splitter_from = headerLen,
+                        header_and_findings_conclusion_splitter_to = headerLen,
+                        final_conclusion_header_splitter_from = 0,
+                        final_conclusion_header_splitter_to = 0,
+                        final_conclusion_findings_splitter_from = 0,
+                        final_conclusion_findings_splitter_to = 0
+                    }
+                }, new JsonSerializerOptions { WriteIndented = true });
             }
         }
 
