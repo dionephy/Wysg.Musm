@@ -1,4 +1,5 @@
 ﻿// src/Wysg.Musm.Editor/Controls/EditorControl.Api.cs
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ICSharpCode.AvalonEdit.Rendering;
@@ -99,6 +100,13 @@ namespace Wysg.Musm.Editor.Controls
         {
             _idlePausedForGhosts = false;
             RestartIdle();
+        }
+
+        public event EventHandler? ReadOnlyEditAttempted;
+
+        private void OnReadOnlyEditAttempted()
+        {
+            ReadOnlyEditAttempted?.Invoke(this, EventArgs.Empty);
         }
     }
 }

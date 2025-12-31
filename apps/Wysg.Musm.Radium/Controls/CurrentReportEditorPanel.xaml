@@ -201,7 +201,8 @@
                                       Margin="0"
                                       MinHeight="20"
                                       VerticalScrollBarVisibility="Disabled"
-                                      HorizontalScrollBarVisibility="Disabled">
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      ReadOnlyEditAttempted="OnReadOnlyEditAttempted">
                     <editor:EditorControl.Style>
                         <Style TargetType="editor:EditorControl">
                             <!-- Default: Editable, binds to raw FindingsText -->

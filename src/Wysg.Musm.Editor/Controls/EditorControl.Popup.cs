@@ -5,7 +5,7 @@ using System;
 using System.Linq;
 using System.Windows.Input;
 using Wysg.Musm.Editor.Completion;
-using Wysg.Musm.Editor.Snippets; // added
+using Wysg.Musm.Editor.Snippets;
 
 namespace Wysg.Musm.Editor.Controls
 {
@@ -27,7 +27,7 @@ namespace Wysg.Musm.Editor.Controls
             return (start, text);
         }
 
-        private void OnTextEntered(object? s, System.Windows.Input.TextCompositionEventArgs e)
+        private void OnTextEntered(object? s, TextCompositionEventArgs e)
         {
             if (ServerGhosts.HasItems) ClearServerGhosts();
             RestartIdle();
@@ -65,9 +65,9 @@ namespace Wysg.Musm.Editor.Controls
 
             var items = SnippetProvider.GetCompletions(Editor);
             if (items is null || !items.Any())
-            { 
-                CloseCompletionWindow(); 
-                return; 
+            {
+                CloseCompletionWindow();
+                return;
             }
 
             var itemsList = items.ToList();
@@ -110,8 +110,15 @@ namespace Wysg.Musm.Editor.Controls
             _completionWindow.SelectExactOrNone(word);
         }
 
-        private void OnTextEntering(object? s, System.Windows.Input.TextCompositionEventArgs e)
+        private void OnTextEntering(object? s, TextCompositionEventArgs e)
         {
+            if (Editor.IsReadOnly)
+            {
+                e.Handled = true;
+                OnReadOnlyEditAttempted();
+                return;
+            }
+
             // FIXED: Delete selection before inserting character (normal text editor behavior)
             if (!string.IsNullOrEmpty(e.Text))
             {
@@ -158,8 +165,41 @@ namespace Wysg.Musm.Editor.Controls
             }
         }
 
+        private bool IsReadOnlyInputBlocked(KeyEventArgs e)
+        {
+            if (!Editor.IsReadOnly)
+            {
+                return false;
+            }
+
+            if (IsNavigationKey(e.Key) || IsCopyShortcut(e))
+            {
+                return false;
+            }
+
+            e.Handled = true;
+            OnReadOnlyEditAttempted();
+            return true;
+        }
+
+        private static bool IsNavigationKey(Key key)
+        {
+            return key is Key.Left or Key.Right or Key.Up or Key.Down or Key.PageUp or Key.PageDown or Key.Home or Key.End;
+        }
+
+        private static bool IsCopyShortcut(KeyEventArgs e)
+        {
+            var mods = Keyboard.Modifiers;
+            return mods.HasFlag(ModifierKeys.Control) && (e.Key == Key.C || e.Key == Key.A);
+        }
+
         private void OnTextAreaPreviewKeyDown(object? s, KeyEventArgs e)
         {
+            if (IsReadOnlyInputBlocked(e))
+            {
+                return;
+            }
+
             // Allow Alt+Arrow keys to pass through for editor-level navigation
             if (e.KeyboardDevice.Modifiers == ModifierKeys.Alt &&
                 (e.Key == Key.Up || e.Key == Key.Down || e.Key == Key.Left || e.Key == Key.Right ||

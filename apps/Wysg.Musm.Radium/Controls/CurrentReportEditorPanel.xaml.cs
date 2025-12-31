@@ -1,6 +1,8 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using Wysg.Musm.Editor.Controls;
+using Wysg.Musm.Radium.ViewModels;
 
 namespace Wysg.Musm.Radium.Controls
 {
@@ -31,5 +33,14 @@ namespace Wysg.Musm.Radium.Controls
         public EditorControl HeaderEditor => EditorHeader;
         public EditorControl FindingsEditor => EditorFindings;
         public EditorControl ConclusionEditor => EditorConclusion;
+
+        private void OnReadOnlyEditAttempted(object? sender, EventArgs e)
+        {
+            if (DataContext is MainViewModel vm && vm.Reportified)
+            {
+                vm.Reportified = false;
+                vm.ProofreadMode = false;
+            }
+        }
     }
 }
