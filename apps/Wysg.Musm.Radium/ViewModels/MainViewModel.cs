@@ -71,6 +71,9 @@ namespace Wysg.Musm.Radium.ViewModels
             {
                 if (SetProperty(ref _textSyncEnabled, value))
                 {
+                    // Align external toggle bookmark state before proceeding
+                    TrySyncExternalToggleBookmark(value);
+
                     _textSyncService?.SetEnabled(value);
                     if (value)
                     {
@@ -353,6 +356,53 @@ namespace Wysg.Musm.Radium.ViewModels
                         TextSyncEnabled = false;
                     }
                 }
+            }
+        }
+
+        private void TrySyncExternalToggleBookmark(bool turningOn)
+        {
+            try
+            {
+                var toggleBookmark = _localSettings?.VoiceToTextToggleBookmark;
+                if (string.IsNullOrWhiteSpace(toggleBookmark)) return;
+
+                var (_, element) = UiBookmarks.Resolve(toggleBookmark);
+                if (element == null) return;
+
+                FlaUI.Core.Definitions.ToggleState? state = null;
+                if (element.Patterns.Toggle.IsSupported)
+                {
+                    state = element.Patterns.Toggle.Pattern?.ToggleState?.Value;
+                }
+
+                bool isOn = state == FlaUI.Core.Definitions.ToggleState.On;
+                bool shouldInvoke;
+
+                if (state == null)
+                {
+                    // Unknown state: invoke once to align with UI toggle intent
+                    shouldInvoke = true;
+                }
+                else
+                {
+                    shouldInvoke = turningOn ? !isOn : isOn;
+                }
+
+                if (shouldInvoke)
+                {
+                    if (element.Patterns.Invoke.IsSupported)
+                    {
+                        element.Patterns.Invoke.Pattern?.Invoke();
+                    }
+                    else if (element.Patterns.Toggle.IsSupported)
+                    {
+                        element.Patterns.Toggle.Pattern?.Toggle();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[TextSync] External toggle sync failed: {ex.Message}");
             }
         }
     }

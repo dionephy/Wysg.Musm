@@ -20,7 +20,7 @@ Users need to control the foreign textbox sync ("Sync text") feature from Settin
 
 ## Persistence and test actions (2026-01-02 update)
 - Voice-to-text enable and bookmark selections now load and save with the main **Save** action (user-scoped configuration).
-- The toggle action button is renamed to **Test toggle** and no longer shows a success message; it only invokes the bookmark (errors still show).
+- The toggle action button is renamed to **Test toggle** and no longer shows a success message; it only evokes the bookmark (errors still show).
 
 ## Visibility fix (2026-01-02 update)
 - Text sync toggle on the main toolbar now reflects the saved voice-to-text enable flag on startup.
@@ -35,6 +35,13 @@ Users need to control the foreign textbox sync ("Sync text") feature from Settin
 ## Toggle test UI changes (2026-01-02 update)
 - Renamed **Test toggle** to **Test button** (invokes the selected toggle bookmark).
 - Added **Check toggle** button to show the current state (On/Off/Indeterminate) of the selected toggle bookmark via a message box.
+
+## Text sync toggle coordination (2026-01-02 update)
+- When enabling text sync, the configured **Toggle button bookmark** is checked; if it is off, it is invoked to turn on.
+- When disabling text sync, the configured **Toggle button bookmark** is checked; if it is on, it is invoked to turn off.
+
+## Text sync toggle invocation alignment (2026-01-02 update)
+- Text sync toggle now invokes the configured **Toggle button bookmark** (Invoke pattern preferred) when adjusting external state, matching the behavior of the **Test button** in settings.
 
 ## Testing
 1. Open Settings ¡æ Integrations ¡æ Voice to text.
