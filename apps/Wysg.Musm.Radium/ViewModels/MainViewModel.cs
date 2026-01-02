@@ -221,6 +221,21 @@ namespace Wysg.Musm.Radium.ViewModels
                 _insertCurrentStudyReportProc = insertCurrentStudyReportProc;
                 _snomedMapService = snomedMapService;
                 _studynameLoincRepo = studynameLoincRepo;
+
+                // Initialize text sync service with bookmark getter
+                _textSyncService = new TextSyncService(System.Windows.Application.Current.Dispatcher, () =>
+                {
+                    var name = _localSettings?.VoiceToTextTextboxBookmark;
+                    return string.IsNullOrWhiteSpace(name) ? "ForeignTextbox" : name;
+                });
+                _textSyncService.ForeignTextChanged += OnForeignTextChanged;
+                
+                // Initialize voice-to-text toggle visibility from local settings
+                if (_localSettings != null)
+                {
+                    _voiceToTextEnabled = _localSettings.VoiceToTextEnabled;
+                    OnPropertyChanged(nameof(VoiceToTextEnabled));
+                }
                 
                 // ============================================================================
                 // CRITICAL: Clear phrase cache on startup to force reload with new filtering
@@ -235,10 +250,6 @@ namespace Wysg.Musm.Radium.ViewModels
                 // Performance impact: Negligible (~1ms). Cache repopulates on first completion.
                 Debug.WriteLine("[MainViewModel] Clearing phrase cache to force fresh load with filtering...");
                 _cache.ClearAll();
-                
-                // Initialize text sync service
-                _textSyncService = new TextSyncService(System.Windows.Application.Current.Dispatcher);
-                _textSyncService.ForeignTextChanged += OnForeignTextChanged;
                 
                 Debug.WriteLine("[MainViewModel] Creating PreviousStudies collection...");
                 PreviousStudies = new ObservableCollection<PreviousStudyTab>();
@@ -327,6 +338,22 @@ namespace Wysg.Musm.Radium.ViewModels
             }
             
             return singleLine;
+        }
+        
+        private bool _voiceToTextEnabled;
+        public bool VoiceToTextEnabled
+        {
+            get => _voiceToTextEnabled;
+            set
+            {
+                if (SetProperty(ref _voiceToTextEnabled, value))
+                {
+                    if (!value && TextSyncEnabled)
+                    {
+                        TextSyncEnabled = false;
+                    }
+                }
+            }
         }
     }
 }

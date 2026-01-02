@@ -86,6 +86,11 @@ namespace Wysg.Musm.Radium.Services
         // NEW: Header format template persistence
         public string? HeaderFormatTemplate { get => ReadSecret("header_format_template"); set => WriteSecret("header_format_template", value ?? string.Empty); }
 
+        // NEW: Voice-to-text integration
+        public bool VoiceToTextEnabled { get => ReadBool("voice_to_text_enabled"); set => WriteBool("voice_to_text_enabled", value); }
+        public string? VoiceToTextTextboxBookmark { get => ReadSecret("voice_to_text_textbox_bookmark"); set => WriteSecret("voice_to_text_textbox_bookmark", value ?? string.Empty); }
+        public string? VoiceToTextToggleBookmark { get => ReadSecret("voice_to_text_toggle_bookmark"); set => WriteSecret("voice_to_text_toggle_bookmark", value ?? string.Empty); }
+
         // Helper: encode value so our simple line-based storage can persist newlines safely
         private static string EncodeValue(string value)
         {

@@ -6,6 +6,9 @@
              xmlns:editor="clr-namespace:Wysg.Musm.Editor.Controls;assembly=Wysg.Musm.Editor"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="500">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+    </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="48"/>
@@ -94,6 +97,7 @@
                               Margin="2,0,0,2"
                               VerticalAlignment="Center"
                               IsChecked="{Binding TextSyncEnabled, Mode=TwoWay}"
+                              Visibility="{Binding VoiceToTextEnabled, Converter={StaticResource BoolToVisibility}}"
                               Style="{StaticResource IconToggleButtonStyle}"
                               Padding="4" Width="28" Height="28" 
                               ToolTip="Sync text with foreign textbox (e.g. Notepad)">

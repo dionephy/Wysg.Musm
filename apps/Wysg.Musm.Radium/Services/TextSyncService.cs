@@ -15,6 +15,8 @@ namespace Wysg.Musm.Radium.Services
     public sealed class TextSyncService : IDisposable
     {
         private readonly Dispatcher _dispatcher;
+        private readonly Func<string?> _getTextboxBookmarkName;
+        private const string DefaultBookmarkName = "ForeignTextbox";
         private Timer? _pollTimer;
         private bool _isEnabled;
         private string _lastKnownForeignText = string.Empty;
@@ -23,9 +25,24 @@ namespace Wysg.Musm.Radium.Services
         
         public event EventHandler<string>? ForeignTextChanged;
         
-        public TextSyncService(Dispatcher dispatcher)
+        public TextSyncService(Dispatcher dispatcher, Func<string?>? getTextboxBookmarkName = null)
         {
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+            _getTextboxBookmarkName = getTextboxBookmarkName ?? (() => DefaultBookmarkName);
+        }
+
+        private string ResolveBookmarkName()
+        {
+            try
+            {
+                var name = _getTextboxBookmarkName();
+                if (string.IsNullOrWhiteSpace(name)) return DefaultBookmarkName;
+                return name;
+            }
+            catch
+            {
+                return DefaultBookmarkName;
+            }
         }
         
         /// <summary>
@@ -109,7 +126,8 @@ namespace Wysg.Musm.Radium.Services
             {
                 try
                 {
-                    var (hwnd, element) = UiBookmarks.Resolve("ForeignTextbox");
+                    var bookmarkName = ResolveBookmarkName();
+                    var (_, element) = UiBookmarks.Resolve(bookmarkName);
                     if (element == null) return null;
                     
                     // Try ValuePattern first
@@ -155,7 +173,8 @@ namespace Wysg.Musm.Radium.Services
             {
                 try
                 {
-                    var (hwnd, element) = UiBookmarks.Resolve("ForeignTextbox");
+                    var bookmarkName = ResolveBookmarkName();
+                    var (_, element) = UiBookmarks.Resolve(bookmarkName);
                     if (element == null)
                     {
                         Debug.WriteLine("[TextSync] Write failed: element not found");
@@ -168,18 +187,6 @@ namespace Wysg.Musm.Radium.Services
                         var valuePattern = element.Patterns.Value.Pattern;
                         if (valuePattern != null && !valuePattern.IsReadOnly)
                         {
-                            // IMPORTANT: We do NOT call SetFocus() here to prevent focus stealing
-                            // However, some applications (like Notepad) may still bring themselves
-                            // to the foreground when their content changes via UIA ValuePattern.
-                            // This is application-specific behavior and cannot be fully prevented.
-                            // 
-                            // Alternative approaches (not implemented):
-                            // 1. SendKeys without focus: unreliable, requires exact focus state
-                            // 2. Windows messages: application-specific, not portable
-                            // 3. Clipboard + Paste: too invasive, disrupts user clipboard
-                            //
-                            // Current approach is the least invasive option available via UIA.
-                            
                             valuePattern.SetValue(text ?? string.Empty);
                             Debug.WriteLine($"[TextSync] Wrote {text?.Length ?? 0} chars via ValuePattern (focus may have changed)");
                             return true;

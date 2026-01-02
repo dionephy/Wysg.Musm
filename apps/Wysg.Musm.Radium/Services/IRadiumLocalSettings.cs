@@ -83,5 +83,14 @@ namespace Wysg.Musm.Radium.Services
         /// {Chief Complaint}, {Patient History Lines}, {Techniques}, {Comparison}
         /// </summary>
         string? HeaderFormatTemplate { get; set; }
+
+        /// <summary>Enable voice-to-text integration and UI exposure of text sync toggle.</summary>
+        bool VoiceToTextEnabled { get; set; }
+
+        /// <summary>Bookmark name pointing to the foreign textbox used for voice-to-text sync.</summary>
+        string? VoiceToTextTextboxBookmark { get; set; }
+
+        /// <summary>Bookmark name pointing to the toggle button used to start/stop voice-to-text sync.</summary>
+        string? VoiceToTextToggleBookmark { get; set; }
     }
 }

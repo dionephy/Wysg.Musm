@@ -39,6 +39,46 @@
                     </StackPanel>
                 </Grid>
             </GroupBox>
+            <GroupBox Header="Voice to text" Margin="0,0,0,12" Padding="8">
+                <GroupBox.HeaderTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource BrushTextPrimary}"/>
+                    </DataTemplate>
+                </GroupBox.HeaderTemplate>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <CheckBox Grid.Row="0" Grid.ColumnSpan="4" Content="Enable voice to text integration"
+                              IsChecked="{Binding VoiceToTextEnabled, Mode=TwoWay}"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Textbox bookmark:" VerticalAlignment="Center" Margin="0,4,8,4"/>
+                    <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding AvailableBookmarks}" MinWidth="220" Margin="0,4,12,4"
+                              SelectedItem="{Binding VoiceToTextTextboxBookmark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              IsEnabled="{Binding VoiceToTextEnabled}"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="Toggle button bookmark:" VerticalAlignment="Center" Margin="0,4,8,4"/>
+                    <ComboBox Grid.Row="1" Grid.Column="3" ItemsSource="{Binding AvailableBookmarks}" MinWidth="220" Margin="0,4,0,4"
+                              SelectedItem="{Binding VoiceToTextToggleBookmark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              IsEnabled="{Binding VoiceToTextEnabled}"/>
+
+                    <StackPanel Grid.Row="2" Grid.ColumnSpan="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button Content="Test textbox" Width="110" Margin="0,0,8,0" Command="{Binding TestVoiceToTextCommand}"/>
+                        <Button Content="Test button" Width="110" Margin="0,0,8,0" Command="{Binding InvokeVoiceToTextToggleCommand}"/>
+                        <Button Content="Check toggle" Width="110" Margin="0,0,8,0" Command="{Binding CheckVoiceToTextToggleCommand}"/>
+                        <Button Content="Save" Width="90" Command="{Binding SaveVoiceToTextCommand}"/>
+                    </StackPanel>
+                </Grid>
+            </GroupBox>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

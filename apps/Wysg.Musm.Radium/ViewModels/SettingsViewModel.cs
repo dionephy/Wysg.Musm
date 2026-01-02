@@ -9,6 +9,8 @@ using System.Text.Json;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Patterns;
 
 namespace Wysg.Musm.Radium.ViewModels
 {
@@ -86,6 +88,15 @@ namespace Wysg.Musm.Radium.ViewModels
         [ObservableProperty]
         private ObservableCollection<string> testModules = new();
         
+        [ObservableProperty]
+        private bool voiceToTextEnabled;
+
+        [ObservableProperty]
+        private string? voiceToTextTextboxBookmark;
+
+        [ObservableProperty]
+        private string? voiceToTextToggleBookmark;
+
         // Load custom modules into available modules
         private void LoadCustomModulesIntoAvailable()
         {
@@ -146,6 +157,10 @@ namespace Wysg.Musm.Radium.ViewModels
         public IRelayCommand ShowReportifySampleCommand { get; }
         public IRelayCommand SaveReportifySettingsCommand { get; }
         public IRelayCommand SaveKeyboardCommand { get; }
+        public IRelayCommand SaveVoiceToTextCommand { get; }
+        public IRelayCommand TestVoiceToTextCommand { get; }
+        public IRelayCommand InvokeVoiceToTextToggleCommand { get; }
+        public IRelayCommand CheckVoiceToTextToggleCommand { get; }
 
         // Keyboard (global hotkeys) settings
         private string? _openStudyHotkey;
@@ -207,6 +222,10 @@ namespace Wysg.Musm.Radium.ViewModels
             ShowReportifySampleCommand = new RelayCommand<string?>(ShowSample);
             SaveReportifySettingsCommand = new AsyncRelayCommand(SaveReportifySettingsAsync, CanPersistSettings);
             SaveKeyboardCommand = new RelayCommand(SaveKeyboard);
+            SaveVoiceToTextCommand = new RelayCommand(SaveVoiceToText);
+            TestVoiceToTextCommand = new RelayCommand(TestVoiceToTextBookmark);
+            InvokeVoiceToTextToggleCommand = new RelayCommand(InvokeVoiceToTextToggle);
+            CheckVoiceToTextToggleCommand = new RelayCommand(CheckVoiceToTextToggle);
             UpdateReportifyJson();
             if (_tenant != null)
             {
@@ -234,6 +253,7 @@ namespace Wysg.Musm.Radium.ViewModels
             
             // NEW: Load available bookmarks from UiBookmarks
             LoadAvailableBookmarks();
+            LoadVoiceToTextSettings();
 
             // Initialize PACS profile commands and load from DB if repository is available
             InitializePacsProfileCommands();
@@ -387,6 +407,23 @@ namespace Wysg.Musm.Radium.ViewModels
             _local.LocalConnectionString = AppendPassword(LocalConnectionString);
             _local.SnowstormBaseUrl = SnowstormBaseUrl ?? string.Empty;
             _local.ApiBaseUrl = ApiBaseUrl ?? string.Empty;
+
+            // Save voice-to-text settings with main Save button
+            _local.VoiceToTextEnabled = VoiceToTextEnabled;
+            _local.VoiceToTextTextboxBookmark = VoiceToTextTextboxBookmark;
+            _local.VoiceToTextToggleBookmark = VoiceToTextToggleBookmark;
+            try
+            {
+                if (System.Windows.Application.Current is App app)
+                {
+                    var mainVm = app.Services.GetService(typeof(MainViewModel)) as MainViewModel;
+                    if (mainVm != null)
+                    {
+                        mainVm.VoiceToTextEnabled = VoiceToTextEnabled;
+                    }
+                }
+            }
+            catch { }
             
             // Save ModalitiesNoHeaderUpdate to local settings (global setting)
             _local.ModalitiesNoHeaderUpdate = ModalitiesNoHeaderUpdate ?? string.Empty;
@@ -444,11 +481,16 @@ namespace Wysg.Musm.Radium.ViewModels
             _local.EditorAutofocusKeyTypes = GetKeyTypesAsString();
             _local.EditorAutofocusWindowTitle = EditorAutofocusWindowTitle ?? string.Empty;
             
+            // NEW: Save voice-to-text settings
+            _local.VoiceToTextEnabled = VoiceToTextEnabled;
+            _local.VoiceToTextTextboxBookmark = VoiceToTextTextboxBookmark;
+            _local.VoiceToTextToggleBookmark = VoiceToTextToggleBookmark;
+            
             // NEW: Try to immediately re-register hotkeys without restart
             try
             {
                 // Find MainWindow and trigger hotkey re-registration
-                var mainWindow = Application.Current.MainWindow as Views.MainWindow;
+                var mainWindow = System.Windows.Application.Current.MainWindow as Views.MainWindow;
                 if (mainWindow != null)
                 {
                     // Call a public method on MainWindow to re-register hotkeys
@@ -632,5 +674,126 @@ namespace Wysg.Musm.Radium.ViewModels
             ["number_conclusion_lines_on_one_paragraph"] = ("apple\nbanana\n\nmelon", "1. Apple.\n   Banana.\n\n2. Melon."),
             ["capitalize_after_bullet_or_number"] = ("1. apple\n2. banana", "1. Apple\n2. Banana"),
         };
+        
+        // Voice-to-text integration load/persist helpers
+        partial void OnVoiceToTextEnabledChanged(bool value)
+        {
+            _local.VoiceToTextEnabled = value;
+        }
+
+        partial void OnVoiceToTextTextboxBookmarkChanged(string? value)
+        {
+            _local.VoiceToTextTextboxBookmark = value;
+        }
+
+        partial void OnVoiceToTextToggleBookmarkChanged(string? value)
+        {
+            _local.VoiceToTextToggleBookmark = value;
+        }
+
+        private void LoadVoiceToTextSettings()
+        {
+            VoiceToTextEnabled = _local.VoiceToTextEnabled;
+            VoiceToTextTextboxBookmark = _local.VoiceToTextTextboxBookmark;
+            VoiceToTextToggleBookmark = _local.VoiceToTextToggleBookmark;
+        }
+
+        private void SaveVoiceToText()
+        {
+            _local.VoiceToTextEnabled = VoiceToTextEnabled;
+            _local.VoiceToTextTextboxBookmark = VoiceToTextTextboxBookmark;
+            _local.VoiceToTextToggleBookmark = VoiceToTextToggleBookmark;
+            
+            // Notify main view model so UI reflects updated visibility immediately
+            try
+            {
+                if (System.Windows.Application.Current is App app)
+                {
+                    var mainVm = app.Services.GetService(typeof(MainViewModel)) as MainViewModel;
+                    if (mainVm != null)
+                    {
+                        mainVm.VoiceToTextEnabled = VoiceToTextEnabled;
+                    }
+                }
+            }
+            catch { }
+            
+            MessageBox.Show("Voice to text settings saved for current user.", "Voice to text", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void TestVoiceToTextBookmark()
+        {
+            var name = VoiceToTextTextboxBookmark;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                MessageBox.Show("Select a textbox bookmark first.", "Voice to text", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            var (_, element) = UiBookmarks.Resolve(name);
+            if (element == null)
+            {
+                MessageBox.Show($"Bookmark '{name}' not found.", "Voice to text", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            string text = element.Patterns.Value.IsSupported ? element.Patterns.Value.Pattern?.Value ?? string.Empty : element.Name ?? string.Empty;
+            MessageBox.Show(string.IsNullOrEmpty(text) ? "(empty)" : text, "Voice to text: textbox value", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void InvokeVoiceToTextToggle()
+        {
+            var name = VoiceToTextToggleBookmark;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                MessageBox.Show("Select a toggle button bookmark first.", "Voice to text", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            var (_, element) = UiBookmarks.Resolve(name);
+            if (element == null)
+            {
+                MessageBox.Show($"Bookmark '{name}' not found.", "Voice to text", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            if (element.Patterns.Invoke.IsSupported)
+            {
+                element.Patterns.Invoke.Pattern?.Invoke();
+            }
+            else
+            {
+                MessageBox.Show("Toggle bookmark does not support Invoke pattern.", "Voice to text", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void CheckVoiceToTextToggle()
+        {
+            var name = VoiceToTextToggleBookmark;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                MessageBox.Show("Select a toggle button bookmark first.", "Voice to text", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            var (_, element) = UiBookmarks.Resolve(name);
+            if (element == null)
+            {
+                MessageBox.Show($"Bookmark '{name}' not found.", "Voice to text", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            if (element.Patterns.Toggle.IsSupported)
+            {
+                var togglePattern = element.Patterns.Toggle.Pattern;
+                var stateValue = togglePattern?.ToggleState?.Value;
+                var stateText = stateValue switch
+                {
+                    FlaUI.Core.Definitions.ToggleState.Off => "Off",
+                    FlaUI.Core.Definitions.ToggleState.On => "On",
+                    FlaUI.Core.Definitions.ToggleState.Indeterminate => "Indeterminate",
+                    _ => "Unknown"
+                };
+                MessageBox.Show($"Toggle state: {stateText}", "Voice to text", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show("Toggle bookmark does not support Toggle pattern.", "Voice to text", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }
