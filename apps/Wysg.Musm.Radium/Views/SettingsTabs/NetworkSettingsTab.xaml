@@ -8,7 +8,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="8">
             <!-- Database Pane -->
-            <GroupBox Header="Network" Margin="0,0,0,12" Padding="8">
+            <GroupBox Header="Essential" Margin="0,0,0,12" Padding="8">
                 <GroupBox.HeaderTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource BrushTextPrimary}"/>

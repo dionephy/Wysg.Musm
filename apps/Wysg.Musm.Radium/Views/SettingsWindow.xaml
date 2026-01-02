@@ -101,7 +101,7 @@ Title="Settings" Height="780" Width="1020" WindowStartupLocation="CenterOwner" B
             </DataTemplate>
         </Grid.Resources>
         <TabControl Background="#1E1E1E" x:Name="tabsRoot">
-            <TabItem Header="Network" x:Name="tabDatabase">
+            <TabItem Header="Integrations" x:Name="tabDatabase">
                 <tabs:NetworkSettingsTab/>
             </TabItem>
             <TabItem Header="PACS" x:Name="tabPacs">
