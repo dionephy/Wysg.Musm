@@ -678,6 +678,13 @@ The documentation is now:
 
 ## Recent Updates
 
+### 2026-01-02: Strip Remarks and Preorder from Current Report Inserts
+- **Problem**: Saved `med.rad_report` JSON captured transient fields (`study_remark`, `patient_remark`, `findings_preorder`) that should remain UI-only.
+- **Solution**: `InsertCurrentStudyReport` now strips those keys before persisting while preserving PrevReport splitter injection.
+- **Files Modified**: `apps/Wysg.Musm.Radium/Services/Procedures/InsertCurrentStudyReportProcedure.cs`
+- **Documentation**: `docs/00-current/FIX_2026-01-02_RemoveRemarksFromCurrentReportInsert.md`
+- **Status**: ✅ Complete - Saved JSON excludes remarks and preorder content
+
 ### 2025-12-26: Removed Deprecated Azure Central DB Code
 - **Problem**: Legacy direct-DB services for Azure SQL / PostgreSQL central databases remained after migrating to API-only architecture.
 - **Solution**: Removed all deprecated central DB code including AzureSqlCentralService, AzureSqlPhraseService, AzureSqlHotkeyService, AzureSqlSnippetService, AzureSqlReportifySettingsService, AzureSqlSnomedMapService, PhraseService (Postgres), ReportifySettingsService (Postgres), CentralDataSourceProvider, and CentralConnectionString from settings.

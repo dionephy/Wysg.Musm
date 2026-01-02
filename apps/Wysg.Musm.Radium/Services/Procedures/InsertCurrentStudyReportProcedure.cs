@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -109,6 +110,9 @@ namespace Wysg.Musm.Radium.Services.Procedures
                         comparison = vm.Comparison ?? string.Empty
                     });
 
+                // Remove transient fields that should not be persisted
+                reportJson = StripTransientFields(reportJson);
+
                 // Inject PrevReport split info before upload
                 var tempHeader = vm.TempHeader ?? string.Empty;
                 var headerLen = headerAndFindings?.Length ?? 0;
@@ -152,6 +156,35 @@ namespace Wysg.Musm.Radium.Services.Procedures
             finally
             {
                 Debug.WriteLine("[InsertCurrentStudyReport] ===== END =====");
+            }
+        }
+
+        private static string StripTransientFields(string baseJson)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(baseJson);
+                using var stream = new MemoryStream();
+                using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
+
+                writer.WriteStartObject();
+                foreach (var prop in doc.RootElement.EnumerateObject())
+                {
+                    if (prop.NameEquals("study_remark") || prop.NameEquals("patient_remark") || prop.NameEquals("findings_preorder"))
+                    {
+                        continue;
+                    }
+                    prop.WriteTo(writer);
+                }
+                writer.WriteEndObject();
+                writer.Flush();
+
+                return Encoding.UTF8.GetString(stream.ToArray());
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[InsertCurrentStudyReport] StripTransientFields parse error: {ex.Message}");
+                return baseJson;
             }
         }
 
