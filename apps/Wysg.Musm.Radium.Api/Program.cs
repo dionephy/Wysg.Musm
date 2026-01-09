@@ -4,6 +4,9 @@ using Wysg.Musm.Radium.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure URLs to bind to all interfaces on ports 5205 (HTTP) and 5206 (HTTPS) for local network access
+builder.WebHost.UseUrls("http://0.0.0.0:5205", "https://0.0.0.0:5206");
+
 // Add services to the container
 builder.Services.AddControllers();
 
@@ -53,7 +56,12 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// Redirect to HTTPS only when explicitly enabled (default off for local desktop client compatibility)
+var enableHttpsRedirect = app.Configuration.GetValue<bool>("Http:EnableHttpsRedirect", false);
+if (enableHttpsRedirect)
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors("AllowRadiumApp");
 

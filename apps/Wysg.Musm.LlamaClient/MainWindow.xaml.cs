@@ -47,14 +47,19 @@ namespace Wysg.Musm.LlamaClient
 
         private void InputTextBox_KeyDown(object sender, KeyEventArgs e)
         {
-            // Send on Ctrl+Enter
-            if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
+            if (e.Key == Key.Enter)
             {
+                // Allow Shift+Enter to add a newline
+                if ((Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+                {
+                    return;
+                }
+
+                e.Handled = true;
                 if (_viewModel.SendMessageCommand.CanExecute(null))
                 {
                     _viewModel.SendMessageCommand.Execute(null);
                 }
-                e.Handled = true;
             }
         }
     }

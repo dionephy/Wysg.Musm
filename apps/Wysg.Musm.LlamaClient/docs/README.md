@@ -16,8 +16,9 @@ The Llama Client provides a user-friendly interface for chatting with locally-ho
 ### 2. Chat Interface
 - **System Prompt**: Configurable system prompt for the conversation
 - **Chat History**: Visual chat history with user/assistant message bubbles
+- **Selectable Messages**: Chat messages (user and assistant) are selectable for copy/paste
 - **Streaming Output**: Real-time streaming responses with SSE (Server-Sent Events)
-- **Ctrl+Enter to Send**: Quick send with keyboard shortcut
+- **Enter to Send**: Enter (or Ctrl+Enter) sends the message; Shift+Enter inserts a newline
 
 ### 3. Parameters
 | Parameter | Description | Range |
@@ -111,7 +112,8 @@ apps/Wysg.Musm.LlamaClient/
 
 | Shortcut | Action |
 |----------|--------|
-| Ctrl+Enter | Send message |
+| Enter / Ctrl+Enter | Send message |
+| Shift+Enter | Insert newline |
 
 ## Dark Theme
 
@@ -134,12 +136,84 @@ The application uses a Visual Studio-inspired dark theme:
 
 ## Changelog
 
+### 2026-01-09
+- Chat messages are now selectable for copying
+- Enter sends messages; Shift+Enter inserts a newline (Ctrl+Enter still sends)
+
 ### 2025-12-30
 - Initial implementation
 - Chat interface with streaming support
 - Preset management
 - Copy as JSON / Replay functionality
 - MCP infrastructure (placeholder)
+
+## MCP Setup & Troubleshooting
+
+1. Ensure Docker is available inside WSL and the image is present (or pullable):
+   ```bash
+   wsl docker run --rm mcp/fetch:latest --help
+   ```
+2. Create an `mcp-config.json` next to the executable (or edit via MCP Config window). Example for the fetch server running through WSL Docker:
+   ```json
+   {
+     "servers": [
+       {
+         "name": "fetch",
+         "transport": "stdio",
+         "command": "mcp/fetch:latest",
+         "args": ["--pull=missing"],
+         "env": {
+           "HTTP_PROXY": "",
+           "HTTPS_PROXY": ""
+         },
+         "isEnabled": true
+       }
+     ]
+   }
+   ```
+   - `command` is the Docker image name.
+   - `args` are appended to `docker run --rm -i` (e.g., `--pull=missing`, `--network host`).
+   - `env` entries are passed as `-e KEY=VALUE` to the container.
+3. The client waits up to ~2 minutes for the MCP container to start (covers image pulls). STDERR from the container is echoed to the debug output for diagnosis.
+4. If connection times out, verify Docker access from Windows/WSL, pull the image manually, and rerun.
+5. MCP stdio servers expect one JSON object per line (no pretty-print). The client now sends newline-delimited JSON, but if testing manually use single-line JSON with a trailing `\n`.
+5. For manual tests, send one JSON object per line to stdio servers. Example from Windows using uvx fetch server:
+   ```bash
+   printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"Test","version":"1.0"}}}' \
+   | uvx mcp-server-fetch
+   ```
+   Pretty-printed multi-line JSON will be rejected by stdio servers expecting NDJSON.
+   Note: uvx sets PYTHONIOENCODING=utf-8 automatically for Windows encoding issues.
+
+## MCP configuration
+
+The MCP config is edited as raw JSON (opened via **Configure MCP Servers**). Default content:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "fetch": {
+        "command": "uvx",
+        "args": ["mcp-server-fetch"]
+      },
+      "filesystem": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\dhkim\\Downloads"]
+      }
+    }
+  }
+}
+```
+
+Each server entry supports `command`, `args`, and optional `env` (object). The client loads this file at startup; saving in the dialog rewrites it with the same structure.
+
+### MCP command resolution
+- On Windows the client invokes MCP servers via `cmd /c <command> <args>` so PATH and `.cmd/.bat` shims are honored (e.g., `uvx`, `npx`).
+- If a command is not found, ensure it is installed and on PATH.
+
+### MCP tool call arguments
+- When a tool takes no parameters, the client now sends `"arguments": {}` instead of an empty string. If you invoke tools manually, ensure arguments is a JSON object (empty if none).
 
 ---
 

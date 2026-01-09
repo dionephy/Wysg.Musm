@@ -136,6 +136,38 @@ public class McpServerConfig
     /// </summary>
     [JsonIgnore]
     public List<McpTool> Tools { get; set; } = [];
+
+    [JsonIgnore]
+    public string ArgsText
+    {
+        get => string.Join(" ", Args);
+        set
+        {
+            Args = string.IsNullOrWhiteSpace(value)
+                ? []
+                : value.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+        }
+    }
+
+    [JsonIgnore]
+    public string EnvText
+    {
+        get => string.Join("\n", Env.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+        set
+        {
+            Env.Clear();
+            if (string.IsNullOrWhiteSpace(value)) return;
+            var lines = value.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                var parts = line.Split('=', 2, StringSplitOptions.TrimEntries);
+                if (parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[0]))
+                {
+                    Env[parts[0]] = parts[1];
+                }
+            }
+        }
+    }
 }
 
 /// <summary>
@@ -168,4 +200,28 @@ public class McpToolResult
     public bool Success { get; set; }
     public string Result { get; set; } = string.Empty;
     public string? Error { get; set; }
+}
+
+public class McpServerEntry
+{
+    [JsonPropertyName("command")]
+    public string Command { get; set; } = string.Empty;
+
+    [JsonPropertyName("args")]
+    public List<string> Args { get; set; } = [];
+
+    [JsonPropertyName("env")]
+    public Dictionary<string, string>? Env { get; set; }
+}
+
+public class McpConfigFile
+{
+    [JsonPropertyName("mcp")]
+    public McpConfigRoot? Mcp { get; set; }
+}
+
+public class McpConfigRoot
+{
+    [JsonPropertyName("servers")]
+    public Dictionary<string, McpServerEntry> Servers { get; set; } = new();
 }

@@ -10,6 +10,8 @@ using System.Net.Http;
 using CommunityToolkit.Mvvm.Input;
 using Wysg.Musm.LlamaClient.Models;
 using Wysg.Musm.LlamaClient.Services;
+using Wysg.Musm.LlamaClient.Views;
+using System.Diagnostics;
 
 namespace Wysg.Musm.LlamaClient.ViewModels;
 
@@ -287,6 +289,7 @@ public class MainViewModel : INotifyPropertyChanged
     public IAsyncRelayCommand NewPresetCommand { get; }
     public IAsyncRelayCommand DuplicatePresetCommand { get; }
     public IAsyncRelayCommand DeletePresetCommand { get; }
+    public IAsyncRelayCommand OpenMcpConfigCommand { get; }
 
     #endregion
 
@@ -319,6 +322,8 @@ public class MainViewModel : INotifyPropertyChanged
         DuplicatePresetCommand = new AsyncRelayCommand(DuplicatePresetAsync);
         DeletePresetCommand = new AsyncRelayCommand(DeletePresetAsync);
 
+        OpenMcpConfigCommand = new AsyncRelayCommand(OpenMcpConfigAsync);
+
         // Keep MCP tool list in sync
         _mcpService.ToolsUpdated += (_, tools) =>
         {
@@ -345,6 +350,11 @@ public class MainViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(SelectedPreset));
             ApplyPreset(activePreset);
         }
+
+        StatusMessage = "Loading MCP config...";
+        await _mcpService.LoadConfigurationAsync("mcp-config.json");
+        await _mcpService.ConnectAllServersAsync();
+        AvailableTools = new ObservableCollection<McpTool>(_mcpService.AllTools);
 
         StatusMessage = "Ready";
     }
@@ -743,6 +753,19 @@ public class MainViewModel : INotifyPropertyChanged
 
         SelectedPreset = Presets.Count > index ? Presets[index] : Presets.LastOrDefault();
         StatusMessage = $"Deleted preset '{presetToDelete.Name}'";
+    }
+
+    private async Task OpenMcpConfigAsync()
+    {
+        var window = new Views.McpConfigWindow();
+        window.ShowDialog();
+        // After closing, reload MCP config
+        Debug.WriteLine("[MCP] Reloading config after config window closed");
+        await _mcpService.LoadConfigurationAsync("mcp-config.json");
+        Debug.WriteLine($"[MCP] Connecting all servers");
+        await _mcpService.ConnectAllServersAsync();
+        AvailableTools = new ObservableCollection<McpTool>(_mcpService.AllTools);
+        Debug.WriteLine($"[MCP] Available tools after reload: {AvailableTools.Count}");
     }
 
     private void ApplyPreset(Preset preset)

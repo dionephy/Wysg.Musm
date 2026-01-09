@@ -147,7 +147,18 @@
                 </Border.Style>
                 <StackPanel>
                     <TextBlock Text="{Binding Role}" FontWeight="Bold" Foreground="#888888" FontSize="11" Margin="0,0,0,4"/>
-                    <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Foreground="#CCCCCC" FontSize="14"/>
+                    <TextBox Text="{Binding Content}"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             Foreground="#CCCCCC"
+                             FontSize="14"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="0"
+                             IsReadOnly="True"
+                             IsReadOnlyCaretVisible="False"
+                             VerticalScrollBarVisibility="Disabled"
+                             HorizontalScrollBarVisibility="Disabled"/>
                     <ProgressBar IsIndeterminate="True" Height="2" Margin="0,8,0,0"
                                  Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVisibilityConverter}}"/>
                 </StackPanel>
@@ -364,7 +375,7 @@
                                          AcceptsReturn="True"
                                          MaxHeight="150"
                                          VerticalScrollBarVisibility="Auto"
-                                         KeyDown="InputTextBox_KeyDown"/>
+                                         PreviewKeyDown="InputTextBox_KeyDown"/>
 
                                 <StackPanel Grid.Column="1" Orientation="Vertical" Margin="8,0,0,0">
                                     <Button Content="Send" 
@@ -392,12 +403,23 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Text="Model Context Protocol (MCP) configuration coming soon..." 
-                                   Foreground="#888888" FontSize="14" Margin="0,20"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                            <Button Content="Configure MCP Servers" 
+                                    Command="{Binding OpenMcpConfigCommand}" 
+                                    Style="{StaticResource PrimaryButton}"/>
+                        </StackPanel>
 
-                        <StackPanel Grid.Row="1" VerticalAlignment="Top" Margin="0,40,0,0">
+                        <StackPanel Grid.Row="1" VerticalAlignment="Top">
                             <TextBlock Text="MCP allows connecting to external tools and services." Foreground="#666666" TextWrapping="Wrap"/>
                             <TextBlock Text="Configure MCP servers to enable tool calling capabilities." Foreground="#666666" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                            <TextBlock Text="Available Tools:" Foreground="#888888" FontWeight="Bold" Margin="0,16,0,8"/>
+                            <ItemsControl ItemsSource="{Binding AvailableTools}" Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}" Foreground="#CCCCCC" Margin="0,2"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </Grid>
                 </TabItem>
