@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -11,6 +12,18 @@ using Wysg.Musm.Radium.Services;
 
 namespace Wysg.Musm.Radium.ViewModels
 {
+    public class CustomAutomationSession : ObservableObject
+    {
+        private string _name = string.Empty;
+        public string Name
+        {
+            get => _name;
+            set => SetProperty(ref _name, value);
+        }
+
+        public ObservableCollection<string> Modules { get; } = new();
+    }
+
     public partial class SettingsViewModel
     {
         private string? _selectedPacsForAutomation;
@@ -20,6 +33,8 @@ namespace Wysg.Musm.Radium.ViewModels
 
         [ObservableProperty]
         private PacsProfileItem? selectedPacsProfile;
+
+        public ObservableCollection<CustomAutomationSession> CustomAutomationSessions { get; } = new();
         
         public string? SelectedPacsForAutomation
         {
@@ -132,6 +147,7 @@ namespace Wysg.Musm.Radium.ViewModels
             ShortcutSendReportPreviewModules.Clear();
             ShortcutSendReportReportifiedModules.Clear();
             TestModules.Clear();
+            CustomAutomationSessions.Clear();
 
             try
             {
@@ -151,7 +167,23 @@ namespace Wysg.Musm.Radium.ViewModels
                         LoadModuleSequence(settings.ShortcutSendReportPreview, ShortcutSendReportPreviewModules);
                         LoadModuleSequence(settings.ShortcutSendReportReportified, ShortcutSendReportReportifiedModules);
                         LoadModuleSequence(settings.TestSequence, TestModules);
-                        
+
+                        if (settings.CustomSessions != null)
+                        {
+                            foreach (var session in settings.CustomSessions)
+                            {
+                                if (string.IsNullOrWhiteSpace(session.Name))
+                                    continue;
+
+                                if (CustomAutomationSessions.Any(s => string.Equals(s.Name, session.Name, StringComparison.OrdinalIgnoreCase)))
+                                    continue;
+
+                                var vm = new CustomAutomationSession { Name = session.Name.Trim() };
+                                LoadModuleSequence(session.Sequence, vm.Modules);
+                                CustomAutomationSessions.Add(vm);
+                            }
+                        }
+
                         Debug.WriteLine($"[SettingsVM] Loaded automation settings from {automationFile}");
                     }
                 }
@@ -207,7 +239,12 @@ namespace Wysg.Musm.Radium.ViewModels
                     SendReportPreviewSequence = string.Join(",", SendReportPreviewModules),
                     ShortcutSendReportPreview = string.Join(",", ShortcutSendReportPreviewModules),
                     ShortcutSendReportReportified = string.Join(",", ShortcutSendReportReportifiedModules),
-                    TestSequence = string.Join(",", TestModules)
+                    TestSequence = string.Join(",", TestModules),
+                    CustomSessions = CustomAutomationSessions.Select(s => new CustomAutomationSessionSettings
+                    {
+                        Name = s.Name,
+                        Sequence = string.Join(",", s.Modules)
+                    }).ToList()
                 };
 
                 var automationFile = GetAutomationFilePath(SelectedPacsForAutomation);
@@ -273,7 +310,7 @@ namespace Wysg.Musm.Radium.ViewModels
             return System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey), "automation.json");
         }
 
-        private static string GetSpySettingsPath(string pacsKey)
+        private string GetSpySettingsPath(string pacsKey)
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             return System.IO.Path.Combine(appData, "Wysg.Musm", "Radium", "Pacs", SanitizeFileName(pacsKey), "ui-procedures.json");
@@ -295,7 +332,14 @@ namespace Wysg.Musm.Radium.ViewModels
             public string? ShortcutSendReportPreview { get; set; }
             public string? ShortcutSendReportReportified { get; set; }
             public string? TestSequence { get; set; }
+            public List<CustomAutomationSessionSettings>? CustomSessions { get; set; }
             // REMOVED: DoNotUpdateHeaderInXR - now stored in local settings, not PACS-scoped
+        }
+
+        private class CustomAutomationSessionSettings
+        {
+            public string? Name { get; set; }
+            public string? Sequence { get; set; }
         }
 
         private static string? Prompt(string title, string message, string defaultText)

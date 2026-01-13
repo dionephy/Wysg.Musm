@@ -768,6 +768,47 @@ Background="#1E1E1E" Foreground="#D0D0D0" FontFamily="Consolas">
                                 </ListBox>
                             </DockPanel>
                         </Border>
+
+                        <!-- Custom automation sessions -->
+                        <Border Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#252526" Margin="0,0,8,0">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Custom Sessions" FontWeight="SemiBold" Foreground="#D0D0D0"/>
+                                    <Button Content="Add session" Margin="8,0,0,0" Click="OnAddCustomSession" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                </StackPanel>
+                                <ItemsControl x:Name="icCustomSessions">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="#3C3C3C" BorderThickness="1" CornerRadius="4" Padding="6" Background="#1E1E1E" Margin="0,0,0,8">
+                                                <DockPanel>
+                                                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#D0D0D0"/>
+                                                        <Button Content="Rename" Margin="8,0,0,0" Tag="{Binding}" Click="OnRenameCustomSession" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                                        <Button Content="Delete" Margin="6,0,0,0" Tag="{Binding}" Click="OnDeleteCustomSession" Style="{StaticResource AutomationWindowButtonStyle}"/>
+                                                    </StackPanel>
+                                                    <ListBox ItemsSource="{Binding Modules}"
+                                                             Tag="{Binding}"
+                                                             Background="#1E1E1E" Foreground="#D0D0D0" BorderBrush="#3C3C3C"
+                                                             AllowDrop="True"
+                                                             PreviewMouseMove="OnAutomationProcDrag"
+                                                             DragOver="OnAutomationProcDragOver"
+                                                             Drop="OnAutomationProcDrop"
+                                                             DragLeave="OnAutomationListDragLeave"
+                                                             PreviewMouseLeftButtonDown="OnAutomationListMouseDown"
+                                                             MinHeight="140" MaxHeight="220">
+                                                        <ListBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <ContentControl Content="{Binding Converter={StaticResource CustomModuleSyntaxConverter}}"/>
+                                                            </DataTemplate>
+                                                        </ListBox.ItemTemplate>
+                                                    </ListBox>
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </DockPanel>
+                        </Border>
                     </Grid>
                     </ScrollViewer>
                     

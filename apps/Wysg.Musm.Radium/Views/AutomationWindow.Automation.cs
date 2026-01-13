@@ -24,6 +24,16 @@ namespace Wysg.Musm.Radium.Views
         private ObservableCollection<string> _builtinModules = new(); // Filtered built-in modules (excluding custom)
         private const string ElseIfMessageModuleName = "Else If Message is No";
         private const string IfModalityWithHeaderModuleName = "If Modality with Header";
+        private static readonly string[] BuiltinSessionNames = new[]
+        {
+            "New Study",
+            "Add Study",
+            "Shortcut: Open study",
+            "Send Report",
+            "Send Report Preview",
+            "Shortcut: Send Report",
+            "Test"
+        };
         
         // Drag-drop visual feedback fields
         private Border? _automationDragGhost;
@@ -105,6 +115,10 @@ namespace Wysg.Musm.Radium.Views
                     {
                         customList.ItemsSource = _customModules;
                         customList.PreviewMouseLeftButtonDown += OnAutomationListMouseDown;
+                    }
+                    if (FindName("icCustomSessions") is ItemsControl customSessions)
+                    {
+                        customSessions.ItemsSource = _automationViewModel.CustomAutomationSessions;
                     }
                 }
             }
@@ -281,35 +295,76 @@ namespace Wysg.Musm.Radium.Views
             try
             {
                 if (sender is not ListBox list) return;
-                
-                // Check if the mouse is over an actual item
-                var mousePosition = Mouse.GetPosition(list);
-                var element = list.InputHitTest(mousePosition) as DependencyObject;
-                
-                // Walk up the visual tree to find a ListBoxItem
-                var listBoxItem = FindVisualParent<ListBoxItem>(element);
-                
-                if (listBoxItem == null || list.SelectedItem == null)
+
+                // Set the DataContext of the MenuItem to the selected item
+                if (list.ContextMenu != null && list.SelectedItem != null)
                 {
-                    // Not over an item - cancel the context menu
-                    e.Handled = true;
+                    foreach (var item in list.ContextMenu.Items.OfType<MenuItem>())
+                    {
+                        item.DataContext = list.SelectedItem;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[AutomationWindow] Error in ContextMenuOpening: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[AutomationWindow] Error opening context menu: {ex.Message}");
             }
         }
 
-        private static T? FindVisualParent<T>(DependencyObject? child) where T : DependencyObject
+        private bool IsReservedSessionName(string name) =>
+            BuiltinSessionNames.Any(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
+
+        private string? PromptForSessionName(string title, string defaultName = "Custom session")
         {
-            while (child != null)
+            return PromptForBookmarkName(title, defaultName);
+        }
+
+        private void OnAddCustomSession(object sender, RoutedEventArgs e)
+        {
+            if (_automationViewModel?.CustomAutomationSessions == null) return;
+
+            var name = PromptForSessionName("Add custom session");
+            if (string.IsNullOrWhiteSpace(name)) return;
+
+            name = name.Trim();
+            if (IsReservedSessionName(name) ||
+                _automationViewModel.CustomAutomationSessions.Any(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase)))
             {
-                if (child is T parent)
-                    return parent;
-                child = VisualTreeHelper.GetParent(child);
+                MessageBox.Show($"Session name '{name}' is not available.", "Custom session", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
-            return null;
+
+            _automationViewModel.CustomAutomationSessions.Add(new CustomAutomationSession { Name = name });
+        }
+
+        private void OnRenameCustomSession(object sender, RoutedEventArgs e)
+        {
+            if (_automationViewModel?.CustomAutomationSessions == null) return;
+            if (sender is not Button btn || btn.Tag is not CustomAutomationSession session) return;
+
+            var name = PromptForSessionName("Rename custom session", session.Name);
+            if (string.IsNullOrWhiteSpace(name)) return;
+
+            name = name.Trim();
+            if (!string.Equals(name, session.Name, StringComparison.OrdinalIgnoreCase) &&
+                (IsReservedSessionName(name) || _automationViewModel.CustomAutomationSessions.Any(s => !ReferenceEquals(s, session) && string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase))))
+            {
+                MessageBox.Show($"Session name '{name}' is not available.", "Custom session", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            session.Name = name;
+        }
+
+        private void OnDeleteCustomSession(object sender, RoutedEventArgs e)
+        {
+            if (_automationViewModel?.CustomAutomationSessions == null) return;
+            if (sender is not Button btn || btn.Tag is not CustomAutomationSession session) return;
+
+            var result = MessageBox.Show($"Delete custom session '{session.Name}'?", "Delete session", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes) return;
+
+            _automationViewModel.CustomAutomationSessions.Remove(session);
         }
 
         private void OnAutomationListMouseDown(object sender, MouseButtonEventArgs e)
@@ -733,6 +788,11 @@ namespace Wysg.Musm.Radium.Views
         private System.Collections.ObjectModel.ObservableCollection<string>? GetAutomationListForListBox(ListBox lb)
         {
             if (_automationViewModel == null) return null;
+
+            if (lb.Tag is CustomAutomationSession session)
+            {
+                return session.Modules;
+            }
             
             return lb.Name switch
             {
@@ -790,6 +850,10 @@ namespace Wysg.Musm.Radium.Views
             ValidatePane("Send Report Preview", _automationViewModel.SendReportPreviewModules, errors);
             ValidatePane("Shortcut: Send Report", _automationViewModel.ShortcutSendReportPreviewModules, errors);
             ValidatePane("Test", _automationViewModel.TestModules, errors);
+            foreach (var session in _automationViewModel.CustomAutomationSessions)
+            {
+                ValidatePane($"Custom: {session.Name}", session.Modules, errors);
+            }
             
             return errors;
         }
