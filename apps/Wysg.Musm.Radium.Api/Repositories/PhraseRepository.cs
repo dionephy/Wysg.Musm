@@ -183,6 +183,75 @@ namespace Wysg.Musm.Radium.Api.Repositories
             return result;
         }
 
+        public async Task<(int converted, int duplicatesRemoved)> ConvertToGlobalAsync(long accountId, IReadOnlyCollection<long> phraseIds)
+        {
+            if (phraseIds == null || phraseIds.Count == 0)
+            {
+                return (0, 0);
+            }
+
+            var ids = phraseIds.Distinct().ToList();
+            await using var con = _connectionFactory.CreateConnection();
+            await con.OpenAsync();
+            await using var tx = await con.BeginTransactionAsync();
+
+            // Fetch target phrases (id, text, active) scoped to the account
+            var idParams = string.Join(",", ids.Select((_, i) => $"@id{i}"));
+            var fetchSql = $"SELECT id, text, active FROM radium.phrase WHERE account_id=@acct AND id IN ({idParams})";
+            await using var fetchCmd = new SqlCommand(fetchSql, con, (SqlTransaction)tx);
+            fetchCmd.Parameters.AddWithValue("@acct", accountId);
+            for (int i = 0; i < ids.Count; i++)
+            {
+                fetchCmd.Parameters.AddWithValue($"@id{i}", ids[i]);
+            }
+
+            var phrases = new List<(long Id, string Text, bool Active)>();
+            await using (var rd = await fetchCmd.ExecuteReaderAsync())
+            {
+                while (await rd.ReadAsync())
+                {
+                    phrases.Add((rd.GetInt64(0), rd.GetString(1), rd.GetBoolean(2)));
+                }
+            }
+
+            int converted = 0;
+            int duplicates = 0;
+
+            foreach (var phrase in phrases)
+            {
+                // Check for existing global phrase with same text
+                const string checkSql = "SELECT id FROM radium.phrase WHERE account_id IS NULL AND text=@text";
+                await using var checkCmd = new SqlCommand(checkSql, con, (SqlTransaction)tx);
+                checkCmd.Parameters.AddWithValue("@text", phrase.Text);
+                var existingGlobal = await checkCmd.ExecuteScalarAsync();
+
+                if (existingGlobal != null)
+                {
+                    duplicates++;
+                }
+                else
+                {
+                    const string insertSql = "INSERT INTO radium.phrase (account_id, text, active, created_at, updated_at, rev) OUTPUT INSERTED.id VALUES (NULL, @text, @active, SYSUTCDATETIME(), SYSUTCDATETIME(), 1)";
+                    await using var insertCmd = new SqlCommand(insertSql, con, (SqlTransaction)tx);
+                    insertCmd.Parameters.AddWithValue("@text", phrase.Text);
+                    insertCmd.Parameters.AddWithValue("@active", phrase.Active);
+                    await insertCmd.ExecuteScalarAsync();
+                    converted++;
+                }
+
+                // Delete the account-scoped phrase after conversion/skip
+                const string deleteSql = "DELETE FROM radium.phrase WHERE id=@id AND account_id=@acct";
+                await using var deleteCmd = new SqlCommand(deleteSql, con, (SqlTransaction)tx);
+                deleteCmd.Parameters.AddWithValue("@id", phrase.Id);
+                deleteCmd.Parameters.AddWithValue("@acct", accountId);
+                await deleteCmd.ExecuteNonQueryAsync();
+            }
+
+            await tx.CommitAsync();
+            _logger.LogInformation("Converted {Converted} phrases to global, skipped {Duplicates} duplicates for account {AccountId}", converted, duplicates, accountId);
+            return (converted, duplicates);
+        }
+
         public async Task<bool> ToggleActiveAsync(long phraseId, long accountId)
         {
             await using var con = _connectionFactory.CreateConnection();

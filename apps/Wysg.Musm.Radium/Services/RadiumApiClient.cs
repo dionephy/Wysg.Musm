@@ -236,14 +236,22 @@ namespace Wysg.Musm.Radium.Services
             response.EnsureSuccessStatusCode();
         }
 
-        public async Task<long> GetPhraseMaxRevisionAsync(long accountId)
+        public async Task<ConvertToGlobalPhrasesResponse> ConvertPhrasesToGlobalAsync(long accountId, List<long> phraseIds)
         {
-            var response = await _httpClient.GetAsync($"/api/accounts/{accountId}/phrases/revision");
+            var request = new ConvertToGlobalPhrasesRequest { PhraseIds = phraseIds ?? new List<long>() };
+            var response = await _httpClient.PostAsJsonAsync($"/api/accounts/{accountId}/phrases/convert-global", request);
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<long>();
+            return await response.Content.ReadFromJsonAsync<ConvertToGlobalPhrasesResponse>() ?? new ConvertToGlobalPhrasesResponse();
         }
-
-        #endregion
+ 
+         public async Task<long> GetPhraseMaxRevisionAsync(long accountId)
+         {
+             var response = await _httpClient.GetAsync($"/api/accounts/{accountId}/phrases/revision");
+             response.EnsureSuccessStatusCode();
+             return await response.Content.ReadFromJsonAsync<long>();
+         }
+ 
+         #endregion
 
         #region GlobalPhrases
         public async Task<List<PhraseDto>> GetGlobalPhrasesAsync(bool activeOnly = false)
@@ -458,20 +466,30 @@ namespace Wysg.Musm.Radium.Services
         public required List<string> Phrases { get; set; }
         public bool Active { get; set; } = true;
     }
-
-    // SNOMED DTOs
-    public class SnomedConceptDto
+    public class ConvertToGlobalPhrasesRequest
     {
-        public long ConceptId { get; set; }
-        public string ConceptIdStr { get; set; } = string.Empty;
-        public string Fsn { get; set; } = string.Empty;
-        public string? Pt { get; set; }
-        public string? SemanticTag { get; set; }
-        public string? ModuleId { get; set; }
-        public bool Active { get; set; } = true;
-        public DateTime CachedAt { get; set; }
-        public DateTime? ExpiresAt { get; set; }
+        public List<long> PhraseIds { get; set; } = new();
     }
+
+    public class ConvertToGlobalPhrasesResponse
+    {
+        public int Converted { get; set; }
+        public int DuplicatesRemoved { get; set; }
+    }
+ 
+     // SNOMED DTOs
+     public class SnomedConceptDto
+     {
+         public long ConceptId { get; set; }
+         public string ConceptIdStr { get; set; } = string.Empty;
+         public string Fsn { get; set; } = string.Empty;
+         public string? Pt { get; set; }
+         public string? SemanticTag { get; set; }
+         public string? ModuleId { get; set; }
+         public bool Active { get; set; } = true;
+         public DateTime CachedAt { get; set; }
+         public DateTime? ExpiresAt { get; set; }
+     }
 
     public class PhraseSnomedMappingDto
     {

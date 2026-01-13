@@ -43,6 +43,12 @@ namespace Wysg.Musm.Radium.Api.Repositories
         Task<List<PhraseDto>> BatchUpsertGlobalAsync(List<string> phrases, bool active);
 
         /// <summary>
+        /// Convert account-scoped phrases into global phrases (account_id -> NULL).
+        /// Returns counts of inserted globals and duplicates skipped.
+        /// </summary>
+        Task<(int converted, int duplicatesRemoved)> ConvertToGlobalAsync(long accountId, IReadOnlyCollection<long> phraseIds);
+
+        /// <summary>
         /// Toggles active status for a phrase
         /// </summary>
         Task<bool> ToggleActiveAsync(long phraseId, long accountId);

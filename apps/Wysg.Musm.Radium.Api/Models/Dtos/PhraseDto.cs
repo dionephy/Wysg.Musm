@@ -77,5 +77,22 @@ namespace Wysg.Musm.Radium.Api.Models.Dtos
         public long LatestRev { get; set; }
         public int Count { get; set; }
     }
+
+    /// <summary>
+    /// Request payload for converting account-scoped phrases to global phrases.
+    /// </summary>
+    public sealed class ConvertToGlobalPhrasesRequest
+    {
+        public List<long> PhraseIds { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Response payload summarizing conversion results.
+    /// </summary>
+    public sealed class ConvertToGlobalPhrasesResponse
+    {
+        public int Converted { get; set; }
+        public int DuplicatesRemoved { get; set; }
+    }
 }
 

@@ -329,9 +329,27 @@ namespace Wysg.Musm.Radium.Services.Adapters
             throw new NotSupportedException("UpdatePhraseTextAsync not supported in API mode - use delete + upsert");
         }
 
-        public Task<(int converted, int duplicatesRemoved)> ConvertToGlobalPhrasesAsync(long accountId, IEnumerable<long> phraseIds)
+        public async Task<(int converted, int duplicatesRemoved)> ConvertToGlobalPhrasesAsync(long accountId, IEnumerable<long> phraseIds)
         {
-            throw new NotSupportedException("Converting to global phrases not supported in API mode");
+            var ids = phraseIds?.Distinct().ToList() ?? new List<long>();
+            if (ids.Count == 0)
+            {
+                return (0, 0);
+            }
+
+            Debug.WriteLine($"[ApiPhraseServiceAdapter][ConvertToGlobal] accountId={accountId} ids={ids.Count}");
+
+            // Execute conversion via API
+            var response = await _apiClient.ConvertPhrasesToGlobalAsync(accountId, ids);
+
+            // Refresh caches to reflect moved phrases
+            _cachedPhrases = _cachedPhrases.Where(p => !ids.Contains(p.Id)).ToList();
+            _cachedGlobal = new List<PhraseInfo>();
+            _loaded = false;
+            await PreloadAsync(accountId).ConfigureAwait(false);
+
+            Debug.WriteLine($"[ApiPhraseServiceAdapter][ConvertToGlobal] converted={response.Converted}, duplicatesRemoved={response.DuplicatesRemoved}");
+            return (response.Converted, response.DuplicatesRemoved);
         }
 
         public async Task RefreshPhrasesAsync(long accountId)

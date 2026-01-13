@@ -193,6 +193,39 @@ namespace Wysg.Musm.Radium.Api.Controllers
         }
 
         /// <summary>
+        /// Converts the specified account phrases into global phrases (account_id NULL).
+        /// </summary>
+        [HttpPost("convert-global")]
+        [ProducesResponseType(typeof(ConvertToGlobalPhrasesResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<ActionResult<ConvertToGlobalPhrasesResponse>> ConvertToGlobal(long accountId, [FromBody] ConvertToGlobalPhrasesRequest request)
+        {
+            if (!await VerifyAccountOwnershipAsync(accountId))
+                return StatusCode(403, new { error = "Cannot modify different user's phrases" });
+
+            if (request?.PhraseIds == null || request.PhraseIds.Count == 0)
+                return BadRequest("PhraseIds cannot be empty");
+
+            try
+            {
+                var (converted, duplicatesRemoved) = await _phraseRepository.ConvertToGlobalAsync(accountId, request.PhraseIds);
+                var response = new ConvertToGlobalPhrasesResponse
+                {
+                    Converted = converted,
+                    DuplicatesRemoved = duplicatesRemoved
+                };
+                _logger.LogInformation("Converted {Converted} phrases to global for account {AccountId} (duplicates skipped: {Duplicates})", converted, accountId, duplicatesRemoved);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error converting phrases to global for account {AccountId}", accountId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        /// <summary>
         /// Toggles the active status of a phrase
         /// </summary>
         /// <param name="accountId">Account ID</param>
@@ -227,7 +260,7 @@ namespace Wysg.Musm.Radium.Api.Controllers
         }
 
         /// <summary>
-        /// Deletes a phrase
+        /// Deletes a phrase by ID
         /// </summary>
         /// <param name="accountId">Account ID</param>
         /// <param name="phraseId">Phrase ID</param>
@@ -261,7 +294,7 @@ namespace Wysg.Musm.Radium.Api.Controllers
         }
 
         /// <summary>
-        /// Gets the maximum revision number for sync purposes
+        /// Gets the maximum revision number for an account
         /// </summary>
         /// <param name="accountId">Account ID</param>
         /// <returns>Maximum revision number</returns>
@@ -285,9 +318,6 @@ namespace Wysg.Musm.Radium.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Verifies that the authenticated user owns the specified account
-        /// </summary>
         private async Task<bool> VerifyAccountOwnershipAsync(long accountId)
         {
             var tokenUid = User.GetFirebaseUid();
@@ -306,9 +336,7 @@ namespace Wysg.Musm.Radium.Api.Controllers
 
             if (account.Uid != tokenUid)
             {
-                _logger.LogWarning(
-                    "UID mismatch: Token UID {TokenUid} does not match account UID {AccountUid}",
-                    tokenUid, account.Uid);
+                _logger.LogWarning("UID mismatch: Token UID {TokenUid} does not match account UID {AccountUid}", tokenUid, account.Uid);
                 return false;
             }
 
