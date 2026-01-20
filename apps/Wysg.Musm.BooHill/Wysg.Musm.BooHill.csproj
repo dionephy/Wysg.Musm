@@ -13,6 +13,16 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="docs\boohill\**" />
+    <Compile Remove="docs\boohill_legacy\**" />
+    <EmbeddedResource Remove="docs\boohill\**" />
+    <EmbeddedResource Remove="docs\boohill_legacy\**" />
+    <None Remove="docs\boohill\**" />
+    <None Remove="docs\boohill_legacy\**" />
+    <Page Remove="docs\boohill\**" />
+    <Page Remove="docs\boohill_legacy\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -42,12 +52,6 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="docs\boohill_legacy\data\realestate.sqlite">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
   <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
     Explorer "Package and Publish" context menu entry to be enabled for this project even if
@@ -64,4 +68,13 @@
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
   </PropertyGroup>
+  <ItemGroup>
+    <PRIResource Remove="docs\boohill\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PRIResource Remove="docs\boohill_legacy\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="docs\boohill\AGENTS.md" />
+  </ItemGroup>
 </Project>
