@@ -1,5 +1,12 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Net.Http;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Windows.Automation;
 
 namespace Wysg.Musm.Mcp.Pacs;
 
@@ -9,6 +16,11 @@ public static class Program
     {
         PropertyNamingPolicy = null,
         WriteIndented = false
+    };
+
+    private static readonly HttpClient Http = new()
+    {
+        Timeout = TimeSpan.FromSeconds(10)
     };
 
     public static async Task Main()
@@ -100,6 +112,49 @@ public static class Program
                                         required = new[] { "patient_number" },
                                         additionalProperties = false
                                     }
+                                },
+                                new
+                                {
+                                    name = "radium_health",
+                                    description = "Calls the Radium API /health endpoint to verify connectivity.",
+                                    inputSchema = new
+                                    {
+                                        type = "object",
+                                        properties = new
+                                        {
+                                            base_url = new
+                                            {
+                                                type = "string",
+                                                description = "Override Radium API base URL (defaults to env RADIUM_API_BASE_URL or http://localhost:5205)."
+                                            }
+                                        },
+                                        required = Array.Empty<string>(),
+                                        additionalProperties = false
+                                    }
+                                },
+                                new
+                                {
+                                    name = "radium_test",
+                                    description = "Invokes the Radium main window Test button (UI Automation).",
+                                    inputSchema = new
+                                    {
+                                        type = "object",
+                                        properties = new
+                                        {
+                                            process_name = new
+                                            {
+                                                type = "string",
+                                                description = "Optional override for Radium process name (default: Wysg.Musm.Radium)."
+                                            },
+                                            button_name = new
+                                            {
+                                                type = "string",
+                                                description = "Optional override for button name/label (default: Test)."
+                                            }
+                                        },
+                                        required = Array.Empty<string>(),
+                                        additionalProperties = false
+                                    }
                                 }
                             }
                         }
@@ -138,6 +193,59 @@ public static class Program
                         }
 
                         WriteToolResult(id, $"oh patient is open (patient_number={patientNumber})");
+                        continue;
+                    }
+
+                    if (toolName == "radium_health")
+                    {
+                        string? baseUrlOverride = null;
+                        if (@params.TryGetProperty("arguments", out var argsEl) &&
+                            argsEl.ValueKind == JsonValueKind.Object &&
+                            argsEl.TryGetProperty("base_url", out var buEl))
+                        {
+                            baseUrlOverride = buEl.GetString();
+                        }
+
+                        var result = await CheckRadiumHealthAsync(baseUrlOverride);
+                        if (result.Success)
+                        {
+                            WriteToolResult(id, result.Message);
+                        }
+                        else
+                        {
+                            WriteError(id, result.ErrorCode ?? -32002, result.Message);
+                        }
+
+                        continue;
+                    }
+
+                    if (toolName == "radium_test")
+                    {
+                        string? processNameOverride = null;
+                        string? buttonNameOverride = null;
+                        if (@params.TryGetProperty("arguments", out var argsEl) &&
+                            argsEl.ValueKind == JsonValueKind.Object)
+                        {
+                            if (argsEl.TryGetProperty("process_name", out var pnEl))
+                            {
+                                processNameOverride = pnEl.GetString();
+                            }
+                            if (argsEl.TryGetProperty("button_name", out var bnEl))
+                            {
+                                buttonNameOverride = bnEl.GetString();
+                            }
+                        }
+
+                        var result = await InvokeRadiumTestButtonAsync(processNameOverride, buttonNameOverride);
+                        if (result.Success)
+                        {
+                            WriteToolResult(id, result.Message);
+                        }
+                        else
+                        {
+                            WriteError(id, result.ErrorCode ?? -32005, result.Message);
+                        }
+
                         continue;
                     }
 
@@ -212,4 +320,233 @@ public static class Program
         Console.Out.WriteLine(json);
         Console.Out.Flush();
     }
+
+    private static async Task<RadiumCallResult> CheckRadiumHealthAsync(string? baseUrlOverride)
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(baseUrlOverride)
+            ? Environment.GetEnvironmentVariable("RADIUM_API_BASE_URL")
+            : baseUrlOverride;
+
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            baseUrl = "http://localhost:5205";
+        }
+
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri))
+        {
+            return new RadiumCallResult(false, $"Invalid Radium API base URL: '{baseUrl}'", -32602);
+        }
+
+        // Ensure we always hit /health on the configured server.
+        var healthUri = new Uri(baseUri, "/health");
+
+        try
+        {
+            using var response = await Http.GetAsync(healthUri);
+            var body = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var statusText = string.IsNullOrWhiteSpace(body) ? "(empty body)" : body.Trim();
+                return new RadiumCallResult(true, $"Radium API reachable: {(int)response.StatusCode} {response.ReasonPhrase}; body: {statusText}");
+            }
+
+            var errorBody = string.IsNullOrWhiteSpace(body) ? "(empty body)" : body.Trim();
+            return new RadiumCallResult(false, $"Radium API responded with {(int)response.StatusCode} {response.ReasonPhrase}; body: {errorBody}", -32004);
+        }
+        catch (Exception ex)
+        {
+            return new RadiumCallResult(false, $"Failed to reach Radium API at {healthUri}: {ex.Message}", -32003);
+        }
+    }
+
+    private sealed record RadiumCallResult(bool Success, string Message, int? ErrorCode = null);
+
+    private static Task<RadiumCallResult> InvokeRadiumTestButtonAsync(string? processNameOverride, string? buttonNameOverride)
+    {
+        return RunOnStaAsync(() => InvokeRadiumTestButtonInternal(processNameOverride, buttonNameOverride));
+    }
+
+    private static Task<RadiumCallResult> RunOnStaAsync(Func<RadiumCallResult> work)
+    {
+        var tcs = new TaskCompletionSource<RadiumCallResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                tcs.SetResult(work());
+            }
+            catch (Exception ex)
+            {
+                tcs.SetResult(new RadiumCallResult(false, $"radium_test failed: {ex.Message}", -32006));
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.IsBackground = true;
+        thread.Start();
+        return tcs.Task;
+    }
+
+    private static RadiumCallResult InvokeRadiumTestButtonInternal(string? processNameOverride, string? buttonNameOverride)
+    {
+        var preferredName = string.IsNullOrWhiteSpace(processNameOverride) ? "Wysg.Musm.Radium" : processNameOverride.Trim();
+
+        var candidates = new List<Process>();
+        foreach (var p in Process.GetProcesses())
+        {
+            try
+            {
+                if (p.HasExited) continue;
+                if (p.MainWindowHandle == IntPtr.Zero) continue;
+
+                var procName = p.ProcessName;
+                var title = p.MainWindowTitle ?? string.Empty;
+
+                if (procName.Equals(preferredName, StringComparison.OrdinalIgnoreCase) ||
+                    procName.Contains("Radium", StringComparison.OrdinalIgnoreCase) ||
+                    title.Contains("Radium", StringComparison.OrdinalIgnoreCase))
+                {
+                    candidates.Add(p);
+                }
+            }
+            catch
+            {
+                // ignore processes we can't inspect
+            }
+        }
+
+        var proc = candidates
+            .OrderByDescending(p => SafeStartTime(p))
+            .FirstOrDefault();
+
+        if (proc == null)
+        {
+            return new RadiumCallResult(false, "No running Radium process with a visible window was found.", -32001);
+        }
+
+        var hwnd = proc.MainWindowHandle;
+        if (hwnd == IntPtr.Zero)
+        {
+            return new RadiumCallResult(false, "Radium process has no main window handle.", -32001);
+        }
+
+        try
+        {
+            ShowWindow(hwnd, SW_RESTORE);
+            SetForegroundWindow(hwnd);
+        }
+        catch { }
+
+        AutomationElement? root = null;
+        try
+        {
+            root = AutomationElement.FromHandle(hwnd);
+        }
+        catch (Exception ex)
+        {
+            return new RadiumCallResult(false, $"Failed to access Radium window automation: {ex.Message}", -32006);
+        }
+
+        if (root == null)
+        {
+            return new RadiumCallResult(false, "Could not obtain automation root for Radium window.", -32006);
+        }
+
+        var namesToMatch = new List<string>();
+        if (!string.IsNullOrWhiteSpace(buttonNameOverride))
+        {
+            namesToMatch.Add(buttonNameOverride.Trim());
+        }
+        namesToMatch.AddRange(new[] { "Test", "Run Test", "TEST" });
+
+        var button = FindButton(root, namesToMatch);
+        if (button == null)
+        {
+            // Fallback: any button whose name or automation id contains "test"
+            var buttonCond = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button);
+            var buttons = root.FindAll(TreeScope.Descendants, buttonCond);
+            foreach (AutomationElement b in buttons)
+            {
+                try
+                {
+                    var name = b.Current.Name ?? string.Empty;
+                    var aid = b.Current.AutomationId ?? string.Empty;
+                    if (name.Contains("test", StringComparison.OrdinalIgnoreCase) ||
+                        aid.Contains("test", StringComparison.OrdinalIgnoreCase))
+                    {
+                        button = b;
+                        break;
+                    }
+                }
+                catch
+                {
+                    // ignore elements we cannot read
+                }
+            }
+        }
+
+        if (button == null)
+        {
+            return new RadiumCallResult(false, "Test button not found in Radium window.", -32001);
+        }
+
+        try
+        {
+            if (button.TryGetCurrentPattern(InvokePattern.Pattern, out var invObj) && invObj is InvokePattern inv)
+            {
+                inv.Invoke();
+                return new RadiumCallResult(true, "Radium Test button invoked.");
+            }
+
+            if (button.TryGetCurrentPattern(TogglePattern.Pattern, out var togObj) && togObj is TogglePattern tog)
+            {
+                tog.Toggle();
+                return new RadiumCallResult(true, "Radium Test button toggled.");
+            }
+
+            return new RadiumCallResult(false, "Test button does not support Invoke/Toggle patterns.", -32004);
+        }
+        catch (Exception ex)
+        {
+            return new RadiumCallResult(false, $"Failed to invoke Radium Test button: {ex.Message}", -32005);
+        }
+    }
+
+    private static AutomationElement? FindButton(AutomationElement root, IEnumerable<string> names)
+    {
+        var buttonCond = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button);
+
+        foreach (var name in names.Where(n => !string.IsNullOrWhiteSpace(n)))
+        {
+            var nameCond = new PropertyCondition(AutomationElement.NameProperty, name, PropertyConditionFlags.IgnoreCase);
+            var match = root.FindFirst(TreeScope.Descendants, new AndCondition(buttonCond, nameCond));
+            if (match != null)
+            {
+                return match;
+            }
+
+            var idCond = new PropertyCondition(AutomationElement.AutomationIdProperty, name, PropertyConditionFlags.IgnoreCase);
+            match = root.FindFirst(TreeScope.Descendants, new AndCondition(buttonCond, idCond));
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    private static DateTime SafeStartTime(Process p)
+    {
+        try { return p.StartTime; }
+        catch { return DateTime.MinValue; }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    private const int SW_RESTORE = 9;
 }
