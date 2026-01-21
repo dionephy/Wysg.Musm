@@ -147,7 +147,7 @@
                                             <Button Grid.Column="4" Content="{Binding FavoriteGlyph}" Click="Favorite_Click" Tag="{Binding HouseId}" />
                                              <TextBlock Grid.Column="5" Text="{Binding OfficeGroupCount}" />
                                             <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="6">
-                                                <TextBlock Text="{Binding StatusText}" Foreground="DodgerBlue" Visibility="{Binding StatusText, Converter={StaticResource BoolToVisibility}}" />
+                                                <TextBlock Text="{Binding StatusText}" Foreground="DodgerBlue" Visibility="{Binding HasStatusText, Converter={StaticResource BoolToVisibility}}" />
                                                 <Ellipse Width="10" Height="10" Fill="{Binding StatusCircleColor}" Visibility="{Binding ShowStatusCircle, Converter={StaticResource BoolToVisibility}}" />
                                             </StackPanel>
                                             <TextBlock Grid.Column="7" Text="{Binding ValueDisplay}" />

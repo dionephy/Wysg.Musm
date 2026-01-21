@@ -172,6 +172,7 @@ public sealed class HouseView
     public string StatusCircleColor => AllGroupsGreen ? "LightGreen" : AllGroupsRed ? "LightCoral" : "Transparent";
 
     public string StatusText => AllItemsRecent ? "new" : string.Empty;
+    public bool HasStatusText => !string.IsNullOrEmpty(StatusText);
     public int OfficeGroupCount => ItemsForDisplayGroups.Count();
 
     private bool AllItemsRecent => Items.Count > 0 && Items.All(i => IsTodayOrYesterday(i.AddedDate) && IsTodayOrYesterday(i.LastUpdatedDate));
@@ -218,6 +219,7 @@ public sealed class HouseView
         OnPropertyChanged(nameof(ShowStatusCircle));
         OnPropertyChanged(nameof(StatusCircleColor));
         OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(HasStatusText));
         OnPropertyChanged(nameof(OfficeGroupCount));
     }
 
