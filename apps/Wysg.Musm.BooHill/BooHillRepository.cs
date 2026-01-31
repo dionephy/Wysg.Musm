@@ -222,6 +222,16 @@ public sealed class BooHillRepository
         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
+    public async Task ToggleSoldAsync(long houseId)
+    {
+        await using var connection = CreateConnection();
+        await connection.OpenAsync().ConfigureAwait(false);
+        var command = connection.CreateCommand();
+        command.CommandText = "UPDATE house SET is_sold = CASE WHEN is_sold = 1 THEN 0 ELSE 1 END WHERE house_id = $id";
+        command.Parameters.AddWithValue("$id", houseId);
+        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+
     public async Task<long> UpsertHouseAsync(HouseEdit house)
     {
         await using var connection = CreateConnection();

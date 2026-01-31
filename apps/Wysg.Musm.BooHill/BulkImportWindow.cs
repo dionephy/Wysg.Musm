@@ -45,81 +45,135 @@ public sealed class BulkImportWindow : Window
 
     private void BuildLayout()
     {
-        Title = "Bulk Import Simulator";
+        Title = "한꺼번에 가져오기";
 
         var root = new Grid
         {
             RowDefinitions =
             {
                 new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
-                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
                 new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
             },
             Padding = new Thickness(16)
         };
 
-        // Header with input and parse button
-        var headerPanel = new StackPanel { Spacing = 12 };
-
         var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
         titleRow.Children.Add(new TextBlock
         {
-            Text = "Bulk Import Simulator",
+            Text = "한꺼번에 가져오기",
             FontSize = 24,
             FontWeight = FontWeights.SemiBold
         });
 
-        var parseButton = new Button { Content = "Parse & Simulate" };
+        var parseButton = new Button { Content = "(1) 시뮬레이션" };
         parseButton.Click += ParseButton_Click;
         titleRow.Children.Add(parseButton);
 
-        var importDuplicatesButton = new Button { Content = "Import duplicates" };
+        var importDuplicatesButton = new Button { Content = "(3) 기존 매물 가져오기" };
         importDuplicatesButton.Click += ImportDuplicates_Click;
         titleRow.Children.Add(importDuplicatesButton);
 
-        var finalizeButton = new Button { Content = "Finalize new" };
+        var finalizeButton = new Button { Content = "(4) 새 매물 가져오기" };
         finalizeButton.Click += FinalizeNew_Click;
         titleRow.Children.Add(finalizeButton);
 
-        var clearButton = new Button { Content = "Clear" };
+        var clearButton = new Button { Content = "초기화" };
         clearButton.Click += ClearButton_Click;
         titleRow.Children.Add(clearButton);
 
         _summaryText = new TextBlock
         {
-            Text = "Paste text below and click 'Parse & Simulate'",
+            Text = "",
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(12, 0, 0, 0)
         };
         titleRow.Children.Add(_summaryText);
 
-        headerPanel.Children.Add(titleRow);
+        Grid.SetRow(titleRow, 0);
+        root.Children.Add(titleRow);
+
+        var contentGrid = new Grid
+        {
+            RowDefinitions =
+            {
+                new RowDefinition { Height = new GridLength(260) },
+                new RowDefinition { Height = new GridLength(260) },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            },
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) },
+                new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) },
+                new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) }
+            },
+            ColumnSpacing = 12,
+            RowSpacing = 12
+        };
+        Grid.SetRow(contentGrid, 1);
+        root.Children.Add(contentGrid);
+
+        var inputSection = new Grid
+        {
+            Background = (Brush)Application.Current.Resources["LayerFillColorDefaultBrush"],
+            BorderBrush = (Brush)Application.Current.Resources["ControlStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+        var inputHeader = new StackPanel { Padding = new Thickness(12), Background = (Brush)Application.Current.Resources["LayerFillColorAltBrush"] };
+        inputHeader.Children.Add(new TextBlock { Text = "붙여넣기", FontWeight = FontWeights.SemiBold });
+        inputSection.Children.Add(inputHeader);
 
         _inputBox = new TextBox
         {
-            PlaceholderText = "Paste bulk listing text here...",
+            PlaceholderText = "여기에 붙여넣기 하세요",
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
             Height = 200,
             VerticalAlignment = VerticalAlignment.Top
         };
-        headerPanel.Children.Add(_inputBox);
+        var inputScroll = new ScrollViewer { Content = _inputBox, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        Grid.SetRow(inputScroll, 1);
+        inputSection.Children.Add(inputScroll);
+        Grid.SetRow(inputSection, 0);
+        Grid.SetColumn(inputSection, 0);
+        contentGrid.Children.Add(inputSection);
+
+        var logSection = new Grid
+        {
+            Background = (Brush)Application.Current.Resources["LayerFillColorDefaultBrush"],
+            BorderBrush = (Brush)Application.Current.Resources["ControlStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+        var logHeader = new StackPanel { Padding = new Thickness(12), Background = (Brush)Application.Current.Resources["LayerFillColorAltBrush"] };
+        logHeader.Children.Add(new TextBlock { Text = "Debug log", FontWeight = FontWeights.SemiBold });
+        logSection.Children.Add(logHeader);
 
         _logBox = new TextBox
         {
             IsReadOnly = true,
             AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
-            Height = 140,
+            Height = 200,
             VerticalAlignment = VerticalAlignment.Top,
-            FontSize = 12,
-            Header = "Debug log"
+            FontSize = 12
         };
-        headerPanel.Children.Add(_logBox);
-
-        Grid.SetRow(headerPanel, 0);
-        root.Children.Add(headerPanel);
+        var logScroll = new ScrollViewer { Content = _logBox, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        Grid.SetRow(logScroll, 1);
+        logSection.Children.Add(logScroll);
+        Grid.SetRow(logSection, 0);
+        Grid.SetColumn(logSection, 2);
+        contentGrid.Children.Add(logSection);
 
         // Houses list
         var housesSection = new Grid
@@ -128,7 +182,6 @@ public sealed class BulkImportWindow : Window
             BorderBrush = (Brush)Application.Current.Resources["ControlStrokeColorDefaultBrush"],
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
-            Margin = new Thickness(0, 12, 0, 0),
             RowDefinitions =
             {
                 new RowDefinition { Height = GridLength.Auto },
@@ -143,7 +196,7 @@ public sealed class BulkImportWindow : Window
         };
         housesHeader.Children.Add(new TextBlock
         {
-            Text = "Parsed Houses (click to view items)",
+            Text = "새 주택 후보",
             FontWeight = FontWeights.SemiBold
         });
         housesSection.Children.Add(housesHeader);
@@ -155,12 +208,13 @@ public sealed class BulkImportWindow : Window
         };
         _housesList.SelectionChanged += HousesList_SelectionChanged;
 
-        var housesScroll = new ScrollViewer { Content = _housesList };
+        var housesScroll = new ScrollViewer { Content = _housesList, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         Grid.SetRow(housesScroll, 1);
         housesSection.Children.Add(housesScroll);
 
         Grid.SetRow(housesSection, 1);
-        root.Children.Add(housesSection);
+        Grid.SetColumn(housesSection, 0);
+        contentGrid.Children.Add(housesSection);
 
         // Items list
         var itemsSection = new Grid
@@ -169,13 +223,8 @@ public sealed class BulkImportWindow : Window
             BorderBrush = (Brush)Application.Current.Resources["ControlStrokeColorDefaultBrush"],
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
-            Margin = new Thickness(0, 12, 0, 0),
             RowDefinitions =
             {
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
-                new RowDefinition { Height = GridLength.Auto },
-                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) },
                 new RowDefinition { Height = GridLength.Auto },
                 new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
             }
@@ -188,7 +237,7 @@ public sealed class BulkImportWindow : Window
         };
         itemsHeader.Children.Add(new TextBlock
         {
-            Text = "Items for Selected House",
+            Text = "새 주택 후보 매물",
             FontWeight = FontWeights.SemiBold
         });
 
@@ -224,69 +273,21 @@ public sealed class BulkImportWindow : Window
             ItemTemplate = CreateItemTemplate()
         };
 
-        var itemsScroll = new ScrollViewer { Content = _itemsList };
+        var itemsScroll = new ScrollViewer { Content = _itemsList, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         Grid.SetRow(itemsScroll, 1);
         itemsSection.Children.Add(itemsScroll);
 
-        var relatedHeader = new TextBlock
-        {
-            Text = "Existing duplicates (added automatically)",
-            FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(12, 8, 12, 0)
-        };
-        Grid.SetRow(relatedHeader, 2);
-        itemsSection.Children.Add(relatedHeader);
+        Grid.SetRow(itemsSection, 1);
+        Grid.SetColumn(itemsSection, 1);
+        contentGrid.Children.Add(itemsSection);
 
-        _relatedList = new ListView
-        {
-            SelectionMode = ListViewSelectionMode.None,
-            ItemsSource = RelatedDuplicates,
-            ItemTemplate = CreateDuplicateTemplate(),
-            Margin = new Thickness(12, 0, 12, 12)
-        };
-        var relatedScroll = new ScrollViewer { Content = _relatedList };
-        Grid.SetRow(relatedScroll, 3);
-        itemsSection.Children.Add(relatedScroll);
-
-        var similarHeader = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            Margin = new Thickness(12, 8, 12, 0)
-        };
-        similarHeader.Children.Add(new TextBlock
-        {
-            Text = "Similar houses (select to merge)",
-            FontWeight = FontWeights.SemiBold
-        });
-        var mergeButton = new Button { Content = "Merge", Margin = new Thickness(12, 0, 0, 0) };
-        mergeButton.Click += MergeSelected_Click;
-        similarHeader.Children.Add(mergeButton);
-        Grid.SetRow(similarHeader, 4);
-        itemsSection.Children.Add(similarHeader);
-
-        _similarList = new ListView
-        {
-            SelectionMode = ListViewSelectionMode.Single,
-            ItemsSource = SimilarHouses,
-            Margin = new Thickness(12, 0, 12, 12)
-        };
-        _similarList.SelectionChanged += SimilarList_SelectionChanged;
-        var similarScroll = new ScrollViewer { Content = _similarList };
-        Grid.SetRow(similarScroll, 5);
-        itemsSection.Children.Add(similarScroll);
-
-        Grid.SetRow(itemsSection, 2);
-        root.Children.Add(itemsSection);
-
-        // Duplicates list
+        // Duplicates list (skipped)
         var dupSection = new Grid
         {
             Background = (Brush)Application.Current.Resources["LayerFillColorDefaultBrush"],
             BorderBrush = (Brush)Application.Current.Resources["ControlStrokeColorDefaultBrush"],
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
-            Margin = new Thickness(0, 12, 0, 0),
             RowDefinitions =
             {
                 new RowDefinition { Height = GridLength.Auto },
@@ -301,7 +302,7 @@ public sealed class BulkImportWindow : Window
         };
         dupHeader.Children.Add(new TextBlock
         {
-            Text = "Duplicates (skipped)",
+            Text = "기존 주택",
             FontWeight = FontWeights.SemiBold
         });
         dupSection.Children.Add(dupHeader);
@@ -313,12 +314,99 @@ public sealed class BulkImportWindow : Window
             ItemTemplate = CreateDuplicateTemplate()
         };
 
-        var dupScroll = new ScrollViewer { Content = _duplicatesList };
+        var dupScroll = new ScrollViewer { Content = _duplicatesList, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         Grid.SetRow(dupScroll, 1);
         dupSection.Children.Add(dupScroll);
 
-        Grid.SetRow(dupSection, 3);
-        root.Children.Add(dupSection);
+        Grid.SetRow(dupSection, 0);
+        Grid.SetColumn(dupSection, 1);
+        contentGrid.Children.Add(dupSection);
+
+        // Existing duplicates (matched by key)
+        var relatedSection = new Grid
+        {
+            Background = (Brush)Application.Current.Resources["LayerFillColorDefaultBrush"],
+            BorderBrush = (Brush)Application.Current.Resources["ControlStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+
+        var relatedHeader = new StackPanel
+        {
+            Padding = new Thickness(12),
+            Background = (Brush)Application.Current.Resources["LayerFillColorAltBrush"]
+        };
+        relatedHeader.Children.Add(new TextBlock
+        {
+            Text = "Existing duplicates",
+            FontWeight = FontWeights.SemiBold
+        });
+        relatedSection.Children.Add(relatedHeader);
+
+        _relatedList = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.None,
+            ItemsSource = RelatedDuplicates,
+            ItemTemplate = CreateDuplicateTemplate()
+        };
+        var relatedScroll = new ScrollViewer { Content = _relatedList, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        Grid.SetRow(relatedScroll, 1);
+        relatedSection.Children.Add(relatedScroll);
+
+        Grid.SetRow(relatedSection, 1);
+        Grid.SetColumn(relatedSection, 2);
+        contentGrid.Children.Add(relatedSection);
+
+        // Similar houses
+        var similarSection = new Grid
+        {
+            Background = (Brush)Application.Current.Resources["LayerFillColorDefaultBrush"],
+            BorderBrush = (Brush)Application.Current.Resources["ControlStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+
+        var similarHeader = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Padding = new Thickness(12),
+            Background = (Brush)Application.Current.Resources["LayerFillColorAltBrush"]
+        };
+        similarHeader.Children.Add(new TextBlock
+        {
+            Text = "(2) 새 주택 후보가 기존 주택에 있는지 확인 (중복이면 합치기)",
+            FontWeight = FontWeights.SemiBold
+        });
+        var mergeButton = new Button { Content = "합치기", Margin = new Thickness(12, 0, 0, 0) };
+        mergeButton.Click += MergeSelected_Click;
+        similarHeader.Children.Add(mergeButton);
+        similarSection.Children.Add(similarHeader);
+
+        _similarList = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = SimilarHouses
+        };
+        _similarList.SelectionChanged += SimilarList_SelectionChanged;
+        var similarScroll = new ScrollViewer { Content = _similarList, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        Grid.SetRow(similarScroll, 1);
+        similarSection.Children.Add(similarScroll);
+
+        Grid.SetRow(similarSection, 2);
+        Grid.SetColumn(similarSection, 0);
+        Grid.SetColumnSpan(similarSection, 3);
+        contentGrid.Children.Add(similarSection);
 
         Content = root;
     }

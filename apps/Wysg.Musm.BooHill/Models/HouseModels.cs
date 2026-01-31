@@ -32,7 +32,7 @@ public sealed class ItemRecord
     public string? AddedDate { get; set; }
     public string? Remark { get; set; }
 
-    public string PriceDisplay => Price?.ToString("0.##", CultureInfo.InvariantCulture) ?? string.Empty;
+    public string PriceDisplay => Price?.ToString("N0", CultureInfo.InvariantCulture) ?? string.Empty;
 }
 
 public sealed class MassImportResult
@@ -178,6 +178,7 @@ public sealed class HouseView
     private bool AllItemsRecent => Items.Count > 0 && Items.All(i => IsTodayOrYesterday(i.AddedDate) && IsTodayOrYesterday(i.LastUpdatedDate));
 
     public string FavoriteGlyph => IsFavorite ? "★" : "☆";
+    public string SoldGlyph => IsSold ? "▣" : "□";
     public string PriceRange => FormatRange(MinPrice, MaxPrice);
     public string ValueDisplay => FormatValue(Value, ValueEstimate);
     public string RankDisplay => FormatValue(Rank, RankEstimate);
@@ -230,8 +231,8 @@ public sealed class HouseView
 
     private static string FormatRange(double? min, double? max)
     {
-        var left = min.HasValue ? min.Value.ToString("0.##", CultureInfo.InvariantCulture) : "";
-        var right = max.HasValue ? max.Value.ToString("0.##", CultureInfo.InvariantCulture) : "";
+        var left = min.HasValue ? min.Value.ToString("N0", CultureInfo.InvariantCulture) : "";
+        var right = max.HasValue ? max.Value.ToString("N0", CultureInfo.InvariantCulture) : "";
         if (string.IsNullOrEmpty(left) && string.IsNullOrEmpty(right))
         {
             return string.Empty;
@@ -254,12 +255,12 @@ public sealed class HouseView
     {
         if (value.HasValue)
         {
-            return value.Value.ToString("0.##", CultureInfo.InvariantCulture);
+            return value.Value.ToString("N0", CultureInfo.InvariantCulture);
         }
 
         if (estimate.HasValue)
         {
-            return estimate.Value.ToString("0.##", CultureInfo.InvariantCulture) + "?";
+            return estimate.Value.ToString("N0", CultureInfo.InvariantCulture) + "?";
         }
 
         return string.Empty;

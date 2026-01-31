@@ -235,6 +235,27 @@ namespace Wysg.Musm.BooHill
             }
         }
 
+        private async void Sold_Click(object sender, RoutedEventArgs e)
+        {
+            if (_repository == null)
+            {
+                return;
+            }
+
+            if (sender is Button button && button.Tag is long houseId)
+            {
+                try
+                {
+                    await _repository.ToggleSoldAsync(houseId);
+                    await LoadHousesAsync(_currentFilters);
+                }
+                catch (Exception ex)
+                {
+                    await ShowErrorAsync("Failed to toggle sold", ex.Message);
+                }
+            }
+        }
+
         private async void SortBuilding_Click(object sender, RoutedEventArgs e)
         {
             ToggleSort(SortField.Building);

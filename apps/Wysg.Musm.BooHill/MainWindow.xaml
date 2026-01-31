@@ -8,7 +8,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="Wysg.Musm.BooHill">
+    Title="부자의 동산">
 
     <Window.SystemBackdrop>
         <MicaBackdrop />
@@ -20,11 +20,11 @@
         </Grid.Resources>
         <StackPanel Spacing="12" Padding="16" Background="{ThemeResource LayerFillColorDefaultBrush}">
             <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBlock Text="BooHill List" FontSize="24" FontWeight="SemiBold" />
-                <Button Content="Open Admin" Click="OpenAdmin_Click" />
-                <Button Content="Bulk Import" Click="OpenBulkImport_Click" />
+                <TextBlock Text="부자의 동산" FontSize="24" FontWeight="SemiBold" />
+                <Button Content="Open Admin" Click="OpenAdmin_Click" Visibility="Collapsed" />
+                <Button Content="한꺼번에 가져오기" Click="OpenBulkImport_Click" />
             </StackPanel>
-            <TextBlock Text="Filters" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="필터" FontSize="18" FontWeight="SemiBold" />
             <Grid ColumnSpacing="12" RowSpacing="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2*" />
@@ -40,52 +40,52 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Spacing="4">
-                    <TextBlock Text="Cluster" />
+                    <TextBlock Text="아파트 단지" />
                     <ComboBox x:Name="ClusterCombo" PlaceholderText="All" ItemsSource="{Binding Clusters}" DisplayMemberPath="Display" SelectedValuePath="ClusterId" />
                 </StackPanel>
 
                 <StackPanel Spacing="4" Grid.Column="1">
-                    <TextBlock Text="Building Number" />
+                    <TextBlock Text="동" />
                     <TextBox x:Name="BuildingBox" />
                 </StackPanel>
 
                 <StackPanel Spacing="4" Grid.Column="2">
-                    <TextBlock Text="Unit Number" />
+                    <TextBlock Text="호수(층)" />
                     <TextBox x:Name="UnitBox" />
                 </StackPanel>
 
                 <StackPanel Spacing="4" Grid.Column="3">
-                    <TextBlock Text="Area" />
+                    <TextBlock Text="평수" />
                     <TextBox x:Name="AreaBox" />
                 </StackPanel>
 
                 <StackPanel Spacing="8" Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Bottom">
-                    <CheckBox x:Name="ShowSoldCheck" Content="Show sold items" />
+                    <CheckBox x:Name="ShowSoldCheck" Content="거래된 매물도 보기" />
                 </StackPanel>
 
                 <StackPanel Spacing="4" Grid.Row="1">
-                    <TextBlock Text="Min Value" />
+                    <TextBlock Text="최소 감평액" />
                     <TextBox x:Name="MinValueBox" InputScope="Number" />
                 </StackPanel>
 
                 <StackPanel Spacing="4" Grid.Row="1" Grid.Column="1">
-                    <TextBlock Text="Max Value" />
+                    <TextBlock Text="최대 감평액" />
                     <TextBox x:Name="MaxValueBox" InputScope="Number" />
                 </StackPanel>
 
                 <StackPanel Spacing="4" Grid.Row="1" Grid.Column="2">
-                    <TextBlock Text="Min Rank" />
+                    <TextBlock Text="최소 순위" />
                     <TextBox x:Name="MinRankBox" InputScope="Number" />
                 </StackPanel>
 
                 <StackPanel Spacing="4" Grid.Row="1" Grid.Column="3">
-                    <TextBlock Text="Max Rank" />
+                    <TextBlock Text="최대 순위" />
                     <TextBox x:Name="MaxRankBox" InputScope="Number" />
                 </StackPanel>
 
                 <StackPanel Spacing="8" Grid.Row="2" Grid.ColumnSpan="5" Orientation="Horizontal">
-                    <Button Content="Apply Filters" Click="ApplyFilters_Click" />
-                    <Button Content="Clear" Click="ClearFilters_Click" />
+                    <Button Content="필터 적용" Click="ApplyFilters_Click" />
+                    <Button Content="필터 초기화" Click="ClearFilters_Click" />
                     <TextBlock x:Name="StatusText" Margin="12,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
             </Grid>
@@ -95,69 +95,66 @@
             <Grid RowDefinitions="Auto,*" Background="{ThemeResource LayerFillColorDefaultBrush}" CornerRadius="8" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
                 <Grid Padding="12" ColumnSpacing="8" VerticalAlignment="Center" Background="{ThemeResource LayerFillColorAltBrush}">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="93" />
+                        <ColumnDefinition Width="120" />
+                        <ColumnDefinition Width="120" />
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="50" />
                         <ColumnDefinition Width="60" />
-                        <ColumnDefinition Width="110" />
-                        <ColumnDefinition Width="100" />
-                        <ColumnDefinition Width="100" />
-                        <ColumnDefinition Width="80" />
-                        <ColumnDefinition Width="80" />
-                        <ColumnDefinition Width="80" />
-                        <ColumnDefinition Width="100" />
-                        <ColumnDefinition Width="100" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="300" />
+                        <ColumnDefinition Width="120" />
+                        <ColumnDefinition Width="200" />
+                        <ColumnDefinition Width="120" />
+                        <ColumnDefinition Width="80" />                        
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="ID" FontWeight="SemiBold" />
-                    <Button Grid.Column="1" Content="Building" HorizontalAlignment="Stretch" Click="SortBuilding_Click" />
-                    <TextBlock Grid.Column="2" Text="Unit" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="3" Text="Area" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="4" Text="Favorite" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="5" Text="Office" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="6" Text="Status" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="7" Text="Value" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="8" Text="Rank" FontWeight="SemiBold" />
-                    <Button Grid.Column="9" Content="Price Range" HorizontalAlignment="Stretch" Click="SortPrice_Click" />
-                    <TextBlock Grid.Column="10" Text="Actions" FontWeight="SemiBold" />
+                    <TextBlock VerticalAlignment="Center" HorizontalAlignment="Center" Text="ID" FontWeight="SemiBold" />
+                    <Button Grid.Column="1" VerticalAlignment="Center"  Content="동" HorizontalAlignment="Stretch" Click="SortBuilding_Click" />
+                    <TextBlock Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Center" Text="호수" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Center" Text="평" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Center" Text="관심" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Center" Text="부동산" FontWeight="SemiBold" />
+                    <Button Grid.Column="6"  VerticalAlignment="Center" Content="가격 범위" HorizontalAlignment="Stretch" Click="SortPrice_Click" />
+                    <TextBlock Grid.Column="7" VerticalAlignment="Center" HorizontalAlignment="Center" Text="상태" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="8" VerticalAlignment="Center" HorizontalAlignment="Center" Text="감평액" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="9" VerticalAlignment="Center" HorizontalAlignment="Center" Text="순위" FontWeight="SemiBold" />                    
+                    <TextBlock Grid.Column="10" VerticalAlignment="Center" HorizontalAlignment="Center" Text="거래 완료" FontWeight="SemiBold" />
                 </Grid>
 
                 <ScrollViewer Grid.Row="1">
-                    <ListView x:Name="HouseList" ItemsSource="{Binding Houses}" SelectionMode="None">
+                    <ListView x:Name="HouseList" ItemsSource="{Binding Houses}" SelectionMode="None" HorizontalContentAlignment="Stretch">
                         <ListView.ItemTemplate>
                             <DataTemplate>
-                                <Expander Expanding="HouseExpander_Expanding" Collapsed="HouseExpander_Collapsed">
+                                <Expander Expanding="HouseExpander_Expanding" Collapsed="HouseExpander_Collapsed" HorizontalAlignment="Stretch">
                                     <Expander.Header>
-                                        <Grid Padding="12" ColumnSpacing="8" Background="{ThemeResource LayerFillColorDefaultBrush}">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="60" />
-                                                <ColumnDefinition Width="110" />
-                                                <ColumnDefinition Width="100" />
-                                                <ColumnDefinition Width="100" />
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="80" />
-                                                <ColumnDefinition Width="100" />
-                                                <ColumnDefinition Width="100" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="80" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding HouseId}" />
-                                            <TextBlock Grid.Column="1" Text="{Binding BuildingNumber}" />
-                                            <TextBlock Grid.Column="2" Text="{Binding UnitNumber}" />
-                                            <TextBlock Grid.Column="3" Text="{Binding Area}" />
-                                            <Button Grid.Column="4" Content="{Binding FavoriteGlyph}" Click="Favorite_Click" Tag="{Binding HouseId}" />
-                                             <TextBlock Grid.Column="5" Text="{Binding OfficeGroupCount}" />
-                                            <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="6">
+                                        <Grid Padding="0" ColumnSpacing="8" Background="{ThemeResource LayerFillColorDefaultBrush}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="70" />
+                                            <ColumnDefinition Width="120" />
+                                            <ColumnDefinition Width="120" />
+                                            <ColumnDefinition Width="80" />
+                                            <ColumnDefinition Width="50" />
+                                            <ColumnDefinition Width="60" />
+                                            <ColumnDefinition Width="300" />
+                                            <ColumnDefinition Width="120" />
+                                            <ColumnDefinition Width="200" />
+                                            <ColumnDefinition Width="120" />
+                                            <ColumnDefinition Width="80" />
+                                            
+                                        </Grid.ColumnDefinitions>
+                                            <TextBlock VerticalAlignment="Center" HorizontalAlignment="Center" Text="{Binding HouseId}" />
+                                            <TextBlock  Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Text="{Binding BuildingNumber}" />
+                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Center" Text="{Binding UnitNumber}" />
+                                            <TextBlock Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Center" Text="{Binding Area}" />
+                                            <Button Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Center" Content="{Binding FavoriteGlyph}" Click="Favorite_Click" Tag="{Binding HouseId}" />
+                                            <TextBlock Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Center" Text="{Binding OfficeGroupCount}" />
+                                            <TextBlock Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center" Text="{Binding PriceRange}" />
+                                            <StackPanel Grid.Column="7" VerticalAlignment="Center" HorizontalAlignment="Center" Orientation="Horizontal" Spacing="6">
                                                 <TextBlock Text="{Binding StatusText}" Foreground="DodgerBlue" Visibility="{Binding HasStatusText, Converter={StaticResource BoolToVisibility}}" />
                                                 <Ellipse Width="10" Height="10" Fill="{Binding StatusCircleColor}" Visibility="{Binding ShowStatusCircle, Converter={StaticResource BoolToVisibility}}" />
                                             </StackPanel>
-                                            <TextBlock Grid.Column="7" Text="{Binding ValueDisplay}" />
-                                            <TextBlock Grid.Column="8" Text="{Binding RankDisplay}" />
-                                            <TextBlock Grid.Column="9" Text="{Binding PriceRange}" />
-                                            <StackPanel Grid.Column="10" Orientation="Horizontal" Spacing="8">
-                                                <Border Background="{ThemeResource AccentFillColorDefaultBrush}" Padding="6,4" CornerRadius="4">
-                                                    <TextBlock Text="Items" />
-                                                </Border>
-                                            </StackPanel>
+                                            <TextBlock Grid.Column="8" VerticalAlignment="Center" HorizontalAlignment="Center" Text="{Binding ValueDisplay}" />
+                                            <TextBlock Grid.Column="9" VerticalAlignment="Center" HorizontalAlignment="Center" Text="{Binding RankDisplay}" />                                            
+                                            <Button Grid.Column="10" VerticalAlignment="Center" HorizontalAlignment="Center" Content="{Binding SoldGlyph}" Click="Sold_Click" Tag="{Binding HouseId}" />
                                         </Grid>
                                     </Expander.Header>
                                     <ItemsControl ItemsSource="{Binding ItemsForDisplayGroups}">

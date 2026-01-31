@@ -520,7 +520,19 @@ public sealed class BulkParsedHouse
     public string Key { get; set; } = string.Empty;
     public long? MatchedHouseId { get; set; }
 
-    public string Display => $"{(IsDuplicate ? "[DUP] " : string.Empty)}{ClusterName} {BuildingNumber}동 {UnitNumber} ({Area}평) - {Items.Count} items";
+    public string Display
+    {
+        get
+        {
+            var baseText = $"{(IsDuplicate ? "[DUP] " : string.Empty)}{ClusterName} {BuildingNumber}동 {UnitNumber} ({Area}평) - {Items.Count} items";
+            if (IsDuplicate && MatchedHouseId.HasValue)
+            {
+                return $"{baseText} -> same as id={MatchedHouseId.Value}";
+            }
+
+            return baseText;
+        }
+    }
 
     public override string ToString()
     {
