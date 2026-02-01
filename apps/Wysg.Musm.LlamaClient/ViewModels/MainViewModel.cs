@@ -26,6 +26,7 @@ public class ChatMessageViewModel : INotifyPropertyChanged
     private DateTime _timestamp = DateTime.Now;
     private string? _toolCallId;
     private List<ToolCall>? _toolCalls;
+    private string? _responseTime;
 
     public string Role
     {
@@ -67,6 +68,12 @@ public class ChatMessageViewModel : INotifyPropertyChanged
     {
         get => _toolCalls;
         set { _toolCalls = value; OnPropertyChanged(); }
+    }
+
+    public string? ResponseTime
+    {
+        get => _responseTime;
+        set { _responseTime = value; OnPropertyChanged(); }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -401,6 +408,7 @@ public class MainViewModel : INotifyPropertyChanged
         if (string.IsNullOrWhiteSpace(UserInput))
             return;
 
+        var responseStopwatch = Stopwatch.StartNew();
         var userMessage = new ChatMessageViewModel("user", UserInput.Trim());
         ChatMessages.Add(userMessage);
 
@@ -413,7 +421,7 @@ public class MainViewModel : INotifyPropertyChanged
         {
             try
             {
-                await ExecuteChatAsync(allowTools);
+                await ExecuteChatAsync(allowTools, responseStopwatch);
                 break;
             }
             catch (HttpRequestException httpEx) when (allowTools && !toollessFallbackTried && httpEx.Message.Contains("tool choice requires --enable-auto-tool-choice", StringComparison.OrdinalIgnoreCase))
@@ -443,7 +451,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task ExecuteChatAsync(bool allowTools)
+    private async Task ExecuteChatAsync(bool allowTools, Stopwatch responseStopwatch)
     {
         IsGenerating = true;
         StatusMessage = allowTools ? "Generating response (tools enabled)..." : "Generating response...";
@@ -549,11 +557,21 @@ public class MainViewModel : INotifyPropertyChanged
                 }
 
                 finalAssistant.IsStreaming = false;
+                if (responseStopwatch.IsRunning)
+                {
+                    responseStopwatch.Stop();
+                    finalAssistant.ResponseTime = FormatElapsed(responseStopwatch.Elapsed);
+                }
                 StatusMessage = "Response complete";
             }
             else
             {
                 assistantMessage.IsStreaming = false;
+                if (responseStopwatch.IsRunning)
+                {
+                    responseStopwatch.Stop();
+                    assistantMessage.ResponseTime = FormatElapsed(responseStopwatch.Elapsed);
+                }
                 StatusMessage = "Response complete";
             }
         }
@@ -801,6 +819,11 @@ public class MainViewModel : INotifyPropertyChanged
     #region Helpers
 
     // BuildChatRequest removed in favor of CreateRequest/BuildMessageHistory
+
+    private static string FormatElapsed(TimeSpan elapsed)
+    {
+        return $"{elapsed.TotalMilliseconds:F0} ms";
+    }
 
     #endregion
 

@@ -1,10 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using System.Collections.ObjectModel;
+using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
 using Wysg.Musm.Radium.Services;
+using Wysg.Musm.Radium.Services.ApiClients;
 using System.Text.Json;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -153,6 +157,7 @@ namespace Wysg.Musm.Radium.ViewModels
         private string _sampleAfterText = string.Empty; public string SampleAfterText { get => _sampleAfterText; set => SetProperty(ref _sampleAfterText, value); }
         public IRelayCommand SaveCommand { get; }
         public IRelayCommand TestLocalCommand { get; }
+        public IRelayCommand TestApiCommand { get; }
         public IRelayCommand SaveAutomationCommand { get; }
         public IRelayCommand ShowReportifySampleCommand { get; }
         public IRelayCommand SaveReportifySettingsCommand { get; }
@@ -218,6 +223,7 @@ namespace Wysg.Musm.Radium.ViewModels
             
             SaveCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(Save);
             TestLocalCommand = new AsyncRelayCommand(TestLocalAsync);
+            TestApiCommand = new AsyncRelayCommand(TestApiAsync);
             SaveAutomationCommand = new RelayCommand(SaveAutomation);
             ShowReportifySampleCommand = new RelayCommand<string?>(ShowSample);
             SaveReportifySettingsCommand = new AsyncRelayCommand(SaveReportifySettingsAsync, CanPersistSettings);
@@ -541,6 +547,83 @@ namespace Wysg.Musm.Radium.ViewModels
         }
 
         private async Task TestLocalAsync() => await TestAsync(LocalConnectionString, "Local");
+
+        private async Task TestApiAsync()
+        {
+            if (string.IsNullOrWhiteSpace(ApiBaseUrl))
+            {
+                MessageBox.Show("API base URL is empty.", "Test API", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (Application.Current is not App app)
+            {
+                MessageBox.Show("Application services not available.", "Test API", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var userSettingsClient = app.Services.GetService<IUserSettingsApiClient>();
+            if (userSettingsClient == null)
+            {
+                MessageBox.Show("User settings API client not registered.", "Test API", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            try
+            {
+                var available = await userSettingsClient.IsAvailableAsync();
+                if (!available)
+                {
+                    MessageBox.Show($"API not reachable at {ApiBaseUrl}.", "Test API", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"API health check failed: {ex.Message}", "Test API", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var accountId = _tenant?.AccountId ?? 0;
+            if (accountId <= 0)
+            {
+                var accountsClient = app.Services.GetService<IAccountsApiClient>();
+                if (accountsClient == null)
+                {
+                    MessageBox.Show("API connection OK. Account count client not registered.", "Test API", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                try
+                {
+                    var count = await accountsClient.GetCountAsync();
+                    MessageBox.Show($"API connection OK.\nDB call OK: app.account count = {count}.", "Test API", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"API reachable, but account count failed: {ex.Message}", "Test API", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+
+                return;
+            }
+
+            try
+            {
+                var settings = await userSettingsClient.GetAsync(accountId);
+                var detail = settings == null
+                    ? "No settings returned (new account?)"
+                    : $"Settings rev {settings.Rev}, updated {settings.UpdatedAt:g}";
+                MessageBox.Show($"API connection OK.\nDB call OK: {detail}", "Test API", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                MessageBox.Show("API reachable, but authorization failed. Please re-login.", "Test API", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"API reachable, but DB call failed: {ex.Message}", "Test API", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
         private static async Task TestAsync(string? cs, string label)
          {

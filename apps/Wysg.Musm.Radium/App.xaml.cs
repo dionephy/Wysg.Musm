@@ -500,6 +500,19 @@ namespace Wysg.Musm.Radium
                 httpClient.DefaultRequestHeaders.Add("User-Agent", "Wysg.Musm.Radium/1.0");
                 return new ExportedReportsApiClient(httpClient, baseUrl);
             });
+
+            // Accounts API Client
+            services.AddScoped<IAccountsApiClient>(sp =>
+            {
+                var baseUrl = ResolveApiBaseUrl(sp);
+                var httpClient = new System.Net.Http.HttpClient
+                {
+                    BaseAddress = new Uri(baseUrl),
+                    Timeout = TimeSpan.FromSeconds(30)
+                };
+                httpClient.DefaultRequestHeaders.Add("User-Agent", "Wysg.Musm.Radium/1.0");
+                return new AccountsApiClient(httpClient, baseUrl);
+            });
         }
 
         private static string ResolveApiBaseUrl(IServiceProvider sp)

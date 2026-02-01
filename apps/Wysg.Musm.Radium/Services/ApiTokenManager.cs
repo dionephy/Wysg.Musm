@@ -124,7 +124,8 @@ namespace Wysg.Musm.Radium.Services
                 _serviceProvider.GetService<IHotkeysApiClient>() as ApiClientBase,
                 _serviceProvider.GetService<ISnippetsApiClient>() as ApiClientBase,
                 _serviceProvider.GetService<ISnomedApiClient>() as ApiClientBase,
-                _serviceProvider.GetService<IExportedReportsApiClient>() as ApiClientBase
+                _serviceProvider.GetService<IExportedReportsApiClient>() as ApiClientBase,
+                _serviceProvider.GetService<IAccountsApiClient>() as ApiClientBase
             };
 
             return clients.Where(c => c != null).Cast<ApiClientBase>().ToList();

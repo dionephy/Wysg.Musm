@@ -191,6 +191,18 @@ namespace Wysg.Musm.Radium.Api.Repositories
             return rowsAffected > 0;
         }
 
+        public async Task<long> GetAccountCountAsync()
+        {
+            await using var connection = _connectionFactory.CreateConnection();
+            await connection.OpenAsync();
+
+            const string sql = "SELECT COUNT(*) FROM app.account";
+            await using var command = new SqlCommand(sql, connection);
+            var result = await command.ExecuteScalarAsync();
+
+            return result == null ? 0 : Convert.ToInt64(result);
+        }
+
         public async Task<string?> GetReportifySettingsAsync(long accountId)
         {
             if (accountId <= 0)

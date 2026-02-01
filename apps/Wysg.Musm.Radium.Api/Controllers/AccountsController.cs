@@ -200,5 +200,27 @@ namespace Wysg.Musm.Radium.Api.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
+
+        /// <summary>
+        /// Gets total account count.
+        /// </summary>
+        /// <returns>Total account count</returns>
+        /// <response code="200">Count retrieved successfully</response>
+        [HttpGet("count")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAccountCount()
+        {
+            try
+            {
+                var count = await _accountRepository.GetAccountCountAsync();
+                return Ok(new { count });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving account count");
+                return StatusCode(500, "Internal server error");
+            }
+        }
     }
 }

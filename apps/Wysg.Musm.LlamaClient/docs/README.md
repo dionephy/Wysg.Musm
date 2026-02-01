@@ -18,6 +18,7 @@ The Llama Client provides a user-friendly interface for chatting with locally-ho
 - **Chat History**: Visual chat history with user/assistant message bubbles
 - **Selectable Messages**: Chat messages (user and assistant) are selectable for copy/paste
 - **Streaming Output**: Real-time streaming responses with SSE (Server-Sent Events)
+- **Response Timing**: Each assistant response shows the elapsed time from Send to completion
 - **Enter to Send**: Enter (or Ctrl+Enter) sends the message; Shift+Enter inserts a newline
 
 ### 3. Parameters
@@ -131,10 +132,12 @@ The application uses a Visual Studio-inspired dark theme:
 - [ ] Conversation export/import
 - [ ] Multiple conversation tabs
 - [ ] Token count display
-- [ ] Response timing statistics
 - [ ] Custom themes
 
 ## Changelog
+
+### 2026-01-31
+- Chat responses now display elapsed time from Send to completion
 
 ### 2026-01-09
 - Chat messages are now selectable for copying

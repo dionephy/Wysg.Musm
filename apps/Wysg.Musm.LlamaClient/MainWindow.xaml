@@ -161,6 +161,17 @@
                              HorizontalScrollBarVisibility="Disabled"/>
                     <ProgressBar IsIndeterminate="True" Height="2" Margin="0,8,0,0"
                                  Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TextBox Text="{Binding ResponseTime, StringFormat=Elapsed: {0}}"
+                             Foreground="#888888"
+                             FontSize="11"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="0"
+                             IsReadOnly="True"
+                             IsReadOnlyCaretVisible="False"
+                             VerticalScrollBarVisibility="Disabled"
+                             HorizontalScrollBarVisibility="Disabled"
+                             Margin="0,4,0,0"/>
                 </StackPanel>
             </Border>
         </DataTemplate>

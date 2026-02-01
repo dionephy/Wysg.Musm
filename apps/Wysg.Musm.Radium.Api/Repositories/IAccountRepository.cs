@@ -36,5 +36,10 @@ namespace Wysg.Musm.Radium.Api.Repositories
         /// Upserts reportify settings JSON for an account
         /// </summary>
         Task<bool> UpsertReportifySettingsAsync(long accountId, string settingsJson);
+
+        /// <summary>
+        /// Gets total account count
+        /// </summary>
+        Task<long> GetAccountCountAsync();
     }
 }

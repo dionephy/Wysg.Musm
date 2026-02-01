@@ -35,6 +35,7 @@
                              Text="{Binding SnowstormBaseUrl, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,4"/>
                     <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
                         <Button Content="Test Local" Width="100" Margin="0,0,8,0" Command="{Binding TestLocalCommand}"/>
+                        <Button Content="Test API" Width="100" Margin="0,0,8,0" Command="{Binding TestApiCommand}"/>
                         <Button Content="Save" Width="90" Margin="0,0,8,0" Command="{Binding SaveCommand}"/>
                     </StackPanel>
                 </Grid>
